@@ -1,4 +1,4 @@
-module gitlab.faza.io/services/payment
+module gitlab.faza.io/payment-project/payment-app
 
 go 1.12
 
@@ -8,5 +8,5 @@ require (
 	gitlab.faza.io/go-framework/logger v0.0.3
 	gitlab.faza.io/go-framework/mongoadapter v0.0.0-20190728052705-c9318f327816
 	gitlab.faza.io/go-framework/redisadapter v0.0.0-20190723125447-b520851ec6f9
-	go.mongodb.org/mongo-driver v1.0.3
+	go.mongodb.org/mongo-driver v1.0.4
 )

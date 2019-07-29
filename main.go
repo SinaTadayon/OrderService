@@ -54,11 +54,11 @@ func init() {
 		logger.Err("Cant get configs")
 	}
 
-	redisPort, err := strconv.Atoi(App.config.Redis.Port)
-	if err != nil {
-		logger.Err("Cant convert redis port %v", err.Error())
-		os.Exit(1)
-	}
+	//redisPort, err := strconv.Atoi(App.config.Redis.Port)
+	//if err != nil {
+	//	logger.Err("Cant convert redis port %v", err.Error())
+	//	os.Exit(1)
+	//}
 
 	mongoPort, err := strconv.Atoi(App.config.Mongo.Port)
 	if err != nil {
@@ -97,16 +97,16 @@ func init() {
 		App.mode = "server"
 	}
 
-	App.redis, err = redisadapter.NewRedis(&redisadapter.RedisConfig{Host: App.config.Redis.Host, Port: redisPort}, nil)
-	if err != nil {
-		logger.Err("Cant get redis, %v", err.Error())
-		os.Exit(1)
-	}
-	err = App.redis.Connect()
-	if err != nil {
-		logger.Err("Cant connect to Redis, %v", err.Error())
-		os.Exit(1)
-	}
+	//App.redis, err = redisadapter.NewRedis(&redisadapter.RedisConfig{Host: App.config.Redis.Host, Port: redisPort}, nil)
+	//if err != nil {
+	//	logger.Err("Cant get redis, %v", err.Error())
+	//	os.Exit(1)
+	//}
+	//err = App.redis.Connect()
+	//if err != nil {
+	//	logger.Err("Cant connect to Redis, %v", err.Error())
+	//	os.Exit(1)
+	//}
 
 	mongoConfig := mongoadapter.MongoConfig{
 		Host:         App.config.Mongo.Host,
