@@ -17,14 +17,15 @@ var App struct {
 var brokers []string
 
 func main() {
-	err := initTopics()
-	if err != nil {
-		logger.Err(err.Error())
-		os.Exit(1)
-	}
 	switch App.config.Kafka.ConsumerTopic {
 	case "payment-pending":
-		startPaymentPending(App.config.Kafka.Version, "payment-pending")
+		startPaymentPending(App.config.Kafka.Version, App.config.Kafka.ConsumerTopic)
+	case "payment-success":
+		startPaymentSuccess(App.config.Kafka.Version, App.config.Kafka.ConsumerTopic)
+	case "payment-failed":
+		startPaymentFailed(App.config.Kafka.Version, App.config.Kafka.ConsumerTopic)
+	case "payment-control":
+		startPaymentControl(App.config.Kafka.Version, App.config.Kafka.ConsumerTopic)
 	}
 
 }
@@ -33,6 +34,12 @@ func init() {
 	err := LoadConfig()
 	if err != nil {
 		logger.Err(err.Error())
+	}
+
+	err = initTopics()
+	if err != nil {
+		logger.Err(err.Error())
+		os.Exit(1)
 	}
 }
 

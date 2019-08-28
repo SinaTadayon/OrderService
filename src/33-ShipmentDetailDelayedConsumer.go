@@ -14,16 +14,38 @@ import (
 	"github.com/Shopify/sarama"
 )
 
-func startPaymentPending(Version string, topics string) {
-	logger.Audit("starting consumers...")
+// ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
+func (c *ShipmentDetailDelayedConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+	for m := range claim.Messages() {
+		logger.Audit("ShipmentDetailDelayed: value = %s, OffSet = %v, topic = %s",
+			string(m.Value), m.Offset, m.Topic)
+		// Validate message
+		message, err := ShipmentDetailDelayedMessageValidate(m)
+		if err != nil {
+			logger.Err("ShipmentDetailDelayed validation failed: %s", err)
+			continue
+		}
+		// Message action
+		err = ShipmentDetailDelayedAction(message)
+		if err != nil {
+			logger.Err("ShipmentDetailDelayed action failed: %s", err)
+			continue
+		}
+		session.MarkMessage(message, "")
+	}
+	return nil
+}
+
+func startShipmentDetailDelayed(Version string, topics string) {
+	logger.Audit("starting ShipmentDetailDelayed consumers...")
 	if App.config.Kafka.Brokers == "" {
-		log.Fatal("Cant start consumer, No brokers defined")
+		log.Fatal("Cant start ShipmentDetailDelayed consumer, No brokers defined")
 	}
 	if App.config.Kafka.ConsumerTopic == "" {
-		log.Fatal("Cant start consumer, No topic defined")
+		log.Fatal("Cant start ShipmentDetailDelayed consumer, No topic defined")
 	}
 	if App.config.Kafka.Version == "" {
-		log.Fatal("Cant start consumer, No kafka version defined")
+		log.Fatal("Cant start ShipmentDetailDelayed consumer, No kafka version defined")
 	}
 
 	brokers := strings.Split(App.config.Kafka.Brokers, ",")
@@ -32,26 +54,19 @@ func startPaymentPending(Version string, topics string) {
 		log.Panicf("Error parsing Kafka version: %v", err)
 	}
 
-	/**
-	 * Construct a new Sarama configuration.
-	 * The Kafka cluster version has to be defined before the consumer/producer is initialized.
-	 */
 	config := sarama.NewConfig()
 	config.Version = version
 	//config.Consumer.Retry.Backoff
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
 
-	/**
-	 * Setup a new Sarama consumer group
-	 */
-	consumer := Consumer{
+	consumer := ShipmentDetailDelayedConsumer{
 		ready: make(chan bool, 0),
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	client, err := sarama.NewConsumerGroup(brokers, App.config.Kafka.ConsumerGroup, config)
 	if err != nil {
-		log.Panicf("Error creating consumer group client: %v", err)
+		log.Panicf("Error creating ShipmentDetailDelayed consumer group client: %v", err)
 	}
 
 	wg := &sync.WaitGroup{}
@@ -60,9 +75,8 @@ func startPaymentPending(Version string, topics string) {
 		defer wg.Done()
 		for {
 			if err := client.Consume(ctx, strings.Split(topics, ","), &consumer); err != nil {
-				log.Panicf("Error from consumer: %v", err)
+				log.Panicf("Error from ShipmentDetailDelayed consumer: %v", err)
 			}
-			// check if context was cancelled, signaling that the consumer should stop
 			if ctx.Err() != nil {
 				return
 			}
@@ -71,7 +85,7 @@ func startPaymentPending(Version string, topics string) {
 	}()
 
 	<-consumer.ready // Await till the consumer has been set up
-	log.Println("Sarama consumer up and running!...")
+	log.Println("ShipmentDetailDelayed consumer up and running!...")
 
 	sigterm := make(chan os.Signal, 1)
 	signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM)
@@ -89,28 +103,17 @@ func startPaymentPending(Version string, topics string) {
 }
 
 // Consumer represents a Sarama consumer group consumer
-type Consumer struct {
+type ShipmentDetailDelayedConsumer struct {
 	ready chan bool
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
-func (consumer *Consumer) Setup(sarama.ConsumerGroupSession) error {
-	// Mark the consumer as ready
-	close(consumer.ready)
+func (c *ShipmentDetailDelayedConsumer) Setup(sarama.ConsumerGroupSession) error {
+	close(c.ready)
 	return nil
 }
 
 // Cleanup is run at the end of a session, once all ConsumeClaim goroutines have exited
-func (consumer *Consumer) Cleanup(sarama.ConsumerGroupSession) error {
-	return nil
-}
-
-// ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
-func (consumer *Consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	for message := range claim.Messages() {
-		log.Printf("Message claimed: value = %s, OffSet = %v, topic = %s", string(message.Value), message.Offset, message.Topic)
-		//session.MarkMessage(message, "")
-	}
-
+func (c *ShipmentDetailDelayedConsumer) Cleanup(sarama.ConsumerGroupSession) error {
 	return nil
 }
