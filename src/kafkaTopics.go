@@ -26,6 +26,7 @@ func initTopics() error {
 		int32(partition), int16(replica))
 	if err != nil {
 		if err.Error() != sarama.ErrTopicAlreadyExists.Error() {
+			logger.Audit(err.Error())
 			time.Sleep(1 * time.Second)
 			_ = initTopics()
 		} else if err.Error() == sarama.ErrTopicAlreadyExists.Error() {
