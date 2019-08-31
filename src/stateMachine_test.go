@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func checkJourney(path []string, debug bool) (int, error) {
+func checkJourney(path []string, checkEnd, debug bool) (int, error) {
 	states := generateSM()
 	stateMap := make(map[string]State)
 	for _, s := range states.states {
@@ -30,7 +30,12 @@ func checkJourney(path []string, debug bool) (int, error) {
 					fmt.Println(path[i])
 				}
 			} else {
-				return 0, errors.New("Not end of path")
+				if checkEnd {
+					return 0, errors.New("not end of path")
+				} else {
+					foundedRoutes++
+					fmt.Println(path[i])
+				}
 			}
 		}
 	}
@@ -51,21 +56,35 @@ func TestCheckNextStep_AssertFalse(t *testing.T) {
 func TestCheckHappyPath_shortestWithoutAnyIssue(t *testing.T) {
 	path := []string{PaymentPending, PaymentSuccess, SellerApprovalPending, ShipmentPending, Shipped, ShipmentDelivered,
 		ShipmentSuccess, PayToSeller, PayToSellerSuccess, PayToMarket, PayToMarketSuccess}
-	foundedRoutes, err := checkJourney(path, true)
+	foundedRoutes, err := checkJourney(path, true, true)
 	assert.Nil(t, err)
 	assert.Equal(t, len(path), foundedRoutes)
 }
 
 func TestPayToBuyerHappyPath_AssertTrue(t *testing.T) {
 	path := []string{PayToBuyer, PayToBuyerSuccess}
-	foundedRoutes, err := checkJourney(path, true)
+	foundedRoutes, err := checkJourney(path, true, true)
 	assert.Nil(t, err)
 	assert.Equal(t, len(path), foundedRoutes)
 }
 
 func TestPayToBuyerWithFailure_AssertTrue(t *testing.T) {
 	path := []string{PayToBuyer, PayToBuyerFailed, PayToBuyer, PayToBuyerSuccess}
-	foundedRoutes, err := checkJourney(path, true)
+	foundedRoutes, err := checkJourney(path, true, true)
+	assert.Nil(t, err)
+	assert.Equal(t, len(path), foundedRoutes)
+}
+
+func TestPayToSellerHappyPath_AssertTrue(t *testing.T) {
+	path := []string{PayToSeller, PayToSellerSuccess}
+	foundedRoutes, err := checkJourney(path, false, true)
+	assert.Nil(t, err)
+	assert.Equal(t, len(path), foundedRoutes)
+}
+
+func TestPayToSellerWithFailure_AssertTrue(t *testing.T) {
+	path := []string{PayToSeller, PayToSellerFailed, PayToSeller, PayToSellerSuccess}
+	foundedRoutes, err := checkJourney(path, false, true)
 	assert.Nil(t, err)
 	assert.Equal(t, len(path), foundedRoutes)
 }
