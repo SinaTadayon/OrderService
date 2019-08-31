@@ -56,9 +56,30 @@ func TestCheckHappyPath_shortestWithoutAnyIssue(t *testing.T) {
 	assert.Equal(t, len(path), foundedRoutes)
 }
 
+func TestPayToBuyerHappyPath_AssertTrue(t *testing.T) {
+	path := []string{PayToBuyer, PayToBuyerSuccess}
+	foundedRoutes, err := checkJourney(path, true)
+	assert.Nil(t, err)
+	assert.Equal(t, len(path), foundedRoutes)
+}
+
+func TestPayToBuyerWithFailure_AssertTrue(t *testing.T) {
+	path := []string{PayToBuyer, PayToBuyerFailed, PayToBuyer, PayToBuyerSuccess}
+	foundedRoutes, err := checkJourney(path, true)
+	assert.Nil(t, err)
+	assert.Equal(t, len(path), foundedRoutes)
+}
+
 //func TestCreateConsumerFiles(t *testing.T) {
 //	list := make(map[string]string)
 //
+//	list["PaymentPending"] = PaymentPending
+//	list["PaymentSuccess"] = PaymentSuccess
+//	list["PaymentFailed"] = PaymentFailed
+//	list["PaymentControl"] = PaymentControl
+//	list["PaymentRejected"] = PaymentRejected
+//	list["SellerApprovalPending"] = SellerApprovalPending
+//	list["ShipmentPending"] = ShipmentPending
 //	list["ShipmentDetailDelayed"] = ShipmentDetailDelayed
 //	list["Shipped"] = Shipped
 //	list["ShipmentDeliveryPending"] = ShipmentDeliveryPending
@@ -78,11 +99,14 @@ func TestCheckHappyPath_shortestWithoutAnyIssue(t *testing.T) {
 //	list["ReturnShipmentSuccess"] = ReturnShipmentSuccess
 //	list["ShipmentRejectedBySeller"] = ShipmentRejectedBySeller
 //	list["PayToBuyer"] = PayToBuyer
+//	list["PayToBuyerFailed"] = PayToBuyerFailed
+//	list["PayToBuyerSuccess"] = PayToBuyerSuccess
 //	list["PayToSeller"] = PayToSeller
 //	list["PayToSellerFailed"] = PayToSellerFailed
 //	list["PayToSellerSuccess"] = PayToSellerSuccess
-//	list["PayToBuyerFailed"] = PayToBuyerFailed
-//	list["PayToBuyerSuccess"] = PayToBuyerSuccess
+//	list["PayToMarket"] = PayToMarket
+//	list["PayToMarketFailed"] = PayToMarketFailed
+//	list["PayToMarketSuccess"] = PayToMarketSuccess
 //
 //	for name, numbers := range list {
 //		consumer, err := ioutil.ReadFile("./TmpConsumer.go")

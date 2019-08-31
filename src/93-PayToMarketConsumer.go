@@ -15,20 +15,20 @@ import (
 )
 
 // ConsumeClaim must start a consumer loop of ConsumerGroupClaim's Messages().
-func (c *PaymentFailedConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+func (c *PayToMarketConsumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for m := range claim.Messages() {
-		logger.Audit("PaymentFailed: value = %s, OffSet = %v, topic = %s",
+		logger.Audit("PayToMarket: value = %s, OffSet = %v, topic = %s",
 			string(m.Value), m.Offset, m.Topic)
 		// Validate message
-		message, err := PaymentFailedMessageValidate(m)
+		message, err := PayToMarketMessageValidate(m)
 		if err != nil {
-			logger.Err("PaymentFailed validation failed: %s", err)
+			logger.Err("PayToMarket validation failed: %s", err)
 			continue
 		}
 		// Message action
-		err = PaymentFailedAction(message)
+		err = PayToMarketAction(message)
 		if err != nil {
-			logger.Err("PaymentFailed action failed: %s", err)
+			logger.Err("PayToMarket action failed: %s", err)
 			continue
 		}
 		session.MarkMessage(message, "")
@@ -36,16 +36,16 @@ func (c *PaymentFailedConsumer) ConsumeClaim(session sarama.ConsumerGroupSession
 	return nil
 }
 
-func startPaymentFailed(Version string, topics string) {
-	logger.Audit("starting PaymentFailed consumers...")
+func startPayToMarket(Version string, topics string) {
+	logger.Audit("starting PayToMarket consumers...")
 	if App.config.Kafka.Brokers == "" {
-		log.Fatal("Cant start PaymentFailed consumer, No brokers defined")
+		log.Fatal("Cant start PayToMarket consumer, No brokers defined")
 	}
 	if App.config.Kafka.ConsumerTopic == "" {
-		log.Fatal("Cant start PaymentFailed consumer, No topic defined")
+		log.Fatal("Cant start PayToMarket consumer, No topic defined")
 	}
 	if App.config.Kafka.Version == "" {
-		log.Fatal("Cant start PaymentFailed consumer, No kafka version defined")
+		log.Fatal("Cant start PayToMarket consumer, No kafka version defined")
 	}
 
 	brokers := strings.Split(App.config.Kafka.Brokers, ",")
@@ -59,14 +59,14 @@ func startPaymentFailed(Version string, topics string) {
 	//config.Consumer.Retry.Backoff
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
 
-	consumer := PaymentFailedConsumer{
+	consumer := PayToMarketConsumer{
 		ready: make(chan bool, 0),
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	client, err := sarama.NewConsumerGroup(brokers, App.config.Kafka.ConsumerGroup, config)
 	if err != nil {
-		log.Panicf("Error creating PaymentFailed consumer group client: %v", err)
+		log.Panicf("Error creating PayToMarket consumer group client: %v", err)
 	}
 
 	wg := &sync.WaitGroup{}
@@ -75,7 +75,7 @@ func startPaymentFailed(Version string, topics string) {
 		defer wg.Done()
 		for {
 			if err := client.Consume(ctx, strings.Split(topics, ","), &consumer); err != nil {
-				log.Panicf("Error from PaymentFailed consumer: %v", err)
+				log.Panicf("Error from PayToMarket consumer: %v", err)
 			}
 			if ctx.Err() != nil {
 				return
@@ -85,7 +85,7 @@ func startPaymentFailed(Version string, topics string) {
 	}()
 
 	<-consumer.ready // Await till the consumer has been set up
-	log.Println("PaymentFailed consumer up and running!...")
+	log.Println("PayToMarket consumer up and running!...")
 
 	sigterm := make(chan os.Signal, 1)
 	signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM)
@@ -103,17 +103,17 @@ func startPaymentFailed(Version string, topics string) {
 }
 
 // Consumer represents a Sarama consumer group consumer
-type PaymentFailedConsumer struct {
+type PayToMarketConsumer struct {
 	ready chan bool
 }
 
 // Setup is run at the beginning of a new session, before ConsumeClaim
-func (c *PaymentFailedConsumer) Setup(sarama.ConsumerGroupSession) error {
+func (c *PayToMarketConsumer) Setup(sarama.ConsumerGroupSession) error {
 	close(c.ready)
 	return nil
 }
 
 // Cleanup is run at the end of a session, once all ConsumeClaim goroutines have exited
-func (c *PaymentFailedConsumer) Cleanup(sarama.ConsumerGroupSession) error {
+func (c *PayToMarketConsumer) Cleanup(sarama.ConsumerGroupSession) error {
 	return nil
 }

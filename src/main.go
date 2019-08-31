@@ -27,7 +27,6 @@ func main() {
 	case "payment-control":
 		startPaymentControl(App.config.Kafka.Version, App.config.Kafka.ConsumerTopic)
 	}
-
 }
 
 func init() {

@@ -1,12 +1,11 @@
 package main
 
-import (
-	"github.com/Shopify/sarama"
-)
+import "github.com/Shopify/sarama"
 
 func PaymentPendingMessageValidate(message *sarama.ConsumerMessage) (*sarama.ConsumerMessage, error) {
 	return message, nil
 }
+
 func PaymentPendingAction(message *sarama.ConsumerMessage) error {
 
 	err := PaymentPendingProduce("", []byte{})
@@ -15,6 +14,7 @@ func PaymentPendingAction(message *sarama.ConsumerMessage) error {
 	}
 	return nil
 }
+
 func PaymentPendingProduce(topic string, payload []byte) error {
 	return nil
 }
