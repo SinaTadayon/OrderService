@@ -27,11 +27,14 @@ const (
 	ReturnShipmentSuccess         = "55.return_shipment_success"
 	ShipmentRejectedBySeller      = "21.shipment_rejected_by_seller"
 	PayToBuyer                    = "80.pay_to_buyer"
+	PayToBuyerFailed              = "82.pay_to_buyer_failed"
+	PayToBuyerSuccess             = "81.pay_to_buyer_success"
 	PayToSeller                   = "90.pay_to_seller"
 	PayToSellerFailed             = "92.pay_to_seller_failed"
 	PayToSellerSuccess            = "91.pay_to_seller_success"
-	PayToBuyerFailed              = "82.pay_to_buyer_failed"
-	PayToBuyerSuccess             = "81.pay_to_buyer_success"
+	PayToMarket                   = "93.pay_to_market"
+	PayToMarketFailed             = "95.pay_to_market_failed"
+	PayToMarketSuccess            = "94.pay_to_market_success"
 )
 
 type StateMachine struct {
@@ -242,33 +245,12 @@ func generateSM() *StateMachine {
 	}
 	SM.add(shipmentRejectedBySeller)
 
-	payToSeller := State{
-		title:      PayToSeller,
-		fromStates: []string{ReturnShipmentCanceled, ShipmentSuccess},
-		toStates:   []string{PayToSellerSuccess, PayToSellerFailed},
-	}
-	SM.add(payToSeller)
-
 	payToBuyer := State{
 		title:      PayToBuyer,
 		fromStates: []string{ReturnShipmentSuccess, ShipmentRejectedBySeller, ShipmentCanceled, PaymentRejected},
 		toStates:   []string{PayToBuyerSuccess, PayToBuyerFailed},
 	}
 	SM.add(payToBuyer)
-
-	payToSellerFailed := State{
-		title:      PayToSellerFailed,
-		fromStates: []string{PayToSeller},
-		toStates:   []string{PayToSellerSuccess},
-	}
-	SM.add(payToSellerFailed)
-
-	payToSellerSuccess := State{
-		title:      PayToSellerSuccess,
-		fromStates: []string{PayToSeller, PayToSellerFailed},
-		toStates:   []string{},
-	}
-	SM.add(payToSellerSuccess)
 
 	payToBuyerFailed := State{
 		title:      PayToBuyerFailed,
@@ -283,6 +265,48 @@ func generateSM() *StateMachine {
 		toStates:   []string{},
 	}
 	SM.add(payToBuyerSuccess)
+
+	payToSeller := State{
+		title:      PayToSeller,
+		fromStates: []string{ReturnShipmentCanceled, ShipmentSuccess},
+		toStates:   []string{PayToSellerSuccess, PayToSellerFailed},
+	}
+	SM.add(payToSeller)
+
+	payToSellerFailed := State{
+		title:      PayToSellerFailed,
+		fromStates: []string{PayToSeller},
+		toStates:   []string{PayToSellerSuccess},
+	}
+	SM.add(payToSellerFailed)
+
+	payToSellerSuccess := State{
+		title:      PayToSellerSuccess,
+		fromStates: []string{PayToSeller, PayToSellerFailed},
+		toStates:   []string{PayToMarket},
+	}
+	SM.add(payToSellerSuccess)
+
+	payToMarket := State{
+		title:      PayToMarket,
+		fromStates: []string{PayToSellerSuccess},
+		toStates:   []string{PayToMarketSuccess, PayToMarketFailed},
+	}
+	SM.add(payToMarket)
+
+	payToMarketFailed := State{
+		title:      PayToMarketFailed,
+		fromStates: []string{PayToMarket},
+		toStates:   []string{PayToMarketSuccess},
+	}
+	SM.add(payToMarketFailed)
+
+	payToMarketSuccess := State{
+		title:      PayToMarketSuccess,
+		fromStates: []string{PayToMarket, PayToMarketFailed},
+		toStates:   []string{},
+	}
+	SM.add(payToMarketSuccess)
 
 	return SM
 }

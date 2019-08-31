@@ -36,11 +36,11 @@ func init() {
 		logger.Err(err.Error())
 	}
 
-	err = initTopics()
-	if err != nil {
-		logger.Err(err.Error())
-		os.Exit(1)
-	}
+	//err = initTopics()
+	//if err != nil {
+	//	logger.Err(err.Error())
+	//	os.Exit(1)
+	//}
 }
 
 func LoadConfig() error {
