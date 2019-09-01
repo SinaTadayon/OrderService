@@ -2,9 +2,11 @@ package main
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func createPaymentRequestSample() PaymentPendingRequest {
+func createPaymentRequestSampleFull() PaymentPendingRequest {
 	var pr = PaymentPendingRequest{}
 
 	pr.orderNumber = "102102"
@@ -12,7 +14,7 @@ func createPaymentRequestSample() PaymentPendingRequest {
 	pr.buyer.info.firstName = "farzan"
 	pr.buyer.info.lastName = "dalaee"
 	pr.buyer.info.email = "farzan.dalaee@gmail.com"
-	pr.buyer.info.gender = "male"
+	pr.buyer.info.gender = "Male"
 	pr.buyer.info.mobile = "+98912193870"
 	pr.buyer.info.nationalId = "0012345678"
 	// buyer address
@@ -28,22 +30,67 @@ func createPaymentRequestSample() PaymentPendingRequest {
 	// buyer finance
 	pr.buyer.finance.iban = "IR165411211001514313143545354134"
 	pr.buyer.finance.bankName = "saman"
-	pr.buyer.finance.cartNumber = "6014 1111 2222 3333"
+	pr.buyer.finance.cartNumber = "6014111122223333"
 	// amount
 	pr.amount.total = 200000
 	pr.amount.discount = 40000
 	pr.amount.paid = 160000
 	// items
-	pr.items[0].sku = "aaa000"
-	pr.items[0].amount.total = 200000
-	pr.items[0].amount.paid = 160000
-	pr.items[0].amount.discount = 40000
-	pr.items[0].amount.sellerCommission = 10000
-	pr.items[0].amount.systemCommission = 5000
+	pr.items = append(pr.items, Item{
+		sku: "aaa000",
+		amount: ItemAmount{
+			total:            200000,
+			paid:             160000,
+			sellerCommission: 10000,
+			systemCommission: 5000,
+			discount:         40000,
+		},
+		quantity: 10,
+		seller: ItemSeller{
+			info: ItemSellerInfo{
+				companyName: "digi",
+			},
+		},
+		detail: ItemDetail{
+			brand:       "Asus",
+			categories:  "Electronic/laptop",
+			description: "Asus G503 i7, 256SSD, 32G Ram",
+		},
+		shipment: ItemShipment{
+			providerName: "Post",
+		},
+	})
+	pr.items = append(pr.items, Item{
+		sku: "aaa111",
+		amount: ItemAmount{
+			total:            300000,
+			paid:             160000,
+			sellerCommission: 10000,
+			systemCommission: 5000,
+			discount:         140000,
+		},
+		quantity: 1,
+		seller: ItemSeller{
+			info: ItemSellerInfo{
+				companyName: "digi",
+			},
+		},
+		detail: ItemDetail{
+			brand:       "Asus",
+			categories:  "Electronic/laptop",
+			description: "Asus G503 i7, 256SSD, 32G Ram",
+		},
+		shipment: ItemShipment{
+			providerName: "Post",
+		},
+	})
 
 	return pr
 }
 
 func TestPaymentPendingMessageValidate(t *testing.T) {
+	var pr = createPaymentRequestSampleFull()
 
+	err := pr.validate()
+	assert.Nil(t, err)
 }

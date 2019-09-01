@@ -1,13 +1,33 @@
 package main
 
-import "github.com/Shopify/sarama"
+import (
+	"encoding/json"
+	"errors"
+	"strings"
+
+	"github.com/go-ozzo/ozzo-validation/is"
+
+	"github.com/Shopify/sarama"
+	validation "github.com/go-ozzo/ozzo-validation"
+)
 
 func PaymentPendingMessageValidate(message *sarama.ConsumerMessage) (*sarama.ConsumerMessage, error) {
+	var ppr = PaymentPendingRequest{}
+
+	err := json.Unmarshal(message.Value, &ppr)
+	if err != nil {
+		return nil, err
+	}
+	err = ppr.validate()
+	if err != nil {
+		return nil, err
+	}
+
 	return message, nil
 }
 
 func PaymentPendingAction(message *sarama.ConsumerMessage) error {
-
+	// calculate price and send to payment
 	err := PaymentPendingProduce("", []byte{})
 	if err != nil {
 		return err
@@ -119,4 +139,81 @@ type ItemShipment struct {
 	returnTime       string
 	shipmentFee      float64
 	shipmentFeeOwner string
+}
+
+func (ppr *PaymentPendingRequest) validate() error {
+	var errValidation []string
+	// Validate order number
+	errPaymentRequest := validation.ValidateStruct(ppr,
+		validation.Field(&ppr.orderNumber, validation.Required, validation.Length(5, 250)),
+	)
+	if errPaymentRequest != nil {
+		errValidation = append(errValidation, errPaymentRequest.Error())
+	}
+
+	// Validate Buyer Info
+	errPaymentRequestBuyerInfo := validation.ValidateStruct(&ppr.buyer.info,
+		validation.Field(&ppr.buyer.info.email, validation.Required, is.Email),
+		validation.Field(&ppr.buyer.info.nationalId, validation.Required, validation.Length(10, 10)),
+		validation.Field(&ppr.buyer.info.mobile, validation.Required),
+		validation.Field(&ppr.buyer.info.gender, validation.Required, validation.In("Male", "Female")),
+		validation.Field(&ppr.buyer.info.firstName, validation.Required),
+		validation.Field(&ppr.buyer.info.lastName, validation.Required),
+	)
+	if errPaymentRequestBuyerInfo != nil {
+		errValidation = append(errValidation, errPaymentRequestBuyerInfo.Error())
+	}
+
+	// Validate Buyer finance
+	errPaymentRequestBuyerFinance := validation.ValidateStruct(&ppr.buyer.finance,
+		validation.Field(&ppr.buyer.finance.iban, validation.Required),
+		validation.Field(&ppr.buyer.finance.bankName, validation.Required),
+		validation.Field(&ppr.buyer.finance.cartNumber, validation.Required, validation.Length(16, 16)),
+	)
+	if errPaymentRequestBuyerFinance != nil {
+		errValidation = append(errValidation, errPaymentRequestBuyerFinance.Error())
+	}
+
+	// Validate Buyer address
+	errPaymentRequestBuyerAddress := validation.ValidateStruct(&ppr.buyer.address,
+		validation.Field(&ppr.buyer.address.address, validation.Required),
+		validation.Field(&ppr.buyer.address.state, validation.Required),
+		validation.Field(&ppr.buyer.address.city, validation.Required),
+		validation.Field(&ppr.buyer.address.country, validation.Required),
+		validation.Field(&ppr.buyer.address.zipCode, validation.Required),
+		validation.Field(&ppr.buyer.address.phone, validation.Required),
+	)
+	if errPaymentRequestBuyerAddress != nil {
+		errValidation = append(errValidation, errPaymentRequestBuyerAddress.Error())
+	}
+
+	// Validate amount
+	errPaymentRequestAmount := validation.ValidateStruct(&ppr.amount,
+		validation.Field(&ppr.amount.total, validation.Required),
+		validation.Field(&ppr.amount.discount, validation.Required),
+		validation.Field(&ppr.amount.paid, validation.Required),
+	)
+	if errPaymentRequestAmount != nil {
+		errValidation = append(errValidation, errPaymentRequestAmount.Error())
+	}
+
+	if len(ppr.items) != 0 {
+		for i := range ppr.items {
+			// Validate amount
+			errPaymentRequestItems := validation.ValidateStruct(&ppr.items[i],
+				validation.Field(&ppr.items[i].sku, validation.Required),
+				validation.Field(&ppr.items[i].quantity, validation.Required),
+			)
+			if errPaymentRequestItems != nil {
+				errValidation = append(errValidation, errPaymentRequestItems.Error())
+			}
+		}
+	}
+
+	res := strings.Join(errValidation, " ")
+	// return nil
+	if res == "" {
+		return nil
+	}
+	return errors.New(res)
 }

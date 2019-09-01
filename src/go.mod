@@ -5,6 +5,8 @@ go 1.12
 require (
 	github.com/Netflix/go-env v0.0.0-20180529183433-1e80ef5003ef
 	github.com/Shopify/sarama v1.23.0
+	github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a // indirect
+	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible
 	github.com/joho/godotenv v1.3.0
 	github.com/stretchr/testify v1.3.0
 	gitlab.faza.io/go-framework/kafkaadapter v0.0.1
