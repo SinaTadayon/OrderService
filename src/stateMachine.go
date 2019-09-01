@@ -297,7 +297,7 @@ func generateSM() *StateMachine {
 	payToMarketFailed := State{
 		title:      PayToMarketFailed,
 		fromStates: []string{PayToMarket},
-		toStates:   []string{PayToMarketSuccess},
+		toStates:   []string{PayToMarketSuccess, PayToMarket},
 	}
 	SM.add(payToMarketFailed)
 

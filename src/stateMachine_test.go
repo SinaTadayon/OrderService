@@ -52,7 +52,6 @@ func TestCheckNextStep_AssertFalse(t *testing.T) {
 	nextStep := ShipmentPending
 	assert.False(t, CheckNextState(currentStep, nextStep))
 }
-
 func TestCheckHappyPath_shortestWithoutAnyIssue(t *testing.T) {
 	path := []string{PaymentPending, PaymentSuccess, SellerApprovalPending, ShipmentPending, Shipped, ShipmentDelivered,
 		ShipmentSuccess, PayToSeller, PayToSellerSuccess, PayToMarket, PayToMarketSuccess}
@@ -60,30 +59,44 @@ func TestCheckHappyPath_shortestWithoutAnyIssue(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, len(path), foundedRoutes)
 }
-
+func TestCheckWorstCase_longestWithIssuePayBackToSeller(t *testing.T) {
+	path := []string{PaymentPending, PaymentSuccess, PaymentControl, SellerApprovalPending, ShipmentPending,
+		ShipmentDetailDelayed, Shipped, ShipmentDeliveryPending, ShipmentDeliveryDelayed, ShipmentDelivered,
+		ShipmentDeliveryProblem, ReturnShipmentPending, ReturnShipmentDetailDelayed, ReturnShipped,
+		ReturnShipmentDeliveryPending, ReturnShipmentDeliveryDelayed, ReturnShipmentDelivered,
+		ReturnShipmentDeliveryProblem, ReturnShipmentCanceled, PayToSeller, PayToSellerFailed, PayToSeller,
+		PayToSellerFailed, PayToSellerSuccess, PayToMarket, PayToMarketFailed, PayToMarket,
+		PayToMarketFailed, PayToMarketSuccess}
+	foundedRoutes, err := checkJourney(path, true, true)
+	assert.Nil(t, err)
+	assert.Equal(t, len(path), foundedRoutes)
+}
 func TestPayToBuyerHappyPath_AssertTrue(t *testing.T) {
 	path := []string{PayToBuyer, PayToBuyerSuccess}
 	foundedRoutes, err := checkJourney(path, true, true)
 	assert.Nil(t, err)
 	assert.Equal(t, len(path), foundedRoutes)
 }
-
 func TestPayToBuyerWithFailure_AssertTrue(t *testing.T) {
 	path := []string{PayToBuyer, PayToBuyerFailed, PayToBuyer, PayToBuyerSuccess}
 	foundedRoutes, err := checkJourney(path, true, true)
 	assert.Nil(t, err)
 	assert.Equal(t, len(path), foundedRoutes)
 }
-
 func TestPayToSellerHappyPath_AssertTrue(t *testing.T) {
 	path := []string{PayToSeller, PayToSellerSuccess}
 	foundedRoutes, err := checkJourney(path, false, true)
 	assert.Nil(t, err)
 	assert.Equal(t, len(path), foundedRoutes)
 }
-
 func TestPayToSellerWithFailure_AssertTrue(t *testing.T) {
 	path := []string{PayToSeller, PayToSellerFailed, PayToSeller, PayToSellerSuccess}
+	foundedRoutes, err := checkJourney(path, false, true)
+	assert.Nil(t, err)
+	assert.Equal(t, len(path), foundedRoutes)
+}
+func TestPayToSellerWithFailure_LongestAssertTrue(t *testing.T) {
+	path := []string{PayToSeller, PayToSellerFailed, PayToSeller, PayToSellerFailed, PayToSellerSuccess}
 	foundedRoutes, err := checkJourney(path, false, true)
 	assert.Nil(t, err)
 	assert.Equal(t, len(path), foundedRoutes)
