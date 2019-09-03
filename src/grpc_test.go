@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc"
+
 	"github.com/stretchr/testify/assert"
 
 	pb "gitlab.faza.io/protos/payment"
-	"google.golang.org/grpc"
 )
 
 func TestNewOrder(t *testing.T) {
@@ -30,28 +31,28 @@ func TestNewOrder(t *testing.T) {
 		},
 	}
 
-	order.OrderNumber = req.orderNumber
+	order.OrderNumber = req.OrderNumber
 
-	order.Amount.Total = float32(req.amount.total)
-	order.Amount.Payable = float32(req.amount.payable)
-	order.Amount.Discount = float32(req.amount.discount)
+	order.Amount.Total = float32(req.Amount.Total)
+	order.Amount.Payable = float32(req.Amount.Payable)
+	order.Amount.Discount = float32(req.Amount.Discount)
 
-	order.Buyer.Info.LastName = req.buyer.lastName
-	order.Buyer.Info.FirstName = req.buyer.firstName
-	order.Buyer.Info.Email = req.buyer.email
-	order.Buyer.Info.Mobile = req.buyer.mobile
-	order.Buyer.Info.NationalId = req.buyer.nationalId
+	order.Buyer.Info.LastName = req.Buyer.LastName
+	order.Buyer.Info.FirstName = req.Buyer.FirstName
+	order.Buyer.Info.Email = req.Buyer.Email
+	order.Buyer.Info.Mobile = req.Buyer.Mobile
+	order.Buyer.Info.NationalId = req.Buyer.NationalId
 
-	order.Buyer.Finance.Iban = req.buyer.finance.iban
+	order.Buyer.Finance.Iban = req.Buyer.Finance.Iban
 
-	order.Buyer.Address.Address = req.buyer.address.address
-	order.Buyer.Address.State = req.buyer.address.state
-	order.Buyer.Address.Phone = req.buyer.address.phone
-	order.Buyer.Address.ZipCode = req.buyer.address.zipCode
-	order.Buyer.Address.City = req.buyer.address.city
-	order.Buyer.Address.Country = req.buyer.address.country
-	order.Buyer.Address.Lat = req.buyer.address.lat
-	order.Buyer.Address.Lan = req.buyer.address.lan
+	order.Buyer.Address.Address = req.Buyer.Address.Address
+	order.Buyer.Address.State = req.Buyer.Address.State
+	order.Buyer.Address.Phone = req.Buyer.Address.Phone
+	order.Buyer.Address.ZipCode = req.Buyer.Address.ZipCode
+	order.Buyer.Address.City = req.Buyer.Address.City
+	order.Buyer.Address.Country = req.Buyer.Address.Country
+	order.Buyer.Address.Lat = req.Buyer.Address.Lat
+	order.Buyer.Address.Lan = req.Buyer.Address.Lan
 
 	i := pb.Item{
 		Price:    &pb.ItemPrice{},
@@ -61,45 +62,45 @@ func TestNewOrder(t *testing.T) {
 			Finance: &pb.ItemSellerFinance{},
 		},
 	}
-	i.Sku = req.items[0].sku
-	i.Brand = req.items[0].brand
-	i.Categories = req.items[0].categories
-	i.Title = req.items[0].title
-	i.Warranty = req.items[0].warranty
-	i.Quantity = req.items[0].quantity
+	i.Sku = req.Items[0].Sku
+	i.Brand = req.Items[0].Brand
+	i.Categories = req.Items[0].Categories
+	i.Title = req.Items[0].Title
+	i.Warranty = req.Items[0].Warranty
+	i.Quantity = req.Items[0].Quantity
 
-	i.Price.Discount = float32(req.items[0].price.discount)
-	i.Price.Payable = float32(req.items[0].price.payable)
-	i.Price.Total = float32(req.items[0].price.total)
-	i.Price.SellerCommission = float32(req.items[0].price.sellerCommission)
-	i.Price.Unit = float32(req.items[0].price.unit)
+	i.Price.Discount = float32(req.Items[0].Price.Discount)
+	i.Price.Payable = float32(req.Items[0].Price.Payable)
+	i.Price.Total = float32(req.Items[0].Price.Total)
+	i.Price.SellerCommission = float32(req.Items[0].Price.SellerCommission)
+	i.Price.Unit = float32(req.Items[0].Price.Unit)
 
-	i.Shipment.ShipmentDetail = req.items[0].shipment.shipmentDetail
-	i.Shipment.ShippingTime = req.items[0].shipment.shippingTime
-	i.Shipment.ReturnTime = req.items[0].shipment.returnTime
-	i.Shipment.ReactionTime = req.items[0].shipment.reactionTime
-	i.Shipment.ProviderName = req.items[0].shipment.providerName
+	i.Shipment.ShipmentDetail = req.Items[0].Shipment.ShipmentDetail
+	i.Shipment.ShippingTime = req.Items[0].Shipment.ShippingTime
+	i.Shipment.ReturnTime = req.Items[0].Shipment.ReturnTime
+	i.Shipment.ReactionTime = req.Items[0].Shipment.ReactionTime
+	i.Shipment.ProviderName = req.Items[0].Shipment.ProviderName
 
-	i.Seller.Title = req.items[0].seller.title
-	i.Seller.NationalId = req.items[0].seller.nationalId
-	i.Seller.Mobile = req.items[0].seller.mobile
-	i.Seller.FirstName = req.items[0].seller.firstName
-	i.Seller.LastName = req.items[0].seller.lastName
-	i.Seller.Email = req.items[0].seller.email
-	i.Seller.RegistrationName = req.items[0].seller.registrationName
-	i.Seller.CompanyName = req.items[0].seller.companyName
+	i.Seller.Title = req.Items[0].Seller.Title
+	i.Seller.NationalId = req.Items[0].Seller.NationalId
+	i.Seller.Mobile = req.Items[0].Seller.Mobile
+	i.Seller.FirstName = req.Items[0].Seller.FirstName
+	i.Seller.LastName = req.Items[0].Seller.LastName
+	i.Seller.Email = req.Items[0].Seller.Email
+	i.Seller.RegistrationName = req.Items[0].Seller.RegistrationName
+	i.Seller.CompanyName = req.Items[0].Seller.CompanyName
 
-	i.Seller.Address.Address = req.items[0].seller.address.address
-	i.Seller.Address.Lan = req.items[0].seller.address.lan
-	i.Seller.Address.Lat = req.items[0].seller.address.lat
-	i.Seller.Address.Country = req.items[0].seller.address.country
-	i.Seller.Address.City = req.items[0].seller.address.city
-	i.Seller.Address.ZipCode = req.items[0].seller.address.zipCode
-	i.Seller.Address.Phone = req.items[0].seller.address.phone
-	i.Seller.Address.State = req.items[0].seller.address.state
-	i.Seller.Address.Title = req.items[0].seller.address.title
+	i.Seller.Address.Address = req.Items[0].Seller.Address.Address
+	i.Seller.Address.Lan = req.Items[0].Seller.Address.Lan
+	i.Seller.Address.Lat = req.Items[0].Seller.Address.Lat
+	i.Seller.Address.Country = req.Items[0].Seller.Address.Country
+	i.Seller.Address.City = req.Items[0].Seller.Address.City
+	i.Seller.Address.ZipCode = req.Items[0].Seller.Address.ZipCode
+	i.Seller.Address.Phone = req.Items[0].Seller.Address.Phone
+	i.Seller.Address.State = req.Items[0].Seller.Address.State
+	i.Seller.Address.Title = req.Items[0].Seller.Address.Title
 
-	i.Seller.Finance.Iban = req.items[0].seller.finance.iban
+	i.Seller.Finance.Iban = req.Items[0].Seller.Finance.Iban
 
 	order.Items = append(order.Items, &i)
 

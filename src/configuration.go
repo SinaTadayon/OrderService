@@ -12,4 +12,13 @@ type configuration struct {
 		Partition     string `env:"PAYMENT_KAFKA_PARTITION"`
 		Replica       string `env:"PAYMENT_KAFKA_REPLICA"`
 	}
+	Mongo struct {
+		User              string `env:"PAYMENT_MONGO_USER"`
+		Pass              string `env:"PAYMENT_MONGO_PASS"`
+		Host              string `env:"PAYMENT_MONGO_HOST"`
+		Port              int    `env:"PAYMENT_MONGO_PORT"`
+		ConnectionTimeout int    `env:"PAYMENT_MONGO_CONN_TIMEOUT"`
+		ReadTimeout       int    `env:"PAYMENT_MONGO_READ_TIMEOUT"`
+		WriteTimeout      int    `env:"PAYMENT_MONGO_WRITE_TIMEOUT"`
+	}
 }

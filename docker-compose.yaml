@@ -45,3 +45,8 @@ services:
     image: registry.faza.io/mongo:4.0.10
     ports:
       - 27017:27017
+
+  mongo-express:
+    image: registry.faza.io/mongo-express:0.49
+    ports:
+      - 8081:8081

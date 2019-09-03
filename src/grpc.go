@@ -4,8 +4,10 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"time"
 
 	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/go-framework/mongoadapter"
 	pb "gitlab.faza.io/protos/payment"
 	"google.golang.org/grpc"
 )
@@ -30,84 +32,84 @@ func startGrpc() {
 func (PaymentServer *PaymentServer) NewOrder(ctx context.Context, req *pb.OrderPaymentRequest) (*pb.OrderResponse, error) {
 	ppr := PaymentPendingRequest{}
 	if req.Amount != nil {
-		ppr.amount.discount = float64(req.Amount.Discount)
-		ppr.amount.payable = float64(req.Amount.Payable)
-		ppr.amount.total = float64(req.Amount.Total)
+		ppr.Amount.Discount = float64(req.Amount.Discount)
+		ppr.Amount.Payable = float64(req.Amount.Payable)
+		ppr.Amount.Total = float64(req.Amount.Total)
 	}
 	if req.Buyer != nil {
 		if req.Buyer.Info != nil {
-			ppr.buyer.lastName = req.Buyer.Info.LastName
-			ppr.buyer.firstName = req.Buyer.Info.FirstName
-			ppr.buyer.email = req.Buyer.Info.Email
-			ppr.buyer.mobile = req.Buyer.Info.Mobile
-			ppr.buyer.nationalId = req.Buyer.Info.NationalId
+			ppr.Buyer.LastName = req.Buyer.Info.LastName
+			ppr.Buyer.FirstName = req.Buyer.Info.FirstName
+			ppr.Buyer.Email = req.Buyer.Info.Email
+			ppr.Buyer.Mobile = req.Buyer.Info.Mobile
+			ppr.Buyer.NationalId = req.Buyer.Info.NationalId
 		}
 		if req.Buyer.Finance != nil {
-			ppr.buyer.finance.iban = req.Buyer.Finance.Iban
+			ppr.Buyer.Finance.Iban = req.Buyer.Finance.Iban
 		}
 		if req.Buyer.Address != nil {
-			ppr.buyer.address.address = req.Buyer.Address.Address
-			ppr.buyer.address.state = req.Buyer.Address.State
-			ppr.buyer.address.phone = req.Buyer.Address.Phone
-			ppr.buyer.address.zipCode = req.Buyer.Address.ZipCode
-			ppr.buyer.address.city = req.Buyer.Address.City
-			ppr.buyer.address.country = req.Buyer.Address.Country
-			ppr.buyer.address.lat = req.Buyer.Address.Lat
-			ppr.buyer.address.lan = req.Buyer.Address.Lan
+			ppr.Buyer.Address.Address = req.Buyer.Address.Address
+			ppr.Buyer.Address.State = req.Buyer.Address.State
+			ppr.Buyer.Address.Phone = req.Buyer.Address.Phone
+			ppr.Buyer.Address.ZipCode = req.Buyer.Address.ZipCode
+			ppr.Buyer.Address.City = req.Buyer.Address.City
+			ppr.Buyer.Address.Country = req.Buyer.Address.Country
+			ppr.Buyer.Address.Lat = req.Buyer.Address.Lat
+			ppr.Buyer.Address.Lan = req.Buyer.Address.Lan
 		}
 	}
 	if req.Items != nil {
 		for _, item := range req.Items {
 			var i = Item{}
-			i.quantity = item.Quantity
-			i.sku = item.Sku
-			i.title = item.Title
-			i.categories = item.Categories
-			i.brand = item.Brand
-			i.warranty = item.Warranty
+			i.Quantity = item.Quantity
+			i.Sku = item.Sku
+			i.Title = item.Title
+			i.Categories = item.Categories
+			i.Brand = item.Brand
+			i.Warranty = item.Warranty
 			if item.Price != nil {
-				i.price.total = float64(item.Price.Total)
-				i.price.payable = float64(item.Price.Payable)
-				i.price.discount = float64(item.Price.Discount)
-				i.price.sellerCommission = float64(item.Price.SellerCommission)
-				i.price.unit = float64(item.Price.Unit)
+				i.Price.Total = float64(item.Price.Total)
+				i.Price.Payable = float64(item.Price.Payable)
+				i.Price.Discount = float64(item.Price.Discount)
+				i.Price.SellerCommission = float64(item.Price.SellerCommission)
+				i.Price.Unit = float64(item.Price.Unit)
 			}
 			if item.Seller != nil {
-				i.seller.title = item.Seller.Title
-				i.seller.nationalId = item.Seller.NationalId
-				i.seller.mobile = item.Seller.Mobile
-				i.seller.email = item.Seller.Email
-				i.seller.firstName = item.Seller.FirstName
-				i.seller.lastName = item.Seller.LastName
-				i.seller.companyName = item.Seller.CompanyName
-				i.seller.economicCode = item.Seller.EconomicCode
-				i.seller.registrationName = item.Seller.RegistrationName
+				i.Seller.Title = item.Seller.Title
+				i.Seller.NationalId = item.Seller.NationalId
+				i.Seller.Mobile = item.Seller.Mobile
+				i.Seller.Email = item.Seller.Email
+				i.Seller.FirstName = item.Seller.FirstName
+				i.Seller.LastName = item.Seller.LastName
+				i.Seller.CompanyName = item.Seller.CompanyName
+				i.Seller.EconomicCode = item.Seller.EconomicCode
+				i.Seller.RegistrationName = item.Seller.RegistrationName
 				if item.Seller.Address != nil {
-					i.seller.address.address = item.Seller.Address.Address
-					i.seller.address.lan = item.Seller.Address.Lan
-					i.seller.address.lat = item.Seller.Address.Lat
-					i.seller.address.country = item.Seller.Address.Country
-					i.seller.address.city = item.Seller.Address.City
-					i.seller.address.zipCode = item.Seller.Address.ZipCode
-					i.seller.address.title = item.Seller.Address.Title
-					i.seller.address.phone = item.Seller.Address.Phone
-					i.seller.address.state = item.Seller.Address.State
+					i.Seller.Address.Address = item.Seller.Address.Address
+					i.Seller.Address.Lan = item.Seller.Address.Lan
+					i.Seller.Address.Lat = item.Seller.Address.Lat
+					i.Seller.Address.Country = item.Seller.Address.Country
+					i.Seller.Address.City = item.Seller.Address.City
+					i.Seller.Address.ZipCode = item.Seller.Address.ZipCode
+					i.Seller.Address.Title = item.Seller.Address.Title
+					i.Seller.Address.Phone = item.Seller.Address.Phone
+					i.Seller.Address.State = item.Seller.Address.State
 				}
 				if item.Seller.Finance != nil {
-					i.seller.finance.iban = item.Seller.Finance.Iban
+					i.Seller.Finance.Iban = item.Seller.Finance.Iban
 				}
 			}
 			if item.Shipment != nil {
-				i.shipment.providerName = item.Shipment.ProviderName
-				i.shipment.reactionTime = item.Shipment.ReactionTime
-				i.shipment.returnTime = item.Shipment.ReturnTime
-				i.shipment.shippingTime = item.Shipment.ShippingTime
-				i.shipment.shipmentDetail = item.Shipment.ShipmentDetail
+				i.Shipment.ProviderName = item.Shipment.ProviderName
+				i.Shipment.ReactionTime = item.Shipment.ReactionTime
+				i.Shipment.ReturnTime = item.Shipment.ReturnTime
+				i.Shipment.ShippingTime = item.Shipment.ShippingTime
+				i.Shipment.ShipmentDetail = item.Shipment.ShipmentDetail
 			}
-			ppr.items = append(ppr.items, i)
+			ppr.Items = append(ppr.Items, i)
 		}
 	}
-	ppr.orderNumber = req.OrderNumber
+	ppr.OrderNumber = req.OrderNumber
 
 	// validate request
 	err := ppr.validate()
@@ -115,5 +117,24 @@ func (PaymentServer *PaymentServer) NewOrder(ctx context.Context, req *pb.OrderP
 		return &pb.OrderResponse{Status: string(http.StatusBadRequest)}, err
 	}
 
-	return &pb.OrderResponse{OrderNumber: ppr.orderNumber, Status: string(http.StatusOK), RedirectUrl: PaymentUrl}, nil
+	// store in mongo
+	mongoConf := &mongoadapter.MongoConfig{
+		Host:         App.config.Mongo.Host,
+		Port:         App.config.Mongo.Port,
+		Username:     App.config.Mongo.User,
+		Password:     App.config.Mongo.Pass,
+		ConnTimeout:  time.Duration(App.config.Mongo.ConnectionTimeout),
+		ReadTimeout:  time.Duration(App.config.Mongo.ReadTimeout),
+		WriteTimeout: time.Duration(App.config.Mongo.WriteTimeout),
+	}
+	App.mongo, err = mongoadapter.NewMongo(mongoConf)
+	if err != nil {
+		return &pb.OrderResponse{OrderNumber: "", Status: string(http.StatusInternalServerError), RedirectUrl: ""}, err
+	}
+	_, err = App.mongo.InsertOne(MongoDB, "orders", ppr)
+	if err != nil {
+		return &pb.OrderResponse{OrderNumber: "", Status: string(http.StatusInternalServerError), RedirectUrl: ""}, err
+	}
+
+	return &pb.OrderResponse{OrderNumber: ppr.OrderNumber, Status: string(http.StatusOK), RedirectUrl: PaymentUrl}, nil
 }

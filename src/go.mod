@@ -11,6 +11,7 @@ require (
 	github.com/stretchr/testify v1.3.0
 	gitlab.faza.io/go-framework/kafkaadapter v0.0.1
 	gitlab.faza.io/go-framework/logger v0.0.3
+	gitlab.faza.io/go-framework/mongoadapter v0.0.3
 	gitlab.faza.io/protos/payment v0.0.0-20190903075758-70179a0f95f5
 	google.golang.org/grpc v1.23.0
 )

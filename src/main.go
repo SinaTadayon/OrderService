@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"gitlab.faza.io/go-framework/mongoadapter"
+
 	"gitlab.faza.io/go-framework/logger"
 
 	"github.com/Netflix/go-env"
@@ -13,10 +15,14 @@ import (
 
 var App struct {
 	config configuration
+	mongo  *mongoadapter.Mongo
 }
 var brokers []string
 
-const PaymentUrl = "PaymentURL"
+const (
+	PaymentUrl = "PaymentURL"
+	MongoDB    = "orders"
+)
 
 func main() {
 	switch App.config.Kafka.ConsumerTopic {
