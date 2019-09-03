@@ -16,10 +16,12 @@ var App struct {
 }
 var brokers []string
 
+const PaymentUrl = "PaymentURL"
+
 func main() {
 	switch App.config.Kafka.ConsumerTopic {
 	case "payment-pending":
-		startPaymentPending(App.config.Kafka.Version, App.config.Kafka.ConsumerTopic)
+		startGrpc()
 	case "payment-success":
 		startPaymentSuccess(App.config.Kafka.Version, App.config.Kafka.ConsumerTopic)
 	case "payment-failed":
@@ -56,5 +58,9 @@ func LoadConfig() error {
 		return err
 	}
 	brokers = strings.Split(App.config.Kafka.Brokers, ",")
+	if App.config.App.Port == "" {
+		logger.Err("grpc PORT env not defined")
+		return errors.New("grpc PORT env not defined")
+	}
 	return nil
 }

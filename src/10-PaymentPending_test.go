@@ -11,14 +11,12 @@ func createPaymentRequestSampleFull() PaymentPendingRequest {
 
 	pr.orderNumber = "102102"
 	// buyer info
-	pr.buyer.info.firstName = "farzan"
-	pr.buyer.info.lastName = "dalaee"
-	pr.buyer.info.email = "farzan.dalaee@gmail.com"
-	pr.buyer.info.gender = "Male"
-	pr.buyer.info.mobile = "+98912193870"
-	pr.buyer.info.nationalId = "0012345678"
+	pr.buyer.firstName = "farzan"
+	pr.buyer.lastName = "dalaee"
+	pr.buyer.email = "farzan.dalaee@gmail.com"
+	pr.buyer.mobile = "+98912193870"
+	pr.buyer.nationalId = "0012345678"
 	// buyer address
-	pr.buyer.address.title = "Home"
 	pr.buyer.address.phone = "+98912193870"
 	pr.buyer.address.zipCode = "1651764614"
 	pr.buyer.address.country = "Iran"
@@ -28,63 +26,106 @@ func createPaymentRequestSampleFull() PaymentPendingRequest {
 	pr.buyer.address.lat = "10.1345664"
 	pr.buyer.address.lan = "22.1345664"
 	// buyer finance
-	pr.buyer.finance.iban = "IR165411211001514313143545354134"
-	pr.buyer.finance.bankName = "saman"
-	pr.buyer.finance.cartNumber = "6014111122223333"
+	pr.buyer.finance.iban = "IR165411211001514313143545"
 	// amount
 	pr.amount.total = 200000
 	pr.amount.discount = 40000
-	pr.amount.paid = 160000
+	pr.amount.payable = 160000
 	// items
 	pr.items = append(pr.items, Item{
-		sku: "aaa000",
-		amount: ItemAmount{
+		sku:        "aaa000",
+		quantity:   10,
+		brand:      "Asus",
+		categories: "Electronic/laptop",
+		title:      "Asus G503 i7, 256SSD, 32G Ram",
+		warranty:   "ضمانت سلامت کالا",
+		price: ItemPrice{
+			unit:             20000,
 			total:            200000,
-			paid:             160000,
-			sellerCommission: 10000,
-			systemCommission: 5000,
+			payable:          160000,
 			discount:         40000,
+			sellerCommission: 10000,
 		},
-		quantity: 10,
 		seller: ItemSeller{
-			info: ItemSellerInfo{
-				companyName: "digi",
+			companyName:      "digi",
+			registrationName: "Digikala",
+			lastName:         "hamid",
+			firstName:        "hamid",
+			email:            "info@digikala.com",
+			mobile:           "09121112233",
+			nationalId:       "0101010100",
+			title:            "Digikala Shop",
+			economicCode:     "dasdasdasasd",
+			address: ItemSellerAddress{
+				address: "address",
+				title:   "office",
+				state:   "Tehran",
+				phone:   "0212222222",
+				zipCode: "1651145864",
+				city:    "Tehran",
+				country: "Iran",
+				lat:     "03221211",
+				lan:     "23031121",
+			},
+			finance: ItemSellerFinance{
+				iban: "IR165411211001514313143545354134",
 			},
 		},
-		detail: ItemDetail{
-			brand:       "Asus",
-			categories:  "Electronic/laptop",
-			description: "Asus G503 i7, 256SSD, 32G Ram",
-		},
 		shipment: ItemShipment{
-			providerName: "Post",
+			reactionTime:   1,
+			returnTime:     72,
+			shippingTime:   72,
+			providerName:   "Post",
+			shipmentDetail: "پست پیشتاز و تیپاکس برای شهرستان ها و پیک برای تهران به صورت رایگان می باشد",
 		},
 	})
 	pr.items = append(pr.items, Item{
-		sku: "aaa111",
-		amount: ItemAmount{
+		sku:        "aaa111",
+		brand:      "Asus",
+		categories: "Electronic/laptop",
+		title:      "Asus G503 i7, 256SSD, 32G Ram",
+		quantity:   1,
+		warranty:   "صلامت کالا",
+		price: ItemPrice{
 			total:            300000,
-			paid:             160000,
-			sellerCommission: 10000,
-			systemCommission: 5000,
+			payable:          160000,
 			discount:         140000,
+			unit:             300000,
+			sellerCommission: 20000,
 		},
-		quantity: 1,
 		seller: ItemSeller{
-			info: ItemSellerInfo{
-				companyName: "digi",
+			companyName:      "digi",
+			title:            "Digikala",
+			economicCode:     "13211",
+			nationalId:       "0010085555",
+			mobile:           "09121112233",
+			email:            "info@digikala.com",
+			firstName:        "hamid",
+			lastName:         "mohammadi",
+			registrationName: "Digikala gostaran e shargh",
+			finance: ItemSellerFinance{
+				iban: "IR165411211001514313143545354134",
+			},
+			address: ItemSellerAddress{
+				address: "Address",
+				title:   "Office",
+				lan:     "210313",
+				lat:     "131533",
+				country: "Iran",
+				city:    "Tehran",
+				zipCode: "113315",
+				phone:   "021222222",
+				state:   "Tehran",
 			},
 		},
-		detail: ItemDetail{
-			brand:       "Asus",
-			categories:  "Electronic/laptop",
-			description: "Asus G503 i7, 256SSD, 32G Ram",
-		},
 		shipment: ItemShipment{
-			providerName: "Post",
+			reactionTime:   24,
+			returnTime:     72,
+			shippingTime:   72,
+			providerName:   "Post",
+			shipmentDetail: "پست پیشتاز و تیپاکس برای شهرستان ها و پیک برای تهران به صورت رایگان می باشد",
 		},
 	})
-
 	return pr
 }
 

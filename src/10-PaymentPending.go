@@ -47,37 +47,33 @@ type PaymentPendingRequest struct {
 }
 type Amount struct {
 	total    float64
-	paid     float64
+	payable  float64
 	discount float64
 }
 type Item struct {
-	sku      string
-	quantity int32
-	seller   ItemSeller
-	amount   ItemAmount
-	detail   ItemDetail
-	shipment ItemShipment
+	sku        string
+	title      string
+	quantity   int32
+	brand      string
+	warranty   string
+	categories string
+	seller     ItemSeller
+	price      ItemPrice
+	shipment   ItemShipment
 }
 type Buyer struct {
-	info    BuyerInfo
-	finance BuyerFinance
-	address BuyerAddress
-}
-type BuyerInfo struct {
 	firstName  string
 	lastName   string
 	mobile     string
 	email      string
 	nationalId string
-	gender     string
+	finance    BuyerFinance
+	address    BuyerAddress
 }
 type BuyerFinance struct {
-	iban       string
-	cartNumber string
-	bankName   string
+	iban string
 }
 type BuyerAddress struct {
-	title   string
 	address string
 	phone   string
 	country string
@@ -88,11 +84,6 @@ type BuyerAddress struct {
 	zipCode string
 }
 type ItemSeller struct {
-	info    ItemSellerInfo
-	finance ItemSellerFinance
-	address ItemSellerAddress
-}
-type ItemSellerInfo struct {
 	title            string
 	firstName        string
 	lastName         string
@@ -102,12 +93,11 @@ type ItemSellerInfo struct {
 	companyName      string
 	registrationName string
 	economicCode     string
+	finance          ItemSellerFinance
+	address          ItemSellerAddress
 }
 type ItemSellerFinance struct {
-	iban           string
-	cartNumber     string
-	bankName       string
-	commissionRate float64
+	iban string
 }
 type ItemSellerAddress struct {
 	title   string
@@ -120,25 +110,19 @@ type ItemSellerAddress struct {
 	lan     string
 	zipCode string
 }
-type ItemAmount struct {
+type ItemPrice struct {
+	unit             float64
 	total            float64
-	paid             float64
+	payable          float64
 	discount         float64
 	sellerCommission float64
-	systemCommission float64
-}
-type ItemDetail struct {
-	description string
-	brand       string
-	categories  string
 }
 type ItemShipment struct {
-	providerName     string
-	reactionTime     string
-	shippingTime     string
-	returnTime       string
-	shipmentFee      float64
-	shipmentFeeOwner string
+	providerName   string
+	reactionTime   int32
+	shippingTime   int32
+	returnTime     int32
+	shipmentDetail string
 }
 
 func (ppr *PaymentPendingRequest) validate() error {
@@ -151,24 +135,21 @@ func (ppr *PaymentPendingRequest) validate() error {
 		errValidation = append(errValidation, errPaymentRequest.Error())
 	}
 
-	// Validate Buyer Info
-	errPaymentRequestBuyerInfo := validation.ValidateStruct(&ppr.buyer.info,
-		validation.Field(&ppr.buyer.info.email, validation.Required, is.Email),
-		validation.Field(&ppr.buyer.info.nationalId, validation.Required, validation.Length(10, 10)),
-		validation.Field(&ppr.buyer.info.mobile, validation.Required),
-		validation.Field(&ppr.buyer.info.gender, validation.Required, validation.In("Male", "Female")),
-		validation.Field(&ppr.buyer.info.firstName, validation.Required),
-		validation.Field(&ppr.buyer.info.lastName, validation.Required),
+	// Validate Buyer
+	errPaymentRequestBuyer := validation.ValidateStruct(&ppr.buyer,
+		validation.Field(&ppr.buyer.firstName, validation.Required),
+		validation.Field(&ppr.buyer.lastName, validation.Required),
+		validation.Field(&ppr.buyer.email, validation.Required, is.Email),
+		validation.Field(&ppr.buyer.nationalId, validation.Required, validation.Length(10, 10)),
+		validation.Field(&ppr.buyer.mobile, validation.Required),
 	)
-	if errPaymentRequestBuyerInfo != nil {
-		errValidation = append(errValidation, errPaymentRequestBuyerInfo.Error())
+	if errPaymentRequestBuyer != nil {
+		errValidation = append(errValidation, errPaymentRequestBuyer.Error())
 	}
 
 	// Validate Buyer finance
 	errPaymentRequestBuyerFinance := validation.ValidateStruct(&ppr.buyer.finance,
-		validation.Field(&ppr.buyer.finance.iban, validation.Required),
-		validation.Field(&ppr.buyer.finance.bankName, validation.Required),
-		validation.Field(&ppr.buyer.finance.cartNumber, validation.Required, validation.Length(16, 16)),
+		validation.Field(&ppr.buyer.finance.iban, validation.Required, validation.Length(26, 26)),
 	)
 	if errPaymentRequestBuyerFinance != nil {
 		errValidation = append(errValidation, errPaymentRequestBuyerFinance.Error())
@@ -191,7 +172,7 @@ func (ppr *PaymentPendingRequest) validate() error {
 	errPaymentRequestAmount := validation.ValidateStruct(&ppr.amount,
 		validation.Field(&ppr.amount.total, validation.Required),
 		validation.Field(&ppr.amount.discount, validation.Required),
-		validation.Field(&ppr.amount.paid, validation.Required),
+		validation.Field(&ppr.amount.payable, validation.Required),
 	)
 	if errPaymentRequestAmount != nil {
 		errValidation = append(errValidation, errPaymentRequestAmount.Error())
@@ -203,9 +184,65 @@ func (ppr *PaymentPendingRequest) validate() error {
 			errPaymentRequestItems := validation.ValidateStruct(&ppr.items[i],
 				validation.Field(&ppr.items[i].sku, validation.Required),
 				validation.Field(&ppr.items[i].quantity, validation.Required),
+				validation.Field(&ppr.items[i].title, validation.Required),
+				validation.Field(&ppr.items[i].categories, validation.Required),
+				validation.Field(&ppr.items[i].brand, validation.Required),
 			)
 			if errPaymentRequestItems != nil {
 				errValidation = append(errValidation, errPaymentRequestItems.Error())
+			}
+
+			errPaymentRequestItemsSeller := validation.ValidateStruct(&ppr.items[i].seller,
+				validation.Field(&ppr.items[i].seller.title, validation.Required),
+				validation.Field(&ppr.items[i].seller.firstName, validation.Required),
+				validation.Field(&ppr.items[i].seller.lastName, validation.Required),
+				validation.Field(&ppr.items[i].seller.mobile, validation.Required),
+				validation.Field(&ppr.items[i].seller.email, validation.Required),
+			)
+			if errPaymentRequestItemsSeller != nil {
+				errValidation = append(errValidation, errPaymentRequestItemsSeller.Error())
+			}
+
+			errPaymentRequestItemsSellerFinance := validation.ValidateStruct(&ppr.items[i].seller.finance,
+				validation.Field(&ppr.items[i].seller.finance.iban, validation.Required),
+			)
+			if errPaymentRequestItemsSellerFinance != nil {
+				errValidation = append(errValidation, errPaymentRequestItemsSellerFinance.Error())
+			}
+
+			errPaymentRequestItemsSellerAddress := validation.ValidateStruct(&ppr.items[i].seller.address,
+				validation.Field(&ppr.items[i].seller.address.title, validation.Required),
+				validation.Field(&ppr.items[i].seller.address.address, validation.Required),
+				validation.Field(&ppr.items[i].seller.address.phone, validation.Required),
+				validation.Field(&ppr.items[i].seller.address.country, validation.Required),
+				validation.Field(&ppr.items[i].seller.address.state, validation.Required),
+				validation.Field(&ppr.items[i].seller.address.city, validation.Required),
+				validation.Field(&ppr.items[i].seller.address.zipCode, validation.Required),
+			)
+			if errPaymentRequestItemsSellerAddress != nil {
+				errValidation = append(errValidation, errPaymentRequestItemsSellerAddress.Error())
+			}
+
+			errPaymentRequestItemsPrice := validation.ValidateStruct(&ppr.items[i].price,
+				validation.Field(&ppr.items[i].price.unit, validation.Required),
+				validation.Field(&ppr.items[i].price.total, validation.Required),
+				validation.Field(&ppr.items[i].price.payable, validation.Required),
+				validation.Field(&ppr.items[i].price.discount, validation.Required),
+				validation.Field(&ppr.items[i].price.sellerCommission, validation.Required),
+			)
+			if errPaymentRequestItemsPrice != nil {
+				errValidation = append(errValidation, errPaymentRequestItemsPrice.Error())
+			}
+
+			errPaymentRequestItemsShipment := validation.ValidateStruct(&ppr.items[i].shipment,
+				validation.Field(&ppr.items[i].shipment.providerName, validation.Required),
+				validation.Field(&ppr.items[i].shipment.reactionTime, validation.Required),
+				validation.Field(&ppr.items[i].shipment.shippingTime, validation.Required),
+				validation.Field(&ppr.items[i].shipment.returnTime, validation.Required),
+				validation.Field(&ppr.items[i].shipment.shipmentDetail, validation.Required),
+			)
+			if errPaymentRequestItemsShipment != nil {
+				errValidation = append(errValidation, errPaymentRequestItemsShipment.Error())
 			}
 		}
 	}

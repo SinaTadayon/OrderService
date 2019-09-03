@@ -1,0 +1,106 @@
+syntax = "proto3";
+
+package OrderService;
+
+service OrderService {
+    rpc NewOrder (OrderPaymentRequest) returns (OrderResponse);
+}
+
+message OrderResponse {
+    string orderNumber = 1;
+    string status = 2;
+    string redirectUrl = 3;
+}
+message OrderPaymentRequest {
+    string orderNumber = 1;
+    Buyer buyer = 2;
+    Amount amount = 3;
+    repeated Item items = 4;
+}
+message Amount {
+    float total = 1;
+    float payable = 2;
+    float discount = 3;
+}
+message Item {
+    string sku = 1;
+    int32 quantity = 2;
+    string title = 3;
+    string brand = 4;
+    string categories = 5;
+    string warranty = 6;
+    ItemSeller seller = 7;
+    ItemPrice price = 8;
+    ItemShipment shipment = 9;
+}
+message Buyer {
+    BuyerInfo info = 1;
+    BuyerFinance finance = 2;
+    BuyerAddress address = 3;
+}
+message BuyerInfo {
+    string firstName = 1;
+    string lastName = 2;
+    string mobile = 3;
+    string email = 4;
+    string nationalId = 5;
+    string gender = 6;
+}
+message BuyerFinance {
+    string iban = 1;
+    string cartNumber = 2;
+    string bankName = 3;
+}
+message BuyerAddress {
+    string title = 1;
+    string address = 2;
+    string phone = 3;
+    string country = 4;
+    string city = 5;
+    string state = 6;
+    string lat = 7;
+    string lan = 8;
+    string zipCode = 9;
+}
+message ItemSeller {
+    string title = 1;
+    string firstName = 2;
+    string lastName = 3;
+    string mobile = 4;
+    string email = 5;
+    string nationalId = 6;
+    string companyName = 7;
+    string registrationName = 8;
+    string economicCode = 9;
+    ItemSellerFinance finance = 10;
+    ItemSellerAddress address = 11;
+}
+message ItemSellerFinance {
+    string iban = 1;
+}
+message ItemSellerAddress {
+    string title = 1;
+    string address = 2;
+    string phone = 3;
+    string country = 4;
+    string city = 5;
+    string state = 6;
+    string lat = 7;
+    string lan = 8;
+    string zipCode = 9;
+}
+message ItemPrice {
+    float unit = 1;
+    float total = 2;
+    float payable = 3;
+    float discount = 4;
+    float sellerCommission = 5;
+}
+message ItemShipment {
+    string providerName = 1;
+    int32 reactionTime = 2;
+    int32 shippingTime = 3;
+    int32 returnTime = 4;
+    string shipmentDetail = 5;
+}
+
