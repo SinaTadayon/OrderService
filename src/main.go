@@ -2,8 +2,10 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"os"
 	"strings"
+	"time"
 
 	"gitlab.faza.io/go-framework/mongoadapter"
 
@@ -22,6 +24,7 @@ var brokers []string
 const (
 	PaymentUrl = "PaymentURL"
 	MongoDB    = "orders"
+	Orders     = "orders"
 )
 
 func main() {
@@ -43,6 +46,26 @@ func init() {
 		logger.Err(err.Error())
 	}
 
+	// store in mongo
+	mongoConf := &mongoadapter.MongoConfig{
+		Host:     App.config.Mongo.Host,
+		Port:     App.config.Mongo.Port,
+		Username: App.config.Mongo.User,
+		//Password:     App.config.Mongo.Pass,
+		ConnTimeout:  time.Duration(App.config.Mongo.ConnectionTimeout),
+		ReadTimeout:  time.Duration(App.config.Mongo.ReadTimeout),
+		WriteTimeout: time.Duration(App.config.Mongo.WriteTimeout),
+	}
+
+	App.mongo, err = mongoadapter.NewMongo(mongoConf)
+	if err != nil {
+		logger.Err("New Mongo: %v", err.Error())
+	}
+	_, err = App.mongo.AddUniqueIndex(MongoDB, Orders, "ordernumber")
+	if err != nil {
+		logger.Err(err.Error())
+	}
+
 	//err = initTopics()
 	//if err != nil {
 	//	logger.Err(err.Error())
@@ -52,9 +75,17 @@ func init() {
 
 func LoadConfig() error {
 	if os.Getenv("APP_ENV") == "dev" {
-		err := godotenv.Load(".env")
-		if err != nil {
-			return errors.New("Error loading .env file")
+		if flag.Lookup("test.v") != nil {
+			// test mode
+			err := godotenv.Load("testdata/.env")
+			if err != nil {
+				logger.Err("Error loading testdata .env file")
+			}
+		} else {
+			err := godotenv.Load(".env")
+			if err != nil {
+				logger.Err("Error loading .env file")
+			}
 		}
 	}
 

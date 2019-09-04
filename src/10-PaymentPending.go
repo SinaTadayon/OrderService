@@ -39,12 +39,9 @@ func PaymentPendingProduce(topic string, payload []byte) error {
 	return nil
 }
 
-type OrderEntity struct {
-	order PaymentPendingRequest
-}
-
 type PaymentPendingRequest struct {
 	OrderNumber string
+	Status      string
 	Buyer       Buyer
 	Amount      Amount
 	Items       []Item

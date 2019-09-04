@@ -31,8 +31,6 @@ func TestNewOrder(t *testing.T) {
 		},
 	}
 
-	order.OrderNumber = req.OrderNumber
-
 	order.Amount.Total = float32(req.Amount.Total)
 	order.Amount.Payable = float32(req.Amount.Payable)
 	order.Amount.Discount = float32(req.Amount.Discount)
@@ -104,13 +102,9 @@ func TestNewOrder(t *testing.T) {
 
 	order.Items = append(order.Items, &i)
 
-	//json, err := json.Marshal(order)
 	assert.Nil(t, err)
-	//fmt.Println(string(json))
 
-	_, err = PaymentService.NewOrder(ctx, order)
-	//assert.NotNil(t, resOrder)
-	//assert.Equal(t, string(http.StatusOK), resOrder.Status)
-	//fmt.Println(resOrder)
+	resOrder, err := PaymentService.NewOrder(ctx, order)
+	assert.NotNil(t, resOrder)
 	assert.Nil(t, err)
 }

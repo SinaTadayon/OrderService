@@ -71,11 +71,3 @@ func TestLoadConfig_AssertTrue(t *testing.T) {
 	err = LoadConfig()
 	assert.Nil(t, err)
 }
-func TestLoadConfig_AssertFalse_WrongEnvFile(t *testing.T) {
-	err := os.Setenv("APP_ENV", "dev")
-	assert.Nil(t, err)
-	AppendToFile()
-	err = LoadConfig()
-	assert.NotNil(t, err)
-	FixEnvFile()
-}

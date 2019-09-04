@@ -4,10 +4,10 @@ import (
 	"context"
 	"net"
 	"net/http"
-	"time"
+
+	"github.com/rs/xid"
 
 	"gitlab.faza.io/go-framework/logger"
-	"gitlab.faza.io/go-framework/mongoadapter"
 	pb "gitlab.faza.io/protos/payment"
 	"google.golang.org/grpc"
 )
@@ -109,7 +109,9 @@ func (PaymentServer *PaymentServer) NewOrder(ctx context.Context, req *pb.OrderP
 			ppr.Items = append(ppr.Items, i)
 		}
 	}
-	ppr.OrderNumber = req.OrderNumber
+
+	ppr.OrderNumber = generateOrderNumber()
+	ppr.Status = PaymentPending
 
 	// validate request
 	err := ppr.validate()
@@ -117,24 +119,15 @@ func (PaymentServer *PaymentServer) NewOrder(ctx context.Context, req *pb.OrderP
 		return &pb.OrderResponse{Status: string(http.StatusBadRequest)}, err
 	}
 
-	// store in mongo
-	mongoConf := &mongoadapter.MongoConfig{
-		Host:         App.config.Mongo.Host,
-		Port:         App.config.Mongo.Port,
-		Username:     App.config.Mongo.User,
-		Password:     App.config.Mongo.Pass,
-		ConnTimeout:  time.Duration(App.config.Mongo.ConnectionTimeout),
-		ReadTimeout:  time.Duration(App.config.Mongo.ReadTimeout),
-		WriteTimeout: time.Duration(App.config.Mongo.WriteTimeout),
-	}
-	App.mongo, err = mongoadapter.NewMongo(mongoConf)
-	if err != nil {
-		return &pb.OrderResponse{OrderNumber: "", Status: string(http.StatusInternalServerError), RedirectUrl: ""}, err
-	}
-	_, err = App.mongo.InsertOne(MongoDB, "orders", ppr)
+	_, err = App.mongo.InsertOne(MongoDB, Orders, ppr)
 	if err != nil {
 		return &pb.OrderResponse{OrderNumber: "", Status: string(http.StatusInternalServerError), RedirectUrl: ""}, err
 	}
 
 	return &pb.OrderResponse{OrderNumber: ppr.OrderNumber, Status: string(http.StatusOK), RedirectUrl: PaymentUrl}, nil
+}
+
+func generateOrderNumber() string {
+	id := xid.New()
+	return id.String()
 }
