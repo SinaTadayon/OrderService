@@ -34,17 +34,15 @@ message Item {
     ItemShipment shipment = 9;
 }
 message Buyer {
-    BuyerInfo info = 1;
-    BuyerFinance finance = 2;
-    BuyerAddress address = 3;
-}
-message BuyerInfo {
     string firstName = 1;
     string lastName = 2;
     string mobile = 3;
     string email = 4;
     string nationalId = 5;
-    string gender = 6;
+    string ip = 6;
+    string gender = 7;
+    BuyerFinance finance = 8;
+    BuyerAddress address = 9;
 }
 message BuyerFinance {
     string iban = 1;

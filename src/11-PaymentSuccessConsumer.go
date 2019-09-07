@@ -57,7 +57,7 @@ func startPaymentSuccess(Version string, topics string) {
 	config := sarama.NewConfig()
 	config.Version = version
 	//config.Consumer.Retry.Backoff
-	config.Consumer.Offsets.Initial = sarama.OffsetOldest
+	config.Consumer.Offsets.Initial = sarama.OffsetNewest
 
 	consumer := PaymentSuccessConsumer{
 		ready: make(chan bool, 0),

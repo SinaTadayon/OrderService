@@ -16,6 +16,7 @@ func createPaymentRequestSampleFull() PaymentPendingRequest {
 	pr.Buyer.Email = "farzan.dalaee@gmail.com"
 	pr.Buyer.Mobile = "+98912193870"
 	pr.Buyer.NationalId = "0012345678"
+	pr.Buyer.IP = "127.0.0.1"
 	// buyer address
 	pr.Buyer.Address.Phone = "+98912193870"
 	pr.Buyer.Address.ZipCode = "1651764614"

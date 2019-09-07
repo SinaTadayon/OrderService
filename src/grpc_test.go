@@ -16,7 +16,7 @@ import (
 func TestNewOrder(t *testing.T) {
 	var err error
 	ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
-	grpcConnCoupon, err := grpc.DialContext(ctx, "localhost:"+fmt.Sprint(App.config.App.Port), grpc.WithInsecure())
+	grpcConnCoupon, err := grpc.DialContext(ctx, ":"+fmt.Sprint(App.config.App.Port), grpc.WithInsecure())
 	assert.Nil(t, err)
 	PaymentService := pb.NewOrderServiceClient(grpcConnCoupon)
 
@@ -25,7 +25,6 @@ func TestNewOrder(t *testing.T) {
 	order := &pb.OrderPaymentRequest{
 		Amount: &pb.Amount{},
 		Buyer: &pb.Buyer{
-			Info:    &pb.BuyerInfo{},
 			Finance: &pb.BuyerFinance{},
 			Address: &pb.BuyerAddress{},
 		},
@@ -35,11 +34,12 @@ func TestNewOrder(t *testing.T) {
 	order.Amount.Payable = float32(req.Amount.Payable)
 	order.Amount.Discount = float32(req.Amount.Discount)
 
-	order.Buyer.Info.LastName = req.Buyer.LastName
-	order.Buyer.Info.FirstName = req.Buyer.FirstName
-	order.Buyer.Info.Email = req.Buyer.Email
-	order.Buyer.Info.Mobile = req.Buyer.Mobile
-	order.Buyer.Info.NationalId = req.Buyer.NationalId
+	order.Buyer.LastName = req.Buyer.LastName
+	order.Buyer.FirstName = req.Buyer.FirstName
+	order.Buyer.Email = req.Buyer.Email
+	order.Buyer.Mobile = req.Buyer.Mobile
+	order.Buyer.NationalId = req.Buyer.NationalId
+	order.Buyer.Ip = req.Buyer.IP
 
 	order.Buyer.Finance.Iban = req.Buyer.Finance.Iban
 

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"gitlab.faza.io/go-framework/kafkaadapter"
+
 	"gitlab.faza.io/go-framework/mongoadapter"
 
 	"gitlab.faza.io/go-framework/logger"
@@ -18,6 +20,7 @@ import (
 var App struct {
 	config configuration
 	mongo  *mongoadapter.Mongo
+	kafka  *kafkaadapter.Kafka
 }
 var brokers []string
 
@@ -30,13 +33,17 @@ const (
 func main() {
 	switch App.config.Kafka.ConsumerTopic {
 	case "payment-pending":
+		logger.Audit("starting grpc ...")
 		startGrpc()
 	case "payment-success":
+		logger.Audit("starting " + App.config.Kafka.ConsumerTopic)
 		startPaymentSuccess(App.config.Kafka.Version, App.config.Kafka.ConsumerTopic)
 	case "payment-failed":
 		startPaymentFailed(App.config.Kafka.Version, App.config.Kafka.ConsumerTopic)
 	case "payment-control":
 		startPaymentControl(App.config.Kafka.Version, App.config.Kafka.ConsumerTopic)
+	default:
+		logger.Err("consumer topic env is wrong:" + App.config.Kafka.ConsumerTopic)
 	}
 }
 
@@ -66,11 +73,11 @@ func init() {
 		logger.Err(err.Error())
 	}
 
-	//err = initTopics()
-	//if err != nil {
-	//	logger.Err(err.Error())
-	//	os.Exit(1)
-	//}
+	err = initTopics()
+	if err != nil {
+		logger.Err(err.Error())
+		os.Exit(1)
+	}
 }
 
 func LoadConfig() error {

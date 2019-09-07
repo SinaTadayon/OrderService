@@ -10,7 +10,22 @@ services:
       - seccomp:unconfined
     environment:
       - PORT=${PORT}
-      - APP_MODE=dev
+      - APP_ENV=dev
+      - PAYMENT_KAFKA_CONSUMER_TOPIC=payment-pending
+    env_file:
+      - ./src/.env
+
+  payment_success:
+    image: ${TAG}
+    restart: always
+    ports:
+      - 40001:40000
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - APP_ENV=dev
+      - PAYMENT_KAFKA_CONSUMER_TOPIC=payment-success
+      - PAYMENT_KAFKA_CONSUMER_GROUP=payment-success
     env_file:
       - ./src/.env
 

@@ -2,8 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"net/http"
+	"time"
+
+	"gitlab.faza.io/go-framework/kafkaadapter"
 
 	"github.com/rs/xid"
 
@@ -31,19 +35,24 @@ func startGrpc() {
 
 func (PaymentServer *PaymentServer) NewOrder(ctx context.Context, req *pb.OrderPaymentRequest) (*pb.OrderResponse, error) {
 	ppr := PaymentPendingRequest{}
+	ppr.OrderNumber = generateOrderNumber()
+	ppr.CreatedAt = time.Now().UTC()
+	ppr.Status.CreatedAt = time.Now().UTC()
+	ppr.Status.Current = PaymentPending
+	ppr.Status.History = []StatusHistory{}
+
 	if req.Amount != nil {
 		ppr.Amount.Discount = float64(req.Amount.Discount)
 		ppr.Amount.Payable = float64(req.Amount.Payable)
 		ppr.Amount.Total = float64(req.Amount.Total)
 	}
 	if req.Buyer != nil {
-		if req.Buyer.Info != nil {
-			ppr.Buyer.LastName = req.Buyer.Info.LastName
-			ppr.Buyer.FirstName = req.Buyer.Info.FirstName
-			ppr.Buyer.Email = req.Buyer.Info.Email
-			ppr.Buyer.Mobile = req.Buyer.Info.Mobile
-			ppr.Buyer.NationalId = req.Buyer.Info.NationalId
-		}
+		ppr.Buyer.LastName = req.Buyer.LastName
+		ppr.Buyer.FirstName = req.Buyer.FirstName
+		ppr.Buyer.Email = req.Buyer.Email
+		ppr.Buyer.Mobile = req.Buyer.Mobile
+		ppr.Buyer.NationalId = req.Buyer.NationalId
+		ppr.Buyer.IP = req.Buyer.Ip
 		if req.Buyer.Finance != nil {
 			ppr.Buyer.Finance.Iban = req.Buyer.Finance.Iban
 		}
@@ -110,9 +119,6 @@ func (PaymentServer *PaymentServer) NewOrder(ctx context.Context, req *pb.OrderP
 		}
 	}
 
-	ppr.OrderNumber = generateOrderNumber()
-	ppr.Status = PaymentPending
-
 	// validate request
 	err := ppr.validate()
 	if err != nil {
@@ -123,6 +129,20 @@ func (PaymentServer *PaymentServer) NewOrder(ctx context.Context, req *pb.OrderP
 	if err != nil {
 		return &pb.OrderResponse{OrderNumber: "", Status: string(http.StatusInternalServerError), RedirectUrl: ""}, err
 	}
+
+	App.kafka = kafkaadapter.NewKafka(brokers, "payment-success")
+	// @todo: remove this mock - start
+	App.kafka.Config.Producer.Return.Successes = true
+	jsons, err := json.Marshal(ppr)
+	if err != nil {
+		logger.Err("cant convert to json: %v", err)
+	}
+
+	_, _, err = App.kafka.SendOne("", jsons)
+	if err != nil {
+		logger.Err("cant insert to kafka: %v", err)
+	}
+	// @todo: remove this mock - end
 
 	return &pb.OrderResponse{OrderNumber: ppr.OrderNumber, Status: string(http.StatusOK), RedirectUrl: PaymentUrl}, nil
 }

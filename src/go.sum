@@ -98,8 +98,8 @@ gitlab.faza.io/go-framework/logger v0.0.3 h1:jF4Dsh/4n1qlP94wa/XIKZRoul3UEcBngvW
 gitlab.faza.io/go-framework/logger v0.0.3/go.mod h1:Zt8cJHkwzai1oLBQWx2botrLA64z/M3PneYQ1DZZTgc=
 gitlab.faza.io/go-framework/mongoadapter v0.0.3 h1:xG46kijjtUDqIkOHZ8uTOCTomDtIo4S9zUkln49iCX0=
 gitlab.faza.io/go-framework/mongoadapter v0.0.3/go.mod h1:a6PLgm30eY24lKn7V1NSNdGVyk9h3xejLgg708nVtHg=
-gitlab.faza.io/protos/payment v0.0.0-20190903075758-70179a0f95f5 h1:A9nh3uv3TcPrtDkmHLtyGZh6raZIt5EuNhU6QjoqyMo=
-gitlab.faza.io/protos/payment v0.0.0-20190903075758-70179a0f95f5/go.mod h1:DjMclyCl/HkTLfDnZboynfomjEtK9dcqD4YhWh65lWg=
+gitlab.faza.io/protos/payment v0.0.0-20190907080532-1fc2628fc20a h1:UW4bNelCARGvYUag+eWkVaIlX2l9LE1TyNrJsaW8/LI=
+gitlab.faza.io/protos/payment v0.0.0-20190907080532-1fc2628fc20a/go.mod h1:DjMclyCl/HkTLfDnZboynfomjEtK9dcqD4YhWh65lWg=
 go.mongodb.org/mongo-driver v1.0.3 h1:GKoji1ld3tw2aC+GX1wbr/J2fX13yNacEYoJ8Nhr0yU=
 go.mongodb.org/mongo-driver v1.0.3/go.mod h1:u7ryQJ+DOzQmeO7zB6MHyr8jkEQvC8vH7qLUO4lqsUM=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=

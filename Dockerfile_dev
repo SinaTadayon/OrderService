@@ -7,7 +7,7 @@ WORKDIR /go/src/apps
 RUN go build -gcflags "all=-N -l" -o /app/main .
 
 # Final stage
-FROM alpine:3.7
+FROM registry.faza.io/alpine:3.7
 EXPOSE $PORT 40000
 
 WORKDIR /

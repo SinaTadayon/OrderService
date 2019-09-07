@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/go-ozzo/ozzo-validation/is"
 
@@ -40,13 +41,30 @@ func PaymentPendingProduce(topic string, payload []byte) error {
 }
 
 type PaymentPendingRequest struct {
-	OrderNumber string
-	Status      string
-	Buyer       Buyer
-	Amount      Amount
-	Items       []Item
+	OrderNumber   string
+	PaymentDetail PaymentDetail
+	Status        Status
+	Buyer         Buyer
+	Amount        Amount
+	Items         []Item
+	CreatedAt     time.Time
 }
 
+type Status struct {
+	Current   string
+	CreatedAt time.Time
+	History   []StatusHistory
+}
+type StatusHistory struct {
+	Status    string
+	Agent     string
+	CreatedAt time.Time
+	Reason    string
+}
+type PaymentDetail struct {
+	Request  string
+	Response string
+}
 type Amount struct {
 	Total    float64
 	Payable  float64
@@ -71,6 +89,7 @@ type Buyer struct {
 	NationalId string
 	Finance    BuyerFinance
 	Address    BuyerAddress
+	IP         string
 }
 type BuyerFinance struct {
 	Iban string
