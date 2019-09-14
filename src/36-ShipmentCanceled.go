@@ -3,6 +3,10 @@ package main
 import "github.com/Shopify/sarama"
 
 func ShipmentCanceledMessageValidate(message *sarama.ConsumerMessage) (*sarama.ConsumerMessage, error) {
+	mess, err := CheckOrderKafkaAndMongoStatus(message, ShipmentCanceled)
+	if err != nil {
+		return mess, err
+	}
 	return message, nil
 }
 

@@ -12,6 +12,7 @@ services:
       - PORT=${PORT}
       - APP_ENV=dev
       - PAYMENT_KAFKA_CONSUMER_TOPIC=payment-pending
+      - PAYMENT_KAFKA_CONSUMER_GROUP=payment-pending
     env_file:
       - ./src/.env
 

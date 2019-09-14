@@ -1,5 +1,13 @@
 package main
 
+import (
+	"encoding/json"
+	"errors"
+
+	"github.com/Shopify/sarama"
+	"go.mongodb.org/mongo-driver/bson"
+)
+
 const (
 	PaymentPending                = "10.payment_pending"
 	PaymentSuccess                = "11.payment_success"
@@ -65,6 +73,46 @@ func CheckNextState(currentStep, nextStep string) bool {
 		}
 	}
 	return false
+}
+func CheckPrevState(currentStep, prevStep string) bool {
+	SM := generateSM()
+	for _, state := range SM.states {
+		for _, from := range state.fromStates {
+			if state.title == currentStep && from == prevStep {
+				return true
+			}
+		}
+	}
+	return false
+}
+func CheckOrderKafkaAndMongoStatus(message *sarama.ConsumerMessage, currentStatus string) (*sarama.ConsumerMessage, error) {
+	pprKafka := PaymentPendingRequest{}
+	pprMongo := PaymentPendingRequest{}
+	err := json.Unmarshal(message.Value, &pprKafka)
+	if err != nil {
+		return message, err
+	}
+	res := App.mongo.FindOne(MongoDB, Orders, bson.D{{"ordernumber", pprKafka.OrderNumber}})
+	err = res.Decode(&pprMongo)
+	if err != nil {
+		return message, err
+	}
+	if pprMongo.Status.Current != currentStatus {
+		return message, errors.New("status not match. status is: " + pprMongo.Status.Current + " should be :" +
+			currentStatus)
+	}
+
+	return message, nil
+}
+func UpdateOrderMongo(ppr PaymentPendingRequest) error {
+	res, err := App.mongo.UpdateOne(MongoDB, Orders,
+		bson.D{{"ordernumber", ppr.OrderNumber}}, bson.D{{"$set", ppr}})
+	if err != nil {
+		return err
+	} else if res.ModifiedCount == 0 {
+		return errors.New("system failed, nothing updated modified count is zero! ")
+	}
+	return nil
 }
 
 func generateSM() *StateMachine {

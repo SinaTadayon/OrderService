@@ -38,9 +38,9 @@ func (PaymentServer *PaymentServer) NewOrder(ctx context.Context, req *pb.OrderP
 	ppr.OrderNumber = generateOrderNumber()
 	ppr.CreatedAt = time.Now().UTC()
 	ppr.Status.CreatedAt = time.Now().UTC()
-	ppr.Status.Current = PaymentPending
+	ppr.Status.Current = PaymentSuccess
 	ppr.Status.History = []StatusHistory{}
-
+	// validate request & convert to PaymentPendingRequest
 	if req.Amount != nil {
 		ppr.Amount.Discount = float64(req.Amount.Discount)
 		ppr.Amount.Payable = float64(req.Amount.Payable)
@@ -118,20 +118,19 @@ func (PaymentServer *PaymentServer) NewOrder(ctx context.Context, req *pb.OrderP
 			ppr.Items = append(ppr.Items, i)
 		}
 	}
-
-	// validate request
+	// validate payment pending request
 	err := ppr.validate()
 	if err != nil {
 		return &pb.OrderResponse{Status: string(http.StatusBadRequest)}, err
 	}
-
+	// insert into mongo
 	_, err = App.mongo.InsertOne(MongoDB, Orders, ppr)
 	if err != nil {
 		return &pb.OrderResponse{OrderNumber: "", Status: string(http.StatusInternalServerError), RedirectUrl: ""}, err
 	}
 
-	App.kafka = kafkaadapter.NewKafka(brokers, "payment-success")
 	// @todo: remove this mock - start
+	App.kafka = kafkaadapter.NewKafka(brokers, "payment-success")
 	App.kafka.Config.Producer.Return.Successes = true
 	jsons, err := json.Marshal(ppr)
 	if err != nil {

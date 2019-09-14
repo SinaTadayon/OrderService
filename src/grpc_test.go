@@ -105,6 +105,6 @@ func TestNewOrder(t *testing.T) {
 	assert.Nil(t, err)
 
 	resOrder, err := PaymentService.NewOrder(ctx, order)
-	assert.NotNil(t, resOrder)
 	assert.Nil(t, err)
+	assert.NotNil(t, resOrder)
 }

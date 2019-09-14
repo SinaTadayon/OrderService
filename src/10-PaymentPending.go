@@ -1,44 +1,14 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"strings"
 	"time"
 
 	"github.com/go-ozzo/ozzo-validation/is"
 
-	"github.com/Shopify/sarama"
 	validation "github.com/go-ozzo/ozzo-validation"
 )
-
-func PaymentPendingMessageValidate(message *sarama.ConsumerMessage) (*sarama.ConsumerMessage, error) {
-	var ppr = PaymentPendingRequest{}
-
-	err := json.Unmarshal(message.Value, &ppr)
-	if err != nil {
-		return nil, err
-	}
-	err = ppr.validate()
-	if err != nil {
-		return nil, err
-	}
-
-	return message, nil
-}
-
-func PaymentPendingAction(message *sarama.ConsumerMessage) error {
-	// calculate price and send to payment
-	err := PaymentPendingProduce("", []byte{})
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func PaymentPendingProduce(topic string, payload []byte) error {
-	return nil
-}
 
 type PaymentPendingRequest struct {
 	OrderNumber   string
@@ -49,7 +19,6 @@ type PaymentPendingRequest struct {
 	Items         []Item
 	CreatedAt     time.Time
 }
-
 type Status struct {
 	Current   string
 	CreatedAt time.Time

@@ -3,6 +3,10 @@ package main
 import "github.com/Shopify/sarama"
 
 func PayToBuyerSuccessMessageValidate(message *sarama.ConsumerMessage) (*sarama.ConsumerMessage, error) {
+	mess, err := CheckOrderKafkaAndMongoStatus(message, PayToBuyerSuccess)
+	if err != nil {
+		return mess, err
+	}
 	return message, nil
 }
 
