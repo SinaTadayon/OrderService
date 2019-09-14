@@ -145,6 +145,30 @@ func (PaymentServer *PaymentServer) NewOrder(ctx context.Context, req *pb.OrderP
 
 	return &pb.OrderResponse{OrderNumber: ppr.OrderNumber, Status: string(http.StatusOK), RedirectUrl: PaymentUrl}, nil
 }
+func (PaymentServer *PaymentServer) SellerApprovalPending(ctx context.Context, req *pb.ApprovalRequest) (*pb.ApprovalResponse, error) {
+	ppr, err := GetOrder(req.OrderNumber)
+	if err != nil {
+		logger.Err("can't get order: %v", err)
+	}
+
+	if req.Approval {
+		err = SellerApprovalPendingApproved(ppr)
+		if err != nil {
+			logger.Err("seller approval pending approved failed: %v", err)
+			return &pb.ApprovalResponse{OrderNumber: req.OrderNumber, Status: string(http.StatusInternalServerError),
+				Message: err.Error()}, err
+		}
+	} else {
+		err = SellerApprovalPendingRejected(ppr, req.Reason)
+		if err != nil {
+			logger.Err("seller approval pending rejected failed: %v", err)
+			return &pb.ApprovalResponse{OrderNumber: req.OrderNumber, Status: string(http.StatusInternalServerError),
+				Message: err.Error()}, err
+		}
+	}
+
+	return &pb.ApprovalResponse{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
 
 func generateOrderNumber() string {
 	id := xid.New()

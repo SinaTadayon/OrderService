@@ -4,8 +4,9 @@ package OrderService;
 
 service OrderService {
     rpc NewOrder (OrderPaymentRequest) returns (OrderResponse);
+    rpc SellerApprovalPending (ApprovalRequest) returns (ApprovalResponse);
 }
-
+// NewOrder Start
 message OrderResponse {
     string orderNumber = 1;
     string status = 2;
@@ -101,4 +102,17 @@ message ItemShipment {
     int32 returnTime = 4;
     string shipmentDetail = 5;
 }
+// NewOrder End
 
+// SellerApprovalPending Start
+message ApprovalRequest {
+    string orderNumber = 1;
+    bool approval = 2;
+    string reason = 3;
+}
+message ApprovalResponse {
+    string orderNumber = 1;
+    string status = 2;
+    string message = 3;
+}
+// SellerApprovalPending End

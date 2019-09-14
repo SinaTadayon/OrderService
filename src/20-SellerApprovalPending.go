@@ -1,24 +1,87 @@
 package main
 
-import "github.com/Shopify/sarama"
+import (
+	"encoding/json"
+	"errors"
+	"time"
 
-func SellerApprovalPendingMessageValidate(message *sarama.ConsumerMessage) (*sarama.ConsumerMessage, error) {
-	mess, err := CheckOrderKafkaAndMongoStatus(message, SellerApprovalPending)
-	if err != nil {
-		return mess, err
+	"gitlab.faza.io/go-framework/kafkaadapter"
+	"gitlab.faza.io/go-framework/logger"
+)
+
+func SellerApprovalPendingApproved(ppr PaymentPendingRequest) error {
+	pprOld := ppr
+
+	statusHistory := StatusHistory{
+		Status:    ppr.Status.Current,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "seller",
+		Reason:    "",
 	}
-	return message, nil
-}
+	ppr.Status.Current = ShipmentPending
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
 
-func SellerApprovalPendingAction(message *sarama.ConsumerMessage) error {
-
-	err := SellerApprovalPendingProduce("", []byte{})
+	err := UpdateOrderMongo(ppr)
 	if err != nil {
+		return err
+	}
+
+	newPpr, err := json.Marshal(ppr)
+	if err != nil {
+		return errors.New("cant convert ppr struct to json: " + err.Error())
+	}
+
+	err = SellerApprovalPendingProduce("shipment-pending", newPpr)
+	if err != nil {
+		err = UpdateOrderMongo(pprOld)
+		if err != nil {
+			return err
+		}
+		return err
+	}
+	return nil
+}
+func SellerApprovalPendingRejected(ppr PaymentPendingRequest, reason string) error {
+	pprOld := ppr
+
+	statusHistory := StatusHistory{
+		Status:    ppr.Status.Current,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "seller",
+		Reason:    reason,
+	}
+	ppr.Status.Current = ShipmentRejectedBySeller
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+
+	err := UpdateOrderMongo(ppr)
+	if err != nil {
+		return err
+	}
+
+	newPpr, err := json.Marshal(ppr)
+	if err != nil {
+		return errors.New("cant convert ppr struct to json: " + err.Error())
+	}
+
+	err = SellerApprovalPendingProduce("shipment-pending", newPpr)
+	if err != nil {
+		err = UpdateOrderMongo(pprOld)
+		if err != nil {
+			return err
+		}
 		return err
 	}
 	return nil
 }
 
 func SellerApprovalPendingProduce(topic string, payload []byte) error {
+	App.kafka = kafkaadapter.NewKafka(brokers, topic)
+	App.kafka.Config.Producer.Return.Successes = true
+
+	_, _, err := App.kafka.SendOne("", payload)
+	if err != nil {
+		logger.Err("cant insert to kafka: %v", err)
+	}
+
 	return nil
 }

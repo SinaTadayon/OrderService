@@ -38,10 +38,9 @@ func main() {
 	case "payment-success":
 		logger.Audit("starting " + App.config.Kafka.ConsumerTopic)
 		startPaymentSuccess(App.config.Kafka.Version, App.config.Kafka.ConsumerTopic)
-	case "payment-failed":
-		startPaymentFailed(App.config.Kafka.Version, App.config.Kafka.ConsumerTopic)
-	case "payment-control":
-		startPaymentControl(App.config.Kafka.Version, App.config.Kafka.ConsumerTopic)
+	case "seller-approval-pending":
+		logger.Audit("starting " + App.config.Kafka.ConsumerTopic)
+		startGrpc()
 	default:
 		logger.Err("consumer topic env is wrong:" + App.config.Kafka.ConsumerTopic)
 	}

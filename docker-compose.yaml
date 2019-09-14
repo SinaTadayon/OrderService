@@ -30,6 +30,20 @@ services:
     env_file:
       - ./src/.env
 
+  seller_approval_pending:
+    image: ${TAG}
+    restart: always
+    ports:
+      - 40002:40000
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - APP_ENV=dev
+      - PAYMENT_KAFKA_CONSUMER_TOPIC=seller-approval-pending
+      - PAYMENT_KAFKA_CONSUMER_GROUP=seller-approval-pending
+    env_file:
+      - ./src/.env
+
   zoo1:
     image: registry.faza.io/zookeeper:latest
     hostname: zoo1
