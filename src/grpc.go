@@ -146,7 +146,7 @@ func (PaymentServer *PaymentServer) NewOrder(ctx context.Context, req *pb.OrderP
 	return &pb.OrderResponse{OrderNumber: ppr.OrderNumber, Status: string(http.StatusOK), RedirectUrl: PaymentUrl}, nil
 }
 func (PaymentServer *PaymentServer) SellerApprovalPending(ctx context.Context, req *pb.ApprovalRequest) (*pb.ApprovalResponse, error) {
-	ppr, err := GetOrder(req.OrderNumber)
+	ppr, err := GetOrder(req.GetOrderNumber())
 	if err != nil {
 		logger.Err("can't get order: %v", err)
 	}

@@ -21,6 +21,7 @@ func SellerApprovalPendingApproved(ppr PaymentPendingRequest) error {
 	ppr.Status.Current = ShipmentPending
 	ppr.Status.History = append(ppr.Status.History, statusHistory)
 
+	logger.Audit("updating mongo...")
 	err := UpdateOrderMongo(ppr)
 	if err != nil {
 		return err
@@ -33,6 +34,7 @@ func SellerApprovalPendingApproved(ppr PaymentPendingRequest) error {
 
 	err = SellerApprovalPendingProduce("shipment-pending", newPpr)
 	if err != nil {
+		logger.Audit("rollbacking...")
 		err = UpdateOrderMongo(pprOld)
 		if err != nil {
 			return err

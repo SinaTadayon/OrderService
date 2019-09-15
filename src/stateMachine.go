@@ -117,7 +117,7 @@ func UpdateOrderMongo(ppr PaymentPendingRequest) error {
 func GetOrder(orderNumber string) (PaymentPendingRequest, error) {
 	ppr := PaymentPendingRequest{}
 	res := App.mongo.FindOne(MongoDB, Orders, bson.D{{"ordernumber", orderNumber}})
-	err := res.Decode(ppr)
+	err := res.Decode(&ppr)
 	if err != nil {
 		return PaymentPendingRequest{}, err
 	}
