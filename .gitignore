@@ -2,5 +2,5 @@
 .idea/
 schema-json
 c.out
-src/TmpState.go
-src/TmpConsumer.go
+src/TmpState.txt
+src/TmpConsumer.txt
