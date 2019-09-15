@@ -33,13 +33,18 @@ stages:
     - make test
   tags:
     - go-service
-  after_script:
+
+4-cleanup_test:
+  stage: cleanup_test
+  tags:
+    - go-service
+  script:
     - make compose-down
     - docker system prune -f
     - docker rmi `docker images -qa` || true
     - docker volume rm `docker volume ls -q` || true
 
-4-push_image:
+5-push_image:
   stage: push_image
   tags:
     - go-service
