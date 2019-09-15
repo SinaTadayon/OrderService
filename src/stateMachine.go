@@ -1,8 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"io/ioutil"
+	"os"
+
+	notification "gitlab.faza.io/services/notification-client"
 
 	"github.com/Shopify/sarama"
 	"go.mongodb.org/mongo-driver/bson"
@@ -122,6 +127,34 @@ func GetOrder(orderNumber string) (PaymentPendingRequest, error) {
 		return PaymentPendingRequest{}, err
 	}
 	return ppr, nil
+}
+func NotifySellerForNewOrder(ppr PaymentPendingRequest) error {
+	curr, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	emailBody, err := ioutil.ReadFile(curr + "/" + App.config.App.EmailTemplateNotifySellerForNewOrder)
+
+	if err != nil {
+		return err
+	}
+
+	for _, item := range ppr.Items {
+		err := notification.SendSms(brokers, item.Seller.Mobile, "dadsa dsaas ")
+		if err != nil {
+			return err
+		}
+
+		// @TODO: change data
+		emailBody = bytes.ReplaceAll(emailBody, []byte("%seller_name%"), []byte(item.Seller.Title))
+		err = notification.SendEmail(brokers, "no-reply@faza.io", item.Seller.Email, ppr.OrderNumber, string(emailBody),
+			nil)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func generateSM() *StateMachine {

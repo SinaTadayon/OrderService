@@ -106,7 +106,6 @@ func TestNewOrder(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, resOrder)
 }
-
 func TestSellerApprovalPending(t *testing.T) {
 	var err error
 	ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
@@ -217,7 +216,6 @@ func TestSellerApprovalPending(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, resOrder.OrderNumber, resApproval.OrderNumber)
 }
-
 func TestSellerApprovalPendingRejected(t *testing.T) {
 	var err error
 	ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)

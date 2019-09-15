@@ -2,7 +2,9 @@ package main
 
 type configuration struct {
 	App struct {
-		Port string `env:"PORT"`
+		Port                                 string `env:"PORT"`
+		SmsTemplateDir                       string `env:"NOTIFICATION_SMS_TEMPLATES"`
+		EmailTemplateNotifySellerForNewOrder string `env:"EMAIL_TMP_NOTIFY_SELLER_FOR_NEW_ORDER"`
 	}
 	Kafka struct {
 		Version       string `env:"PAYMENT_KAFKA_VERSION"`

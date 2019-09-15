@@ -55,6 +55,15 @@ func SellerApprovalPendingRejected(ppr PaymentPendingRequest, reason string) err
 	ppr.Status.Current = ShipmentRejectedBySeller
 	ppr.Status.History = append(ppr.Status.History, statusHistory)
 
+	statusHistory = StatusHistory{
+		Status:    ppr.Status.Current,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "",
+	}
+	ppr.Status.Current = PayToBuyer
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+
 	err := UpdateOrderMongo(ppr)
 	if err != nil {
 		return err
@@ -65,7 +74,7 @@ func SellerApprovalPendingRejected(ppr PaymentPendingRequest, reason string) err
 		return errors.New("cant convert ppr struct to json: " + err.Error())
 	}
 
-	err = SellerApprovalPendingProduce("shipment-pending", newPpr)
+	err = SellerApprovalPendingProduce("pay-to-buyer", newPpr)
 	if err != nil {
 		err = UpdateOrderMongo(pprOld)
 		if err != nil {
@@ -75,7 +84,6 @@ func SellerApprovalPendingRejected(ppr PaymentPendingRequest, reason string) err
 	}
 	return nil
 }
-
 func SellerApprovalPendingProduce(topic string, payload []byte) error {
 	App.kafka = kafkaadapter.NewKafka(brokers, topic)
 	App.kafka.Config.Producer.Return.Successes = true

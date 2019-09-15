@@ -54,6 +54,11 @@ func PaymentSuccessAction(message *sarama.ConsumerMessage) error {
 		}
 		return err
 	}
+
+	err = NotifySellerForNewOrder(ppr)
+	if err != nil {
+		logger.Err("cant notify seller, %v", err)
+	}
 	return nil
 }
 

@@ -63,6 +63,8 @@ gitlab.faza.io/go-framework/logger
 gitlab.faza.io/go-framework/mongoadapter
 # gitlab.faza.io/protos/payment v0.0.0-20190914112554-6f4a482f4e5e
 gitlab.faza.io/protos/payment
+# gitlab.faza.io/services/notification-client v0.0.3
+gitlab.faza.io/services/notification-client
 # go.mongodb.org/mongo-driver v1.0.3
 go.mongodb.org/mongo-driver/bson
 go.mongodb.org/mongo-driver/bson/primitive

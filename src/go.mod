@@ -14,6 +14,7 @@ require (
 	gitlab.faza.io/go-framework/logger v0.0.3
 	gitlab.faza.io/go-framework/mongoadapter v0.0.3
 	gitlab.faza.io/protos/payment v0.0.0-20190914112554-6f4a482f4e5e
+	gitlab.faza.io/services/notification-client v0.0.3
 	go.mongodb.org/mongo-driver v1.0.3
 	google.golang.org/grpc v1.23.0
 )
