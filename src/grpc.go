@@ -2,12 +2,10 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"time"
-
-	"gitlab.faza.io/go-framework/kafkaadapter"
 
 	"github.com/rs/xid"
 
@@ -18,7 +16,59 @@ import (
 
 type PaymentServer struct{}
 
+var GrpcStatesRules struct {
+	SellerApprovalPending         map[string]bool
+	ShipmentDetail                map[string]bool
+	BuyerCancel                   map[string]bool
+	Delivered                     map[string]bool
+	ShipmentDeliveryDelayed       map[string]bool
+	ReturnShipmentDeliveryDelayed map[string]bool
+	ShipmentCanceled              map[string]bool
+	ReturnShipmentCanceled        map[string]bool
+	ShipmentDeliveryProblem       map[string]bool
+	ReturnShipmentDeliveryProblem map[string]bool
+	ShipmentSuccess               map[string]bool
+	ReturnShipmentPending         map[string]bool
+	ReturnShipmentDetail          map[string]bool
+	ReturnShipmentDelivered       map[string]bool
+	ReturnShipmentSuccess         map[string]bool
+	PayToBuyerSuccess             map[string]bool
+	PayToSellerSuccess            map[string]bool
+	PayToMarketSuccess            map[string]bool
+}
+
+func addStateRule(s ...string) map[string]bool {
+	m := make(map[string]bool)
+	for _, status := range s {
+		m[status] = true
+	}
+	return m
+}
+
+func addGrpcStateRule() {
+	GrpcStatesRules.SellerApprovalPending = addStateRule(SellerApprovalPending)
+	GrpcStatesRules.ShipmentDetail = addStateRule(ShipmentPending, ShipmentDetailDelayed)
+	GrpcStatesRules.BuyerCancel = addStateRule(ShipmentDetailDelayed)
+	GrpcStatesRules.Delivered = addStateRule(Shipped, ShipmentDeliveryDelayed)
+	GrpcStatesRules.ShipmentDeliveryDelayed = addStateRule(ShipmentDeliveryPending)
+	GrpcStatesRules.ReturnShipmentDeliveryDelayed = addStateRule(ReturnShipmentDeliveryPending)
+	GrpcStatesRules.ShipmentCanceled = addStateRule(ShipmentDetailDelayed, ShipmentDeliveryDelayed)
+	GrpcStatesRules.ReturnShipmentCanceled = addStateRule(ReturnShipmentDeliveryProblem, ReturnShipmentDeliveryDelayed)
+	GrpcStatesRules.ShipmentDeliveryProblem = addStateRule(ShipmentDelivered)
+	GrpcStatesRules.ReturnShipmentDeliveryProblem = addStateRule(ReturnShipmentDelivered)
+	GrpcStatesRules.ShipmentSuccess = addStateRule(ReturnShipmentDetailDelayed, ShipmentDeliveryProblem, ShipmentDelivered)
+	GrpcStatesRules.ReturnShipmentPending = addStateRule(ShipmentDelivered, ShipmentDeliveryProblem)
+	GrpcStatesRules.ReturnShipmentDetail = addStateRule(ReturnShipmentPending, ReturnShipmentDetailDelayed)
+	GrpcStatesRules.ReturnShipmentDelivered = addStateRule(ReturnShipmentDeliveryDelayed, ReturnShipmentDeliveryPending, ReturnShipped)
+	GrpcStatesRules.ReturnShipmentSuccess = addStateRule(ReturnShipmentDeliveryProblem, ReturnShipmentDelivered)
+	GrpcStatesRules.PayToBuyerSuccess = addStateRule(PayToBuyer, PayToBuyerFailed)
+	GrpcStatesRules.PayToSellerSuccess = addStateRule(PayToSeller, PayToSellerFailed)
+	GrpcStatesRules.PayToMarketSuccess = addStateRule(PayToMarket, PayToMarketFailed)
+}
+
 func startGrpc() {
+	addGrpcStateRule()
+
 	lis, err := net.Listen("tcp", ":"+App.config.App.Port)
 	if err != nil {
 		logger.Err("Failed to listen to TCP on port " + App.config.App.Port + err.Error())
@@ -33,12 +83,14 @@ func startGrpc() {
 	}
 }
 
+// response-error: StatusNotAcceptable, StatusInternalServerError, StatusOK
 func (PaymentServer *PaymentServer) NewOrder(ctx context.Context, req *pb.OrderPaymentRequest) (*pb.OrderResponse, error) {
+	// @TODO: add grpc context validation for all
 	ppr := PaymentPendingRequest{}
 	ppr.OrderNumber = generateOrderNumber()
 	ppr.CreatedAt = time.Now().UTC()
 	ppr.Status.CreatedAt = time.Now().UTC()
-	ppr.Status.Current = PaymentSuccess
+	ppr.Status.Current = PaymentPending
 	ppr.Status.History = []StatusHistory{}
 	// validate request & convert to PaymentPendingRequest
 	if req.Amount != nil {
@@ -123,6 +175,13 @@ func (PaymentServer *PaymentServer) NewOrder(ctx context.Context, req *pb.OrderP
 	if err != nil {
 		return &pb.OrderResponse{Status: string(http.StatusBadRequest)}, err
 	}
+	statusHistory := StatusHistory{
+		Status:    ppr.Status.Current,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
 	// insert into mongo
 	_, err = App.mongo.InsertOne(MongoDB, Orders, ppr)
 	if err != nil {
@@ -130,44 +189,152 @@ func (PaymentServer *PaymentServer) NewOrder(ctx context.Context, req *pb.OrderP
 	}
 
 	// @todo: remove this mock - start
-	App.kafka = kafkaadapter.NewKafka(brokers, "payment-success")
-	App.kafka.Config.Producer.Return.Successes = true
-	jsons, err := json.Marshal(ppr)
+	err = MoveOrderToNewState("system", "", PaymentSuccess, "payment-success", ppr)
 	if err != nil {
-		logger.Err("cant convert to json: %v", err)
-	}
-
-	_, _, err = App.kafka.SendOne("", jsons)
-	if err != nil {
-		logger.Err("cant insert to kafka: %v", err)
+		logger.Err(err.Error())
 	}
 	// @todo: remove this mock - end
 
 	return &pb.OrderResponse{OrderNumber: ppr.OrderNumber, Status: string(http.StatusOK), RedirectUrl: PaymentUrl}, nil
 }
-func (PaymentServer *PaymentServer) SellerApprovalPending(ctx context.Context, req *pb.ApprovalRequest) (*pb.ApprovalResponse, error) {
+func (PaymentServer *PaymentServer) SellerApprovalPending(ctx context.Context, req *pb.ApprovalRequest) (*pb.Response, error) {
+	//userClient.NewClient()
 	ppr, err := GetOrder(req.GetOrderNumber())
 	if err != nil {
 		logger.Err("can't get order: %v", err)
+		return &pb.Response{OrderNumber: "", Status: string(http.StatusNotAcceptable),
+			Message: "can't get order: " + err.Error()}, err
+	}
+	// check grpc status with state machine rules
+	if _, ok := GrpcStatesRules.SellerApprovalPending[ppr.Status.Current]; !ok {
+		logger.Err("seller approval pending no allowed for this order: %v", ppr.OrderNumber)
+		return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusNotAcceptable),
+			Message: "seller approval pending no allowed for this order: " + ppr.OrderNumber}, err
 	}
 
 	if req.Approval {
 		err = SellerApprovalPendingApproved(ppr)
 		if err != nil {
 			logger.Err("seller approval pending approved failed: %v", err)
-			return &pb.ApprovalResponse{OrderNumber: req.OrderNumber, Status: string(http.StatusInternalServerError),
+			return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusInternalServerError),
 				Message: err.Error()}, err
 		}
 	} else {
 		err = SellerApprovalPendingRejected(ppr, req.Reason)
 		if err != nil {
 			logger.Err("seller approval pending rejected failed: %v", err)
-			return &pb.ApprovalResponse{OrderNumber: req.OrderNumber, Status: string(http.StatusInternalServerError),
+			return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusInternalServerError),
 				Message: err.Error()}, err
 		}
 	}
 
-	return &pb.ApprovalResponse{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
+func (PaymentServer *PaymentServer) ShipmentDetail(ctx context.Context, req *pb.ShipmentDetailRequest) (*pb.Response, error) {
+	ppr, err := GetOrder(req.GetOrderNumber())
+	if err != nil {
+		logger.Err("can't get order: %v", err)
+		return &pb.Response{OrderNumber: "", Status: string(http.StatusNotAcceptable),
+			Message: "can't get order: " + err.Error()}, err
+	}
+	// check grpc status with state machine rules
+	if _, ok := GrpcStatesRules.ShipmentDetail[ppr.Status.Current]; !ok {
+		logger.Err("shipment detail no allowed for this order: %v", ppr.OrderNumber)
+		return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusNotAcceptable),
+			Message: "shipment detail no allowed for this order: " + ppr.OrderNumber}, err
+	}
+
+	if req.GetShipmentProvider() == "" {
+		return &pb.Response{OrderNumber: "", Status: string(http.StatusNotAcceptable),
+			Message: "shipment provider not defined"}, errors.New("shipment provider not defined")
+	}
+
+	err = ShipmentPendingEnteredDetail(ppr, req)
+	if err != nil {
+		logger.Err("shipment detail enter failed: %v", err)
+		if err.Error() == StateMachineNextStateNotAvailable {
+			return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusBadRequest),
+				Message: err.Error()}, err
+		} else {
+			return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusInternalServerError),
+				Message: err.Error()}, err
+		}
+	}
+
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
+
+func (PaymentServer *PaymentServer) BuyerCancel(ctx context.Context, req *pb.BuyerCancelRequest) (*pb.Response, error) {
+	ppr, err := GetOrder(req.GetOrderNumber())
+	if err != nil {
+		logger.Err("can't get order: %v", err)
+		return &pb.Response{OrderNumber: "", Status: string(http.StatusNotAcceptable),
+			Message: "can't get order: " + err.Error()}, err
+	}
+	// check grpc status with state machine rules
+	if _, ok := GrpcStatesRules.ShipmentDetail[ppr.Status.Current]; !ok {
+		logger.Err("shipment detail no allowed for this order: %v", ppr.OrderNumber)
+		return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusNotAcceptable),
+			Message: "shipment detail no allowed for this order: " + ppr.OrderNumber}, err
+	}
+
+	err = BuyerCancel(ppr, req)
+	if err != nil {
+		logger.Err("buyer cancel failed: %v", err)
+		if err.Error() == StateMachineNextStateNotAvailable {
+			return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusBadRequest),
+				Message: err.Error()}, err
+		} else {
+			return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusInternalServerError),
+				Message: err.Error()}, err
+		}
+	}
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
+func (PaymentServer *PaymentServer) Delivered(ctx context.Context, req *pb.DeliveredRequest) (*pb.Response, error) {
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
+func (PaymentServer *PaymentServer) ShipmentDeliveryDelayed(ctx context.Context, req *pb.DeliveryDelayedRequest) (*pb.Response, error) {
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
+func (PaymentServer *PaymentServer) ReturnShipmentDeliveryDelayed(ctx context.Context, req *pb.ReturnDeliveryDelayedRequest) (*pb.Response, error) {
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
+func (PaymentServer *PaymentServer) ShipmentCanceled(ctx context.Context, req *pb.ShipmentCanceledRequest) (*pb.Response, error) {
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
+func (PaymentServer *PaymentServer) ReturnShipmentCanceled(ctx context.Context, req *pb.ReturnShipmentCanceledRequest) (*pb.Response, error) {
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
+func (PaymentServer *PaymentServer) ShipmentDeliveryProblem(ctx context.Context, req *pb.ShipmentDeliveryProblemRequest) (*pb.Response, error) {
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
+func (PaymentServer *PaymentServer) ReturnShipmentDeliveryProblem(ctx context.Context, req *pb.ReturnShipmentDeliveryProblemRequest) (*pb.Response, error) {
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
+func (PaymentServer *PaymentServer) ShipmentSuccess(ctx context.Context, req *pb.ShipmentSuccessRequest) (*pb.Response, error) {
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
+func (PaymentServer *PaymentServer) ReturnShipmentPending(ctx context.Context, req *pb.ReturnShipmentPendingRequest) (*pb.Response, error) {
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
+func (PaymentServer *PaymentServer) ReturnShipmentDetail(ctx context.Context, req *pb.ReturnShipmentDetailRequest) (*pb.Response, error) {
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
+func (PaymentServer *PaymentServer) ReturnShipmentDelivered(ctx context.Context, req *pb.ReturnShipmentDeliveredRequest) (*pb.Response, error) {
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
+func (PaymentServer *PaymentServer) ReturnShipmentSuccess(ctx context.Context, req *pb.ReturnShipmentSuccessRequest) (*pb.Response, error) {
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
+func (PaymentServer *PaymentServer) PayToBuyerSuccess(ctx context.Context, req *pb.PayToBuyerSuccessRequest) (*pb.Response, error) {
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
+func (PaymentServer *PaymentServer) PayToSellerSuccess(ctx context.Context, req *pb.PayToSellerSuccessRequest) (*pb.Response, error) {
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
+}
+func (PaymentServer *PaymentServer) PayToMarketSuccess(ctx context.Context, req *pb.PayToMarketSuccessRequest) (*pb.Response, error) {
+	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
 }
 
 func generateOrderNumber() string {

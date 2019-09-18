@@ -9,7 +9,7 @@ import (
 func createPaymentRequestSampleFull() PaymentPendingRequest {
 	var pr = PaymentPendingRequest{}
 
-	pr.OrderNumber = "102102"
+	pr.OrderNumber = "TESTTEST"
 	// buyer info
 	pr.Buyer.FirstName = "farzan"
 	pr.Buyer.LastName = "dalaee"

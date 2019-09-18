@@ -103,7 +103,6 @@ func TestPayToSellerWithFailure_LongestAssertTrue(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, len(path), foundedRoutes)
 }
-
 func TestCheckPrevStep_AssertTrue(t *testing.T) {
 	currentStep := PaymentControl
 	prevStep := PaymentSuccess
@@ -114,7 +113,6 @@ func TestCheckPrevStep_AssertFalse(t *testing.T) {
 	nextStep := PaymentPending
 	assert.False(t, CheckNextState(currentStep, nextStep))
 }
-
 func TestNotifySellerForNewOrder(t *testing.T) {
 	ppr := PaymentPendingRequest{}
 	item := Item{

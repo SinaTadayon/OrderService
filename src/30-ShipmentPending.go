@@ -1,24 +1,16 @@
 package main
 
-import "github.com/Shopify/sarama"
+import (
+	OrderService "gitlab.faza.io/protos/payment"
+)
 
-func ShipmentPendingMessageValidate(message *sarama.ConsumerMessage) (*sarama.ConsumerMessage, error) {
-	mess, err := CheckOrderKafkaAndMongoStatus(message, ShipmentPending)
-	if err != nil {
-		return mess, err
-	}
-	return message, nil
-}
+func ShipmentPendingEnteredDetail(ppr PaymentPendingRequest, req *OrderService.ShipmentDetailRequest) error {
+	ppr.ShipmentInfo.ShipmentDetail.ShipmentProvider = req.ShipmentProvider
+	ppr.ShipmentInfo.ShipmentDetail.ShipmentTrackingNumber = req.ShipmentTrackingNumber
 
-func ShipmentPendingAction(message *sarama.ConsumerMessage) error {
-
-	err := ShipmentPendingProduce("", []byte{})
+	err := MoveOrderToNewState("seller", "", Shipped, "shipped", ppr)
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func ShipmentPendingProduce(topic string, payload []byte) error {
 	return nil
 }

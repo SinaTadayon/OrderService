@@ -6,6 +6,10 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
+	"time"
+
+	"gitlab.faza.io/go-framework/kafkaadapter"
+	"gitlab.faza.io/go-framework/logger"
 
 	notification "gitlab.faza.io/services/notification-client"
 
@@ -129,11 +133,19 @@ func GetOrder(orderNumber string) (PaymentPendingRequest, error) {
 	return ppr, nil
 }
 func NotifySellerForNewOrder(ppr PaymentPendingRequest) error {
-	curr, err := os.Getwd()
-	if err != nil {
-		return err
+	var dir string
+	// @TODO: add to readme
+	if os.Getenv("APP_ENV") == "dev" {
+		curr, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		dir = curr + "/testdata/notification/email/" + App.config.App.EmailTemplateNotifySellerForNewOrder
+	} else {
+		dir = "/shared/notification/email/" + App.config.App.EmailTemplateNotifySellerForNewOrder
 	}
-	emailBody, err := ioutil.ReadFile(curr + "/" + App.config.App.EmailTemplateNotifySellerForNewOrder)
+
+	emailBody, err := ioutil.ReadFile(dir)
 
 	if err != nil {
 		return err
@@ -399,4 +411,54 @@ func generateSM() *StateMachine {
 	SM.add(payToMarketSuccess)
 
 	return SM
+}
+
+func MoveOrderToNewState(agent, reason, nextState, topic string, ppr PaymentPendingRequest) error {
+	if !CheckNextState(ppr.Status.Current, nextState) {
+		logger.Audit(ppr.Status.Current, nextState)
+		return errors.New(StateMachineNextStateNotAvailable + "from " + ppr.Status.Current + " --> " + nextState)
+	}
+	pprOld := ppr
+
+	statusHistory := StatusHistory{
+		Status:    nextState,
+		CreatedAt: time.Now().UTC(),
+		Agent:     agent,
+		Reason:    reason,
+	}
+	// next state
+	ppr.Status.Current = nextState
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+
+	newPpr, err := json.Marshal(ppr)
+	if err != nil {
+		return errors.New("cant convert ppr struct to json: " + err.Error())
+	}
+
+	err = UpdateOrderMongo(ppr)
+	if err != nil {
+		return err
+	}
+
+	err = ProduceOrderToKafka(topic, newPpr)
+	if err != nil {
+		err = UpdateOrderMongo(pprOld)
+		if err != nil {
+			return errors.New(OrderRollbackMongoError)
+		}
+		return err
+	}
+	return nil
+}
+
+func ProduceOrderToKafka(topic string, payload []byte) error {
+	App.kafka = kafkaadapter.NewKafka(brokers, topic)
+	App.kafka.Config.Producer.Return.Successes = true
+
+	_, _, err := App.kafka.SendOne("", payload)
+	if err != nil {
+		logger.Err("cant insert to kafka: %v", err)
+	}
+
+	return nil
 }

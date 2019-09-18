@@ -4,7 +4,24 @@ package OrderService;
 
 service OrderService {
     rpc NewOrder (OrderPaymentRequest) returns (OrderResponse);
-    rpc SellerApprovalPending (ApprovalRequest) returns (ApprovalResponse);
+    rpc SellerApprovalPending (ApprovalRequest) returns (Response);
+    rpc ShipmentDetail (ShipmentDetailRequest) returns (Response);
+    rpc BuyerCancel (BuyerCancelRequest) returns (Response);
+    rpc Delivered (DeliveredRequest) returns (Response);
+    rpc ShipmentDeliveryDelayed (DeliveryDelayedRequest) returns (Response);
+    rpc ReturnShipmentDeliveryDelayed (ReturnDeliveryDelayedRequest) returns (Response);
+    rpc ShipmentCanceled (ShipmentCanceledRequest) returns (Response);
+    rpc ReturnShipmentCanceled (ReturnShipmentCanceledRequest) returns (Response);
+    rpc ShipmentDeliveryProblem (ShipmentDeliveryProblemRequest) returns (Response);
+    rpc ReturnShipmentDeliveryProblem (ReturnShipmentDeliveryProblemRequest) returns (Response);
+    rpc ShipmentSuccess (ShipmentSuccessRequest) returns (Response);
+    rpc ReturnShipmentPending (ReturnShipmentPendingRequest) returns (Response);
+    rpc ReturnShipmentDetail (ReturnShipmentDetailRequest) returns (Response);
+    rpc ReturnShipmentDelivered (ReturnShipmentDeliveredRequest) returns (Response);
+    rpc ReturnShipmentSuccess (ReturnShipmentSuccessRequest) returns (Response);
+    rpc PayToBuyerSuccess (PayToBuyerSuccessRequest) returns (Response);
+    rpc PayToSellerSuccess (PayToSellerSuccessRequest) returns (Response);
+    rpc PayToMarketSuccess (PayToMarketSuccessRequest) returns (Response);
 }
 // NewOrder Start
 message OrderResponse {
@@ -110,9 +127,83 @@ message ApprovalRequest {
     bool approval = 2;
     string reason = 3;
 }
-message ApprovalResponse {
+message Response {
     string orderNumber = 1;
     string status = 2;
     string message = 3;
 }
 // SellerApprovalPending End
+
+message ShipmentDetailRequest {
+    string orderNumber = 1;
+    string shipmentProvider = 2;
+    string shipmentTrackingNumber = 3;
+    string description = 4;
+    string image = 5;
+}
+
+message BuyerCancelRequest {
+    string orderNumber = 1;
+    string reason = 2;
+}
+
+message DeliveredRequest {
+    string orderNumber = 1;
+}
+message ReturnShipmentDeliveredRequest {
+    string orderNumber = 1;
+}
+message DeliveryDelayedRequest {
+    string orderNumber = 1;
+}
+message ReturnDeliveryDelayedRequest {
+    string orderNumber = 1;
+}
+message ShipmentCanceledRequest {
+    string orderNumber = 1;
+    string reason = 2;
+}
+message ReturnShipmentCanceledRequest {
+    string orderNumber = 1;
+    string reason = 2;
+}
+message ShipmentDeliveryProblem {
+    string orderNumber = 1;
+    string reason = 2;
+}
+message ShipmentDeliveryProblemRequest {
+    string orderNumber = 1;
+    string reason = 2;
+}
+message ReturnShipmentDeliveryProblemRequest {
+    string orderNumber = 1;
+    string reason = 2;
+}
+message ShipmentSuccessRequest {
+    string orderNumber = 1;
+}
+message ReturnShipmentSuccessRequest {
+    string orderNumber = 1;
+}
+message ReturnShipmentPendingRequest {
+    string orderNumber = 1;
+}
+message ReturnShipmentDetailRequest {
+    string orderNumber = 1;
+    string shipmentProvider = 2;
+    string shipmentTrackingNumber = 3;
+    string description = 4;
+    string image = 5;
+}
+message PayToBuyerSuccessRequest {
+    string orderNumber = 1;
+    string description = 2;
+}
+message PayToSellerSuccessRequest {
+    string orderNumber = 1;
+    string description = 2;
+}
+message PayToMarketSuccessRequest {
+    string orderNumber = 1;
+    string description = 2;
+}

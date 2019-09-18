@@ -13,11 +13,21 @@ import (
 type PaymentPendingRequest struct {
 	OrderNumber   string
 	PaymentDetail PaymentDetail
+	SystemPayment SystemPayment
 	Status        Status
 	Buyer         Buyer
 	Amount        Amount
+	ShipmentInfo  ShipmentInfo
 	Items         []Item
 	CreatedAt     time.Time
+}
+type ShipmentInfo struct {
+	ShipmentDetail ShipmentDetail
+}
+type ShipmentDetail struct {
+	ShipmentProvider       string
+	ShipmentTrackingNumber string
+	Image                  string
 }
 type Status struct {
 	Current   string
@@ -31,8 +41,37 @@ type StatusHistory struct {
 	Reason    string
 }
 type PaymentDetail struct {
-	Request  string
-	Response string
+	Status      bool
+	Description string
+	Request     string
+	Response    string
+	CreatedAt   time.Time
+}
+type SystemPayment struct {
+	Buyer  []BuyerDetail
+	Seller []SellerDetail
+	Market []MarketDetail
+}
+type BuyerDetail struct {
+	Status      bool
+	Description string
+	Request     string
+	Response    string
+	CreatedAt   time.Time
+}
+type SellerDetail struct {
+	Status      bool
+	Description string
+	Request     string
+	Response    string
+	CreatedAt   time.Time
+}
+type MarketDetail struct {
+	Status      bool
+	Description string
+	Request     string
+	Response    string
+	CreatedAt   time.Time
 }
 type Amount struct {
 	Total    float64

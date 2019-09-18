@@ -25,9 +25,11 @@ var App struct {
 var brokers []string
 
 const (
-	PaymentUrl = "PaymentURL"
-	MongoDB    = "orders"
-	Orders     = "orders"
+	PaymentUrl                        = "PaymentURL"
+	MongoDB                           = "orders"
+	Orders                            = "orders"
+	OrderRollbackMongoError           = "can not rollback on kafka"
+	StateMachineNextStateNotAvailable = "can not go to next state"
 )
 
 func main() {
