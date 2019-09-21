@@ -1,24 +1,11 @@
 package main
 
-import "github.com/Shopify/sarama"
+import pb "gitlab.faza.io/protos/payment"
 
-func ShipmentDeliveredMessageValidate(message *sarama.ConsumerMessage) (*sarama.ConsumerMessage, error) {
-	mess, err := CheckOrderKafkaAndMongoStatus(message, ShipmentDelivered)
-	if err != nil {
-		return mess, err
-	}
-	return message, nil
-}
-
-func ShipmentDeliveredAction(message *sarama.ConsumerMessage) error {
-
-	err := ShipmentDeliveredProduce("", []byte{})
+func ShipmentDeliveredAction(ppr PaymentPendingRequest, req *pb.ShipmentDeliveredRequest) error {
+	err := MoveOrderToNewState("buyer", "", ShipmentDelivered, "shipment-delivered", ppr)
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func ShipmentDeliveredProduce(topic string, payload []byte) error {
 	return nil
 }

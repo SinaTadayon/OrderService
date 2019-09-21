@@ -442,8 +442,8 @@ func MoveOrderToNewState(agent, reason, nextState, topic string, ppr PaymentPend
 
 	err = ProduceOrderToKafka(topic, newPpr)
 	if err != nil {
-		err = UpdateOrderMongo(pprOld)
-		if err != nil {
+		errRollBack := UpdateOrderMongo(pprOld)
+		if errRollBack != nil {
 			return errors.New(OrderRollbackMongoError)
 		}
 		return err

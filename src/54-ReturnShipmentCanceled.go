@@ -1,24 +1,19 @@
 package main
 
-import "github.com/Shopify/sarama"
+import pb "gitlab.faza.io/protos/payment"
 
-func ReturnShipmentCanceledMessageValidate(message *sarama.ConsumerMessage) (*sarama.ConsumerMessage, error) {
-	mess, err := CheckOrderKafkaAndMongoStatus(message, ReturnShipmentCanceled)
-	if err != nil {
-		return mess, err
-	}
-	return message, nil
-}
-
-func ReturnShipmentCanceledAction(message *sarama.ConsumerMessage) error {
-
-	err := ReturnShipmentCanceledProduce("", []byte{})
+func ReturnShipmentCanceledActoin(ppr PaymentPendingRequest, req *pb.ReturnShipmentCanceledRequest) error {
+	err := MoveOrderToNewState("operator", req.GetReason(), ReturnShipmentCanceled, "return-shipment-canceled", ppr)
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func ReturnShipmentCanceledProduce(topic string, payload []byte) error {
+	newPpr, err := GetOrder(ppr.OrderNumber)
+	if err != nil {
+		return err
+	}
+	err = MoveOrderToNewState("system", "", PayToSeller, "pay-to-seller", newPpr)
+	if err != nil {
+		return err
+	}
 	return nil
 }

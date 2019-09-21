@@ -7,9 +7,9 @@ service OrderService {
     rpc SellerApprovalPending (ApprovalRequest) returns (Response);
     rpc ShipmentDetail (ShipmentDetailRequest) returns (Response);
     rpc BuyerCancel (BuyerCancelRequest) returns (Response);
-    rpc Delivered (DeliveredRequest) returns (Response);
-    rpc ShipmentDeliveryDelayed (DeliveryDelayedRequest) returns (Response);
-    rpc ReturnShipmentDeliveryDelayed (ReturnDeliveryDelayedRequest) returns (Response);
+    rpc ShipmentDelivered (ShipmentDeliveredRequest) returns (Response);
+    rpc ShipmentDeliveryDelayed (ShipmentDeliveryDelayedRequest) returns (Response);
+    rpc ReturnShipmentDeliveryDelayed (ReturnShipmentDeliveryDelayedRequest) returns (Response);
     rpc ShipmentCanceled (ShipmentCanceledRequest) returns (Response);
     rpc ReturnShipmentCanceled (ReturnShipmentCanceledRequest) returns (Response);
     rpc ShipmentDeliveryProblem (ShipmentDeliveryProblemRequest) returns (Response);
@@ -147,21 +147,22 @@ message BuyerCancelRequest {
     string reason = 2;
 }
 
-message DeliveredRequest {
+message ShipmentDeliveredRequest {
     string orderNumber = 1;
 }
 message ReturnShipmentDeliveredRequest {
     string orderNumber = 1;
 }
-message DeliveryDelayedRequest {
+message ShipmentDeliveryDelayedRequest {
     string orderNumber = 1;
 }
-message ReturnDeliveryDelayedRequest {
+message ReturnShipmentDeliveryDelayedRequest {
     string orderNumber = 1;
 }
 message ShipmentCanceledRequest {
     string orderNumber = 1;
     string reason = 2;
+    string operator = 3;
 }
 message ReturnShipmentCanceledRequest {
     string orderNumber = 1;

@@ -1,24 +1,11 @@
 package main
 
-import "github.com/Shopify/sarama"
+import pb "gitlab.faza.io/protos/payment"
 
-func ReturnShipmentDetailDelayedMessageValidate(message *sarama.ConsumerMessage) (*sarama.ConsumerMessage, error) {
-	mess, err := CheckOrderKafkaAndMongoStatus(message, ReturnShipmentDetailDelayed)
-	if err != nil {
-		return mess, err
-	}
-	return message, nil
-}
-
-func ReturnShipmentDetailDelayedAction(message *sarama.ConsumerMessage) error {
-
-	err := ReturnShipmentDetailDelayedProduce("", []byte{})
+func ReturnShipmentDeliveryDelay(ppr PaymentPendingRequest, req *pb.ReturnShipmentDeliveryDelayedRequest) error {
+	err := MoveOrderToNewState("buyer", "", ReturnShipmentDeliveryDelayed, "return-shipment-delivered-delayed", ppr)
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func ReturnShipmentDetailDelayedProduce(topic string, payload []byte) error {
 	return nil
 }
