@@ -1,24 +1,21 @@
 package main
 
-import "github.com/Shopify/sarama"
+import (
+	pb "gitlab.faza.io/protos/payment"
+)
 
-func ReturnShipmentSuccessMessageValidate(message *sarama.ConsumerMessage) (*sarama.ConsumerMessage, error) {
-	mess, err := CheckOrderKafkaAndMongoStatus(message, ReturnShipmentSuccess)
-	if err != nil {
-		return mess, err
-	}
-	return message, nil
-}
-
-func ReturnShipmentSuccessAction(message *sarama.ConsumerMessage) error {
-
-	err := ReturnShipmentSuccessProduce("", []byte{})
+func ReturnShipmentDeliveredGrpcAction(ppr PaymentPendingRequest, req *pb.ReturnShipmentSuccessRequest) error {
+	err := MoveOrderToNewState("buyer", "", ReturnShipmentSuccess, "return-shipment-success", ppr)
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func ReturnShipmentSuccessProduce(topic string, payload []byte) error {
+	newPpr, err := GetOrder(ppr.OrderNumber)
+	if err != nil {
+		return err
+	}
+	err = MoveOrderToNewState("system", "", PayToBuyer, "pay-to-buyer", newPpr)
+	if err != nil {
+		return err
+	}
 	return nil
 }

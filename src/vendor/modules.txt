@@ -61,7 +61,7 @@ gitlab.faza.io/go-framework/kafkaadapter
 gitlab.faza.io/go-framework/logger
 # gitlab.faza.io/go-framework/mongoadapter v0.0.3
 gitlab.faza.io/go-framework/mongoadapter
-# gitlab.faza.io/protos/payment v0.0.0-20190921102438-c48b474159d1
+# gitlab.faza.io/protos/payment v0.0.0-20190923113217-ed85228606dd
 gitlab.faza.io/protos/payment
 # gitlab.faza.io/services/notification-client v0.0.3
 gitlab.faza.io/services/notification-client

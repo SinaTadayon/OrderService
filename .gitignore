@@ -4,3 +4,4 @@ schema-json
 c.out
 src/TmpState.txt
 src/TmpConsumer.txt
+src/payment-app

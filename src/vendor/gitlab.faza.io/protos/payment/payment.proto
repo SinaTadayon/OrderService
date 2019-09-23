@@ -152,6 +152,8 @@ message ShipmentDeliveredRequest {
 }
 message ReturnShipmentDeliveredRequest {
     string orderNumber = 1;
+    string operator = 2;
+    string reason = 3;
 }
 message ShipmentDeliveryDelayedRequest {
     string orderNumber = 1;
@@ -188,6 +190,8 @@ message ReturnShipmentSuccessRequest {
 }
 message ReturnShipmentPendingRequest {
     string orderNumber = 1;
+    string reason = 2;
+    string operator = 3;
 }
 message ReturnShipmentDetailRequest {
     string orderNumber = 1;

@@ -98,8 +98,8 @@ gitlab.faza.io/go-framework/logger v0.0.3 h1:jF4Dsh/4n1qlP94wa/XIKZRoul3UEcBngvW
 gitlab.faza.io/go-framework/logger v0.0.3/go.mod h1:Zt8cJHkwzai1oLBQWx2botrLA64z/M3PneYQ1DZZTgc=
 gitlab.faza.io/go-framework/mongoadapter v0.0.3 h1:xG46kijjtUDqIkOHZ8uTOCTomDtIo4S9zUkln49iCX0=
 gitlab.faza.io/go-framework/mongoadapter v0.0.3/go.mod h1:a6PLgm30eY24lKn7V1NSNdGVyk9h3xejLgg708nVtHg=
-gitlab.faza.io/protos/payment v0.0.0-20190921102438-c48b474159d1 h1:g5Z4oSoDQP9S799FnxA0hwIo8iMjSEVXnhrT9bqgZlM=
-gitlab.faza.io/protos/payment v0.0.0-20190921102438-c48b474159d1/go.mod h1:DjMclyCl/HkTLfDnZboynfomjEtK9dcqD4YhWh65lWg=
+gitlab.faza.io/protos/payment v0.0.0-20190923113217-ed85228606dd h1:UfcxT1IUtGR52ew2GjaCKZH51hof+iyAVnCcx9uZCmo=
+gitlab.faza.io/protos/payment v0.0.0-20190923113217-ed85228606dd/go.mod h1:DjMclyCl/HkTLfDnZboynfomjEtK9dcqD4YhWh65lWg=
 gitlab.faza.io/services/notification-client v0.0.3 h1:R1IAAj5ZFkepCBIseZeuwN5wYu6xAwdili+F+0nUmxU=
 gitlab.faza.io/services/notification-client v0.0.3/go.mod h1:gpounorhjFfQa+ncEb+kAlZPIr2ANXCgL2ea2ChIOME=
 go.mongodb.org/mongo-driver v1.0.3 h1:GKoji1ld3tw2aC+GX1wbr/J2fX13yNacEYoJ8Nhr0yU=

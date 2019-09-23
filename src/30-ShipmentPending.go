@@ -7,7 +7,7 @@ import (
 func ShipmentPendingEnteredDetail(ppr PaymentPendingRequest, req *OrderService.ShipmentDetailRequest) error {
 	ppr.ShipmentInfo.ShipmentDetail.ShipmentProvider = req.ShipmentProvider
 	ppr.ShipmentInfo.ShipmentDetail.ShipmentTrackingNumber = req.ShipmentTrackingNumber
-
+	ppr.ShipmentInfo.ShipmentDetail.Description = req.GetDescription()
 	err := MoveOrderToNewState("seller", "", Shipped, "shipped", ppr)
 	if err != nil {
 		return err

@@ -22,12 +22,20 @@ type PaymentPendingRequest struct {
 	CreatedAt     time.Time
 }
 type ShipmentInfo struct {
-	ShipmentDetail ShipmentDetail
+	ShipmentDetail       ShipmentDetail
+	ReturnShipmentDetail ReturnShipmentDetail
 }
 type ShipmentDetail struct {
 	ShipmentProvider       string
 	ShipmentTrackingNumber string
 	Image                  string
+	Description            string
+}
+type ReturnShipmentDetail struct {
+	ShipmentProvider       string
+	ShipmentTrackingNumber string
+	Image                  string
+	Description            string
 }
 type Status struct {
 	Current   string
