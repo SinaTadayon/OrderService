@@ -2149,3 +2149,403 @@ func TestReturnShipmentSuccessFromReturnShipmentDelivered(t *testing.T) {
 	assert.Equal(t, len(ppr.Status.History)+2, len(savedOrder.Status.History))
 	assert.Equal(t, PayToBuyer, savedOrder.Status.Current)
 }
+func TestPayToBuyerSuccess(t *testing.T) {
+	// Create ppr
+	ppr := createPaymentRequestSampleFull()
+	// Delete test order
+	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
+	assert.Nil(t, err)
+	statusHistory := StatusHistory{
+		Status:    PaymentPending,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    PaymentSuccess,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    SellerApprovalPending,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "auto approval",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ShipmentPending,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "seller",
+		Reason:    "hale",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    Shipped,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "seller",
+		Reason:    "seller add detail",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ShipmentDelivered,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "shipping days reached",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ReturnShipmentPending,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "buyer",
+		Reason:    "i want to return",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ReturnShipmentDetailDelayed,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "no action for x days",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ReturnShipped,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "buyer",
+		Reason:    "i send the package",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ReturnShipmentDelivered,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "seller",
+		Reason:    "i got the package",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ReturnShipmentSuccess,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "seller",
+		Reason:    "package is okey",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    PayToBuyer,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "auto",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    PayToBuyerFailed,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "cant pay",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+
+	ppr.Status.Current = ppr.Status.History[(len(ppr.Status.History) - 1)].Status
+
+	_, err = App.mongo.InsertOne(MongoDB, Orders, ppr)
+	assert.Nil(t, err)
+
+	time.Sleep(time.Second)
+
+	ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
+	grpcConnOrderApproved, err := grpc.DialContext(ctx, ":"+fmt.Sprint(App.config.App.Port), grpc.WithInsecure())
+	assert.Nil(t, err)
+	OrderService := pb.NewOrderServiceClient(grpcConnOrderApproved)
+
+	approveRequest := &pb.PayToBuyerSuccessRequest{
+		OrderNumber: ppr.OrderNumber,
+		Description: "paid by XXXXX",
+	}
+
+	resApproval, err := OrderService.PayToBuyerSuccess(ctx, approveRequest)
+	assert.Nil(t, err)
+	assert.Equal(t, ppr.OrderNumber, resApproval.OrderNumber)
+
+	savedOrder, err := GetOrder(ppr.OrderNumber)
+	assert.Nil(t, err)
+	assert.Equal(t, len(ppr.Status.History)+1, len(savedOrder.Status.History))
+	assert.Equal(t, PayToBuyerSuccess, savedOrder.Status.Current)
+}
+func TestPayToSellerSuccess(t *testing.T) {
+	// Create ppr
+	ppr := createPaymentRequestSampleFull()
+	// Delete test order
+	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
+	assert.Nil(t, err)
+	statusHistory := StatusHistory{
+		Status:    PaymentPending,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    PaymentSuccess,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    SellerApprovalPending,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "auto approval",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ShipmentPending,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "seller",
+		Reason:    "hale",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    Shipped,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "seller",
+		Reason:    "seller add detail",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ShipmentDelivered,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "shipping days reached",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ReturnShipmentPending,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "buyer",
+		Reason:    "i want to return",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ReturnShipmentDetailDelayed,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "no action for x days",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ReturnShipped,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "buyer",
+		Reason:    "i send the package",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ReturnShipmentDelivered,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "seller",
+		Reason:    "i got the package",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ReturnShipmentDeliveryProblem,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "seller",
+		Reason:    "i need support",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ReturnShipmentCanceled,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "operator",
+		Reason:    "not returnable",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    PayToSeller,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "auto",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    PayToSellerFailed,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "cant pay",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+
+	ppr.Status.Current = ppr.Status.History[(len(ppr.Status.History) - 1)].Status
+
+	_, err = App.mongo.InsertOne(MongoDB, Orders, ppr)
+	assert.Nil(t, err)
+
+	time.Sleep(time.Second)
+
+	ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
+	grpcConnOrderApproved, err := grpc.DialContext(ctx, ":"+fmt.Sprint(App.config.App.Port), grpc.WithInsecure())
+	assert.Nil(t, err)
+	OrderService := pb.NewOrderServiceClient(grpcConnOrderApproved)
+
+	approveRequest := &pb.PayToSellerSuccessRequest{
+		OrderNumber: ppr.OrderNumber,
+		Description: "paid by XXXXX",
+	}
+
+	resApproval, err := OrderService.PayToSellerSuccess(ctx, approveRequest)
+	assert.Nil(t, err)
+	assert.Equal(t, ppr.OrderNumber, resApproval.OrderNumber)
+
+	savedOrder, err := GetOrder(ppr.OrderNumber)
+	assert.Nil(t, err)
+	assert.Equal(t, len(ppr.Status.History)+1, len(savedOrder.Status.History))
+	assert.Equal(t, PayToSellerSuccess, savedOrder.Status.Current)
+}
+func TestPayToMarketSuccess(t *testing.T) {
+	// Create ppr
+	ppr := createPaymentRequestSampleFull()
+	// Delete test order
+	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
+	assert.Nil(t, err)
+	statusHistory := StatusHistory{
+		Status:    PaymentPending,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    PaymentSuccess,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    SellerApprovalPending,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "auto approval",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ShipmentPending,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "seller",
+		Reason:    "hale",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    Shipped,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "seller",
+		Reason:    "seller add detail",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ShipmentDelivered,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "shipping days reached",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ReturnShipmentPending,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "buyer",
+		Reason:    "i want to return",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ReturnShipmentDetailDelayed,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "no action for x days",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ReturnShipped,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "buyer",
+		Reason:    "i send the package",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ReturnShipmentDelivered,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "seller",
+		Reason:    "i got the package",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ReturnShipmentDeliveryProblem,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "seller",
+		Reason:    "i need support",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    ReturnShipmentCanceled,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "operator",
+		Reason:    "not returnable",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    PayToSeller,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "auto",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    PayToSellerSuccess,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "paid",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    PayToMarket,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "system",
+		Reason:    "paid",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+	statusHistory = StatusHistory{
+		Status:    PayToMarketFailed,
+		CreatedAt: time.Now().UTC(),
+		Agent:     "operator",
+		Reason:    "paid by XXXXX",
+	}
+	ppr.Status.History = append(ppr.Status.History, statusHistory)
+
+	ppr.Status.Current = ppr.Status.History[(len(ppr.Status.History) - 1)].Status
+
+	_, err = App.mongo.InsertOne(MongoDB, Orders, ppr)
+	assert.Nil(t, err)
+
+	time.Sleep(time.Second)
+
+	ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
+	grpcConnOrderApproved, err := grpc.DialContext(ctx, ":"+fmt.Sprint(App.config.App.Port), grpc.WithInsecure())
+	assert.Nil(t, err)
+	OrderService := pb.NewOrderServiceClient(grpcConnOrderApproved)
+
+	approveRequest := &pb.PayToMarketSuccessRequest{
+		OrderNumber: ppr.OrderNumber,
+		Description: "paid by XXXXX",
+	}
+
+	resApproval, err := OrderService.PayToMarketSuccess(ctx, approveRequest)
+	assert.Nil(t, err)
+	assert.Equal(t, ppr.OrderNumber, resApproval.OrderNumber)
+
+	savedOrder, err := GetOrder(ppr.OrderNumber)
+	assert.Nil(t, err)
+	assert.Equal(t, len(ppr.Status.History)+1, len(savedOrder.Status.History))
+	assert.Equal(t, PayToMarketSuccess, savedOrder.Status.Current)
+}

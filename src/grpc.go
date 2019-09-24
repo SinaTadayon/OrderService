@@ -638,12 +638,90 @@ func (PaymentServer *PaymentServer) ReturnShipmentSuccess(ctx context.Context, r
 }
 
 func (PaymentServer *PaymentServer) PayToBuyerSuccess(ctx context.Context, req *pb.PayToBuyerSuccessRequest) (*pb.Response, error) {
+	ppr, err := GetOrder(req.GetOrderNumber())
+	if err != nil {
+		logger.Err("can't get order: %v", err)
+		return &pb.Response{OrderNumber: "", Status: string(http.StatusNotAcceptable),
+			Message: "can't get order: " + err.Error()}, err
+	}
+	// check grpc status with state machine rules
+	if _, ok := GrpcStatesRules.PayToBuyerSuccess[ppr.Status.Current]; !ok {
+		logger.Err("pay to buyer not allowed for this order: %v", ppr.OrderNumber)
+		return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusNotAcceptable),
+				Message: "pay to buyer not allowed for this order: " + ppr.OrderNumber},
+			errors.New("pay to buyer not allowed for this order: " + ppr.OrderNumber)
+	}
+
+	err = PayToBuyerSuccessAction(ppr, req)
+	if err != nil {
+		logger.Err("pay to buyer failed: %v", err)
+		if err.Error() == StateMachineNextStateNotAvailable {
+			return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusBadRequest),
+				Message: err.Error()}, err
+		} else {
+			return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusInternalServerError),
+				Message: err.Error()}, err
+		}
+	}
+
 	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
 }
 func (PaymentServer *PaymentServer) PayToSellerSuccess(ctx context.Context, req *pb.PayToSellerSuccessRequest) (*pb.Response, error) {
+	ppr, err := GetOrder(req.GetOrderNumber())
+	if err != nil {
+		logger.Err("can't get order: %v", err)
+		return &pb.Response{OrderNumber: "", Status: string(http.StatusNotAcceptable),
+			Message: "can't get order: " + err.Error()}, err
+	}
+	// check grpc status with state machine rules
+	if _, ok := GrpcStatesRules.PayToSellerSuccess[ppr.Status.Current]; !ok {
+		logger.Err("pay to seller not allowed for this order: %v", ppr.OrderNumber)
+		return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusNotAcceptable),
+				Message: "pay to seller not allowed for this order: " + ppr.OrderNumber},
+			errors.New("pay to seller not allowed for this order: " + ppr.OrderNumber)
+	}
+
+	err = PayToSellerSuccessAction(ppr, req)
+	if err != nil {
+		logger.Err("pay to seller failed: %v", err)
+		if err.Error() == StateMachineNextStateNotAvailable {
+			return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusBadRequest),
+				Message: err.Error()}, err
+		} else {
+			return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusInternalServerError),
+				Message: err.Error()}, err
+		}
+	}
+
 	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
 }
 func (PaymentServer *PaymentServer) PayToMarketSuccess(ctx context.Context, req *pb.PayToMarketSuccessRequest) (*pb.Response, error) {
+	ppr, err := GetOrder(req.GetOrderNumber())
+	if err != nil {
+		logger.Err("can't get order: %v", err)
+		return &pb.Response{OrderNumber: "", Status: string(http.StatusNotAcceptable),
+			Message: "can't get order: " + err.Error()}, err
+	}
+	// check grpc status with state machine rules
+	if _, ok := GrpcStatesRules.PayToMarketSuccess[ppr.Status.Current]; !ok {
+		logger.Err("pay to market not allowed for this order: %v", ppr.OrderNumber)
+		return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusNotAcceptable),
+				Message: "pay to market not allowed for this order: " + ppr.OrderNumber},
+			errors.New("pay to market not allowed for this order: " + ppr.OrderNumber)
+	}
+
+	err = PayToMarketSuccessAction(ppr, req)
+	if err != nil {
+		logger.Err("pay to market failed: %v", err)
+		if err.Error() == StateMachineNextStateNotAvailable {
+			return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusBadRequest),
+				Message: err.Error()}, err
+		} else {
+			return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusInternalServerError),
+				Message: err.Error()}, err
+		}
+	}
+
 	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
 }
 

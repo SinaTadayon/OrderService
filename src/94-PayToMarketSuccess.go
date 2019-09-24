@@ -1,24 +1,11 @@
 package main
 
-import "github.com/Shopify/sarama"
+import pb "gitlab.faza.io/protos/payment"
 
-func PayToMarketSuccessMessageValidate(message *sarama.ConsumerMessage) (*sarama.ConsumerMessage, error) {
-	mess, err := CheckOrderKafkaAndMongoStatus(message, PayToMarketSuccess)
-	if err != nil {
-		return mess, err
-	}
-	return message, nil
-}
-
-func PayToMarketSuccessAction(message *sarama.ConsumerMessage) error {
-
-	err := PayToMarketSuccessProduce("", []byte{})
+func PayToMarketSuccessAction(ppr PaymentPendingRequest, req *pb.PayToMarketSuccessRequest) error {
+	err := MoveOrderToNewState("operator", req.GetDescription(), PayToMarketSuccess, "pay-to-market-success", ppr)
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func PayToMarketSuccessProduce(topic string, payload []byte) error {
 	return nil
 }
