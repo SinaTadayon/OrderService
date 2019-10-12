@@ -10,6 +10,7 @@ import (
 	validation "github.com/go-ozzo/ozzo-validation"
 )
 
+// TODO Refactoring PaymentPendingRequest, Move Status to Item, Move Buyer to Item, Add Image to Item
 type PaymentPendingRequest struct {
 	OrderNumber   string
 	PaymentDetail PaymentDetail
@@ -133,6 +134,8 @@ type ItemSeller struct {
 	Finance          ItemSellerFinance
 	Address          ItemSellerAddress
 }
+
+// TODO Add card number and account number
 type ItemSellerFinance struct {
 	Iban string
 }

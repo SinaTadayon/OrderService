@@ -7,6 +7,8 @@ func SellerApprovalPendingApproved(ppr PaymentPendingRequest) error {
 	}
 	return nil
 }
+
+// TODO: Improvement SellerApprovalPendingRejected
 func SellerApprovalPendingRejected(ppr PaymentPendingRequest, reason string) error {
 	err := MoveOrderToNewState("seller", reason, ShipmentRejectedBySeller, "shipment-rejected-by-seller", ppr)
 	if err != nil {

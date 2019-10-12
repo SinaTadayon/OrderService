@@ -2,6 +2,7 @@ package main
 
 import "github.com/Shopify/sarama"
 
+// TODO Must be implement
 func ShipmentRejectedBySellerMessageValidate(message *sarama.ConsumerMessage) (*sarama.ConsumerMessage, error) {
 	mess, err := CheckOrderKafkaAndMongoStatus(message, ShipmentRejectedBySeller)
 	if err != nil {

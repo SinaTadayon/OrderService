@@ -17,6 +17,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+// TODO: Refactoring CheckNextState
+// TODO: Refactoring CheckPreState
+
+
 const (
 	PaymentPending                = "10.payment_pending"
 	PaymentSuccess                = "11.payment_success"

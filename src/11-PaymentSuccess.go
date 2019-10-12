@@ -23,7 +23,7 @@ func PaymentSuccessAction(message *sarama.ConsumerMessage) error {
 		return err
 	}
 
-	// @TODO: remove automatic move status
+	// @TODO: remove automatic move status auto fraud detection
 	err = MoveOrderToNewState("system", "auto approval", SellerApprovalPending, "seller-approval-pending", ppr)
 	if err != nil {
 		return err

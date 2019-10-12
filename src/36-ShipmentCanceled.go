@@ -2,6 +2,7 @@ package main
 
 import pb "gitlab.faza.io/protos/payment"
 
+// TODO Improvement ShipmentCanceledActoin
 func ShipmentCanceledActoin(ppr PaymentPendingRequest, req *pb.ShipmentCanceledRequest) error {
 	err := MoveOrderToNewState(req.GetOperator(), req.GetReason(), ShipmentCanceled, "shipment-canceled", ppr)
 	if err != nil {

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"flag"
+	"github.com/Netflix/go-env"
 	"os"
 	"strings"
 	"time"
@@ -13,7 +14,6 @@ import (
 
 	"gitlab.faza.io/go-framework/logger"
 
-	"github.com/Netflix/go-env"
 	"github.com/joho/godotenv"
 )
 
@@ -32,6 +32,7 @@ const (
 	StateMachineNextStateNotAvailable = "can not go to next state"
 )
 
+// TODO Add worker scheduler and start from main
 func main() {
 	switch App.config.Kafka.ConsumerTopic {
 	case "payment-pending":

@@ -83,9 +83,15 @@ func startGrpc() {
 	}
 }
 
+// TODO Check ACL and Security with Mostafa SDK
+// TODO Check Order Owner
+// TODO: add grpc context validation for all
+// TODO: Request / Response Payment Service
+// TODO: Add notifications - SMS -farzan SDK
+// TODO: Add Product id to Add RPC Order Request / Response
+// TODO: API Server GRPC impl
 // response-error: StatusNotAcceptable, StatusInternalServerError, StatusOK
 func (PaymentServer *PaymentServer) NewOrder(ctx context.Context, req *pb.OrderPaymentRequest) (*pb.OrderResponse, error) {
-	// @TODO: add grpc context validation for all
 	ppr := PaymentPendingRequest{}
 	ppr.OrderNumber = generateOrderNumber()
 	ppr.CreatedAt = time.Now().UTC()
