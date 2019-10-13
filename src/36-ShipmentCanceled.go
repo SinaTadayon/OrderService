@@ -1,6 +1,6 @@
 package main
 
-import pb "gitlab.faza.io/protos/payment"
+import pb "gitlab.faza.io/protos/order"
 
 // TODO Improvement ShipmentCanceledActoin
 func ShipmentCanceledActoin(ppr PaymentPendingRequest, req *pb.ShipmentCanceledRequest) error {

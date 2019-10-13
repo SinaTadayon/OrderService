@@ -1,7 +1,7 @@
 package main
 
 import (
-	OrderService "gitlab.faza.io/protos/payment"
+	OrderService "gitlab.faza.io/protos/order"
 )
 
 func ShipmentPendingEnteredDetail(ppr PaymentPendingRequest, req *OrderService.ShipmentDetailRequest) error {

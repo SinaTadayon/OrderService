@@ -1,6 +1,6 @@
 package main
 
-import pb "gitlab.faza.io/protos/payment"
+import pb "gitlab.faza.io/protos/order"
 
 func ReturnShipmentCanceledActoin(ppr PaymentPendingRequest, req *pb.ReturnShipmentCanceledRequest) error {
 	err := MoveOrderToNewState("operator", req.GetReason(), ReturnShipmentCanceled, "return-shipment-canceled", ppr)

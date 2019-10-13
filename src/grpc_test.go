@@ -12,7 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	pb "gitlab.faza.io/protos/payment"
+	pb "gitlab.faza.io/protos/order"
 )
 
 func createOrderObject() *pb.OrderPaymentRequest {

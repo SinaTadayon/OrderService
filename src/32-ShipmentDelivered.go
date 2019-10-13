@@ -1,6 +1,6 @@
 package main
 
-import pb "gitlab.faza.io/protos/payment"
+import pb "gitlab.faza.io/protos/order"
 
 func ShipmentDeliveredAction(ppr PaymentPendingRequest, req *pb.ShipmentDeliveredRequest) error {
 	err := MoveOrderToNewState("buyer", "", ShipmentDelivered, "shipment-delivered", ppr)

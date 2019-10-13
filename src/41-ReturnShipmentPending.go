@@ -1,6 +1,6 @@
 package main
 
-import pb "gitlab.faza.io/protos/payment"
+import pb "gitlab.faza.io/protos/order"
 
 func ReturnShipmentPendingAction(ppr PaymentPendingRequest, req *pb.ReturnShipmentPendingRequest) error {
 	err := MoveOrderToNewState(req.GetOperator(), req.GetReason(), ReturnShipmentPending, "return-shipment-pending", ppr)

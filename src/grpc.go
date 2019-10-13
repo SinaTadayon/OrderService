@@ -10,7 +10,7 @@ import (
 	"github.com/rs/xid"
 
 	"gitlab.faza.io/go-framework/logger"
-	pb "gitlab.faza.io/protos/payment"
+	pb "gitlab.faza.io/protos/order"
 	"google.golang.org/grpc"
 )
 

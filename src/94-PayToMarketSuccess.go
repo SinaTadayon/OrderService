@@ -1,6 +1,6 @@
 package main
 
-import pb "gitlab.faza.io/protos/payment"
+import pb "gitlab.faza.io/protos/order"
 
 func PayToMarketSuccessAction(ppr PaymentPendingRequest, req *pb.PayToMarketSuccessRequest) error {
 	err := MoveOrderToNewState("operator", req.GetDescription(), PayToMarketSuccess, "pay-to-market-success", ppr)

@@ -1,7 +1,7 @@
 package main
 
 import (
-	pb "gitlab.faza.io/protos/payment"
+	pb "gitlab.faza.io/protos/order"
 )
 
 func ReturnShipmentDeliveredGrpcAction(ppr PaymentPendingRequest, req *pb.ReturnShipmentSuccessRequest) error {
