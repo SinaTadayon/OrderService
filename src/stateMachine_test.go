@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"gitlab.faza.io/order-project/order-service/steps"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -114,9 +115,9 @@ func TestCheckPrevStep_AssertFalse(t *testing.T) {
 	assert.False(t, CheckNextState(currentStep, nextStep))
 }
 func TestNotifySellerForNewOrder(t *testing.T) {
-	ppr := PaymentPendingRequest{}
-	item := Item{
-		Seller: ItemSeller{
+	ppr := steps.PaymentPendingRequest{}
+	item := steps.Item{
+		Seller: steps.ItemSeller{
 			Email:  "farzan.dalaee@gmail.com",
 			Mobile: "+989121938710",
 			Title:  "Faza.IO",

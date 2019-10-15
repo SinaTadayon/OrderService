@@ -1,47 +1,47 @@
 syntax = "proto3";
 
-package OrderService;
+package ordersrv;
+
+import "general/message.proto";
 
 service OrderService {
-    rpc NewOrder (OrderPaymentRequest) returns (OrderResponse);
-    rpc SellerApprovalPending (ApprovalRequest) returns (Response);
-    rpc ShipmentDetail (ShipmentDetailRequest) returns (Response);
-    rpc BuyerCancel (BuyerCancelRequest) returns (Response);
-    rpc ShipmentDelivered (ShipmentDeliveredRequest) returns (Response);
-    rpc ShipmentDeliveryDelayed (ShipmentDeliveryDelayedRequest) returns (Response);
-    rpc ReturnShipmentDeliveryDelayed (ReturnShipmentDeliveryDelayedRequest) returns (Response);
-    rpc ShipmentCanceled (ShipmentCanceledRequest) returns (Response);
-    rpc ReturnShipmentCanceled (ReturnShipmentCanceledRequest) returns (Response);
-    rpc ShipmentDeliveryProblem (ShipmentDeliveryProblemRequest) returns (Response);
-    rpc ReturnShipmentDeliveryProblem (ReturnShipmentDeliveryProblemRequest) returns (Response);
-    rpc ShipmentSuccess (ShipmentSuccessRequest) returns (Response);
-    rpc ReturnShipmentPending (ReturnShipmentPendingRequest) returns (Response);
-    rpc ReturnShipmentDetail (ReturnShipmentDetailRequest) returns (Response);
-    rpc ReturnShipmentDelivered (ReturnShipmentDeliveredRequest) returns (Response);
-    rpc ReturnShipmentSuccess (ReturnShipmentSuccessRequest) returns (Response);
-    rpc PayToBuyerSuccess (PayToBuyerSuccessRequest) returns (Response);
-    rpc PayToSellerSuccess (PayToSellerSuccessRequest) returns (Response);
-    rpc PayToMarketSuccess (PayToMarketSuccessRequest) returns (Response);
+    rpc OrderRequestsHandler(message.Request) returns (message.Response);
+
+//    rpc NewOrder (OrderPaymentRequest) returns (OrderResponse);
+//    rpc SellerApprovalPending (ApprovalRequest) returns (Response);
+//    rpc ShipmentDetail (ShipmentDetailRequest) returns (Response);
+//    rpc BuyerCancel (BuyerCancelRequest) returns (Response);
+//    rpc ShipmentDelivered (ShipmentDeliveredRequest) returns (Response);
+//    rpc ShipmentDeliveryDelayed (ShipmentDeliveryDelayedRequest) returns (Response);
+//    rpc ReturnShipmentDeliveryDelayed (ReturnShipmentDeliveryDelayedRequest) returns (Response);
+//    rpc ShipmentCanceled (ShipmentCanceledRequest) returns (Response);
+//    rpc ReturnShipmentCanceled (ReturnShipmentCanceledRequest) returns (Response);
+//    rpc ShipmentDeliveryProblem (ShipmentDeliveryProblemRequest) returns (Response);
+//    rpc ReturnShipmentDeliveryProblem (ReturnShipmentDeliveryProblemRequest) returns (Response);
+//    rpc ShipmentSuccess (ShipmentSuccessRequest) returns (Response);
+//    rpc ReturnShipmentPending (ReturnShipmentPendingRequest) returns (Response);
+//    rpc ReturnShipmentDetail (ReturnShipmentDetailRequest) returns (Response);
+//    rpc ReturnShipmentDelivered (ReturnShipmentDeliveredRequest) returns (Response);
+//    rpc ReturnShipmentSuccess (ReturnShipmentSuccessRequest) returns (Response);
+//    rpc PayToBuyerSuccess (PayToBuyerSuccessRequest) returns (Response);
+//    rpc PayToSellerSuccess (PayToSellerSuccessRequest) returns (Response);
+//    rpc PayToMarketSuccess (PayToMarketSuccessRequest) returns (Response);
 }
-// NewOrder Start
-message OrderResponse {
-    string orderNumber = 1;
-    string status = 2;
-    string redirectUrl = 3;
+
+message NewOrderRequest {
+    Buyer buyer = 1;
+    Amount amount = 2;
+    repeated Item items = 3;
 }
-message OrderPaymentRequest {
-    string orderNumber = 1;
-    Buyer buyer = 2;
-    Amount amount = 3;
-    repeated Item items = 4;
-}
+
 message Amount {
-    float total = 1;
-    float payable = 2;
-    float discount = 3;
+    int64 total = 1;
+    int64 payable = 2;
+    int64 discount = 3;
 }
+
 message Item {
-    string sku = 1;
+    string productId = 1;
     int32 quantity = 2;
     string title = 3;
     string brand = 4;
@@ -51,6 +51,7 @@ message Item {
     ItemPrice price = 8;
     ItemShipment shipment = 9;
 }
+
 message Buyer {
     string firstName = 1;
     string lastName = 2;
@@ -62,11 +63,14 @@ message Buyer {
     BuyerFinance finance = 8;
     BuyerAddress address = 9;
 }
+
 message BuyerFinance {
     string iban = 1;
-    string cartNumber = 2;
-    string bankName = 3;
+    string cardNumber = 2;
+    string accountNumber = 3;
+    string bankName = 4;
 }
+
 message BuyerAddress {
     string title = 1;
     string address = 2;
@@ -78,6 +82,7 @@ message BuyerAddress {
     string lan = 8;
     string zipCode = 9;
 }
+
 message ItemSeller {
     string title = 1;
     string firstName = 2;
@@ -91,9 +96,14 @@ message ItemSeller {
     ItemSellerFinance finance = 10;
     ItemSellerAddress address = 11;
 }
+
 message ItemSellerFinance {
     string iban = 1;
+    string cardNumber = 2;
+    string accountNumber = 3;
+    string bankName = 4;
 }
+
 message ItemSellerAddress {
     string title = 1;
     string address = 2;
@@ -105,110 +115,123 @@ message ItemSellerAddress {
     string lan = 8;
     string zipCode = 9;
 }
+
 message ItemPrice {
-    float unit = 1;
-    float total = 2;
-    float payable = 3;
-    float discount = 4;
-    float sellerCommission = 5;
+    int64 unit = 1;
+    int64 total = 2;
+    int64 payable = 3;
+    int64 discount = 4;
+    int64 sellerCommission = 5;
 }
+
 message ItemShipment {
     string providerName = 1;
-    int32 reactionTime = 2;
-    int32 shippingTime = 3;
-    int32 returnTime = 4;
+    int64 reactionTime = 2;
+    int64 shippingTime = 3;
+    int64 returnTime = 4;
     string shipmentDetail = 5;
 }
-// NewOrder End
 
 // SellerApprovalPending Start
 message ApprovalRequest {
-    string orderNumber = 1;
-    bool approval = 2;
-    string reason = 3;
+    bool approval = 1;
+    string reason = 2;
 }
-message Response {
-    string orderNumber = 1;
-    string status = 2;
-    string message = 3;
-}
+
+//message Response {
+//    string orderNumber = 1;
+//    string status = 2;
+//    string message = 3;
+//}
 // SellerApprovalPending End
 
 message ShipmentDetailRequest {
-    string orderNumber = 1;
-    string shipmentProvider = 2;
-    string shipmentTrackingNumber = 3;
-    string description = 4;
-    string image = 5;
+    string shipmentProvider = 1;
+    string shipmentTrackingNumber = 2;
+    string description = 3;
+    string image = 4;
 }
 
 message BuyerCancelRequest {
-    string orderNumber = 1;
-    string reason = 2;
+    string reason = 1;
 }
 
 message ShipmentDeliveredRequest {
-    string orderNumber = 1;
+//    string orderNumber = 1;
 }
+
 message ReturnShipmentDeliveredRequest {
-    string orderNumber = 1;
-    string operator = 2;
-    string reason = 3;
+    string operator = 1;
+    string reason = 2;
 }
+
 message ShipmentDeliveryDelayedRequest {
-    string orderNumber = 1;
+//    string orderNumber = 1;
 }
+
 message ReturnShipmentDeliveryDelayedRequest {
-    string orderNumber = 1;
+//    string orderNumber = 1;
 }
+
 message ShipmentCanceledRequest {
-    string orderNumber = 1;
-    string reason = 2;
-    string operator = 3;
+//    string orderNumber = 1;
+    string reason = 1;
+    string operator = 2;
 }
+
 message ReturnShipmentCanceledRequest {
-    string orderNumber = 1;
-    string reason = 2;
+//    string orderNumber = 1;
+    string reason = 1;
 }
+
 message ShipmentDeliveryProblem {
-    string orderNumber = 1;
-    string reason = 2;
+//    string orderNumber = 1;
+    string reason = 1;
 }
+
 message ShipmentDeliveryProblemRequest {
-    string orderNumber = 1;
-    string reason = 2;
+//    string orderNumber = 1;
+    string reason = 1;
 }
+
 message ReturnShipmentDeliveryProblemRequest {
-    string orderNumber = 1;
-    string reason = 2;
+//    string orderNumber = 1;
+    string reason = 1;
 }
+
 message ShipmentSuccessRequest {
-    string orderNumber = 1;
+//    string orderNumber = 1;
 }
+
 message ReturnShipmentSuccessRequest {
-    string orderNumber = 1;
+//    string orderNumber = 1;
 }
+
 message ReturnShipmentPendingRequest {
-    string orderNumber = 1;
-    string reason = 2;
-    string operator = 3;
+//    string orderNumber = 1;
+    string reason = 1;
+    string operator = 2;
 }
+
 message ReturnShipmentDetailRequest {
-    string orderNumber = 1;
-    string shipmentProvider = 2;
-    string shipmentTrackingNumber = 3;
-    string description = 4;
-    string image = 5;
+//    string orderNumber = 1;
+    string shipmentProvider = 1;
+    string shipmentTrackingNumber = 2;
+    string description = 3;
+    string image = 4;
 }
+
 message PayToBuyerSuccessRequest {
-    string orderNumber = 1;
-    string description = 2;
+//    string orderNumber = 1;
+    string description = 1;
 }
+
 message PayToSellerSuccessRequest {
-    string orderNumber = 1;
-    string description = 2;
+//    string orderNumber = 1;
+    string description = 1;
 }
+
 message PayToMarketSuccessRequest {
-    string orderNumber = 1;
-    string description = 2;
+//    string orderNumber = 1;
+    string description = 1;
 }

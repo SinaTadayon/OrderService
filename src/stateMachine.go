@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"gitlab.faza.io/order-project/order-service/steps"
 	"io/ioutil"
 	"os"
 	"time"
@@ -99,8 +100,8 @@ func CheckPrevState(currentStep, prevStep string) bool {
 	return false
 }
 func CheckOrderKafkaAndMongoStatus(message *sarama.ConsumerMessage, currentStatus string) (*sarama.ConsumerMessage, error) {
-	pprKafka := PaymentPendingRequest{}
-	pprMongo := PaymentPendingRequest{}
+	pprKafka := steps.PaymentPendingRequest{}
+	pprMongo := steps.PaymentPendingRequest{}
 	err := json.Unmarshal(message.Value, &pprKafka)
 	if err != nil {
 		return message, err
@@ -117,7 +118,7 @@ func CheckOrderKafkaAndMongoStatus(message *sarama.ConsumerMessage, currentStatu
 
 	return message, nil
 }
-func UpdateOrderMongo(ppr PaymentPendingRequest) error {
+func UpdateOrderMongo(ppr steps.PaymentPendingRequest) error {
 	res, err := App.mongo.UpdateOne(MongoDB, Orders,
 		bson.D{{"ordernumber", ppr.OrderNumber}}, bson.D{{"$set", ppr}})
 	if err != nil {
@@ -127,16 +128,16 @@ func UpdateOrderMongo(ppr PaymentPendingRequest) error {
 	}
 	return nil
 }
-func GetOrder(orderNumber string) (PaymentPendingRequest, error) {
-	ppr := PaymentPendingRequest{}
+func GetOrder(orderNumber string) (steps.PaymentPendingRequest, error) {
+	ppr := steps.PaymentPendingRequest{}
 	res := App.mongo.FindOne(MongoDB, Orders, bson.D{{"ordernumber", orderNumber}})
 	err := res.Decode(&ppr)
 	if err != nil {
-		return PaymentPendingRequest{}, err
+		return steps.PaymentPendingRequest{}, err
 	}
 	return ppr, nil
 }
-func NotifySellerForNewOrder(ppr PaymentPendingRequest) error {
+func NotifySellerForNewOrder(ppr steps.PaymentPendingRequest) error {
 	var dir string
 	// @TODO: add to readme
 	if os.Getenv("APP_ENV") == "dev" {
@@ -144,9 +145,9 @@ func NotifySellerForNewOrder(ppr PaymentPendingRequest) error {
 		if err != nil {
 			return err
 		}
-		dir = curr + "/testdata/notification/email/" + App.config.App.EmailTemplateNotifySellerForNewOrder
+		dir = curr + "/testdata/notification/email/" + App.Config.App.EmailTemplateNotifySellerForNewOrder
 	} else {
-		dir = "/shared/notification/email/" + App.config.App.EmailTemplateNotifySellerForNewOrder
+		dir = "/shared/notification/email/" + App.Config.App.EmailTemplateNotifySellerForNewOrder
 	}
 
 	emailBody, err := ioutil.ReadFile(dir)
@@ -417,14 +418,14 @@ func generateSM() *StateMachine {
 	return SM
 }
 
-func MoveOrderToNewState(agent, reason, nextState, topic string, ppr PaymentPendingRequest) error {
+func MoveOrderToNewState(agent, reason, nextState, topic string, ppr steps.PaymentPendingRequest) error {
 	if !CheckNextState(ppr.Status.Current, nextState) {
 		logger.Audit(ppr.Status.Current, nextState)
 		return errors.New(StateMachineNextStateNotAvailable + "from " + ppr.Status.Current + " --> " + nextState)
 	}
 	pprOld := ppr
 
-	statusHistory := StatusHistory{
+	statusHistory := steps.StatusHistory{
 		Status:    nextState,
 		CreatedAt: time.Now().UTC(),
 		Agent:     agent,

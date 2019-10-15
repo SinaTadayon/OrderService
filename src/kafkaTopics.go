@@ -12,18 +12,18 @@ import (
 )
 
 func initTopics() error {
-	partition, err := strconv.Atoi(App.config.Kafka.Partition)
+	partition, err := strconv.Atoi(App.Config.Kafka.Partition)
 	if err != nil {
 		return err
 	}
-	replica, err := strconv.Atoi(App.config.Kafka.Replica)
+	replica, err := strconv.Atoi(App.Config.Kafka.Replica)
 	if err != nil {
 		return err
 	}
 
 	err = kafkaadapter.CreateTopic(brokers[0],
-		App.config.Kafka.ConsumerTopic,
-		int32(partition), int16(replica))
+		App.Config.Kafka.ConsumerTopic,
+		int(partition), int16(replica))
 	if err != nil {
 		if err.Error() != sarama.ErrTopicAlreadyExists.Error() {
 			logger.Audit(err.Error())

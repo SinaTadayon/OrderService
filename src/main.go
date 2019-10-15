@@ -1,9 +1,7 @@
 package main
 
 import (
-	"errors"
-	"flag"
-	"github.com/Netflix/go-env"
+	"gitlab.faza.io/order-project/order-service/configs"
 	"os"
 	"strings"
 	"time"
@@ -14,11 +12,11 @@ import (
 
 	"gitlab.faza.io/go-framework/logger"
 
-	"github.com/joho/godotenv"
+	_ "github.com/devfeel/mapper"
 )
 
 var App struct {
-	config configuration
+	config *configs.Cfg
 	mongo  *mongoadapter.Mongo
 	kafka  *kafkaadapter.Kafka
 }
@@ -34,25 +32,32 @@ const (
 
 // TODO Add worker scheduler and start from main
 func main() {
-	switch App.config.Kafka.ConsumerTopic {
-	case "payment-pending":
-		logger.Audit("starting grpc ...")
-		startGrpc()
-	case "payment-success":
-		logger.Audit("starting " + App.config.Kafka.ConsumerTopic)
-		startPaymentSuccess(App.config.Kafka.Version, App.config.Kafka.ConsumerTopic)
-	case "seller-approval-pending":
-		logger.Audit("starting " + App.config.Kafka.ConsumerTopic)
-		startGrpc()
-	default:
-		logger.Err("consumer topic env is wrong:" + App.config.Kafka.ConsumerTopic)
-	}
+	//switch App.Cfg.Kafka.ConsumerTopic {
+	//case "payment-pending":
+	//	logger.Audit("starting grpc ...")
+	//	grpcserver.startGrpc()
+	//case "payment-success":
+	//	logger.Audit("starting " + App.Cfg.Kafka.ConsumerTopic)
+	//	startPaymentSuccess(App.Cfg.Kafka.Version, App.Cfg.Kafka.ConsumerTopic)
+	//case "seller-approval-pending":
+	//	logger.Audit("starting " + App.Cfg.Kafka.ConsumerTopic)
+	//	grpcserver.startGrpc()
+	//default:
+	//	logger.Err("consumer topic env is wrong:" + App.Cfg.Kafka.ConsumerTopic)
+	//}
 }
 
 func init() {
-	err := LoadConfig()
+	var err error
+	App.config, err = configs.LoadConfig()
 	if err != nil {
 		logger.Err(err.Error())
+	}
+
+	brokers = strings.Split(App.config.Kafka.Brokers, ",")
+	if App.config.App.Port == "" {
+		logger.Err("grpc PORT env not defined")
+		//return errors.New("grpc PORT env not defined")
 	}
 
 	// store in mongo
@@ -60,7 +65,7 @@ func init() {
 		Host:     App.config.Mongo.Host,
 		Port:     App.config.Mongo.Port,
 		Username: App.config.Mongo.User,
-		//Password:     App.config.Mongo.Pass,
+		//Password:     App.Cfg.Mongo.Pass,
 		ConnTimeout:  time.Duration(App.config.Mongo.ConnectionTimeout),
 		ReadTimeout:  time.Duration(App.config.Mongo.ReadTimeout),
 		WriteTimeout: time.Duration(App.config.Mongo.WriteTimeout),
@@ -82,31 +87,3 @@ func init() {
 	}
 }
 
-func LoadConfig() error {
-	if os.Getenv("APP_ENV") == "dev" {
-		if flag.Lookup("test.v") != nil {
-			// test mode
-			err := godotenv.Load("testdata/.env")
-			if err != nil {
-				logger.Err("Error loading testdata .env file")
-			}
-		} else {
-			err := godotenv.Load(".env")
-			if err != nil {
-				logger.Err("Error loading .env file")
-			}
-		}
-	}
-
-	// Get environment variables for config
-	_, err := env.UnmarshalFromEnviron(&App.config)
-	if err != nil {
-		return err
-	}
-	brokers = strings.Split(App.config.Kafka.Brokers, ",")
-	if App.config.App.Port == "" {
-		logger.Err("grpc PORT env not defined")
-		return errors.New("grpc PORT env not defined")
-	}
-	return nil
-}

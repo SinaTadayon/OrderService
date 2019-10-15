@@ -1,0 +1,45 @@
+{
+  "id" : "",
+  "time": 1234567788,
+  "meta" : {
+    "page": 1,
+    "perPage": 20,
+    "sorts" : [
+      {
+        "name" : "name",
+        "direction" : 0
+      },
+      {
+        "name" : "mobile",
+        "direction" : 1
+      }
+    ],
+    "filters": {
+      "or": [
+        {
+          "name"  : "mobile",
+          "opt"   : "like",
+          "values" : ["0912"]
+        },
+        {
+          "name"  : "name",
+          "opt"   : "eq",
+          "values" : ["bob"]
+        }
+      ],
+      "and": [
+        {
+          "name"  : "mobile",
+          "opt"   : "not",
+          "values" : ["09124353432"]
+        },
+        {
+          "name"  : "name",
+          "opt"   : "eq",
+          "values" : ["bob"]
+        }
+      ]
+    }
+  },
+  "Data" : {}
+}
