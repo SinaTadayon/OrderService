@@ -15,21 +15,21 @@ type Cfg struct {
 		EmailTemplateNotifySellerForNewOrder string `env:"EMAIL_TMP_NOTIFY_SELLER_FOR_NEW_ORDER"`
 	}
 	Kafka struct {
-		Version       string `env:"PAYMENT_KAFKA_VERSION"`
-		Brokers       string `env:"PAYMENT_KAFKA_BROKERS"`
-		ConsumerTopic string `env:"PAYMENT_KAFKA_CONSUMER_TOPIC"`
-		ConsumerGroup string `env:"PAYMENT_KAFKA_CONSUMER_GROUP"`
-		Partition     string `env:"PAYMENT_KAFKA_PARTITION"`
-		Replica       string `env:"PAYMENT_KAFKA_REPLICA"`
+		Version       string `env:"ORDER_SERVICE_KAFKA_VERSION"`
+		Brokers       string `env:"ORDER_SERVICE_KAFKA_BROKERS"`
+		ConsumerTopic string `env:"ORDER_SERVICE_KAFKA_CONSUMER_TOPIC"`
+		ConsumerGroup string `env:"ORDER_SERVICE_KAFKA_CONSUMER_GROUP"`
+		Partition     string `env:"ORDER_SERVICE_KAFKA_PARTITION"`
+		Replica       string `env:"ORDER_SERVICE_KAFKA_REPLICA"`
 	}
 	Mongo struct {
-		User              string `env:"PAYMENT_MONGO_USER"`
-		Pass              string `env:"PAYMENT_MONGO_PASS"`
-		Host              string `env:"PAYMENT_MONGO_HOST"`
-		Port              int    `env:"PAYMENT_MONGO_PORT"`
-		ConnectionTimeout int    `env:"PAYMENT_MONGO_CONN_TIMEOUT"`
-		ReadTimeout       int    `env:"PAYMENT_MONGO_READ_TIMEOUT"`
-		WriteTimeout      int    `env:"PAYMENT_MONGO_WRITE_TIMEOUT"`
+		User              string `env:"ORDER_SERVICE_MONGO_USER"`
+		Pass              string `env:"ORDER_SERVICE_MONGO_PASS"`
+		Host              string `env:"ORDER_SERVICE_MONGO_HOST"`
+		Port              int    `env:"ORDER_SERVICE_MONGO_PORT"`
+		ConnectionTimeout int    `env:"ORDER_SERVICE_MONGO_CONN_TIMEOUT"`
+		ReadTimeout       int    `env:"ORDER_SERVICE_MONGO_READ_TIMEOUT"`
+		WriteTimeout      int    `env:"ORDER_SERVICE_MONGO_WRITE_TIMEOUT"`
 	}
 }
 
@@ -54,6 +54,22 @@ func LoadConfig() (*Cfg, error) {
 	_, err := env.UnmarshalFromEnviron(config)
 	if err != nil {
 		return nil, err
+	}
+
+	return config, nil
+}
+
+func LoadConfigWithPath(path string) (*Cfg, error) {
+	var config = &Cfg{}
+	err := godotenv.Load(path)
+	if err != nil {
+		logger.Err("Error loading .env file")
+	}
+
+	// Get environment variables for Cfg
+	_, err1 := env.UnmarshalFromEnviron(config)
+	if err1 != nil {
+		return nil, err1
 	}
 
 	return config, nil

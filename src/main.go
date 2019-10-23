@@ -75,7 +75,7 @@ func init() {
 	if err != nil {
 		logger.Err("New Mongo: %v", err.Error())
 	}
-	_, err = App.mongo.AddUniqueIndex(MongoDB, Orders, "ordernumber")
+	_, err = App.mongo.AddUniqueIndex(MongoDB, Orders, "orderId")
 	if err != nil {
 		logger.Err(err.Error())
 	}

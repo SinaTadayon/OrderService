@@ -9,13 +9,11 @@ import (
 	//"net/http"
 	//"time"
 
-	"github.com/rs/xid"
-
+	_ "github.com/devfeel/mapper"
 	"gitlab.faza.io/go-framework/logger"
 	pb "gitlab.faza.io/protos/order"
 	"gitlab.faza.io/protos/order/general"
 	"google.golang.org/grpc"
-	_ "github.com/devfeel/mapper"
 )
 
 type OrderServer struct{
@@ -771,8 +769,3 @@ func startGrpc(port string) {
 //
 //	return &pb.Response{OrderNumber: req.OrderNumber, Status: string(http.StatusOK)}, nil
 //}
-
-func generateOrderNumber() string {
-	id := xid.New()
-	return id.String()
-}

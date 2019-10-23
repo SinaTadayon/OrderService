@@ -1,13 +1,18 @@
 package entities
 
 import (
+	//"github.com/google/uuid"
+	//"github.com/rs/xid"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
 
-// TODO check lat and long data type for mongodb
+//type ObjectId struct {
+//	ID 	primitive.ObjectID `bson:"_id"`
+//}
+
 type Order struct {
-	ID           			primitive.ObjectID  `bson:"_id"`
+	ID           			primitive.ObjectID  `bson:"-"`
 	OrderId        			string				`bson:"orderId"`
 	PaymentService 			[]PaymentService	`bson:"paymentService"`
 	SystemPayment  			SystemPayment		`bson:"systemPayment"`
@@ -15,7 +20,8 @@ type Order struct {
 	Amount         			Amount				`bson:"amount"`
 	Items          			[]Item				`bson:"items"`
 	CreatedAt      			time.Time			`bson:"createdAt"`
-	DeletedAt      			time.Time			`bson:"deletedAt"`
+	UpdatedAt      			time.Time			`bson:"updatedAt"`
+	DeletedAt      			*time.Time			`bson:"deletedAt"`
 }
 
 type ShipmentDetails struct {
@@ -49,7 +55,7 @@ type OrderStep struct {
 
 type StepHistory struct {
 	Name    			string				`bson:"name"`
-	Index				string				`bson:"index"`
+	Index				int					`bson:"index"`
 	CreatedAt 			time.Time			`bson:"createdAt"`
 	StatesHistory		[]State				`bson:"statesHistory"`
 }
@@ -82,7 +88,7 @@ type Action struct {
 type PaymentService struct {
 	PaymentRequest  PaymentRequest  		`bson:"paymentRequest"`
 	PaymentResponse PaymentResponse 		`bson:"paymentResponse"`
-	PaymentResult   PaymentResult   		`bson:"paymentResult"`	
+	PaymentResult   PaymentResult   		`bson:"paymentResult"`
 }
 
 type PaymentRequest struct {
@@ -154,7 +160,7 @@ type Item struct {
 	Categories      	string 					`bson:"categories"`
 	Image           	string 					`bson:"image"`
 	Returnable      	bool   					`bson:"returnable"`
-	DeletedAt			time.Time				`bson:"deletedAt"`
+	DeletedAt			*time.Time				`bson:"deletedAt"`
 	BuyerInfo       	BuyerInfo  				`bson:"buyerInfo"`
 	SellerInfo      	SellerInfo 				`bson:"sellerInfo"`
 	PriceInfo       	PriceInfo				`bson:"priceInfo"`
@@ -190,7 +196,13 @@ type AddressInfo struct {
 	State   			string					`bson:"state"`
 	Lat     			string					`bson:"lat"`
 	Lan     			string					`bson:"lan"`
-	ZipCode 			string					`bson:"zipCode"`	
+	Location			Location				`bson:"location"`
+	ZipCode 			string					`bson:"zipCode"`
+}
+
+type Location struct {
+	Type string    				`bson:"type"`
+	Coordinates []float64 		`bson:"coordinates"`
 }
 
 type SellerInfo struct {
@@ -219,8 +231,23 @@ type PriceInfo struct {
 // Time unit hours
 type ShipmentSpecInfo struct {
 	ProviderName   		string					`bson:"providerName"`
-	ReactionTime   		int64					`bson:"reactionTime"`
-	ShippingTime   		int64					`bson:"shippingTime"`
-	ReturnTime     		int64					`bson:"returnTime"`	
-	ShipmentDetail 		string					`bson:"shipmentDetail"`
+	ReactionTime   		int						`bson:"reactionTime"`
+	ShippingTime   		int						`bson:"shippingTime"`
+	ReturnTime     		int						`bson:"returnTime"`
+	Details 			string					`bson:"Details"`
+}
+
+func (order Order) IsIdEmpty() bool {
+	for _, v := range order.ID {
+		if v != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func GenerateOrderId() string {
+	//id := xid.New()
+	//return id.String()
+	return ""
 }
