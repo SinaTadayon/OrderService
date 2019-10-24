@@ -7,7 +7,6 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	listener_state "gitlab.faza.io/order-project/order-service/domain/states/listener"
-	"gitlab.faza.io/order-project/order-service/domain/steps"
 )
 
 const (
@@ -32,7 +31,7 @@ func NewFrom(base *listener_state.BaseListenerImpl) listener_state.IListenerStat
 	return &sellerActionListener{base}
 }
 
-func NewValueOf(base *listener_state.BaseListenerImpl, params ...interface{}) steps.IStep {
+func NewValueOf(base *listener_state.BaseListenerImpl, params ...interface{}) listener_state.IListenerState {
 	panic("implementation required")
 }
 

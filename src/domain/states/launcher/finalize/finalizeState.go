@@ -7,7 +7,6 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/domain/states/launcher"
-	"gitlab.faza.io/order-project/order-service/domain/steps"
 )
 
 const (
@@ -33,7 +32,7 @@ func NewFrom(base *launcher_state.BaseLauncherImpl) launcher_state.ILauncherStat
 	return &finalizeActionLauncher{base}
 }
 
-func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) steps.IStep {
+func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) launcher_state.ILauncherState {
 	panic("implementation required")
 }
 

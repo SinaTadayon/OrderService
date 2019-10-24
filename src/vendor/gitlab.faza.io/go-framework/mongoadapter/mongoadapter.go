@@ -23,9 +23,12 @@ type MongoConfig struct {
 	Port int
 	Username string
 	Password string
-	ConnTimeout time.Duration
-	ReadTimeout time.Duration
-	WriteTimeout time.Duration
+	ConnTimeout 	time.Duration
+	ReadTimeout 	time.Duration
+	WriteTimeout 	time.Duration
+	MaxConnIdleTime	time.Duration
+	MaxPoolSize		uint64
+	MinPoolSize		uint64
 }
 
 type Mongo struct {
@@ -86,6 +89,20 @@ func NewMongo(Config *MongoConfig) (*Mongo, error) {
 		var uid = xid.New()
 		var mongoUri = fmt.Sprintf("mongodb://%v%v:%v", auth, Config.Host, Config.Port)
 		clientOptions := options.Client().ApplyURI(mongoUri)
+
+		if Config.MaxConnIdleTime != 0 {
+			maxConnIdleTime := Config.MaxConnIdleTime * time.Millisecond
+			clientOptions.MaxConnIdleTime = &maxConnIdleTime
+		}
+
+		if Config.MaxPoolSize != 0 {
+			clientOptions.MaxPoolSize = &Config.MaxPoolSize
+		}
+
+		if Config.MinPoolSize != 0 {
+			clientOptions.MinPoolSize = &Config.MinPoolSize
+		}
+
 		client, err := mongo.Connect(ctx, clientOptions)
 
 		if err != nil {
@@ -105,6 +122,7 @@ func NewMongo(Config *MongoConfig) (*Mongo, error) {
 		if Config.ReadTimeout == 0 {
 			Config.ReadTimeout = 5
 		}
+
 		if Config.WriteTimeout == 0 {
 			Config.WriteTimeout = 5
 		}

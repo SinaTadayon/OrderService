@@ -34,7 +34,7 @@ func NewFrom(base *launcher_state.BaseLauncherImpl, actionStepMap map[actions.IE
 	return &nextToStepActionLauncher{base, actionStepMap}
 }
 
-func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) steps.IStep {
+func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) launcher_state.ILauncherState {
 	panic("implementation required")
 }
 
