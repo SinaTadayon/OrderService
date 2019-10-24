@@ -40,6 +40,9 @@ func NewOrderRepository(config *configs.Cfg) (IOrderRepository, error) {
 		ConnTimeout:  time.Duration(config.Mongo.ConnectionTimeout),
 		ReadTimeout:  time.Duration(config.Mongo.ReadTimeout),
 		WriteTimeout: time.Duration(config.Mongo.WriteTimeout),
+		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime),
+		MaxPoolSize: uint64(config.Mongo.MaxPoolSize),
+		MinPoolSize: uint64(config.Mongo.MinPoolSize),
 	}
 
 	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
@@ -60,15 +63,21 @@ func (repo iOrderRepositoryImpl) Save(order entities.Order) (*entities.Order, er
 
 	if len(order.OrderId) == 0 {
 		order.OrderId = entities.GenerateOrderId()
-		order.CreatedAt = time.Now()
-		order.UpdatedAt = time.Now()
+		order.CreatedAt = time.Now().UTC()
+		order.UpdatedAt = time.Now().UTC()
 		var insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, order)
 		if err != nil {
-			return nil, err
+			if repo.mongoAdapter.IsDupError(err) {
+				for repo.mongoAdapter.IsDupError(err) {
+					insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, order)
+				}
+			} else {
+				return nil, err
+			}
 		}
 		order.ID = insertOneResult.InsertedID.(primitive.ObjectID)
 	} else {
-		order.UpdatedAt = time.Now()
+		order.UpdatedAt = time.Now().UTC()
 		var updateResult, err = repo.mongoAdapter.UpdateOne(databaseName, collectionName, bson.D{{"orderId", order.OrderId},{"deletedAt", nil}},
 			bson.D{{"$set", order}})
 		if err != nil {
@@ -92,8 +101,8 @@ func (repo iOrderRepositoryImpl) Insert(order entities.Order) (*entities.Order, 
 		order.OrderId = entities.GenerateOrderId()
 	}
 
-	order.CreatedAt = time.Now()
-	order.UpdatedAt = time.Now()
+	order.CreatedAt = time.Now().UTC()
+	order.UpdatedAt = time.Now().UTC()
 	var insertOneResult, err= repo.mongoAdapter.InsertOne(databaseName, collectionName, order)
 	if err != nil {
 		return nil, err
@@ -526,7 +535,7 @@ func (repo iOrderRepositoryImpl) DeleteById(orderId string) (*entities.Order, er
 		return nil, err
 	}
 
-	deletedAt := time.Now().UTC()
+	deletedAt := time.Now().UTC().UTC()
 	order.DeletedAt = &deletedAt
 	updateResult, err := repo.mongoAdapter.UpdateOne(databaseName, collectionName,
 					bson.D{{"orderId", order.OrderId},{"deletedAt", nil}},
@@ -552,7 +561,7 @@ func (repo iOrderRepositoryImpl) DeleteAllWithOrders([]entities.Order) error {
 
 func (repo iOrderRepositoryImpl) DeleteAll() error {
 	 _, err := repo.mongoAdapter.UpdateMany(databaseName, collectionName, bson.D{{"deletedAt", nil}},
-					bson.M{"$set": bson.M{"deletedAt": time.Now().UTC()}})
+					bson.M{"$set": bson.M{"deletedAt": time.Now().UTC().UTC()}})
 	 if err != nil {
 	 	return err
 	 }

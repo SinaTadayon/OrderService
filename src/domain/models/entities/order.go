@@ -1,8 +1,8 @@
 package entities
 
 import (
-	//"github.com/google/uuid"
-	//"github.com/rs/xid"
+	"github.com/google/uuid"
+	"strconv"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
@@ -194,8 +194,6 @@ type AddressInfo struct {
 	Country 			string					`bson:"country"`
 	City    			string					`bson:"city"`
 	State   			string					`bson:"state"`
-	Lat     			string					`bson:"lat"`
-	Lan     			string					`bson:"lan"`
 	Location			Location				`bson:"location"`
 	ZipCode 			string					`bson:"zipCode"`
 }
@@ -247,7 +245,24 @@ func (order Order) IsIdEmpty() bool {
 }
 
 func GenerateOrderId() string {
-	//id := xid.New()
-	//return id.String()
-	return ""
+	var err error
+	var bytes []byte
+	var orderId uint32
+	bytes, err = uuid.New().MarshalBinary()
+	for {
+		bytes, err = uuid.New().MarshalBinary()
+		if err == nil {
+			orderId = byteToHash(bytes)
+			break
+		}
+	}
+	return strconv.FormatUint(uint64(orderId), 10)
+}
+
+func byteToHash(bytes []byte) uint32 {
+	var h uint32 = 0
+	for _, val := range bytes {
+		h = 31 * h + uint32(val & 0xff)
+	}
+	return h
 }

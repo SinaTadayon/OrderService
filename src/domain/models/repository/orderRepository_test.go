@@ -6,6 +6,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"go.mongodb.org/mongo-driver/bson"
+	"os"
 	"testing"
 	"time"
 )
@@ -15,7 +16,14 @@ var orderRepository IOrderRepository
 
 func init() {
 	var err error
-	config, err = configs.LoadConfigWithPath("../../../testdata/.env")
+	var path string
+	if os.Getenv("APP_ENV") == "dev" {
+		path = "../../../testdata/.env"
+	} else {
+		path = ""
+	}
+
+	config, err = configs.LoadConfig(path)
 	if err != nil {
 		logger.Err(err.Error())
 		return
@@ -29,42 +37,28 @@ func init() {
 
 func TestSaveOrderRepository(t *testing.T) {
 
+	defer removeCollection()
 	order := createOrder()
 	order1, err := orderRepository.Save(order)
-	if err != nil {
-		t.Fatal("orderRepository.Save failed", err)
-	}
-
-	if len(order1.OrderId) == 0 {
-		t.Fatal("orderRepository.Save failed, order id not generated")
-	}
-
-	assert.Nil(t, orderRepository.RemoveAll())
+	assert.Nil(t, err, "orderRepository.Save failed")
+	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
 }
 
 func TestUpdateOrderRepository(t *testing.T) {
 
+	defer removeCollection()
 	order := createOrder()
 	order1, err := orderRepository.Save(order)
-	if err != nil {
-		t.Fatal("orderRepository.Save failed", err)
-	}
-
-	if len(order1.OrderId) == 0 {
-		t.Fatal("orderRepository.Save failed, order id not generated")
-	}
+	assert.Nil(t, err, "orderRepository.Save failed")
+	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
 
 	order1.BuyerInfo.FirstName = "Siamak"
 	order1.BuyerInfo.LastName = "Marjoeee"
 
 	order2, err := orderRepository.Save(*order1)
-	if err != nil {
-		t.Fatal("orderRepository.Save failed", err)
-	}
-
+	assert.Nil(t, err, "orderRepository.Save failed")
 	assert.Equal(t, "Siamak", order2.BuyerInfo.FirstName)
 	assert.Equal(t, "Marjoeee", order2.BuyerInfo.LastName)
-	assert.Nil(t, orderRepository.RemoveAll())
 }
 
 func TestUpdateOrderRepository_Failed(t *testing.T) {
@@ -78,37 +72,25 @@ func TestUpdateOrderRepository_Failed(t *testing.T) {
 	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
 
 	order1.BuyerInfo.FirstName = "Siamak"
-
 	_, err = orderRepository.Save(*order1)
 	assert.Error(t, err)
 	assert.Equal(t, err, errorUpdateFailed)
 }
 
 func TestInsertOrderRepository_Success(t *testing.T) {
-	defer removeCollection()
+	//defer removeCollection()
 	order := createOrder()
 	order1, err := orderRepository.Insert(order)
-	if err != nil {
-		t.Fatal("orderRepository.Save failed", err)
-	}
-
-	if len(order1.OrderId) == 0 {
-		t.Fatal("orderRepository.Save failed, order id not generated")
-	}
+	assert.Nil(t, err, "orderRepository.Save failed")
+	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
 }
 
 func TestInsertOrderRepository_Failed(t *testing.T) {
 	defer removeCollection()
 	order := createOrder()
 	order1, err := orderRepository.Insert(order)
-	if err != nil {
-		t.Fatal("orderRepository.Save failed", err)
-	}
-
-	if len(order1.OrderId) == 0 {
-		t.Fatal("orderRepository.Save failed, order id not generated")
-	}
-
+	assert.Nil(t, err, "orderRepository.Save failed")
+	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
 	_, err1 := orderRepository.Insert(*order1)
 	assert.NotNil(t, err1)
 }
@@ -420,10 +402,8 @@ func createOrder() entities.Order {
 			Country: 		"Iran",
 			City: 			"Tehran",
 			State: 			"Tehran",
-			Lat:			"-72.7738706",
-			Lan:			"41.6332836",
 			Location:		entities.Location{
-				Type:        "point",
+				Type:        "Point",
 				Coordinates: []float64{-72.7738706, 41.6332836},
 			},
 			ZipCode: 		"1645630586",
@@ -496,10 +476,8 @@ func createOrder() entities.Order {
 						Country: "Iran",
 						City:    "Tehran",
 						State:   "Tehran",
-						Lat:     "-104.7738706",
-						Lan:     "54.6332836",
 						Location: entities.Location{
-							Type:        "point",
+							Type:        "Point",
 							Coordinates: []float64{-104.7738706, 54.6332836},
 						},
 						ZipCode: "947534586",
@@ -609,10 +587,8 @@ func createOrder() entities.Order {
 						Country: "Iran",
 						City:    "Tehran",
 						State:   "Tehran",
-						Lat:     "-104.7738706",
-						Lan:     "54.6332836",
 						Location: entities.Location{
-							Type:        "point",
+							Type:        "Point",
 							Coordinates: []float64{-104.7738706, 54.6332836},
 						},
 						ZipCode: "947534586",

@@ -118,7 +118,8 @@ func startGrpc(port string) {
 	grpcServer := grpc.NewServer()
 	pb.RegisterOrderServiceServer(grpcServer, &OrderServer{})
 	if err := grpcServer.Serve(lis); err != nil {
-		logger.Err("Failed to listen to gRPC server. " + err.Error())
+		logger.Err("GRPC server start field " + err.Error())
+		panic("GRPC server start field")
 	}
 }
 

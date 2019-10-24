@@ -91,7 +91,7 @@ func NewMongo(Config *MongoConfig) (*Mongo, error) {
 		clientOptions := options.Client().ApplyURI(mongoUri)
 
 		if Config.MaxConnIdleTime != 0 {
-			maxConnIdleTime := Config.MaxConnIdleTime * time.Millisecond
+			maxConnIdleTime := Config.MaxConnIdleTime * time.Second
 			clientOptions.MaxConnIdleTime = &maxConnIdleTime
 		}
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"gitlab.faza.io/order-project/order-service/configs"
 	"io/ioutil"
 	"log"
 	"os"
@@ -11,7 +12,7 @@ import (
 )
 
 var EnvFile = ".env"
-var ConfigurationFile = "configuration.go"
+//var ConfigurationFile = "configuration.go"
 
 func AppendToFile() {
 	f, err := os.OpenFile(EnvFile, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
@@ -48,26 +49,26 @@ func FixEnvFile() {
 //		log.Fatal(err)
 //	}
 //}
-func FixConfigurationFile() {
-	f, err := ioutil.ReadFile(ConfigurationFile)
-	if err != nil {
-		log.Fatal(err)
-	}
-	newContent := bytes.ReplaceAll(f, []byte("Port int `env:\"PORT\"`"), []byte("Port string `env:\"PORT\"`"))
-	err = ioutil.WriteFile(ConfigurationFile, newContent, os.ModePerm)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
+//func FixConfigurationFile() {
+//	f, err := ioutil.ReadFile(ConfigurationFile)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//	newContent := bytes.ReplaceAll(f, []byte("Port int `env:\"PORT\"`"), []byte("Port string `env:\"PORT\"`"))
+//	err = ioutil.WriteFile(ConfigurationFile, newContent, os.ModePerm)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//}
 
 func TestMain(m *testing.M) {
 	FixEnvFile()
-	FixConfigurationFile()
+	//FixConfigurationFile()
 	os.Exit(m.Run())
 }
 func TestLoadConfig_AssertTrue(t *testing.T) {
 	err := os.Setenv("APP_ENV", "dev")
 	assert.Nil(t, err)
-	err = LoadConfig()
+	_, err = configs.LoadConfig("")
 	assert.Nil(t, err)
 }

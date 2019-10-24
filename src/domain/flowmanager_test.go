@@ -3,13 +3,13 @@ package domain
 import (
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/assert"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/domain/actions/actives"
 	"gitlab.faza.io/order-project/order-service/domain/actions/actors"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	next_to_step_state "gitlab.faza.io/order-project/order-service/domain/states/launcher/nextstep"
 	"gitlab.faza.io/order-project/order-service/domain/steps"
-	"sort"
 	"strconv"
 	"testing"
 )
@@ -20,7 +20,7 @@ func TestFlowManagerSteps(t *testing.T) {
 	flowManager.nameStepsMap = make(map[string]steps.IStep, 64)
 	flowManager.indexStepsMap = make(map[int]steps.IStep, 64)
 
-	flowManager.SetupFlowManager()
+	assert.Nil(t, flowManager.SetupFlowManager())
 
 	if err := stepValidation(GetIndexStepsMap()[0], 0, "0.New_Order", []int{1,10}); err != nil {
 		t.Fatalf("validate step0 failed: %s\n", err)
@@ -163,21 +163,21 @@ func TestFlowManagerSteps(t *testing.T) {
 	}
 
 
-	keys := make([]int, 0, len(GetIndexStepsMap()))
-	for k := range GetIndexStepsMap() {
-		keys = append(keys, k)
-	}
-	sort.Ints(keys)
-
-	for _, k := range keys {
-		step := GetIndexStepsMap()[k]
-		fmt.Printf("\n\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n")
-		fmt.Printf("step.Name(): %s\nstep.Index(): %d\n", step.Name(), step.Index())
-		fmt.Printf("step.Childes(): %s\n", step.Childes())
-		fmt.Printf("step.Parents(): %s\n", step.Parents())
-		fmt.Printf("step.States(): %s\n", step.States())
-		traversState(step.States())
-	}
+	//keys := make([]int, 0, len(GetIndexStepsMap()))
+	//for k := range GetIndexStepsMap() {
+	//	keys = append(keys, k)
+	//}
+	//sort.Ints(keys)
+	//
+	//for _, k := range keys {
+	//	step := GetIndexStepsMap()[k]
+	//	fmt.Printf("\n\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n")
+	//	fmt.Printf("step.Name(): %s\nstep.Index(): %d\n", step.Name(), step.Index())
+	//	fmt.Printf("step.Childes(): %s\n", step.Childes())
+	//	fmt.Printf("step.Parents(): %s\n", step.Parents())
+	//	fmt.Printf("step.States(): %s\n", step.States())
+	//	traversState(step.States())
+	//}
 }
 
 func traversState(states []states.IState) {

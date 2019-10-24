@@ -30,25 +30,42 @@ type Cfg struct {
 		ConnectionTimeout int    `env:"ORDER_SERVICE_MONGO_CONN_TIMEOUT"`
 		ReadTimeout       int    `env:"ORDER_SERVICE_MONGO_READ_TIMEOUT"`
 		WriteTimeout      int    `env:"ORDER_SERVICE_MONGO_WRITE_TIMEOUT"`
+		MaxConnIdleTime	  int	 `env:"ORDER_SERVICE_MONGO_MAX_CONN_IDLE_TIME"`
+		MaxPoolSize		  int	 `env:"ORDER_SERVICE_MONGO_MAX_POOL_SIZE"`
+		MinPoolSize		  int	 `env:"ORDER_SERVICE_MONGO_MIN_POOL_SIZE"`
 	}
 }
 
-func LoadConfig() (*Cfg, error) {
+func LoadConfig(path string) (*Cfg, error) {
 	var config = &Cfg{}
 	if os.Getenv("APP_ENV") == "dev" {
-		if flag.Lookup("test.v") != nil {
+		if path != "" {
+			err := godotenv.Load(path)
+			if err != nil {
+				logger.Err("Error loading testdata .env file, path: %s", path)
+			}
+		} else if flag.Lookup("test.v") != nil {
 			// test mode
 			err := godotenv.Load("../testdata/.env")
+			//err := godotenv.Load(path)
 			if err != nil {
 				logger.Err("Error loading testdata .env file")
 			}
 		} else {
+			//err := godotenv.Load(path)
 			err := godotenv.Load("../.env")
 			if err != nil {
 				logger.Err("Error loading .env file")
 			}
 		}
 	}
+
+	//else if len(path) != 0 {
+	//	err := godotenv.Load(path)
+	//	if err != nil {
+	//		logger.Err("Error loading .env file, path: %s", path)
+	//	}
+	//}
 
 	// Get environment variables for Cfg
 	_, err := env.UnmarshalFromEnviron(config)
@@ -59,18 +76,34 @@ func LoadConfig() (*Cfg, error) {
 	return config, nil
 }
 
-func LoadConfigWithPath(path string) (*Cfg, error) {
-	var config = &Cfg{}
-	err := godotenv.Load(path)
-	if err != nil {
-		logger.Err("Error loading .env file")
-	}
-
-	// Get environment variables for Cfg
-	_, err1 := env.UnmarshalFromEnviron(config)
-	if err1 != nil {
-		return nil, err1
-	}
-
-	return config, nil
-}
+//func LoadConfigWithPath(path string) (*Cfg, error) {
+//	var config = &Cfg{}
+//
+//	if os.Getenv("APP_ENV") == "dev" {
+//		if flag.Lookup("test.v") != nil {
+//			// test mode
+//			err := godotenv.Load("../testdata/.env")
+//			if err != nil {
+//				logger.Err("Error loading testdata .env file")
+//			}
+//		} else {
+//			err := godotenv.Load("../.env")
+//			if err != nil {
+//				logger.Err("Error loading .env file")
+//			}
+//		}
+//	} else if len(path) != 0 {
+//		err := godotenv.Load(path)
+//		if err != nil {
+//			logger.Err("Error loading .env file, path: %s", path)
+//		}
+//	}
+//
+//	// Get environment variables for Cfg
+//	_, err1 := env.UnmarshalFromEnviron(config)
+//	if err1 != nil {
+//		return nil, err1
+//	}
+//
+//	return config, nil
+//}

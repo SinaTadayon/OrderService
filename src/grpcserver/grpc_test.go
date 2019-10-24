@@ -3,6 +3,7 @@ package grpcserver
 import (
 	"context"
 	"github.com/golang/protobuf/proto"
+	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 
 	//"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
@@ -28,7 +29,7 @@ var config *configs.Cfg
 
 func init() {
 	var err error
-	config, err = configs.LoadConfig()
+	config, err = configs.LoadConfig("")
 	if err != nil {
 		logger.Err(err.Error())
 		return
@@ -170,7 +171,7 @@ func TestNewOrder(t *testing.T) {
 	}
 
 	request := message.Request {
-		Id:   generateOrderNumber(),
+		Id:   entities.GenerateOrderId(),
 		Time: time.Now().UnixNano(),
 		Meta: metadata,
 		Data: &any.Any{
