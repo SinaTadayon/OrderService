@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/configs"
@@ -39,6 +40,8 @@ func TestSaveOrderRepository(t *testing.T) {
 
 	defer removeCollection()
 	order := createOrder()
+	res, _ := json.Marshal(order)
+	logger.Audit("order model: %s",res)
 	order1, err := orderRepository.Save(order)
 	assert.Nil(t, err, "orderRepository.Save failed")
 	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
@@ -401,7 +404,8 @@ func createOrder() entities.Order {
 			Phone:   		"0217734873",
 			Country: 		"Iran",
 			City: 			"Tehran",
-			State: 			"Tehran",
+			Province: 		"Tehran",
+			Neighbourhood:	"Chizar",
 			Location:		entities.Location{
 				Type:        "Point",
 				Coordinates: []float64{-72.7738706, 41.6332836},
@@ -443,16 +447,16 @@ func createOrder() entities.Order {
 		},
 		Items: []entities.Item{
 			{
-				ProductId:  "1111111111",
-				Title:      "Mobile",
-				Quantity:   1,
-				Brand:      "Nokia",
-				Warranty:   "Sazegar",
-				Categories: "Electronic",
-				Image:      "",
-				Returnable: false,
-				DeletedAt:  nil,
-				BuyerInfo:  buyerInfo,
+				InventoryId: "1111111111",
+				Title:       "Mobile",
+				Quantity:    1,
+				Brand:       "Nokia",
+				Warranty:    "Sazegar",
+				Categories:  "Electronic",
+				Image:       "",
+				Returnable:  false,
+				DeletedAt:   nil,
+				BuyerInfo:   buyerInfo,
 				SellerInfo: entities.SellerInfo{
 					Title:            "Sazgar",
 					FirstName:        "Shahidi",
@@ -475,7 +479,8 @@ func createOrder() entities.Order {
 						Phone:   "01249874345",
 						Country: "Iran",
 						City:    "Tehran",
-						State:   "Tehran",
+						Province:  "Tehran",
+						Neighbourhood: "Narmak",
 						Location: entities.Location{
 							Type:        "Point",
 							Coordinates: []float64{-104.7738706, 54.6332836},
@@ -491,7 +496,7 @@ func createOrder() entities.Order {
 					SellerCommission: 5334444,
 					Currency:         "RR",
 				},
-				ShipmentSpecInfo: entities.ShipmentSpecInfo{
+				ShipmentSpec: entities.ShipmentSpec{
 					ProviderName: "Post",
 					ReactionTime: 2,
 					ShippingTime: 8,
@@ -499,14 +504,14 @@ func createOrder() entities.Order {
 					Details:      "no return",
 				},
 				ShipmentDetails: entities.ShipmentDetails{
-					ShipmentDetail: entities.ShipmentDetail{
-						ShipmentProvider:       "Post",
-						ShipmentTrackingNumber: "545349534958349",
-						Image:                  "",
-						Description:            "",
-						CreatedAt:              time.Now().UTC(),
+					BuyerShipmentInfo: entities.ShipmentDetail{
+						ShipmentProvider: "Post",
+						TrackingNumber:   "545349534958349",
+						Image:            "",
+						Description:      "",
+						CreatedAt:        time.Now().UTC(),
 					},
-					ReturnShipmentDetail: entities.ReturnShipmentDetail{
+					SellerReturnShipmentInfo: entities.ReturnShipmentDetail{
 						ShipmentProvider:       "Post",
 						ShipmentTrackingNumber: "545349534958349",
 						Image:                  "",
@@ -554,16 +559,16 @@ func createOrder() entities.Order {
 				},
 			},
 			{
-				ProductId:  "2222222222",
-				Title:      "Laptop",
-				Quantity:   1,
-				Brand:      "Lenovo",
-				Warranty:   "Iranargham",
-				Categories: "Electronic",
-				Image:      "",
-				Returnable: true,
-				DeletedAt:  nil,
-				BuyerInfo:  buyerInfo,
+				InventoryId: "2222222222",
+				Title:       "Laptop",
+				Quantity:    1,
+				Brand:       "Lenovo",
+				Warranty:    "Iranargham",
+				Categories:  "Electronic",
+				Image:       "",
+				Returnable:  true,
+				DeletedAt:   nil,
+				BuyerInfo:   buyerInfo,
 				SellerInfo: entities.SellerInfo{
 					Title:            "Avazhang",
 					FirstName:        "Mostafavi",
@@ -586,7 +591,8 @@ func createOrder() entities.Order {
 						Phone:   "01249874345",
 						Country: "Iran",
 						City:    "Tehran",
-						State:   "Tehran",
+						Province:   "Tehran",
+						Neighbourhood: "Navab",
 						Location: entities.Location{
 							Type:        "Point",
 							Coordinates: []float64{-104.7738706, 54.6332836},
@@ -602,7 +608,7 @@ func createOrder() entities.Order {
 					SellerCommission: 5334444,
 					Currency:         "RR",
 				},
-				ShipmentSpecInfo: entities.ShipmentSpecInfo{
+				ShipmentSpec: entities.ShipmentSpec{
 					ProviderName: "Post",
 					ReactionTime: 2,
 					ShippingTime: 8,
@@ -610,14 +616,14 @@ func createOrder() entities.Order {
 					Details:      "no return",
 				},
 				ShipmentDetails: entities.ShipmentDetails{
-					ShipmentDetail: entities.ShipmentDetail{
-						ShipmentProvider:       "Post",
-						ShipmentTrackingNumber: "545349534958349",
-						Image:                  "",
-						Description:            "",
-						CreatedAt:              time.Now().UTC(),
+					BuyerShipmentInfo: entities.ShipmentDetail{
+						ShipmentProvider: "Post",
+						TrackingNumber:   "545349534958349",
+						Image:            "",
+						Description:      "",
+						CreatedAt:        time.Now().UTC(),
 					},
-					ReturnShipmentDetail: entities.ReturnShipmentDetail{
+					SellerReturnShipmentInfo: entities.ReturnShipmentDetail{
 						ShipmentProvider:       "Post",
 						ShipmentTrackingNumber: "545349534958349",
 						Image:                  "",

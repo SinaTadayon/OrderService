@@ -1,6 +1,8 @@
+# github.com/DataDog/zstd v1.4.0
+github.com/DataDog/zstd
 # github.com/Netflix/go-env v0.0.0-20180529183433-1e80ef5003ef
 github.com/Netflix/go-env
-# github.com/Shopify/sarama v1.24.0
+# github.com/Shopify/sarama v1.23.0
 github.com/Shopify/sarama
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
@@ -31,17 +33,11 @@ github.com/jcmturner/gofork/encoding/asn1
 github.com/jcmturner/gofork/x/crypto/pbkdf2
 # github.com/joho/godotenv v1.3.0
 github.com/joho/godotenv
-# github.com/klauspost/compress v1.8.2
-github.com/klauspost/compress/fse
-github.com/klauspost/compress/huff0
-github.com/klauspost/compress/snappy
-github.com/klauspost/compress/zstd
-github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/konsorten/go-windows-terminal-sequences v1.0.1
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/matryer/resync v0.0.0-20161211202428-d39c09a11215
 github.com/matryer/resync
-# github.com/pierrec/lz4 v2.2.6+incompatible
+# github.com/pierrec/lz4 v2.0.5+incompatible
 github.com/pierrec/lz4
 github.com/pierrec/lz4/internal/xxh32
 # github.com/pmezard/go-difflib v1.0.0
@@ -64,7 +60,7 @@ gitlab.faza.io/go-framework/kafkaadapter
 gitlab.faza.io/go-framework/logger
 # gitlab.faza.io/go-framework/mongoadapter v0.0.7
 gitlab.faza.io/go-framework/mongoadapter
-# gitlab.faza.io/protos/order v0.0.0-20191014173539-2bcc7283a98d
+# gitlab.faza.io/protos/order v0.0.5
 gitlab.faza.io/protos/order
 gitlab.faza.io/protos/order/general
 # go.mongodb.org/mongo-driver v1.1.2

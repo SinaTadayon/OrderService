@@ -51,9 +51,9 @@ func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, ord
 //)
 //
 //func ShipmentPendingEnteredDetail(ppr PaymentPendingRequest, req *OrderService.ShipmentDetailRequest) error {
-//	ppr.ShipmentInfo.ShipmentDetail.ShipmentProvider = req.ShipmentProvider
-//	ppr.ShipmentInfo.ShipmentDetail.ShipmentTrackingNumber = req.ShipmentTrackingNumber
-//	ppr.ShipmentInfo.ShipmentDetail.Description = req.GetDescription()
+//	ppr.ShipmentDetail.ShipmentDetail.ShipmentProvider = req.ShipmentProvider
+//	ppr.ShipmentDetail.ShipmentDetail.ShipmentTrackingNumber = req.ShipmentTrackingNumber
+//	ppr.ShipmentDetail.ShipmentDetail.Description = req.GetDescription()
 //	err := main.MoveOrderToNewState("seller", "", main.Shipped, "shipped", ppr)
 //	if err != nil {
 //		return err

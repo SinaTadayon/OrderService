@@ -14,8 +14,7 @@
         "direction" : 1
       }
     ],
-    "filters": {
-      "or": [
+    "filters": [
         {
           "name"  : "mobile",
           "opt"   : "like",
@@ -26,20 +25,7 @@
           "opt"   : "eq",
           "values" : ["bob"]
         }
-      ],
-      "and": [
-        {
-          "name"  : "mobile",
-          "opt"   : "not",
-          "values" : ["09124353432"]
-        },
-        {
-          "name"  : "name",
-          "opt"   : "eq",
-          "values" : ["bob"]
-        }
-      ]
-    }
+    ]
   },
   "Data" : {}
 }

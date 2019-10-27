@@ -3,6 +3,7 @@ syntax = "proto3";
 package ordersrv;
 
 import "general/message.proto";
+import "google/protobuf/any.proto";
 
 service OrderService {
     rpc OrderRequestsHandler(message.Request) returns (message.Response);
@@ -35,23 +36,39 @@ message NewOrderRequest {
 }
 
 message Amount {
-    int64 total = 1;
-    int64 payable = 2;
-    int64 discount = 3;
+    uint64  total           = 1;
+    uint64  payable         = 2;
+    uint64  discount        = 3;
+    uint64  shipmentTotal   = 4;
+    string  currency        = 5;
+    string  paymentMethod   = 6;
+    string  paymentOption   = 7;
+    Voucher voucher         = 8;
+}
+
+message Voucher {
+    uint64  amount  = 1;
+    string  code    = 2;
+    google.protobuf.Any details = 3;
 }
 
 message Item {
-    string productId = 1;
+    string inventoryId = 1;
     int32 quantity = 2;
     string title = 3;
     string brand = 4;
     string categories = 5;
     string warranty = 6;
-    ItemSeller seller = 7;
-    ItemPrice price = 8;
-    ItemShipment shipment = 9;
+    string image = 7;
+    bool returnable = 8;
+    string sellerId = 9;
+    Attributes attributes = 10;
+    PriceInfo price = 11;
+    ShippingSpec shipment = 12;
 }
 
+
+// TODO check with nasser for BuyerId
 message Buyer {
     string firstName = 1;
     string lastName = 2;
@@ -60,77 +77,61 @@ message Buyer {
     string nationalId = 5;
     string ip = 6;
     string gender = 7;
-    BuyerFinance finance = 8;
-    BuyerAddress address = 9;
+    FinanceInfo finance = 9;
+    Address shippingAddress = 10;
 }
 
-message BuyerFinance {
+message Attributes {
+    string width = 1;
+    string height = 2;
+    string length = 3;
+    string weight = 4;
+    string color = 5;
+    string materials = 6;
+    google.protobuf.Any extra = 7;
+}
+
+message FinanceInfo {
     string iban = 1;
     string cardNumber = 2;
     string accountNumber = 3;
     string bankName = 4;
 }
 
-message BuyerAddress {
-    string title = 1;
-    string address = 2;
-    string phone = 3;
-    string country = 4;
-    string city = 5;
-    string state = 6;
+message Address {
+    string address = 1;
+    string phone = 2;
+    string country = 3;
+    string city = 4;
+    string province = 5;
+    string neighbourhood = 6;
     string lat = 7;
-    string lan = 8;
+    string long = 8;
     string zipCode = 9;
 }
 
-message ItemSeller {
-    string title = 1;
-    string firstName = 2;
-    string lastName = 3;
-    string mobile = 4;
-    string email = 5;
-    string nationalId = 6;
-    string companyName = 7;
-    string registrationName = 8;
-    string economicCode = 9;
-    ItemSellerFinance finance = 10;
-    ItemSellerAddress address = 11;
+message PriceInfo {
+    uint64 unit = 1;
+    uint64 total = 2;
+    uint64 payable = 3;
+    uint64 discount = 4;
+    uint64 sellerCommission = 5;
+    string currency = 6;
 }
 
-message ItemSellerFinance {
-    string iban = 1;
-    string cardNumber = 2;
-    string accountNumber = 3;
-    string bankName = 4;
+message ShippingSpec {
+    string carrierName = 1;
+    string carrierProduct = 2;
+    string carrierType = 3;
+    uint64 shippingAmount = 4;
+    uint64 voucherAmount = 5;
+    string currency = 6;
+    int32 reactionTime = 7;
+    int32 shippingTime = 8;
+    int32 returnTime = 9;
+    string details = 10;
 }
 
-message ItemSellerAddress {
-    string title = 1;
-    string address = 2;
-    string phone = 3;
-    string country = 4;
-    string city = 5;
-    string state = 6;
-    string lat = 7;
-    string lan = 8;
-    string zipCode = 9;
-}
-
-message ItemPrice {
-    int64 unit = 1;
-    int64 total = 2;
-    int64 payable = 3;
-    int64 discount = 4;
-    int64 sellerCommission = 5;
-}
-
-message ItemShipment {
-    string providerName = 1;
-    int64 reactionTime = 2;
-    int64 shippingTime = 3;
-    int64 returnTime = 4;
-    string shipmentDetail = 5;
-}
 
 // SellerApprovalPending Start
 message ApprovalRequest {
@@ -146,10 +147,11 @@ message ApprovalRequest {
 // SellerApprovalPending End
 
 message ShipmentDetailRequest {
-    string shipmentProvider = 1;
-    string shipmentTrackingNumber = 2;
-    string description = 3;
-    string image = 4;
+    string orderNumber = 1;
+    string shipmentProvider = 2;
+    string shipmentTrackingNumber = 3;
+    string description = 4;
+    string image = 5;
 }
 
 message BuyerCancelRequest {

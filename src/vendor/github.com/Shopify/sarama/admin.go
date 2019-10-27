@@ -105,14 +105,9 @@ func NewClusterAdmin(addrs []string, conf *Config) (ClusterAdmin, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewClusterAdminFromClient(client)
-}
 
-// NewClusterAdminFromClient creates a new ClusterAdmin using the given client.
-// Note that underlying client will also be closed on admin's Close() call.
-func NewClusterAdminFromClient(client Client) (ClusterAdmin, error) {
 	//make sure we can retrieve the controller
-	_, err := client.Controller()
+	_, err = client.Controller()
 	if err != nil {
 		return nil, err
 	}
@@ -379,50 +374,29 @@ func (ca *clusterAdmin) DeleteRecords(topic string, partitionOffsets map[int32]i
 	if topic == "" {
 		return ErrInvalidTopic
 	}
-	partitionPerBroker := make(map[*Broker][]int32)
-	for partition := range partitionOffsets {
-		broker, err := ca.client.Leader(topic, partition)
-		if err != nil {
-			return err
-		}
-		if _, ok := partitionPerBroker[broker]; ok {
-			partitionPerBroker[broker] = append(partitionPerBroker[broker], partition)
-		} else {
-			partitionPerBroker[broker] = []int32{partition}
-		}
-	}
-	errs := make([]error, 0)
-	for broker, partitions := range partitionPerBroker {
-		topics := make(map[string]*DeleteRecordsRequestTopic)
-		recordsToDelete := make(map[int32]int64)
-		for _, p := range partitions {
-			recordsToDelete[p] = partitionOffsets[p]
-		}
-		topics[topic] = &DeleteRecordsRequestTopic{PartitionOffsets: recordsToDelete}
-		request := &DeleteRecordsRequest{
-			Topics:  topics,
-			Timeout: ca.conf.Admin.Timeout,
-		}
 
-		rsp, err := broker.DeleteRecords(request)
-		if err != nil {
-			errs = append(errs, err)
-		} else {
-			deleteRecordsResponseTopic, ok := rsp.Topics[topic]
-			if !ok {
-				errs = append(errs, ErrIncompleteResponse)
-			} else {
-				for _, deleteRecordsResponsePartition := range deleteRecordsResponseTopic.Partitions {
-					if deleteRecordsResponsePartition.Err != ErrNoError {
-						errs = append(errs, errors.New(deleteRecordsResponsePartition.Err.Error()))
-					}
-				}
-			}
-		}
+	topics := make(map[string]*DeleteRecordsRequestTopic)
+	topics[topic] = &DeleteRecordsRequestTopic{PartitionOffsets: partitionOffsets}
+	request := &DeleteRecordsRequest{
+		Topics:  topics,
+		Timeout: ca.conf.Admin.Timeout,
 	}
-	if len(errs) > 0 {
-		return ErrDeleteRecords{MultiError{&errs}}
+
+	b, err := ca.Controller()
+	if err != nil {
+		return err
 	}
+
+	rsp, err := b.DeleteRecords(request)
+	if err != nil {
+		return err
+	}
+
+	_, ok := rsp.Topics[topic]
+	if !ok {
+		return ErrIncompleteResponse
+	}
+
 	//todo since we are dealing with couple of partitions it would be good if we return slice of errors
 	//for each partition instead of one error
 	return nil
@@ -500,10 +474,6 @@ func (ca *clusterAdmin) CreateACL(resource Resource, acl Acl) error {
 	acls = append(acls, &AclCreation{resource, acl})
 	request := &CreateAclsRequest{AclCreations: acls}
 
-	if ca.conf.Version.IsAtLeast(V2_0_0_0) {
-		request.Version = 1
-	}
-
 	b, err := ca.Controller()
 	if err != nil {
 		return err
@@ -516,10 +486,6 @@ func (ca *clusterAdmin) CreateACL(resource Resource, acl Acl) error {
 func (ca *clusterAdmin) ListAcls(filter AclFilter) ([]ResourceAcls, error) {
 
 	request := &DescribeAclsRequest{AclFilter: filter}
-
-	if ca.conf.Version.IsAtLeast(V2_0_0_0) {
-		request.Version = 1
-	}
 
 	b, err := ca.Controller()
 	if err != nil {
@@ -542,10 +508,6 @@ func (ca *clusterAdmin) DeleteACL(filter AclFilter, validateOnly bool) ([]Matchi
 	var filters []*AclFilter
 	filters = append(filters, &filter)
 	request := &DeleteAclsRequest{Filters: filters}
-
-	if ca.conf.Version.IsAtLeast(V2_0_0_0) {
-		request.Version = 1
-	}
 
 	b, err := ca.Controller()
 	if err != nil {

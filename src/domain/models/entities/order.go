@@ -2,10 +2,20 @@ package entities
 
 import (
 	"github.com/google/uuid"
-	"strconv"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"math/rand"
+	"strconv"
 	"time"
 )
+
+const (
+	randomMin int = 100
+	randomMax int = 999
+)
+
+func init () {
+	rand.Seed(time.Now().UnixNano())
+}
 
 //type ObjectId struct {
 //	ID 	primitive.ObjectID `bson:"_id"`
@@ -25,24 +35,17 @@ type Order struct {
 }
 
 type ShipmentDetails struct {
-	ShipmentDetail       ShipmentDetail			`bson:"shipmentDetail"`
-	ReturnShipmentDetail ReturnShipmentDetail	`bson:"returnShipmentDetail"`
+	SellerShipmentDetail       	ShipmentDetail `bson:"sellerShipmentDetail"`
+	BuyerReturnShipmentDetail 	ShipmentDetail `bson:"buyerReturnShipmentDetail"`
 }
 
 type ShipmentDetail struct {
-	ShipmentProvider       	string			`bson:"shipmentProvider"`
-	ShipmentTrackingNumber 	string			`bson:"shipmentTrackingNumber"`
-	Image                  	string			`bson:"image"`
-	Description            	string			`bson:"description"`
-	CreatedAt      			time.Time		`bson:"createdAt"`
-}
-
-type ReturnShipmentDetail struct {
-	ShipmentProvider       	string			`bson:"shipmentProvider"`
-	ShipmentTrackingNumber 	string			`bson:"shipmentTrackingNumber"`
-	Image                  	string			`bson:"image"`
-	Description            	string			`bson:"description"`
-	CreatedAt      			time.Time		`bson:"createdAt"`
+	CarrierName 	 	string     			`bson:"carrierName"`
+	ShippingMethod	 	string 				`bson:"shippingMethod"`
+	TrackingNumber   	string    			`bson:"trackingNumber"`
+	Image            	string    			`bson:"image"`
+	Description      	string    			`bson:"description"`
+	CreatedAt        	time.Time 			`bson:"createdAt"`
 }
 
 type OrderStep struct {
@@ -91,39 +94,12 @@ type PaymentService struct {
 	PaymentResult   PaymentResult   		`bson:"paymentResult"`
 }
 
-type PaymentRequest struct {
-	Amount				int64				`bson:"amount"`
-	Currency			string				`bson:"currency"`
-	Gateway 			string				`bson:"gateway"`
-	CreatedAt   		time.Time			`bson:"createdAt"`
-}
-
-type PaymentResponse struct {
-	Result 				bool				`bson:"result"`
-	Reason				string				`bson:"reason"`
-	Description 		string				`bson:"description"`
-	CallBackUrl			string				`bson:"callbackUrl"`
-	InvoiceId			int64				`bson:"invoiceId"`
-	PaymentId			string				`bson:"paymentId"`
-	CreatedAt   		time.Time			`bson:"createdAt"`
-}
-
-type PaymentResult struct {
-	Result 				bool				`bson:"result"`
-	Reason				string				`bson:"reason"`
-	PaymentId  			string				`bson:"paymentId"`
-	InvoiceId 			int64				`bson:"invoiceId"`
-	Amount    			int64				`bson:"amount"`
-	ReqBody   			string				`bson:"reqBody"`
-	ResBody   			string				`bson:"resBody"`
-	CreatedAt   		time.Time			`bson:"createdAt"`
-}
 
 // TODO get configs of pay to market from siavash
 type SystemPayment struct {
 	PayToBuyerInfo  []PayToBuyerInfo		`bson:"payToBuyerInfo"`
 	PayToSellerInfo []PayToSellerInfo		`bson:"payToSellerInfo"`
-	PayToMarket []PayToMarket				`bson:"payToMarket"`
+	PayToMarket 	[]PayToMarket			`bson:"payToMarket"`
 }
 
 type PayToBuyerInfo struct {
@@ -145,93 +121,101 @@ type PayToMarket struct {
 }
 
 type Amount struct {
-	Total    			int64					`bson:"total"`
-	Payable  			int64					`bson:"payable"`
-	Discount 			int64					`bson:"discount"`
-	Currency 			string					`bson:"currency"`
+	Total    			uint64				`bson:"total"`
+	Payable  			uint64				`bson:"payable"`
+	Discount 			uint64				`bson:"discount"`
+	ShipmentTotal		uint64				`bson:"shipmentTotal"`
+	Currency 			string				`bson:"currency"`
+	PaymentMethod		string				`bson:"paymentMethod"`
+	PaymentOption		string				`bson:"paymentOption"`
+	Voucher 			Voucher				`bson:"voucher"`
+}
+
+type Voucher struct {
+	Amount			uint64					`bson:"amount"`
+	Code 			string					`bson:"code"`
+	Details			VoucherDetails			`bson:"details"`
+}
+
+
+// TODO will be complete
+type VoucherDetails struct {
+
 }
 
 type Item struct {
-	ProductId       	string 					`bson:"productId"`
-	Title           	string 					`bson:"title"`
-	Quantity        	int    					`bson:"quantity"`
-	Brand           	string 					`bson:"brand"`
-	Warranty        	string 					`bson:"warranty"`
-	Categories      	string 					`bson:"categories"`
-	Image           	string 					`bson:"image"`
-	Returnable      	bool   					`bson:"returnable"`
-	DeletedAt			*time.Time				`bson:"deletedAt"`
-	BuyerInfo       	BuyerInfo  				`bson:"buyerInfo"`
-	SellerInfo      	SellerInfo 				`bson:"sellerInfo"`
-	PriceInfo       	PriceInfo				`bson:"priceInfo"`
-	ShipmentSpecInfo    ShipmentSpecInfo		`bson:"shipmentSpecInfo"`
-	ShipmentDetails 	ShipmentDetails			`bson:"shipmentDetails"`
-	OrderStep       	OrderStep				`bson:"orderStep"`
+	OrderItemId 		string 				`bson:"orderItemId"`
+	InventoryId 		string 				`bson:"inventoryId"`
+	Title       		string 				`bson:"title"`
+	Quantity        	int32            	`bson:"quantity"`
+	Brand           	string          	`bson:"brand"`
+	Warranty        	string          	`bson:"warranty"`
+	Categories      	string          	`bson:"categories"`
+	Image           	string          	`bson:"image"`
+	Returnable      	bool            	`bson:"returnable"`
+	Attributes      	Attributes      	`bson:"attributes"`
+	DeletedAt       	*time.Time      	`bson:"deletedAt"`
+	BuyerInfo       	BuyerInfo       	`bson:"buyerInfo"`
+	SellerInfo      	SellerInfo      	`bson:"sellerInfo"`
+	PriceInfo       	PriceInfo       	`bson:"priceInfo"`
+	ShipmentSpec    	ShipmentSpec    	`bson:"shipmentSpec"`
+	ShipmentDetails 	ShipmentDetails 	`bson:"shipmentDetails"`
+	OrderStep       	OrderStep       	`bson:"orderStep"`
 }
 
+type Attributes struct {
+	Width 				string				`bson:"with"`
+	Height				string				`bson:"height"`
+	Length				string				`bson:"length"`
+	Weight				string				`bson:"weight"`
+	Color 				string				`bson:"color"`
+	Materials			string				`bson:"materials"`
+	Extra				ExtraAttributes		`bson:"extra"`
+}
+
+// TODO will be complete
+type ExtraAttributes struct {
+
+}
+
+// TODO check with nasser for buyerId
 type BuyerInfo struct {
 	FirstName  			string					`bson:"firstName"`
 	LastName   			string					`bson:"lastName"`
 	Mobile     			string					`bson:"mobile"`
 	Email      			string					`bson:"email"`
 	NationalId 			string					`bson:"nationalId"`
+	Gender				string					`bson:"gender"`
 	IP         			string					`bson:"ip"`
-	Finance    			FinanceInfo				`bson:"finance"`
-	Address    			AddressInfo				`bson:"address"`
-}
-
-type FinanceInfo struct {
-	Iban 				string					`bson:"iban"`
-	CardNumber			string					`bson:"cardNumber"`
-	AccountNumber		string					`bson:"accountNumber"`
-	BankName			string					`bson:"backName"`
-	Gateway				string					`bson:"gateway"`
-}
-
-type AddressInfo struct {
-	Address 			string					`bson:"address"`
-	Phone   			string					`bson:"phone"`
-	Country 			string					`bson:"country"`
-	City    			string					`bson:"city"`
-	State   			string					`bson:"state"`
-	Location			Location				`bson:"location"`
-	ZipCode 			string					`bson:"zipCode"`
-}
-
-type Location struct {
-	Type string    				`bson:"type"`
-	Coordinates []float64 		`bson:"coordinates"`
+	FinanceInfo    		FinanceInfo				`bson:"financeInfo"`
+	ShippingAddress    	AddressInfo				`bson:"shippingAddress"`
 }
 
 type SellerInfo struct {
-	Title            	string					`bson:"title"`
-	FirstName        	string					`bson:"firstName"`
-	LastName         	string					`bson:"lastName"`
-	Mobile           	string					`bson:"mobile"`	
-	Email            	string					`bson:"email"`
-	NationalId       	string					`bson:"nationalId"`
-	CompanyName      	string					`bson:"companyName"`
-	RegistrationName 	string					`bson:"registrationName"`	
-	EconomicCode     	string					`bson:"economicCode"`
-	Finance          	FinanceInfo				`bson:"finance"`
-	Address          	AddressInfo				`bson:"address"`
+	SellerId 			string 					`bson:"sellerId"`
+	Profile				*SellerProfile			`bson:"profile"`
 }
 
 type PriceInfo struct {
-	Unit             	int64					`bson:"unit"`
-	Total            	int64					`bson:"total"`
-	Payable          	int64					`bson:"payable"`
-	Discount         	int64					`bson:"discount"`	
-	SellerCommission 	int64					`bson:"sellerCommission"`	
+	Unit             	uint64					`bson:"unit"`
+	Total            	uint64					`bson:"total"`
+	Payable          	uint64					`bson:"payable"`
+	Discount         	uint64					`bson:"discount"`
+	SellerCommission 	uint64					`bson:"sellerCommission"`
 	Currency		 	string					`bson:"currency"`
 }
 
 // Time unit hours
-type ShipmentSpecInfo struct {
-	ProviderName   		string					`bson:"providerName"`
-	ReactionTime   		int						`bson:"reactionTime"`
-	ShippingTime   		int						`bson:"shippingTime"`
-	ReturnTime     		int						`bson:"returnTime"`
+type ShipmentSpec struct {
+	CarrierName			string					`bson:"carrierName"`
+	CarrierProduct 		string					`bson:"carrierProduct"`
+	CarrierType			string					`bson:"carrierType"`
+	ShippingAmount		uint64					`bson:"shippingAmount"`
+	VoucherAmount		uint64					`bson:"voucherAmount"`
+	Currency			string					`bson:"currency"`
+	ReactionTime   		int32					`bson:"reactionTime"`
+	ShippingTime   		int32					`bson:"shippingTime"`
+	ReturnTime     		int32					`bson:"returnTime"`
 	Details 			string					`bson:"Details"`
 }
 
@@ -244,11 +228,11 @@ func (order Order) IsIdEmpty() bool {
 	return true
 }
 
+// TODO concurrency check
 func GenerateOrderId() string {
 	var err error
 	var bytes []byte
 	var orderId uint32
-	bytes, err = uuid.New().MarshalBinary()
 	for {
 		bytes, err = uuid.New().MarshalBinary()
 		if err == nil {
@@ -265,4 +249,8 @@ func byteToHash(bytes []byte) uint32 {
 		h = 31 * h + uint32(val & 0xff)
 	}
 	return h
+}
+
+func GenerateRandomNumber() uint32 {
+	return uint32(rand.Intn(randomMax - randomMin + 1) + randomMin)
 }

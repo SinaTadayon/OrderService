@@ -5,11 +5,11 @@ default: fmt vet errcheck test lint
 # Taken from https://github.com/codecov/example-go#caveat-multiple-files
 .PHONY: test
 test:
-	echo "mode: atomic" > coverage.txt
+	echo "" > coverage.txt
 	for d in `go list ./...`; do \
-		go test -p 1 -v -timeout 6m -race -coverprofile=profile.out -covermode=atomic $$d || exit 1; \
+		go test -p 1 -v -timeout 240s -race -coverprofile=profile.out -covermode=atomic $$d || exit 1; \
 		if [ -f profile.out ]; then \
-			tail +2 profile.out >> coverage.txt; \
+			cat profile.out >> coverage.txt; \
 			rm profile.out; \
 		fi \
 	done
@@ -45,12 +45,8 @@ install_dependencies: get
 
 .PHONY: get
 get:
-	go get -v ./...
+	go get -t -v ./...
 
 .PHONY: clean
 clean:
 	go clean ./...
-
-.PHONY: tidy
-tidy:
-	go mod tidy -v

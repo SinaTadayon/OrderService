@@ -667,7 +667,6 @@ func (mr *MockDeleteTopicsResponse) For(reqBody versionedDecoder) encoder {
 	for _, topic := range req.Topics {
 		res.TopicErrorCodes[topic] = ErrNoError
 	}
-	res.Version = int16(req.Version)
 	return res
 }
 
@@ -813,32 +812,14 @@ func NewMockListAclsResponse(t TestReporter) *MockListAclsResponse {
 func (mr *MockListAclsResponse) For(reqBody versionedDecoder) encoder {
 	req := reqBody.(*DescribeAclsRequest)
 	res := &DescribeAclsResponse{}
+
 	res.Err = ErrNoError
 	acl := &ResourceAcls{}
-	if req.ResourceName != nil {
-		acl.Resource.ResourceName = *req.ResourceName
-	}
-	acl.Resource.ResourcePatternType = req.ResourcePatternTypeFilter
+	acl.Resource.ResourceName = *req.ResourceName
 	acl.Resource.ResourceType = req.ResourceType
-
-	host := "*"
-	if req.Host != nil {
-		host = *req.Host
-	}
-
-	principal := "User:test"
-	if req.Principal != nil {
-		principal = *req.Principal
-	}
-
-	permissionType := req.PermissionType
-	if permissionType == AclPermissionAny {
-		permissionType = AclPermissionAllow
-	}
-
-	acl.Acls = append(acl.Acls, &Acl{Operation: req.Operation, PermissionType: permissionType, Host: host, Principal: principal})
+	acl.Acls = append(acl.Acls, &Acl{})
 	res.ResourceAcls = append(res.ResourceAcls, acl)
-	res.Version = int16(req.Version)
+
 	return res
 }
 
@@ -913,7 +894,6 @@ func (mr *MockDeleteAclsResponse) For(reqBody versionedDecoder) encoder {
 		response.MatchingAcls = append(response.MatchingAcls, &MatchingAcl{Err: ErrNoError})
 		res.FilterResponses = append(res.FilterResponses, response)
 	}
-	res.Version = int16(req.Version)
 	return res
 }
 

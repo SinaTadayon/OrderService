@@ -1013,7 +1013,7 @@ func (b *Broker) sendAndReceiveV1SASLPlainAuth() error {
 
 	b.correlationID++
 
-	bytesRead, err := b.receiveSASLServerResponse(&SaslAuthenticateResponse{}, correlationID)
+	bytesRead, err := b.receiveSASLServerResponse(correlationID)
 	b.updateIncomingCommunicationMetrics(bytesRead, time.Since(requestTime))
 
 	// With v1 sasl we get an error message set in the response we can return
@@ -1037,53 +1037,26 @@ func (b *Broker) sendAndReceiveSASLOAuth(provider AccessTokenProvider) error {
 		return err
 	}
 
-	message, err := buildClientFirstMessage(token)
-	if err != nil {
-		return err
-	}
-
-	challenged, err := b.sendClientMessage(message)
-	if err != nil {
-		return err
-	}
-
-	if challenged {
-		// Abort the token exchange. The broker returns the failure code.
-		_, err = b.sendClientMessage([]byte(`\x01`))
-	}
-
-	return err
-}
-
-// sendClientMessage sends a SASL/OAUTHBEARER client message and returns true
-// if the broker responds with a challenge, in which case the token is
-// rejected.
-func (b *Broker) sendClientMessage(message []byte) (bool, error) {
-
 	requestTime := time.Now()
 	correlationID := b.correlationID
 
-	bytesWritten, err := b.sendSASLOAuthBearerClientMessage(message, correlationID)
+	bytesWritten, err := b.sendSASLOAuthBearerClientResponse(token, correlationID)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	b.updateOutgoingCommunicationMetrics(bytesWritten)
 	b.correlationID++
 
-	res := &SaslAuthenticateResponse{}
-	bytesRead, err := b.receiveSASLServerResponse(res, correlationID)
+	bytesRead, err := b.receiveSASLServerResponse(correlationID)
+	if err != nil {
+		return err
+	}
 
 	requestLatency := time.Since(requestTime)
 	b.updateIncomingCommunicationMetrics(bytesRead, requestLatency)
 
-	isChallenge := len(res.SaslAuthBytes) > 0
-
-	if isChallenge && err != nil {
-		Logger.Printf("Broker rejected authentication token: %s", res.SaslAuthBytes)
-	}
-
-	return isChallenge, err
+	return nil
 }
 
 func (b *Broker) sendAndReceiveSASLSCRAMv1() error {
@@ -1181,7 +1154,7 @@ func (b *Broker) receiveSaslAuthenticateResponse(correlationID int32) ([]byte, e
 
 // Build SASL/OAUTHBEARER initial client response as described by RFC-7628
 // https://tools.ietf.org/html/rfc7628
-func buildClientFirstMessage(token *AccessToken) ([]byte, error) {
+func buildClientInitialResponse(token *AccessToken) ([]byte, error) {
 	var ext string
 
 	if token.Extensions != nil && len(token.Extensions) > 0 {
@@ -1227,7 +1200,11 @@ func (b *Broker) sendSASLPlainAuthClientResponse(correlationID int32) (int, erro
 	return b.conn.Write(buf)
 }
 
-func (b *Broker) sendSASLOAuthBearerClientMessage(initialResp []byte, correlationID int32) (int, error) {
+func (b *Broker) sendSASLOAuthBearerClientResponse(token *AccessToken, correlationID int32) (int, error) {
+	initialResp, err := buildClientInitialResponse(token)
+	if err != nil {
+		return 0, err
+	}
 
 	rb := &SaslAuthenticateRequest{initialResp}
 
@@ -1245,7 +1222,7 @@ func (b *Broker) sendSASLOAuthBearerClientMessage(initialResp []byte, correlatio
 	return b.conn.Write(buf)
 }
 
-func (b *Broker) receiveSASLServerResponse(res *SaslAuthenticateResponse, correlationID int32) (int, error) {
+func (b *Broker) receiveSASLServerResponse(correlationID int32) (int, error) {
 
 	buf := make([]byte, responseLengthSize+correlationIDSize)
 
@@ -1273,12 +1250,18 @@ func (b *Broker) receiveSASLServerResponse(res *SaslAuthenticateResponse, correl
 		return bytesRead, err
 	}
 
+	res := &SaslAuthenticateResponse{}
+
 	if err := versionedDecode(buf, res, 0); err != nil {
 		return bytesRead, err
 	}
 
 	if res.Err != ErrNoError {
 		return bytesRead, res.Err
+	}
+
+	if len(res.SaslAuthBytes) > 0 {
+		Logger.Printf("Received SASL auth response: %s", res.SaslAuthBytes)
 	}
 
 	return bytesRead, nil

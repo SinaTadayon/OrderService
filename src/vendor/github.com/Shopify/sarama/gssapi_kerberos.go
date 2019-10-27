@@ -1,19 +1,18 @@
 package sarama
 
 import (
-	"encoding/asn1"
 	"encoding/binary"
 	"fmt"
-	"io"
-	"strings"
-	"time"
-
+	"github.com/jcmturner/gofork/encoding/asn1"
 	"gopkg.in/jcmturner/gokrb5.v7/asn1tools"
 	"gopkg.in/jcmturner/gokrb5.v7/gssapi"
 	"gopkg.in/jcmturner/gokrb5.v7/iana/chksumtype"
 	"gopkg.in/jcmturner/gokrb5.v7/iana/keyusage"
 	"gopkg.in/jcmturner/gokrb5.v7/messages"
 	"gopkg.in/jcmturner/gokrb5.v7/types"
+	"io"
+	"strings"
+	"time"
 )
 
 const (

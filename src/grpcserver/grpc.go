@@ -2,7 +2,13 @@ package grpcserver
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/golang/protobuf/ptypes"
+	pb "gitlab.faza.io/protos/order"
+	message "gitlab.faza.io/protos/order/general"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	//"errors"
 	"net"
@@ -11,8 +17,6 @@ import (
 
 	_ "github.com/devfeel/mapper"
 	"gitlab.faza.io/go-framework/logger"
-	pb "gitlab.faza.io/protos/order"
-	"gitlab.faza.io/protos/order/general"
 	"google.golang.org/grpc"
 )
 
@@ -20,33 +24,13 @@ type OrderServer struct{
 	pb.UnimplementedOrderServiceServer
 }
 
-var GrpcStatesRules struct {
-	SellerApprovalPending         map[string]bool
-	ShipmentDetail                map[string]bool
-	BuyerCancel                   map[string]bool
-	Delivered                     map[string]bool
-	ShipmentDeliveryDelayed       map[string]bool
-	ReturnShipmentDeliveryDelayed map[string]bool
-	ShipmentCanceled              map[string]bool
-	ReturnShipmentCanceled        map[string]bool
-	ShipmentDeliveryProblem       map[string]bool
-	ReturnShipmentDeliveryProblem map[string]bool
-	ShipmentSuccess               map[string]bool
-	ReturnShipmentPending         map[string]bool
-	ReturnShipmentDetail          map[string]bool
-	ReturnShipmentDelivered       map[string]bool
-	ReturnShipmentSuccess         map[string]bool
-	PayToBuyerSuccess             map[string]bool
-	PayToSellerSuccess            map[string]bool
-	PayToMarketSuccess            map[string]bool
-}
-
 // TODO error handling
 // TODO mongo query for id
 // TODO mapping from order request to order model
 // TODO Test Response
 func (orderSrv *OrderServer) OrderRequestsHandler(ctx context.Context, req *message.Request) (*message.Response, error) {
-	logger.Audit("Req Id: %v", req.GetId())
+	logger.Audit("Req Order Id: %v", req.GetOrderId())
+	logger.Audit("Req Item Id: %v", req.GetItemId())
 	logger.Audit("Req timestamp: %v", req.GetTime())
 	logger.Audit("Req Meta Page: %v", req.GetMeta().GetPage())
 	logger.Audit("Req Meta PerPage %v", req.GetMeta().GetPerPage())
@@ -73,7 +57,52 @@ func (orderSrv *OrderServer) OrderRequestsHandler(ctx context.Context, req *mess
 	logger.Audit("Req NewOrderRequest Buyer.finance: %v", newOrderRequest.GetBuyer().GetFinance())
 	logger.Audit("Req NewOrderRequest Buyer.Address: %v", newOrderRequest.GetBuyer().GetAddress())
 
-	return &message.Response{}, nil
+	res1 , err1 := json.Marshal(newOrderRequest)
+	if err1 != nil {
+		logger.Err("json.Marshal failed, %s", err1)
+	}
+
+	logger.Audit("json request: %s	", res1)
+
+	//status.Error(codes.NotFound, "Product Not found")
+
+	st := status.New(codes.InvalidArgument, "invalid username")
+	//desc := "The username must only contain alphanumeric characters"
+
+	validations := []*message.ValidationErr {
+		{
+			Field: "username",
+			Desc: "value2",
+		},
+		{
+			Field: "password",
+			Desc: "value2",
+		},
+	}
+
+	errDetails := message.ErrorDetails {
+		Validation: validations,
+	}
+
+	//serializedOrder, err := proto.Marshal(&errDetails)
+	//if err != nil {
+	//	logger.Err("could not serialize timestamp")
+	//}
+	//
+	//errors.Data = &any.Any{
+	//TypeUrl: "baman.io/" + proto.MessageName(&errDetails),
+	//Value:   serializedOrder,
+	//}
+
+	st, err := st.WithDetails(&errDetails)
+	if err != nil {
+		// If this errored, it will always error
+		// here, so better panic so we can figure
+		// out why than have this silently passing.
+		panic(fmt.Sprintf("Unexpected error attaching metadata: %v", err))
+	}
+
+	return &message.Response{}, st.Err()
 }
 
 //func addStateRule(s ...string) map[string]bool {

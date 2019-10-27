@@ -4,11 +4,12 @@ syntax = "proto3";
 
 package message;
 import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
 
 message ResponseMetadata {
-   string total = 1;
-   string page =  2;
-   string perPage = 3;
+   uint32 total = 1;
+   uint32 page =  2;
+   uint32 perPage = 3;
 }
 
 message Response {
@@ -36,15 +37,25 @@ message MetaSorts {
 }
 
 message RequestMetadata {
-    int32 page = 1;
-    int32 perPage = 2;
+    uint32 page = 1;
+    uint32 perPage = 2;
     repeated MetaSorts sorts = 3;
     repeated MetaFilter filters = 4;
 }
 
 message Request {
-    string id = 1;
-    int64 time = 2;
-    RequestMetadata meta = 3;
-    google.protobuf.Any Data = 4;
+    string orderId = 1;
+    string itemId = 2;
+    google.protobuf.Timestamp time = 3;
+    RequestMetadata meta = 4;
+    google.protobuf.Any Data = 5;
+}
+
+message ErrorDetails {
+    repeated ValidationErr validation = 1;
+}
+
+message ValidationErr {
+    string field = 1;
+    string desc = 2;
 }
