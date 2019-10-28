@@ -4,6 +4,7 @@ import (
 	"context"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
+	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	message "gitlab.faza.io/protos/order/general"
 )
 
@@ -13,6 +14,6 @@ type IStep interface {
 	Childes()	[]IStep
 	Parents()	[]IStep
 	States() 	[]states.IState
-	ProcessMessage(ctx context.Context, request message.Request) (message.Response, error)
-	ProcessOrder(ctx context.Context, order entities.Order) error
+	ProcessMessage(ctx context.Context, request *message.Request) promise.IPromise
+	ProcessOrder(ctx context.Context, order entities.Order) promise.IPromise
 }

@@ -7,27 +7,27 @@ import (
 )
 
 type eventImpl struct {
-	actorType   actors.ActorType
-	actorAction actors.IActorAction
-	actionData  actions.IActionData
-	timestamp   time.Time
+	actor     actors.ActorType
+	action    actors.IActorAction
+	data      actions.IActionData
+	timestamp time.Time
 }
 
-func New(actorType actors.ActorType, actorAction actors.IActorAction,
-		actionData actions.IActionData, timestamp time.Time) IEvent {
-	return eventImpl{actorType, actorAction, actionData, timestamp}
+func New(actor actors.ActorType, action actors.IActorAction,
+		data actions.IActionData, timestamp time.Time) IEvent {
+	return eventImpl{actor, action, data, timestamp}
 }
 
 func (event eventImpl) ActorType() actors.ActorType {
-	return event.actorType
+	return event.actor
 }
 
 func (event eventImpl) ActorAction() actors.IActorAction {
-	return event.actorAction
+	return event.action
 }
 
 func (event eventImpl) Data() actions.IActionData {
-	return event.actionData
+	return event.data
 }
 
 func (event eventImpl) Timestamp() time.Time {

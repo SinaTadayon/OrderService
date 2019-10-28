@@ -36,6 +36,7 @@ func NewValueOf(base *listener_state.BaseListenerImpl, params ...interface{}) li
 	panic("implementation required")
 }
 
-func (sellerAction sellerActionListener) ActionListener(ctx context.Context, event events.IEvent, param interface{}) {
+func (sellerAction sellerActionListener) ActionListener(ctx context.Context, event events.IEvent, param interface{}) promise.IPromise {
 	panic("implementation required")
+	return
 }

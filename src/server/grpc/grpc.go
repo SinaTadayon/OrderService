@@ -1,14 +1,16 @@
-package grpcserver
+package grpc
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"github.com/golang/protobuf/ptypes"
+	"gitlab.faza.io/order-project/order-service/domain"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository"
+	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	pb "gitlab.faza.io/protos/order"
 	message "gitlab.faza.io/protos/order/general"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"strconv"
+	"time"
 
 	//"errors"
 	"net"
@@ -20,136 +22,135 @@ import (
 	"google.golang.org/grpc"
 )
 
-type OrderServer struct{
+type Server struct{
 	pb.UnimplementedOrderServiceServer
+	flowManager 	domain.IFlowManager
+	orderRepository	repository.IOrderRepository
+	address 		string
+	port			uint16
+}
+
+func NewServer(address string, port uint16, flowManager domain.IFlowManager, orderRepository repository.IOrderRepository) Server {
+	return Server{flowManager:flowManager, orderRepository:orderRepository, address:address, port:port}
 }
 
 // TODO error handling
 // TODO mongo query for id
 // TODO mapping from order request to order model
 // TODO Test Response
-func (orderSrv *OrderServer) OrderRequestsHandler(ctx context.Context, req *message.Request) (*message.Response, error) {
-	logger.Audit("Req Order Id: %v", req.GetOrderId())
-	logger.Audit("Req Item Id: %v", req.GetItemId())
-	logger.Audit("Req timestamp: %v", req.GetTime())
-	logger.Audit("Req Meta Page: %v", req.GetMeta().GetPage())
-	logger.Audit("Req Meta PerPage %v", req.GetMeta().GetPerPage())
-	logger.Audit("Req Meta Sorts: ")
-	for index, sort := range req.GetMeta().GetSorts() {
-		logger.Audit("Req Meta Sort[%d].name: %v", index, sort.GetName())
-		logger.Audit("Req Meta Sort[%d].name: %v", index, sort.GetDirection())
-	}
-	logger.Audit("Req Meta Filters: ")
-	for index, filter := range req.GetMeta().GetFilters() {
-		logger.Audit("Req Meta Filter.filters[%d].name = %v", index, filter.GetName())
-		logger.Audit("Req Meta Filter.filters[%d].opt = %v", index, filter.GetOpt())
-		logger.Audit("Req Meta Filter.filters[%d].values = %v", index, filter.GetValue())
+func (server *Server) OrderRequestsHandler(ctx context.Context, req *message.Request) (*message.Response, error) {
+
+	flowManagerCtx, _ := context.WithTimeout(context.Background(), 3*time.Second)
+	promiseHandler := server.flowManager.MessageHandler(flowManagerCtx, req)
+	futureData := <- promiseHandler.GetData()
+	if futureData.Error != nil {
+		futureErr := futureData.Error.(promise.FutureError)
+		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
 	}
 
-	var newOrderRequest pb.NewOrderRequest
-	if err := ptypes.UnmarshalAny(req.Data, &newOrderRequest); err != nil {
-		logger.Err("Could not unmarshal OrderRequest from anything field: %s", err)
-		return &message.Response{}, err
+	response, ok := futureData.Data.(message.Response)
+	if ok != true {
+		logger.Err("received data of futureData invalid, type: %T, value, %v", futureData.Data, futureData.Data)
+		return nil, status.Error(500, "Unknown Error")
 	}
 
-	logger.Audit("Req NewOrderRequest Buyer.firstName: %v", newOrderRequest.GetBuyer().GetFirstName())
-	logger.Audit("Req NewOrderRequest Buyer.lastName: %v", newOrderRequest.GetBuyer().GetLastName())
-	logger.Audit("Req NewOrderRequest Buyer.finance: %v", newOrderRequest.GetBuyer().GetFinance())
-	logger.Audit("Req NewOrderRequest Buyer.Address: %v", newOrderRequest.GetBuyer().GetAddress())
+	return &response, nil
 
-	res1 , err1 := json.Marshal(newOrderRequest)
-	if err1 != nil {
-		logger.Err("json.Marshal failed, %s", err1)
-	}
-
-	logger.Audit("json request: %s	", res1)
-
-	//status.Error(codes.NotFound, "Product Not found")
-
-	st := status.New(codes.InvalidArgument, "invalid username")
-	//desc := "The username must only contain alphanumeric characters"
-
-	validations := []*message.ValidationErr {
-		{
-			Field: "username",
-			Desc: "value2",
-		},
-		{
-			Field: "password",
-			Desc: "value2",
-		},
-	}
-
-	errDetails := message.ErrorDetails {
-		Validation: validations,
-	}
-
-	//serializedOrder, err := proto.Marshal(&errDetails)
-	//if err != nil {
-	//	logger.Err("could not serialize timestamp")
+	//logger.Audit("Req Order Id: %v", req.GetOrderId())
+	//logger.Audit("Req Item Id: %v", req.GetItemId())
+	//logger.Audit("Req timestamp: %v", req.GetTime())
+	//logger.Audit("Req Meta Page: %v", req.GetMeta().GetPage())
+	//logger.Audit("Req Meta PerPage %v", req.GetMeta().GetPerPage())
+	//logger.Audit("Req Meta Sorts: ")
+	//for index, sort := range req.GetMeta().GetSorts() {
+	//	logger.Audit("Req Meta Sort[%d].name: %v", index, sort.GetName())
+	//	logger.Audit("Req Meta Sort[%d].name: %v", index, sort.GetDirection())
+	//}
+	//logger.Audit("Req Meta Filters: ")
+	//for index, filter := range req.GetMeta().GetFilters() {
+	//	logger.Audit("Req Meta Filter.filters[%d].name = %v", index, filter.GetName())
+	//	logger.Audit("Req Meta Filter.filters[%d].opt = %v", index, filter.GetOpt())
+	//	logger.Audit("Req Meta Filter.filters[%d].values = %v", index, filter.GetValue())
 	//}
 	//
-	//errors.Data = &any.Any{
-	//TypeUrl: "baman.io/" + proto.MessageName(&errDetails),
-	//Value:   serializedOrder,
+	//var newOrderRequest pb.NewOrderRequest
+	//if err := ptypes.UnmarshalAny(req.Data, &newOrderRequest); err != nil {
+	//	logger.Err("Could not unmarshal OrderRequest from anything field: %s", err)
+	//	return &message.Response{}, err
 	//}
-
-	st, err := st.WithDetails(&errDetails)
-	if err != nil {
-		// If this errored, it will always error
-		// here, so better panic so we can figure
-		// out why than have this silently passing.
-		panic(fmt.Sprintf("Unexpected error attaching metadata: %v", err))
-	}
-
-	return &message.Response{}, st.Err()
+	//
+	//logger.Audit("Req NewOrderRequest Buyer.firstName: %v", newOrderRequest.GetBuyer().GetFirstName())
+	//logger.Audit("Req NewOrderRequest Buyer.lastName: %v", newOrderRequest.GetBuyer().GetLastName())
+	//logger.Audit("Req NewOrderRequest Buyer.finance: %v", newOrderRequest.GetBuyer().GetFinance())
+	//logger.Audit("Req NewOrderRequest Buyer.Address: %v", newOrderRequest.GetBuyer().GetShippingAddress())
+	//
+	//res1 , err1 := json.Marshal(newOrderRequest)
+	//if err1 != nil {
+	//	logger.Err("json.Marshal failed, %s", err1)
+	//}
+	//
+	//logger.Audit("json request: %s	", res1)
+	//
+	////status.Error(codes.NotFound, "Product Not found")
+	//
+	//st := status.New(codes.InvalidArgument, "invalid username")
+	////desc := "The username must only contain alphanumeric characters"
+	//
+	//validations := []*message.ValidationErr {
+	//	{
+	//		Field: "username",
+	//		Desc: "value2",
+	//	},
+	//	{
+	//		Field: "password",
+	//		Desc: "value2",
+	//	},
+	//}
+	//
+	//errDetails := message.ErrorDetails {
+	//	Validation: validations,
+	//}
+	//
+	////serializedOrder, err := proto.Marshal(&errDetails)
+	////if err != nil {
+	////	logger.Err("could not serialize timestamp")
+	////}
+	////
+	////errors.Data = &any.Any{
+	////TypeUrl: "baman.io/" + proto.MessageName(&errDetails),
+	////Value:   serializedOrder,
+	////}
+	//
+	//st, err := st.WithDetails(&errDetails)
+	//if err != nil {
+	//	// If this errored, it will always error
+	//	// here, so better panic so we can figure
+	//	// out why than have this silently passing.
+	//	panic(fmt.Sprintf("Unexpected error attaching metadata: %v", err))
+	//}
+	//
+	//return &message.Response{}, st.Err()
 }
 
-//func addStateRule(s ...string) map[string]bool {
-//	m := make(map[string]bool)
-//	for _, status := range s {
-//		m[status] = true
-//	}
-//	return m
-//}
-//
-//func addGrpcStateRule() {
-//	GrpcStatesRules.SellerApprovalPending = addStateRule(SellerApprovalPending)
-//	GrpcStatesRules.ShipmentDetail = addStateRule(ShipmentPending, ShipmentDetailDelayed)
-//	GrpcStatesRules.BuyerCancel = addStateRule(ShipmentDetailDelayed)
-//	GrpcStatesRules.Delivered = addStateRule(Shipped, ShipmentDeliveryDelayed)
-//	GrpcStatesRules.ShipmentDeliveryDelayed = addStateRule(ShipmentDeliveryPending)
-//	GrpcStatesRules.ReturnShipmentDeliveryDelayed = addStateRule(ReturnShipmentDeliveryPending)
-//	GrpcStatesRules.ShipmentCanceled = addStateRule(ShipmentDetailDelayed, ShipmentDeliveryDelayed)
-//	GrpcStatesRules.ReturnShipmentCanceled = addStateRule(ReturnShipmentDeliveryProblem, ReturnShipmentDeliveryDelayed)
-//	GrpcStatesRules.ShipmentDeliveryProblem = addStateRule(ShipmentDelivered)
-//	GrpcStatesRules.ReturnShipmentDeliveryProblem = addStateRule(ReturnShipmentDelivered)
-//	GrpcStatesRules.ShipmentSuccess = addStateRule(ReturnShipmentDetailDelayed, ShipmentDeliveryProblem, ShipmentDelivered)
-//	GrpcStatesRules.ReturnShipmentPending = addStateRule(ShipmentDelivered, ShipmentDeliveryProblem)
-//	GrpcStatesRules.ReturnShipmentDetail = addStateRule(ReturnShipmentPending, ReturnShipmentDetailDelayed)
-//	GrpcStatesRules.ReturnShipmentDelivered = addStateRule(ReturnShipmentDeliveryDelayed, ReturnShipmentDeliveryPending, ReturnShipped)
-//	GrpcStatesRules.ReturnShipmentSuccess = addStateRule(ReturnShipmentDeliveryProblem, ReturnShipmentDelivered)
-//	GrpcStatesRules.PayToBuyerSuccess = addStateRule(PayToBuyer, PayToBuyerFailed)
-//	GrpcStatesRules.PayToSellerSuccess = addStateRule(PayToSeller, PayToSellerFailed)
-//	GrpcStatesRules.PayToMarketSuccess = addStateRule(PayToMarket, PayToMarketFailed)
-//}
-
-func startGrpc(port string) {
+func (server Server) Start() {
 	//addGrpcStateRule()
 
-	lis, err := net.Listen("tcp", ":"+ port)
+	port := strconv.Itoa(int(server.port))
+	lis, err := net.Listen("tcp", server.address + ":" + port)
 	if err != nil {
 		logger.Err("Failed to listen to TCP on port " + port + err.Error())
 	}
-	logger.Audit("app started at " + port)
+	logger.Audit("app started at %s:%s", server.address, port)
 
 	// Start GRPC server and register the server
 	grpcServer := grpc.NewServer()
-	pb.RegisterOrderServiceServer(grpcServer, &OrderServer{})
+	pb.RegisterOrderServiceServer(grpcServer, &server)
 	if err := grpcServer.Serve(lis); err != nil {
 		logger.Err("GRPC server start field " + err.Error())
 		panic("GRPC server start field")
 	}
+
+	//logger.Audit("GRPC server is running . . . ")
 }
 
 // TODO Check ACL and Security with Mostafa SDK

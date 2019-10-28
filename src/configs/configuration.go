@@ -10,9 +10,13 @@ import (
 
 type Cfg struct {
 	App struct {
-		Port                                 string `env:"PORT"`
+		ServiceMode							 string `env:"ORDER_SERVICE_MODE"`
 		SmsTemplateDir                       string `env:"NOTIFICATION_SMS_TEMPLATES"`
 		EmailTemplateNotifySellerForNewOrder string `env:"EMAIL_TMP_NOTIFY_SELLER_FOR_NEW_ORDER"`
+	}
+	GRPCServer struct {
+		Address string `env:"ORDER_SERVER_ADDRESS"`
+		Port   	int `env:"ORDER_SERVER_PORT"`
 	}
 	Kafka struct {
 		Version       string `env:"ORDER_SERVICE_KAFKA_VERSION"`

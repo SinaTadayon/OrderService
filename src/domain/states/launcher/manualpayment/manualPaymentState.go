@@ -36,7 +36,8 @@ func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) la
 	panic("implementation required")
 }
 
-func (manualPayment manualPaymentActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, params ...interface{}) {
+func (manualPayment manualPaymentActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, param interface{}) promise.IPromise {
 	panic("implementation required")
+	return
 }
 

@@ -42,7 +42,8 @@ func (nextStep nextToStepActionLauncher) ActionStepMap() map[actions.IEnumAction
 	return nextStep.actionStepMap
 }
 
-func (nextStep nextToStepActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, params ...interface{}) {
+func (nextStep nextToStepActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, param interface{}) promise.IPromise {
 	panic("implementation required")
+	return
 }
 

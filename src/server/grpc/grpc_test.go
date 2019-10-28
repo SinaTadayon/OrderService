@@ -1,4 +1,4 @@
-package grpcserver
+package grpc
 
 import (
 	"context"
@@ -40,7 +40,9 @@ func init() {
 		logger.Err(err.Error())
 		return
 	}
-	go startGrpc(config.App.Port)
+
+	server := NewServer(config.GRPCServer.Address, config.GRPCServer.Port, nil)
+	go server.Start()
 }
 
 func createNewOrderRequest() *pb.NewOrderRequest {
@@ -99,9 +101,16 @@ func createNewOrderRequest() *pb.NewOrderRequest {
 	item.Categories = "Electronic/laptop"
 	item.Title = "Asus G503 i7, 256SSD, 32G Ram"
 	item.Warranty = "ضمانت سلامت کالا"
-	item.Quantity = 10
 	item.Image = "http://baman.io/image/asus.png"
 	item.Returnable = true
+
+	item.Attributes.Quantity = 10
+	item.Attributes.Width = "8cm"
+	item.Attributes.Height = "10cm"
+	item.Attributes.Length = "15cm"
+	item.Attributes.Weight = "20kg"
+	item.Attributes.Color = "blue"
+	item.Attributes.Materials = "stone"
 
 	item.Price.Discount = 200000
 	item.Price.Payable = 20000000
@@ -181,9 +190,9 @@ func createMetaDataRequest() *message.RequestMetadata {
 // Grpc test
 func TestNewOrder(t *testing.T) {
 
-	//time.Sleep(3 * time.Second)
-	ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
-	grpcConnNewOrder, err := grpc.DialContext(ctx, ":" + config.App.Port, grpc.WithInsecure())
+	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
+	grpcConnNewOrder, err := grpc.DialContext(ctx, config.GRPCServer.Address + ":" +
+		strconv.Itoa(int(config.GRPCServer.Port)), grpc.WithInsecure())
 	assert.Nil(t, err)
 	OrderService := pb.NewOrderServiceClient(grpcConnNewOrder)
 

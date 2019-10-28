@@ -2,6 +2,16 @@ package domain
 
 import (
 	"context"
+	"errors"
+	checkout_action "gitlab.faza.io/order-project/order-service/domain/actions/actors/checkout"
+	checkout_action_state "gitlab.faza.io/order-project/order-service/domain/states/listener/checkout"
+	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	pb "gitlab.faza.io/protos/order"
+	//"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
+	"github.com/golang/protobuf/ptypes"
+	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	finalize_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/finalize"
 	manual_payment_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/manualpayment"
@@ -19,6 +29,7 @@ import (
 	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/actors/scheduler"
 	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/actors/seller"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/actors/system"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	finalize_state "gitlab.faza.io/order-project/order-service/domain/states/launcher/finalize"
 	manual_payment_state "gitlab.faza.io/order-project/order-service/domain/states/launcher/manualpayment"
@@ -75,39 +86,45 @@ import (
 	message "gitlab.faza.io/protos/order/general"
 )
 
-var flowManager *iFlowManagerImpl
-
 type iFlowManagerImpl struct {
 	nameStepsMap		map[string]steps.IStep
 	indexStepsMap		map[int]steps.IStep
+	orderRepository		repository.IOrderRepository
+	itemRepository		repository.IItemRepository
 }
 
-func init() {
-	flowManager = new(iFlowManagerImpl)
-	flowManager.nameStepsMap = make(map[string]steps.IStep, 64)
-	flowManager.indexStepsMap = make(map[int]steps.IStep, 64)
+func NewFlowManager(orderRepository	repository.IOrderRepository, itemRepository	repository.IItemRepository) (IFlowManager, error) {
+	nameStepsMap := make(map[string]steps.IStep, 64)
+	indexStepsMap := make(map[int]steps.IStep, 64)
+
+	if orderRepository == nil {
+		return nil, errors.New("repository.IOrderRepository is nil")
+	}
+
+	iFlowManagerImpl := &iFlowManagerImpl{nameStepsMap, indexStepsMap, orderRepository, itemRepository}
+	if err := iFlowManagerImpl.setupFlowManager(); err != nil {
+		return nil, err
+	}
+
+	return iFlowManagerImpl, nil
 }
 
-func Get() IFlowManager {
-	return flowManager
-}
-
-func GetNameStepsMap() map[string]steps.IStep {
+func (flowManager *iFlowManagerImpl) GetNameStepsMap() map[string]steps.IStep {
 	return flowManager.nameStepsMap
 }
 
-func GetIndexStepsMap() map[int]steps.IStep {
+func (flowManager *iFlowManagerImpl) GetIndexStepsMap() map[int]steps.IStep {
 	return flowManager.indexStepsMap
 }
 
-func (flowManager *iFlowManagerImpl) SetupFlowManager() error {
+func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	var emptyState 	[]states.IState
 	var emptyStep 	[]steps.IStep
 
 	//////////////////////////////////////////////////////////////////
 	// Pay To Market
 	// create empty step93 that required for step95
-	step93 := pay_to_market_step.New(emptyStep, emptyStep, emptyState...)
+	step93 := pay_to_market_step.New(emptyStep, emptyStep, flowManager.orderRepository, flowManager.itemRepository,emptyState...)
 	baseStep93 := step93.(steps.IBaseStep)
 
 	// add to flowManager maps
@@ -121,7 +138,7 @@ func (flowManager *iFlowManagerImpl) SetupFlowManager() error {
 	//////////////////////////////////////////////////////////////////
 	// Pay To Seller
 	// create empty step90 which is required for step92
-	step90 := pay_to_seller_step.New(emptyStep, emptyStep, emptyState...)
+	step90 := pay_to_seller_step.New(emptyStep, emptyStep, flowManager.orderRepository, flowManager.itemRepository, emptyState...)
 	baseStep90 := step90.(steps.IBaseStep)
 
 	// add to flowManager maps
@@ -135,7 +152,7 @@ func (flowManager *iFlowManagerImpl) SetupFlowManager() error {
 	//////////////////////////////////////////////////////////////////
 	// Pay To Buyer
 	// create empty step80 which is required for step82
-	step80 := pay_to_buyer_step.New(emptyStep, emptyStep, emptyState...)
+	step80 := pay_to_buyer_step.New(emptyStep, emptyStep, flowManager.orderRepository, flowManager.itemRepository, emptyState...)
 	baseStep80 := step80.(steps.IBaseStep)
 	// add to flowManager maps
 	flowManager.indexStepsMap[step80.Index()] = step80
@@ -199,7 +216,7 @@ func (flowManager *iFlowManagerImpl) createStep94() {
 	// Create Notification State
 	notificationState := notification_state.New(0, []states.IState{finalizeState}, emptyState,
 		notification_action.NewOf(notification_action.MarketNotificationAction))
-	step94 := pay_to_market_success_step.New(emptyStep, emptyStep, notificationState, finalizeState)
+	step94 := pay_to_market_success_step.New(emptyStep, emptyStep, flowManager.orderRepository, flowManager.itemRepository, notificationState, finalizeState)
 
 	// add to flowManager maps
 	flowManager.indexStepsMap[step94.Index()] = step94
@@ -225,7 +242,8 @@ func (flowManager *iFlowManagerImpl) createStep95() {
 	retryState := retry_state.New(0, []states.IState{operatorNotificationState, nextToStep}, emptyState, retry_action.NewOf(retry_action.RetryAction))
 
 	step95 := pay_to_market_failed_step.New([]steps.IStep{step94}, []steps.IStep{step93},
-				retryState, operatorNotificationState, manualPaymentState, nextToStep)
+		flowManager.orderRepository, flowManager.itemRepository,
+		retryState, operatorNotificationState, manualPaymentState, nextToStep)
 
 	// add to flowManager maps
 	flowManager.indexStepsMap[step95.Index()] = step95
@@ -275,7 +293,8 @@ func (flowManager *iFlowManagerImpl) createStep91() {
 	notificationState := notification_state.New(0, []states.IState{nextToStep93}, emptyState,
 		notification_action.NewOf(notification_action.SellerNotificationAction))
 
-	step91 := pay_to_seller_success_step.New([]steps.IStep{step93}, emptyStep, notificationState, nextToStep93)
+	step91 := pay_to_seller_success_step.New([]steps.IStep{step93}, emptyStep,
+				flowManager.orderRepository, flowManager.itemRepository, notificationState, nextToStep93)
 
 	// add to flowManager maps
 	flowManager.indexStepsMap[step91.Index()] = step91
@@ -304,6 +323,7 @@ func (flowManager *iFlowManagerImpl) createStep92() {
 	retryState := retry_state.New(0, []states.IState{operatorNotificationState, nextToStep}, emptyState, retry_action.NewOf(retry_action.RetryAction))
 
 	step92 := pay_to_seller_failed_step.New([]steps.IStep{step91}, []steps.IStep{step90},
+		flowManager.orderRepository, flowManager.itemRepository,
 		retryState, operatorNotificationState, manualPaymentState, nextToStep)
 
 	// add to flowManager maps
@@ -349,7 +369,8 @@ func (flowManager *iFlowManagerImpl) createStep81() {
 	// Create Notification State
 	notificationState := notification_state.New(0, []states.IState{finalizeState}, emptyState,
 		notification_action.NewOf(notification_action.BuyerNotificationAction))
-	step81 := pay_to_buyer_success_step.New(emptyStep, emptyStep, notificationState, finalizeState)
+	step81 := pay_to_buyer_success_step.New(emptyStep, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository, notificationState, finalizeState)
 
 	// add to flowManager maps
 	flowManager.indexStepsMap[step81.Index()] = step81
@@ -377,6 +398,7 @@ func (flowManager *iFlowManagerImpl) createStep82() {
 	retryState := retry_state.New(0, []states.IState{operatorNotificationState, nextToStep}, emptyState, retry_action.NewOf(retry_action.RetryAction))
 
 	step82 := pay_to_buyer_failed_step.New([]steps.IStep{step81}, []steps.IStep{step80},
+		flowManager.orderRepository, flowManager.itemRepository,
 		retryState,operatorNotificationState, manualPaymentState, nextToStep)
 
 	// add to flowManager maps
@@ -424,7 +446,8 @@ func (flowManager *iFlowManagerImpl) createStep55() {
 
 	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
 
-	step55 := return_shipment_success_step.New([]steps.IStep{step80}, emptyStep, nextToStepState)
+	step55 := return_shipment_success_step.New([]steps.IStep{step80}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository, nextToStepState)
 
 	// add to flowManager maps
 	flowManager.indexStepsMap[step55.Index()] = step55
@@ -442,7 +465,8 @@ func (flowManager *iFlowManagerImpl) createStep54() {
 	}
 
 	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
-	step54 := return_shipment_canceled_step.New([]steps.IStep{step90}, emptyStep, nextToStepState)
+	step54 := return_shipment_canceled_step.New([]steps.IStep{step90}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository, nextToStepState)
 
 	// add to flowManager maps
 	flowManager.indexStepsMap[step54.Index()] = step54
@@ -466,6 +490,7 @@ func (flowManager *iFlowManagerImpl) createStep53() {
 	notificationState := notification_state.New(0, []states.IState{operatorActionState}, emptyState, notification_action.NewOf(notification_action.OperatorNotificationAction))
 
 	step53 := return_shipment_delivery_problem_step.New([]steps.IStep{step54, step55}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
 		notificationState, operatorActionState, nextToStepState)
 
 	// add to flowManager maps
@@ -493,6 +518,7 @@ func (flowManager *iFlowManagerImpl) createStep50() {
 	notificationActionState := notification_state.New(0, []states.IState{composeActorsActionState}, emptyState, notification_action.NewOf(notification_action.SellerNotificationAction))
 
 	step50 := return_shipment_delivered_step.New([]steps.IStep{step53, step55}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
 		notificationActionState, composeActorsActionState, sellerApprovedActionState, schedulerActionState, nextToStep)
 
 	// add to flowManager maps
@@ -517,6 +543,7 @@ func (flowManager *iFlowManagerImpl) createStep52() {
 	notificationState := notification_state.New(0, []states.IState{operatorActionState}, emptyState, notification_action.NewOf(notification_action.OperatorNotificationAction))
 
 	step52 := return_shipment_delivery_delayed_step.New([]steps.IStep{step54, step50}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
 		notificationState, operatorActionState, nextToStepState)
 
 	// add to flowManager maps
@@ -544,6 +571,7 @@ func (flowManager *iFlowManagerImpl) createStep51() {
 	notificationActionState := notification_state.New(0, []states.IState{composeActorsActionState}, emptyState, notification_action.NewOf(notification_action.BuyerNotificationAction))
 
 	step51 := return_shipment_delivery_pending_step.New([]steps.IStep{step50, step52}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
 		notificationActionState, composeActorsActionState, buyerNeedSupportActionState, schedulerActionState, nextToStep)
 
 	// add to flowManager maps
@@ -570,6 +598,7 @@ func (flowManager *iFlowManagerImpl) createStep42() {
 	notificationActionState := notification_state.New(0, []states.IState{composeActorsActionState}, emptyState, notification_action.NewOf(notification_action.BuyerNotificationAction))
 
 	step42 := return_shipped_step.New([]steps.IStep{step50, step51}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
 		notificationActionState, composeActorsActionState, buyerReturnShipmentDeliveryActionState, schedulerActionState, nextToStep)
 
 	// add to flowManager maps
@@ -588,7 +617,8 @@ func (flowManager *iFlowManagerImpl) createStep40() {
 	}
 
 	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
-	step40 := shipment_success_step.New([]steps.IStep{step90}, emptyStep, nextToStepState)
+	step40 := shipment_success_step.New([]steps.IStep{step90}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository, nextToStepState)
 
 	// add to flowManager maps
 	flowManager.indexStepsMap[step40.Index()] = step40
@@ -614,6 +644,7 @@ func (flowManager *iFlowManagerImpl) createStep44() {
 	notificationState := notification_state.New(0, []states.IState{composeActorsActionState}, emptyState, notification_action.NewOf(notification_action.BuyerNotificationAction))
 
 	step44 := return_shipment_detail_delayed_step.New([]steps.IStep{step40, step42}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
 		notificationState, composeActorsActionState, buyerEnterReturnShipmentDetailDelayedActionState,
 		schedulerActionState,  nextToStepState)
 
@@ -641,6 +672,7 @@ func (flowManager *iFlowManagerImpl) createStep41() {
 	notificationActionState := notification_state.New(0, []states.IState{composeActorsActionState}, emptyState, notification_action.NewOf(notification_action.BuyerNotificationAction))
 
 	step41 := return_shipment_pending_step.New([]steps.IStep{step42, step44}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
 		notificationActionState, composeActorsActionState, BuyerEnterReturnShipmentDetailAction, schedulerActionState, nextToStep)
 
 	// add to flowManager maps
@@ -665,6 +697,7 @@ func (flowManager *iFlowManagerImpl) createStep43() {
 	notificationState := notification_state.New(0, []states.IState{operatorActionState}, emptyState, notification_action.NewOf(notification_action.OperatorNotificationAction))
 
 	step43 := shipment_delivery_problem_step.New([]steps.IStep{step40, step41}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
 		notificationState, operatorActionState, nextToStepState)
 
 	// add to flowManager maps
@@ -683,7 +716,8 @@ func (flowManager *iFlowManagerImpl) createStep36() {
 	}
 
 	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
-	step36 := shipment_canceled_step.New([]steps.IStep{step80}, emptyStep, nextToStepState)
+	step36 := shipment_canceled_step.New([]steps.IStep{step80}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository, nextToStepState)
 
 	// add to flowManager maps
 	flowManager.indexStepsMap[step36.Index()] = step36
@@ -712,6 +746,7 @@ func (flowManager *iFlowManagerImpl) createStep32() {
 	notificationActionState := notification_state.New(0, []states.IState{composeActorsActionState}, emptyState, notification_action.NewOf(notification_action.BuyerNotificationAction))
 
 	step32 := shipment_delivered_step.New([]steps.IStep{step43, step41, step40}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
 		notificationActionState, composeActorsActionState, buyerApprovalActionState, schedulerActionState, nextToStep)
 
 	// add to flowManager maps
@@ -736,6 +771,7 @@ func (flowManager *iFlowManagerImpl) createStep35() {
 	notificationState := notification_state.New(0, []states.IState{operatorActionState}, emptyState, notification_action.NewOf(notification_action.OperatorNotificationAction))
 
 	step35 := shipment_delivery_delayed_step.New([]steps.IStep{step32, step36}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
 		notificationState, operatorActionState, nextToStepState)
 
 	// add to flowManager maps
@@ -762,6 +798,7 @@ func (flowManager *iFlowManagerImpl) createStep34() {
 	notificationActionState := notification_state.New(0, []states.IState{composeActorsActionState}, emptyState, notification_action.NewOf(notification_action.SellerNotificationAction))
 
 	step34 := shipment_delivery_pending_step.New([]steps.IStep{step35, step32}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
 		notificationActionState, composeActorsActionState, sellerShipmentDeliveryPendingActionState, schedulerActionState, nextToStep)
 
 	// add to flowManager maps
@@ -789,6 +826,7 @@ func (flowManager *iFlowManagerImpl) createStep31() {
 	stockSettlementActionState := stock_action_state.New(0, []states.IState{notificationActionState}, emptyState, stock_action.NewOf(stock_action.SettlementAction))
 
 	step31 := shipped_step.New([]steps.IStep{step32, step34}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
 		stockSettlementActionState, notificationActionState, composeActorsActionState,
 		sellerShipmentDeliveryActionState, schedulerActionState, nextToStep)
 
@@ -816,6 +854,7 @@ func (flowManager *iFlowManagerImpl) createStep33() {
 	notificationActionState := notification_state.New(0, []states.IState{composeActorsActionState}, emptyState, notification_action.NewOf(notification_action.SellerNotificationAction, notification_action.BuyerNotificationAction))
 
 	step33 := shipment_detail_delayed_step.New([]steps.IStep{step31, step36}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
 		notificationActionState, composeActorsActionState, sellerEnterShipmentDetailDelayedActionState, buyerWaitForSellerEnterShipmentDetailDelayedActionState, nextToStep)
 
 	// add to flowManager maps
@@ -842,6 +881,7 @@ func (flowManager *iFlowManagerImpl) createStep30() {
 	notificationState := notification_state.New(0, []states.IState{composeActorsActionState}, emptyState, notification_action.NewOf(notification_action.SellerNotificationAction))
 
 	step30 := shipment_pending_step.New([]steps.IStep{step31, step33}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
 		notificationState, composeActorsActionState, sellerEnterShipmentDetailActionState,
 		schedulerActionState,  nextToStepState)
 
@@ -861,7 +901,8 @@ func (flowManager *iFlowManagerImpl) createStep21() {
 	}
 
 	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
-	step21 := shipment_rejected_by_seller_step.New([]steps.IStep{step80}, emptyStep, nextToStepState)
+	step21 := shipment_rejected_by_seller_step.New([]steps.IStep{step80}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository, nextToStepState)
 
 	// add to flowManager maps
 	flowManager.indexStepsMap[step21.Index()] = step21
@@ -888,6 +929,7 @@ func (flowManager *iFlowManagerImpl) createStep20() {
 	notificationActionState := notification_state.New(0, []states.IState{composeActorsActionState}, emptyState, notification_action.NewOf(notification_action.SellerNotificationAction))
 
 	step20 := seller_approval_pending_step.New([]steps.IStep{step30, step21}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
 		notificationActionState, composeActorsActionState, sellerApprovalActionState, schedulerActionState, nextToStep)
 
 	// add to flowManager maps
@@ -906,7 +948,8 @@ func (flowManager *iFlowManagerImpl) createStep14() {
 	}
 
 	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
-	step14 := payment_rejected_step.New([]steps.IStep{step80}, emptyStep, nextToStepState)
+	step14 := payment_rejected_step.New([]steps.IStep{step80}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository, nextToStepState)
 
 	// add to flowManager maps
 	flowManager.indexStepsMap[step14.Index()] = step14
@@ -930,6 +973,7 @@ func (flowManager *iFlowManagerImpl) createStep11() {
 	notificationState := notification_state.New(0, []states.IState{buyerPaymentApprovalActionState}, emptyState, notification_action.NewOf(notification_action.BuyerNotificationAction))
 
 	step11 := payment_success_step.New([]steps.IStep{step14, step20}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
 		notificationState, buyerPaymentApprovalActionState, nextToStepState)
 
 	// add to flowManager maps
@@ -950,7 +994,9 @@ func (flowManager *iFlowManagerImpl) createStep12() {
 		notification_action.NewOf(notification_action.BuyerNotificationAction))
 
 	stockReleaseActionState := stock_action_state.New(0, []states.IState{notificationState}, emptyState, stock_action.NewOf(stock_action.ReleasedAction))
-	step12 := payment_failed_step.New(emptyStep, emptyStep, stockReleaseActionState, notificationState, finalizeState)
+	step12 := payment_failed_step.New(emptyStep, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
+		stockReleaseActionState, notificationState, finalizeState)
 
 	// add to flowManager maps
 	flowManager.indexStepsMap[step12.Index()] = step12
@@ -973,6 +1019,7 @@ func (flowManager *iFlowManagerImpl) createStep10() {
 	paymentActionState := payment_action_state.New(0, []states.IState{nextToStepState}, emptyState, payment_action.NewOf(payment_action.SuccessAction, payment_action.FailedAction))
 
 	step10 := payment_pending_step.New([]steps.IStep{step12, step11}, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository,
 		paymentActionState, nextToStepState)
 
 	// add to flowManager maps
@@ -988,7 +1035,8 @@ func (flowManager *iFlowManagerImpl) createStep1() {
 	finalizeState := finalize_state.New(1, emptyState, emptyState,
 		finalize_action.NewOf(finalize_action.OrderFailedFinalizeAction))
 
-	step1 := new_order_failed_step.New(emptyStep, emptyStep,finalizeState)
+	step1 := new_order_failed_step.New(emptyStep, emptyStep,
+		flowManager.orderRepository, flowManager.itemRepository, finalizeState)
 
 	// add to flowManager maps
 	flowManager.indexStepsMap[step1.Index()] = step1
@@ -1007,17 +1055,30 @@ func (flowManager *iFlowManagerImpl) createStep0() {
 		new_order_action.SuccessAction: step10,
 	}
 
-	nextToStepState := next_to_step_state.New(2, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
-	stockReservedActionState := stock_action_state.New(1, []states.IState{nextToStepState}, emptyState, stock_action.NewOf(stock_action.ReservedAction))
-	newOrderProcessAction := new_order_state.New(0, []states.IState{stockReservedActionState, nextToStepState}, emptyState, new_order_action.NewOf(new_order_action.SuccessAction, new_order_action.FailedAction))
+	nextToStepState := next_to_step_state.New(3, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	stockReservedActionState := stock_action_state.New(2, []states.IState{nextToStepState}, emptyState, stock_action.NewOf(stock_action.ReservedAction))
+	newOrderStateAction := new_order_state.New(1, []states.IState{stockReservedActionState, nextToStepState}, emptyState, new_order_action.NewOf(new_order_action.SuccessAction, new_order_action.FailedAction))
+	checkoutStateAction := checkout_action_state.New(0, []states.IState{stockReservedActionState, nextToStepState}, emptyState, checkout_action.NewOf(checkout_action.NewOrderAction))
 
 	step0 := new_order_step.New([]steps.IStep{step1, step10}, emptyStep,
-		newOrderProcessAction, stockReservedActionState, nextToStepState)
+		flowManager.orderRepository, flowManager.itemRepository, checkoutStateAction,
+		newOrderStateAction, stockReservedActionState, nextToStepState)
 	// add to flowManager maps
 	flowManager.indexStepsMap[step0.Index()] = step0
 	flowManager.nameStepsMap[step0.Name()] = step0
 }
 
-func (flowManager iFlowManagerImpl) MessageHandler(ctx context.Context, req *message.Request) (*message.Response, error) {
-	panic("implementation required")
+func (flowManager iFlowManagerImpl) MessageHandler(ctx context.Context, req *message.Request) promise.IPromise {
+	// received New Order Request
+	if len(req.OrderId) == 0 && len(req.ItemId) == 0 {
+
+		step0 := flowManager.indexStepsMap[0]
+		return step0.ProcessMessage(ctx, req)
+
+		// TODO must be implement
+	} else if len(req.ItemId) != 0 {
+
+	} else {
+		// TODO must be implement orderId
+	}
 }

@@ -1,4 +1,4 @@
-package converters
+package converter
 
 import (
 	"errors"
@@ -99,7 +99,6 @@ func convert(newOrderDto *ordersrv.NewOrderRequest) (*entities.Order, error) {
 
 		newItem.InventoryId	= item.InventoryId
 		newItem.Title = item.Title
-		newItem.Quantity = item.Quantity
 		newItem.Brand = item.Brand
 		newItem.Warranty = item.Warranty
 		newItem.Categories = item.Categories
@@ -108,6 +107,7 @@ func convert(newOrderDto *ordersrv.NewOrderRequest) (*entities.Order, error) {
 		newItem.SellerInfo.SellerId = item.SellerId
 
 		if item.Attributes != nil {
+			newItem.Attributes.Quantity = item.Attributes.Quantity
 			newItem.Attributes.Width = item.Attributes.Width
 			newItem.Attributes.Height = item.Attributes.Height
 			newItem.Attributes.Length = item.Attributes.Length

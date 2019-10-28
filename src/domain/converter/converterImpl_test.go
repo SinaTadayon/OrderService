@@ -1,4 +1,4 @@
-package converters
+package converter
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -75,7 +75,6 @@ func createNewOrderRequest() *pb.NewOrderRequest {
 	item.Categories = "Electronic/laptop"
 	item.Title = "Asus G503 i7, 256SSD, 32G Ram"
 	item.Warranty = "ضمانت سلامت کالا"
-	item.Quantity = 10
 	item.Image = "http://baman.io/image/asus.png"
 	item.Returnable = true
 
@@ -85,6 +84,14 @@ func createNewOrderRequest() *pb.NewOrderRequest {
 	item.Price.SellerCommission = 10
 	item.Price.Unit = 100000
 	item.Price.Currency = "RR"
+
+	item.Attributes.Quantity = 10
+	item.Attributes.Width = "8cm"
+	item.Attributes.Height = "10cm"
+	item.Attributes.Length = "15cm"
+	item.Attributes.Weight = "20kg"
+	item.Attributes.Color = "blue"
+	item.Attributes.Materials = "stone"
 
 	//Standard, Express, Economy or Sameday.
 	item.Shipment.Details = "پست پیشتاز و تیپاکس برای شهرستان ها و پیک برای تهران به صورت رایگان می باشد"

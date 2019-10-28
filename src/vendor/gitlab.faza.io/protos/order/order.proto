@@ -54,21 +54,18 @@ message Voucher {
 
 message Item {
     string inventoryId = 1;
-    int32 quantity = 2;
-    string title = 3;
-    string brand = 4;
-    string categories = 5;
-    string warranty = 6;
-    string image = 7;
-    bool returnable = 8;
-    string sellerId = 9;
-    Attributes attributes = 10;
-    PriceInfo price = 11;
-    ShippingSpec shipment = 12;
+    string title = 2;
+    string brand = 3;
+    string categories = 4;
+    string warranty = 5;
+    string image = 6;
+    bool returnable = 7;
+    string sellerId = 8;
+    Attributes attributes = 9;
+    PriceInfo price = 10;
+    ShippingSpec shipment = 11;
 }
 
-
-// TODO check with nasser for BuyerId
 message Buyer {
     string firstName = 1;
     string lastName = 2;
@@ -82,13 +79,14 @@ message Buyer {
 }
 
 message Attributes {
-    string width = 1;
-    string height = 2;
-    string length = 3;
-    string weight = 4;
-    string color = 5;
-    string materials = 6;
-    google.protobuf.Any extra = 7;
+    int32 quantity = 1;
+    string width = 2;
+    string height = 3;
+    string length = 4;
+    string weight = 5;
+    string color = 6;
+    string materials = 7;
+    google.protobuf.Any extra = 8;
 }
 
 message FinanceInfo {
@@ -132,6 +130,11 @@ message ShippingSpec {
     string details = 10;
 }
 
+message Event {
+    string actor = 1;
+    string action = 2;
+    google.protobuf.Any data = 3;
+}
 
 // SellerApprovalPending Start
 message ApprovalRequest {
