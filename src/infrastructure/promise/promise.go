@@ -23,14 +23,15 @@ const (
 type DataChan <-chan FutureData
 
 type IPromise interface {
-	GetData() 	DataChan
+	Data()		(*FutureData, error)
+	Channel() 	DataChan
 	Count()		int
 	Capacity()	int
 }
 
 type FutureData struct {
-	Data 	interface{}
-	Error 	error
+	Data interface{}
+	Ex   error
 }
 
 type FutureError struct {

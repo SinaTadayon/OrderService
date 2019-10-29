@@ -7,7 +7,7 @@ import (
 
 func TestSyncPromiseChannel(t *testing.T) {
 	promiseTest := createPromise()
-	futureData , ok := <- promiseTest.GetData()
+	futureData , ok := <- promiseTest.Channel()
 	assert.True(t, ok, "channel is closed")
 	assert.Equal(t, futureData.Data, "salam")
 }
@@ -23,14 +23,14 @@ func TestAsyncPromiseChannel(t *testing.T) {
 		return ipromise
 	}
 	promiseTest := promiseCall()
-	futureData , ok := <- promiseTest.GetData()
+	futureData , ok := <- promiseTest.Channel()
 	assert.True(t, ok, "channel is closed")
 	assert.Equal(t, futureData.Data, "salam")
 }
 
 func createPromise() IPromise {
 	returnChannel := make(chan FutureData, 1)
-	returnChannel <- FutureData{Data:"salam", Error:FutureError{Code:int32(500), Reason:"Unknown Error"}}
+	returnChannel <- FutureData{Data:"salam", Ex:FutureError{Code: int32(500), Reason:"Unknown Error"}}
 	defer close(returnChannel)
 	return NewPromise(returnChannel, 1, 1)
 }

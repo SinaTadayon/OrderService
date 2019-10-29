@@ -40,9 +40,9 @@ func (server *Server) OrderRequestsHandler(ctx context.Context, req *message.Req
 
 	flowManagerCtx, _ := context.WithTimeout(context.Background(), 3*time.Second)
 	promiseHandler := server.flowManager.MessageHandler(flowManagerCtx, req)
-	futureData := <- promiseHandler.GetData()
-	if futureData.Error != nil {
-		futureErr := futureData.Error.(promise.FutureError)
+	futureData := <- promiseHandler.Channel()
+	if futureData.Ex != nil {
+		futureErr := futureData.Ex.(promise.FutureError)
 		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
 	}
 

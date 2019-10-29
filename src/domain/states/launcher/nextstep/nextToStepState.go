@@ -2,12 +2,16 @@ package next_to_step_state
 
 import (
 	"context"
+	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/domain/actions/actives"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/domain/states/launcher"
 	"gitlab.faza.io/order-project/order-service/domain/steps"
+	"gitlab.faza.io/order-project/order-service/infrastructure/global"
+	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	"time"
 )
 
 const (
@@ -43,7 +47,69 @@ func (nextStep nextToStepActionLauncher) ActionStepMap() map[actions.IEnumAction
 }
 
 func (nextStep nextToStepActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, param interface{}) promise.IPromise {
-	panic("implementation required")
-	return
+
+	if param == nil {
+		logger.Err("received param in NextToStepState is nil, order: %v", order)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	actionEnum, ok := param.(actions.IEnumAction)
+	if ok != true {
+		logger.Err("param in NextToStepState is not actions.IEnumAction type, order: %v", order)
+		nextStep.persistOrderState(ctx, &order, nil, false, "received param type is not a actions.IEnumAction")
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	if step, ok := nextStep.ActionStepMap()[actionEnum]; ok {
+		return step.ProcessOrder(ctx, order)
+	} else {
+		logger.Err("Received action not exist in nextStep.ActionStepMap(), order: %v", order)
+		nextStep.persistOrderState(ctx, &order, actionEnum, false, "received actions.IEnumAction is not valid for this nextToStep")
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
 }
 
+func (nextStep nextToStepActionLauncher) persistOrderState(ctx context.Context, order *entities.Order,
+	action actions.IEnumAction, result bool, reason string) {
+	order.UpdatedAt = time.Now().UTC()
+	for i := 0; i < len(order.Items); i++ {
+		order.Items[i].BuyerInfo = order.BuyerInfo
+		order.Items[i].OrderStep.CreatedAt = time.Now().UTC()
+
+		order.Items[i].OrderStep.CurrentName = ctx.Value(global.CtxStepName).(string)
+		order.Items[i].OrderStep.CurrentIndex = ctx.Value(global.CtxStepIndex).(int)
+		order.Items[i].OrderStep.CurrentState.Name = nextStep.Name()
+		order.Items[i].OrderStep.CurrentState.Index = nextStep.Index()
+		order.Items[i].OrderStep.CurrentState.CreatedAt = time.Now().UTC()
+		order.Items[i].OrderStep.CurrentState.ActionResult = result
+		order.Items[i].OrderStep.CurrentState.Reason = reason
+
+		if action != nil {
+			order.Items[i].OrderStep.CurrentState.Action.Name = action.Name()
+		} else {
+			order.Items[i].OrderStep.CurrentState.Action.Name = ""
+		}
+
+		order.Items[i].OrderStep.CurrentState.Action.Type = actives.NextToStepAction.String()
+		order.Items[i].OrderStep.CurrentState.Action.Base = actions.ActiveAction.String()
+		order.Items[i].OrderStep.CurrentState.Action.Data = ""
+		order.Items[i].OrderStep.CurrentState.Action.DispatchedTime = nil
+
+		order.Items[i].OrderStep.StepsHistory[len(order.Items[i].OrderStep.StepsHistory)].StatesHistory =
+			append(order.Items[i].OrderStep.StepsHistory[0].StatesHistory, order.Items[i].OrderStep.CurrentState)
+	}
+
+	orderChecked, err := global.Singletons.OrderRepository.Save(*order)
+	if err != nil {
+		logger.Err("Save NextToStep State Failed, error: %s, order: %v", err, orderChecked)
+	}
+}

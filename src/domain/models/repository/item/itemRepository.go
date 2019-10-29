@@ -1,4 +1,4 @@
-package item
+package item_repository
 
 import "gitlab.faza.io/order-project/order-service/domain/models/entities"
 

@@ -8,7 +8,8 @@ type ActiveType int
 
 var actionStrings = [] string {"NotificationAction", "NextToStepAction", "PayToSellerAction",
 	"PayToBuyerAction", "PayToMarketAction",
-	"StockAction", "ManualPaymentAction", "RetryAction", "NewOrderAction", "FinalizeAction"}
+	"StockAction", "ManualPaymentAction", "OrderPaymentAction",
+	"RetryAction", "NewOrderAction", "FinalizeAction"}
 
 const (
 	NotificationAction ActiveType = iota
@@ -18,6 +19,7 @@ const (
 	PayToMarketAction
 	StockAction
 	ManualPaymentAction
+	OrderPaymentAction
 	RetryAction
 	NewOrderAction
 	FinalizeAction
@@ -62,6 +64,8 @@ func FromString(action string) (ActiveType, error) {
 		return StockAction, nil
 	case "ManualPaymentAction":
 		return ManualPaymentAction, nil
+	case "OrderPaymentAction":
+		return OrderPaymentAction, nil
 	case "RetryAction":
 		return RetryAction, nil
 	case "NewOrderAction":

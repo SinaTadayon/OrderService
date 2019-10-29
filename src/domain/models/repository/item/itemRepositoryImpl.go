@@ -1,4 +1,4 @@
-package item
+package item_repository
 
 import (
 	"context"

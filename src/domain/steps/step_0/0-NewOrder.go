@@ -11,9 +11,11 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	listener_state "gitlab.faza.io/order-project/order-service/domain/states/listener"
 	"gitlab.faza.io/order-project/order-service/domain/steps"
+	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	pb "gitlab.faza.io/protos/order"
 	message "gitlab.faza.io/protos/order/general"
+	"time"
 )
 
 const (
@@ -45,18 +47,18 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	var newOrderRequest pb.NewOrderRequest
 
 	if err := ptypes.UnmarshalAny(request.Data, &newOrderRequest); err != nil {
-		logger.Err("Could not unmarshal NewOrderRequest from anything field: %s", err)
+		logger.Err("Could not unmarshal NewOrderRequest from anything field, error: %s, request: %v", err, request)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Error:promise.FutureError{Code:promise.BadRequest, Reason:"Invalid NewOrderRequest"}}
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.BadRequest, Reason:"Invalid NewOrderRequest"}}
 		close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
 	timestamp, err := ptypes.Timestamp(request.Time)
 	if err != nil {
-		logger.Err("timestamp of NewOrderRequest invalid, %s ", err)
+		logger.Err("timestamp of NewOrderRequest invalid, error: %s, newOrderRequest: %v", err, newOrderRequest)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Error:promise.FutureError{Code:promise.BadRequest, Reason:"Invalid Request Timestamp"}}
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.BadRequest, Reason:"Invalid Request Timestamp"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
@@ -65,14 +67,17 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 		newOrderRequest, timestamp)
 
 	checkoutState, ok := newOrderProcessing.StatesMap()[0].(listener_state.IListenerState)
-	if ok != true {
-		logger.Err("checkout state doesn't exist in index 0 of statesMap")
+	if ok != true || checkoutState.ActorType() != actors.CheckoutActor {
+		logger.Err("checkout state doesn't exist in index 0 of statesMap, newOrderRequest: %v", newOrderRequest)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Error:promise.FutureError{Code:promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
+	ctx = context.WithValue(ctx, global.CtxStepName, newOrderProcessing.Name())
+	ctx = context.WithValue(ctx, global.CtxStepIndex, newOrderProcessing.Index())
+	ctx = context.WithValue(ctx, global.CtxStepTimestamp, time.Now().UTC())
 	return checkoutState.ActionListener(ctx, newOrderEvent, nil)
 }
 

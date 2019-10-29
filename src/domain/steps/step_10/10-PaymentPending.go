@@ -39,7 +39,9 @@ func (paymentPending paymentPendingStep) ProcessMessage(ctx context.Context, req
 }
 
 func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order entities.Order) promise.IPromise {
-	panic("implementation required")
+
+
+
 }
 
 

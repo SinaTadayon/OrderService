@@ -90,7 +90,7 @@ type Action struct {
 	Type 				string				`bson:"type"`
 	Base 				string				`bson:"base"`
 	Data				string				`bson:"data"`
-	DispatchedTime		time.Time			`bson:"DispatchedTime"`
+	DispatchedTime		*time.Time			`bson:"DispatchedTime"`
 }
 
 type SellerInfo struct {

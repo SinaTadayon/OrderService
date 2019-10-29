@@ -2,6 +2,9 @@ package domain
 
 import (
 	"context"
+	order_payment_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/orderpayment"
+	order_payment_action_state "gitlab.faza.io/order-project/order-service/domain/states/launcher/orderpayment"
+
 	//"errors"
 	checkout_action "gitlab.faza.io/order-project/order-service/domain/actions/actors/checkout"
 	checkout_action_state "gitlab.faza.io/order-project/order-service/domain/states/listener/checkout"
@@ -32,7 +35,6 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	finalize_state "gitlab.faza.io/order-project/order-service/domain/states/launcher/finalize"
 	manual_payment_state "gitlab.faza.io/order-project/order-service/domain/states/launcher/manualpayment"
-	new_order_state "gitlab.faza.io/order-project/order-service/domain/states/launcher/neworder"
 	"gitlab.faza.io/order-project/order-service/domain/states/launcher/nextstep"
 	notification_state "gitlab.faza.io/order-project/order-service/domain/states/launcher/notification"
 	pay_to_buyer_state "gitlab.faza.io/order-project/order-service/domain/states/launcher/paytobuyer"
@@ -976,15 +978,17 @@ func (flowManager *iFlowManagerImpl) createStep10() {
 	step11 := flowManager.indexStepsMap[11]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
+		order_payment_action.OrderPaymentFailedAction: step12,
 		payment_action.FailedAction: step12,
 		payment_action.SuccessAction: step11,
 	}
 
-	nextToStepState := next_to_step_state.New(1, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
-	paymentActionState := payment_action_state.New(0, []states.IState{nextToStepState}, emptyState, payment_action.NewOf(payment_action.SuccessAction, payment_action.FailedAction))
+	nextToStepState := next_to_step_state.New(2, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	paymentActionState := payment_action_state.New(1, []states.IState{nextToStepState}, emptyState, payment_action.NewOf(payment_action.SuccessAction, payment_action.FailedAction))
+	orderPaymentActionState := order_payment_action_state.New(0, []states.IState{paymentActionState, nextToStepState}, emptyState, order_payment_action.NewOf(order_payment_action.OrderPaymentAction, order_payment_action.OrderPaymentFailedAction))
 
 	step10 := payment_pending_step.New([]steps.IStep{step12, step11}, emptyStep,
-		paymentActionState, nextToStepState)
+		orderPaymentActionState, paymentActionState, nextToStepState)
 
 	// add to flowManager maps
 	flowManager.indexStepsMap[step10.Index()] = step10
@@ -1014,17 +1018,16 @@ func (flowManager *iFlowManagerImpl) createStep0() {
 	step10 := flowManager.indexStepsMap[10]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
-		new_order_action.FailedAction:  step1,
-		new_order_action.SuccessAction: step10,
+		stock_action.FailedAction:  step1,
+		stock_action.ReservedAction: step10,
 	}
 
 	nextToStepState := next_to_step_state.New(3, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
-	stockReservedActionState := stock_action_state.New(2, []states.IState{nextToStepState}, emptyState, stock_action.NewOf(stock_action.ReservedAction))
-	newOrderStateAction := new_order_state.New(1, []states.IState{stockReservedActionState, nextToStepState}, emptyState, new_order_action.NewOf(new_order_action.SuccessAction, new_order_action.FailedAction))
+	stockReservedActionState := stock_action_state.New(1, []states.IState{nextToStepState}, emptyState, stock_action.NewOf(stock_action.ReservedAction))
 	checkoutStateAction := checkout_action_state.New(0, []states.IState{stockReservedActionState, nextToStepState}, emptyState, checkout_action.NewOf(checkout_action.NewOrderAction))
 
-	step0 := new_order_step.New([]steps.IStep{step1, step10}, emptyStep, checkoutStateAction,
-		newOrderStateAction, stockReservedActionState, nextToStepState)
+	step0 := new_order_step.New([]steps.IStep{step1, step10}, emptyStep,
+			checkoutStateAction, stockReservedActionState, nextToStepState)
 	// add to flowManager maps
 	flowManager.indexStepsMap[step0.Index()] = step0
 	flowManager.nameStepsMap[step0.Name()] = step0
