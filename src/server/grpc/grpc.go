@@ -3,7 +3,6 @@ package grpc
 import (
 	"context"
 	"gitlab.faza.io/order-project/order-service/domain"
-	"gitlab.faza.io/order-project/order-service/domain/models/repository"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	pb "gitlab.faza.io/protos/order"
 	message "gitlab.faza.io/protos/order/general"
@@ -25,13 +24,12 @@ import (
 type Server struct{
 	pb.UnimplementedOrderServiceServer
 	flowManager 	domain.IFlowManager
-	orderRepository	repository.IOrderRepository
 	address 		string
 	port			uint16
 }
 
-func NewServer(address string, port uint16, flowManager domain.IFlowManager, orderRepository repository.IOrderRepository) Server {
-	return Server{flowManager:flowManager, orderRepository:orderRepository, address:address, port:port}
+func NewServer(address string, port uint16, flowManager domain.IFlowManager) Server {
+	return Server{flowManager:flowManager, address:address, port:port}
 }
 
 // TODO error handling

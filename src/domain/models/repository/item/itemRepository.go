@@ -1,12 +1,12 @@
-package repository
+package item
 
 import "gitlab.faza.io/order-project/order-service/domain/models/entities"
 
 type IItemRepository interface {
 
-	Save(item entities.Item) (*entities.Item, error)
+	Update(item entities.Item) (*entities.Item, error)
 
-	SaveAll(items []entities.Item) ([]*entities.Item, error)
+	UpdateAll(items []entities.Item) ([]*entities.Item, error)
 
 	Insert(item entities.Item) (*entities.Item, error)
 

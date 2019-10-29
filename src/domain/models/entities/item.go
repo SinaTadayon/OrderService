@@ -3,7 +3,7 @@ package entities
 import "time"
 
 type Item struct {
-	ItemId 				string 				`bson:"ItemId"`
+	ItemId 				string 				`bson:"itemId"`
 	InventoryId 		string 				`bson:"inventoryId"`
 	Title       		string 				`bson:"title"`
 	Brand           	string          	`bson:"brand"`
@@ -12,6 +12,8 @@ type Item struct {
 	Image           	string          	`bson:"image"`
 	Returnable      	bool            	`bson:"returnable"`
 	Attributes      	Attributes      	`bson:"attributes"`
+	CreatedAt      		time.Time			`bson:"createdAt"`
+	UpdatedAt      		time.Time			`bson:"updatedAt"`
 	DeletedAt       	*time.Time      	`bson:"deletedAt"`
 	BuyerInfo       	BuyerInfo       	`bson:"buyerInfo"`
 	SellerInfo      	SellerInfo      	`bson:"sellerInfo"`

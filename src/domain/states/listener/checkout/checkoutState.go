@@ -11,6 +11,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	listener_state "gitlab.faza.io/order-project/order-service/domain/states/listener"
+	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	pb "gitlab.faza.io/protos/order"
 	//message "gitlab.faza.io/protos/order/general"
@@ -23,22 +24,20 @@ const (
 
 type checkoutActionListener struct {
 	*listener_state.BaseListenerImpl
-	// TODO singleton of converter
-	converter 		converter.IConverter
 }
 
 func New(index int, childes, parents []states.IState, actions actions.IAction) listener_state.IListenerState {
 	return &checkoutActionListener{listener_state.NewBaseListener(stateName, index, childes, parents,
-		actions, actorType), converter.NewConverter()}
+		actions, actorType)}
 }
 
 func NewOf(name string, index int, childes, parents []states.IState, actions actions.IAction) listener_state.IListenerState {
 	return &checkoutActionListener{listener_state.NewBaseListener(name, index, childes, parents,
-		actions, actorType), converter.NewConverter()}
+		actions, actorType)}
 }
 
 func NewFrom(base *listener_state.BaseListenerImpl) listener_state.IListenerState {
-	return &checkoutActionListener{base, converter.NewConverter()}
+	return &checkoutActionListener{base}
 }
 
 func NewValueOf(base *listener_state.BaseListenerImpl, params ...interface{}) listener_state.IListenerState {
@@ -81,7 +80,7 @@ func (checkoutAction checkoutActionListener) ActionListener(ctx context.Context,
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	value, err := checkoutAction.converter.Map(newOrderRequest, entities.Order{})
+	value, err := global.Singletons.Converter.Map(newOrderRequest, entities.Order{})
 	if err != nil {
 		logger.Err("Received NewOrderRequest invalid")
 		returnChannel := make(chan promise.FutureData, 1)
@@ -91,5 +90,5 @@ func (checkoutAction checkoutActionListener) ActionListener(ctx context.Context,
 	}
 
 	order := value.(entities.Order)
-
+	global.Singletons.OrderRepository.Save(order)
 }

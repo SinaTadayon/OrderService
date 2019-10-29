@@ -3,7 +3,6 @@ package return_shipment_detail_delayed_step
 import (
 	"context"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
-	"gitlab.faza.io/order-project/order-service/domain/models/repository"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/domain/steps"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
@@ -19,16 +18,12 @@ type returnShipmentDetailDelayedStep struct {
 	*steps.BaseStepImpl
 }
 
-func New(childes, parents []steps.IStep, orderRepository repository.IOrderRepository,
-	itemRepository repository.IItemRepository, states ...states.IState) steps.IStep {
-	return &returnShipmentDetailDelayedStep{steps.NewBaseStep(stepName, stepIndex, orderRepository,
-		itemRepository, childes, parents, states)}
+func New(childes, parents []steps.IStep, states ...states.IState) steps.IStep {
+	return &returnShipmentDetailDelayedStep{steps.NewBaseStep(stepName, stepIndex, childes, parents, states)}
 }
 
-func NewOf(name string, index int, orderRepository repository.IOrderRepository,
-	itemRepository repository.IItemRepository, childes, parents []steps.IStep, states ...states.IState) steps.IStep {
-	return &returnShipmentDetailDelayedStep{steps.NewBaseStep(name, index, orderRepository,
-		itemRepository, childes, parents, states)}
+func NewOf(name string, index int, childes, parents []steps.IStep, states ...states.IState) steps.IStep {
+	return &returnShipmentDetailDelayedStep{steps.NewBaseStep(name, index, childes, parents, states)}
 }
 
 func NewFrom(base *steps.BaseStepImpl) steps.IStep {

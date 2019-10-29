@@ -1,23 +1,24 @@
 package main
 
 import (
-	"gitlab.faza.io/go-framework/kafkaadapter"
 	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain"
-	"gitlab.faza.io/order-project/order-service/domain/models/repository"
+	"gitlab.faza.io/order-project/order-service/domain/converter"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository/order"
+	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"gitlab.faza.io/order-project/order-service/server/grpc"
 	"os"
+	"time"
 
 	_ "github.com/devfeel/mapper"
 )
 
 var App struct {
-	config 			*configs.Cfg
-	kafka  			*kafkaadapter.Kafka
-	orderRepository repository.IOrderRepository
-	flowManager		domain.IFlowManager
-	grpcServer		grpc.Server
+	Config          *configs.Cfg
+	flowManager     domain.IFlowManager
+	grpcServer      grpc.Server
 }
 var brokers []string
 
@@ -32,7 +33,7 @@ const (
 // TODO Add worker scheduler and start from main
 func main() {
 
-	if App.config.App.ServiceMode == "server" {
+	if App.Config.App.ServiceMode == "server" {
 		App.grpcServer.Start()
 	}
 
@@ -54,37 +55,56 @@ func main() {
 func init() {
 	var err error
 	if os.Getenv("APP_ENV") == "dev" {
-		App.config, err = configs.LoadConfig("./testdata/.env")
+		App.Config, err = configs.LoadConfig("./testdata/.env")
 	} else {
-		App.config, err = configs.LoadConfig("")
+		App.Config, err = configs.LoadConfig("")
 	}
 	if err != nil {
 		logger.Err("LoadConfig of main init failed, %s ", err.Error())
 		panic("LoadConfig of main init failed, " + err.Error())
 	}
 
-	 App.orderRepository ,err = repository.NewOrderRepository(App.config)
+	// store in mongo
+	mongoConf := &mongoadapter.MongoConfig{
+		Host:     App.Config.Mongo.Host,
+		Port:     App.Config.Mongo.Port,
+		Username: App.Config.Mongo.User,
+		//Password:     App.Cfg.Mongo.Pass,
+		ConnTimeout:  time.Duration(App.Config.Mongo.ConnectionTimeout),
+		ReadTimeout:  time.Duration(App.Config.Mongo.ReadTimeout),
+		WriteTimeout: time.Duration(App.Config.Mongo.WriteTimeout),
+		MaxConnIdleTime: time.Duration(App.Config.Mongo.MaxConnIdleTime),
+		MaxPoolSize: uint64(App.Config.Mongo.MaxPoolSize),
+		MinPoolSize: uint64(App.Config.Mongo.MinPoolSize),
+	}
+
+	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
+	if err != nil {
+		logger.Err("NewOrderRepository Mongo: %v", err.Error())
+		panic("mongo adapter creation failed, " + err.Error())
+	}
+
+	global.Singletons.OrderRepository ,err = order.NewOrderRepository(mongoDriver)
 	 if err != nil {
 		 logger.Err("repository creation failed, %s ", err.Error())
-		 panic("repository creation failed, " + err.Error())
+		 panic("order repository creation failed, " + err.Error())
 	 }
 
 	 // TODO create item repository
-	 App.flowManager, err = domain.NewFlowManager(App.orderRepository, nil)
+	 App.flowManager, err = domain.NewFlowManager()
 	if err != nil {
 		logger.Err("flowManager creation failed, %s ", err.Error())
 		panic("flowManager creation failed, " + err.Error())
 	}
 
-	 App.grpcServer = grpc.NewServer(App.config.GRPCServer.Address, uint16(App.config.GRPCServer.Port), App.flowManager, App.orderRepository)
+	 App.grpcServer = grpc.NewServer(App.Config.GRPCServer.Address, uint16(App.Config.GRPCServer.Port), App.flowManager)
 
+	global.Singletons.Converter = converter.NewConverter()
 	//brokers = strings.Split(App.config.Kafka.Brokers, ",")
 	//if App.config.App.Port == "" {
 	//	logger.Err("grpc PORT env not defined")
 	//	//return errors.New("grpc PORT env not defined")
 	//}
-
-
 
 
 	//// store in mongo

@@ -1,7 +1,6 @@
 package steps
 
 import (
-	"gitlab.faza.io/order-project/order-service/domain/models/repository"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"strconv"
 )
@@ -26,8 +25,6 @@ const (
 type BaseStepImpl struct {
 	name           	string
 	index          	int
-	orderRepository	repository.IOrderRepository
-	itemRepository	repository.IItemRepository
 	childes        	[]IStep
 	parents        	[]IStep
 	states 			[]states.IState
@@ -35,24 +32,22 @@ type BaseStepImpl struct {
 	configs			map[string]interface{}
 }
 
-func NewBaseStep(name string, index int, orderRepository repository.IOrderRepository,
-	itemRepository repository.IItemRepository, childes, parents []IStep, stateList []states.IState) *BaseStepImpl {
+func NewBaseStep(name string, index int, childes, parents []IStep, stateList []states.IState) *BaseStepImpl {
 	statesMap := make(map[int]states.IState, len(stateList))
 	for i, v := range stateList {
 		statesMap[int(i)] = v
 	}
-	return &BaseStepImpl{name, index,  orderRepository, itemRepository,
-		childes, parents, stateList, statesMap, make(map[string]interface{}, 4)}
+	return &BaseStepImpl{name, index,
+		childes, parents, stateList,
+		statesMap, make(map[string]interface{}, 4)}
 }
 
-func NewBaseStepWithConfig(name string, index int, orderRepository repository.IOrderRepository,
-	itemRepository repository.IItemRepository, childes, parents []IStep, stateList []states.IState, configs map[string]interface{}) *BaseStepImpl {
+func NewBaseStepWithConfig(name string, index int, childes, parents []IStep, stateList []states.IState, configs map[string]interface{}) *BaseStepImpl {
 	statesMap := make(map[int]states.IState, len(stateList))
 	for i, v := range stateList {
 		statesMap[int(i)] = v
 	}
-	return &BaseStepImpl{name, index, orderRepository ,
-		itemRepository,childes, parents,
+	return &BaseStepImpl{name, index, childes, parents,
 		stateList, statesMap, configs}
 }
 
@@ -100,14 +95,6 @@ func (base BaseStepImpl) Parents()	[]IStep {
 
 func (base BaseStepImpl) States() []states.IState {
 	return base.states
-}
-
-func (base BaseStepImpl) OrderRepository() repository.IOrderRepository {
-	return base.orderRepository
-}
-
-func (base BaseStepImpl) ItemRepository() repository.IItemRepository {
-	return base.itemRepository
 }
 
 func (base BaseStepImpl) StatesMap() map[int]states.IState {

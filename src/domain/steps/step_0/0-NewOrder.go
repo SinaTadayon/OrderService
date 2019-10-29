@@ -8,7 +8,6 @@ import (
 	checkout_action "gitlab.faza.io/order-project/order-service/domain/actions/actors/checkout"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
-	"gitlab.faza.io/order-project/order-service/domain/models/repository"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	listener_state "gitlab.faza.io/order-project/order-service/domain/states/listener"
 	"gitlab.faza.io/order-project/order-service/domain/steps"
@@ -26,16 +25,12 @@ type newOrderProcessingStep struct {
 	*steps.BaseStepImpl
 }
 
-func New(childes, parents []steps.IStep, orderRepository repository.IOrderRepository,
-	itemRepository repository.IItemRepository, states ...states.IState) steps.IStep {
-	return &newOrderProcessingStep{steps.NewBaseStep(stepName, stepIndex, orderRepository,
-		itemRepository, childes, parents, states)}
+func New(childes, parents []steps.IStep, states ...states.IState) steps.IStep {
+	return &newOrderProcessingStep{steps.NewBaseStep(stepName, stepIndex, childes, parents, states)}
 }
 
-func NewOf(name string, index int, orderRepository repository.IOrderRepository,
-	itemRepository repository.IItemRepository, childes, parents []steps.IStep, states ...states.IState) steps.IStep {
-	return &newOrderProcessingStep{steps.NewBaseStep(name, index, orderRepository,
-		itemRepository, childes, parents, states)}
+func NewOf(name string, index int, childes, parents []steps.IStep, states ...states.IState) steps.IStep {
+	return &newOrderProcessingStep{steps.NewBaseStep(name, index, childes, parents, states)}
 }
 
 func NewFrom(base *steps.BaseStepImpl) steps.IStep {

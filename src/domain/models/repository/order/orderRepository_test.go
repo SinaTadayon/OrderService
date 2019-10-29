@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
 	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"go.mongodb.org/mongo-driver/bson"
@@ -19,7 +20,7 @@ func init() {
 	var err error
 	var path string
 	if os.Getenv("APP_ENV") == "dev" {
-		path = "../../../testdata/.env"
+		path = "../../../../testdata/.env"
 	} else {
 		path = ""
 	}
@@ -30,7 +31,27 @@ func init() {
 		return
 	}
 
-	orderRepository, err = NewOrderRepository(config)
+	// store in mongo
+	mongoConf := &mongoadapter.MongoConfig{
+		Host:     config.Mongo.Host,
+		Port:     config.Mongo.Port,
+		Username: config.Mongo.User,
+		//Password:     App.Cfg.Mongo.Pass,
+		ConnTimeout:  time.Duration(config.Mongo.ConnectionTimeout),
+		ReadTimeout:  time.Duration(config.Mongo.ReadTimeout),
+		WriteTimeout: time.Duration(config.Mongo.WriteTimeout),
+		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime),
+		MaxPoolSize: uint64(config.Mongo.MaxPoolSize),
+		MinPoolSize: uint64(config.Mongo.MinPoolSize),
+	}
+
+	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
+	if err != nil {
+		logger.Err("NewOrderRepository Mongo: %v", err.Error())
+		panic("mongo adapter creation failed, " + err.Error())
+	}
+
+	orderRepository, err = NewOrderRepository(mongoDriver)
 	if err != nil {
 		panic("create order repository failed")
 	}
@@ -38,7 +59,7 @@ func init() {
 
 func TestSaveOrderRepository(t *testing.T) {
 
-	defer removeCollection()
+	//defer removeCollection()
 	order := createOrder()
 	res, _ := json.Marshal(order)
 	logger.Audit("order model: %s",res)
@@ -103,10 +124,13 @@ func TestFindAllOrderRepository(t *testing.T) {
 	var err error
 	order := createOrder()
 	_, err = orderRepository.Insert(order)
+	assert.Nil(t, err)
 	order = createOrder()
 	_, err = orderRepository.Insert(order)
+	assert.Nil(t, err)
 	order = createOrder()
 	_, err = orderRepository.Insert(order)
+	assert.Nil(t, err)
 
 	orders, err := orderRepository.FindAll()
 	assert.Nil(t, err)
@@ -456,7 +480,7 @@ func createOrder() entities.Order {
 		},
 		Items: []entities.Item{
 			{
-				ItemId:		 "091238482737401",
+				ItemId:		 "",
 				InventoryId: "1111111111",
 				Title:       "Mobile",
 				Brand:       "Nokia",
@@ -585,7 +609,7 @@ func createOrder() entities.Order {
 				},
 			},
 			{
-				ItemId:		 "091238482737401",
+				ItemId:		 "",
 				InventoryId: "2222222222",
 				Title:       "Laptop",
 				Brand:       "Lenovo",

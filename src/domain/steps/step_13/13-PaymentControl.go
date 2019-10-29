@@ -3,7 +3,8 @@ package payment_control_step
 import (
 	"context"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
-	"gitlab.faza.io/order-project/order-service/domain/models/repository"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository/item"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository/order"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/domain/steps"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
@@ -19,14 +20,14 @@ type paymentControlStep struct {
 	*steps.BaseStepImpl
 }
 
-func New(childes, parents []steps.IStep, orderRepository repository.IOrderRepository,
-	itemRepository repository.IItemRepository, states ...states.IState) steps.IStep {
+func New(childes, parents []steps.IStep, orderRepository order.IOrderRepository,
+	itemRepository item.IItemRepository, states ...states.IState) steps.IStep {
 	return &paymentControlStep{steps.NewBaseStep(stepName, stepIndex, orderRepository,
 		itemRepository, childes, parents, states)}
 }
 
-func NewOf(name string, index int, orderRepository repository.IOrderRepository,
-	itemRepository repository.IItemRepository, childes, parents []steps.IStep, states ...states.IState) steps.IStep {
+func NewOf(name string, index int, orderRepository order.IOrderRepository,
+	itemRepository item.IItemRepository, childes, parents []steps.IStep, states ...states.IState) steps.IStep {
 	return &paymentControlStep{steps.NewBaseStep(name, index, orderRepository,
 		itemRepository, childes, parents, states)}
 }

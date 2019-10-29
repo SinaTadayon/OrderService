@@ -5,18 +5,19 @@ import (
 	"errors"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/go-framework/mongoadapter"
-	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"strconv"
 	"time"
 )
 
 const (
 	databaseName  	string = "orderService"
 	collectionName  string = "orders"
+	defaultDocCount	int	   = 1024
 )
 
 var errorTotalCountExceeded 	= errors.New("total count exceeded")
@@ -29,28 +30,9 @@ type iOrderRepositoryImpl struct {
 	mongoAdapter  *mongoadapter.Mongo
 }
 
-func NewOrderRepository(config *configs.Cfg) (IOrderRepository, error) {
+func NewOrderRepository(mongoDriver  *mongoadapter.Mongo) (IOrderRepository, error) {
 
-	// store in mongo
-	mongoConf := &mongoadapter.MongoConfig{
-		Host:     config.Mongo.Host,
-		Port:     config.Mongo.Port,
-		Username: config.Mongo.User,
-		//Password:     App.Cfg.Mongo.Pass,
-		ConnTimeout:  time.Duration(config.Mongo.ConnectionTimeout),
-		ReadTimeout:  time.Duration(config.Mongo.ReadTimeout),
-		WriteTimeout: time.Duration(config.Mongo.WriteTimeout),
-		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime),
-		MaxPoolSize: uint64(config.Mongo.MaxPoolSize),
-		MinPoolSize: uint64(config.Mongo.MinPoolSize),
-	}
-
-	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
-	if err != nil {
-		logger.Err("NewOrderRepository Mongo: %v", err.Error())
-		return nil, err
-	}
-	_, err = mongoDriver.AddUniqueIndex(databaseName, collectionName, "orderId")
+	_, err := mongoDriver.AddUniqueIndex(databaseName, collectionName, "orderId")
 	if err != nil {
 		logger.Err(err.Error())
 		return nil, err
@@ -63,13 +45,36 @@ func (repo iOrderRepositoryImpl) Save(order entities.Order) (*entities.Order, er
 
 	if len(order.OrderId) == 0 {
 		order.OrderId = entities.GenerateOrderId()
+		mapItemIds := make(map[int]int, len(order.Items))
+		for i := 0; i < len(order.Items); i++ {
+			for {
+				random := int(entities.GenerateRandomNumber())
+				if _, ok := mapItemIds[random]; ok {
+					continue
+				}
+				mapItemIds[random] = i
+				break
+			}
+		}
+
+		for key,value := range mapItemIds {
+			for index, _ := range order.Items {
+				if index == value {
+					order.Items[index].ItemId = order.OrderId + strconv.Itoa(int(key))
+					order.Items[index].CreatedAt = time.Now().UTC()
+					order.Items[index].UpdatedAt = time.Now().UTC()
+					break
+				}
+			}
+		}
+
 		order.CreatedAt = time.Now().UTC()
 		order.UpdatedAt = time.Now().UTC()
-		var insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, order)
+		var insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, &order)
 		if err != nil {
 			if repo.mongoAdapter.IsDupError(err) {
 				for repo.mongoAdapter.IsDupError(err) {
-					insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, order)
+					insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, &order)
 				}
 			} else {
 				return nil, err
@@ -97,13 +102,36 @@ func (repo iOrderRepositoryImpl) SaveAll(orders []entities.Order) ([]*entities.O
 }
 
 func (repo iOrderRepositoryImpl) Insert(order entities.Order) (*entities.Order, error) {
+
 	if len(order.OrderId) == 0 {
 		order.OrderId = entities.GenerateOrderId()
+		mapItemIds := make(map[int]int, len(order.Items))
+		for i := 0; i < len(order.Items); i++ {
+			for {
+				random := int(entities.GenerateRandomNumber())
+				if _, ok := mapItemIds[random]; ok {
+					continue
+				}
+				mapItemIds[random] = i
+				break
+			}
+		}
+
+		for key, value := range mapItemIds {
+			for index, _ := range order.Items {
+				if index == value {
+					order.Items[index].ItemId = order.OrderId + strconv.Itoa(int(key))
+					order.Items[index].CreatedAt = time.Now().UTC()
+					order.Items[index].UpdatedAt = time.Now().UTC()
+					break
+				}
+			}
+		}
 	}
 
 	order.CreatedAt = time.Now().UTC()
 	order.UpdatedAt = time.Now().UTC()
-	var insertOneResult, err= repo.mongoAdapter.InsertOne(databaseName, collectionName, order)
+	var insertOneResult, err= repo.mongoAdapter.InsertOne(databaseName, collectionName, &order)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +147,8 @@ func (repo iOrderRepositoryImpl) FindAll() ([]*entities.Order, error) {
 	total, err := repo.Count()
 
 	if err != nil {
-		total = 128
+		logger.Audit("repo.Count() failed, %s", err)
+		total = int64(defaultDocCount)
 	}
 
 	cursor, err := repo.mongoAdapter.FindMany(databaseName, collectionName, bson.D{{"deletedAt", nil}})
@@ -147,7 +176,8 @@ func (repo iOrderRepositoryImpl) FindAll() ([]*entities.Order, error) {
 func (repo iOrderRepositoryImpl) FindAllWithSort(fieldName string, direction int) ([]*entities.Order, error) {
 	total, err := repo.Count()
 	if err != nil {
-		total = 128
+		logger.Audit("repo.Count() failed, %s", err)
+		total = int64(defaultDocCount)
 	}
 
 	sortMap := make(map[string]int)
@@ -318,7 +348,8 @@ func (repo iOrderRepositoryImpl) FindByFilter(supplier func() interface{}) ([]*e
 	filter := supplier()
 	total, err := repo.CountWithFilter(supplier)
 	if err != nil {
-		total = 128
+		logger.Audit("repo.Count() failed, %s", err)
+		total = int64(defaultDocCount)
 	}
 
 	cursor, err := repo.mongoAdapter.FindMany(databaseName, collectionName, filter)
@@ -348,7 +379,8 @@ func (repo iOrderRepositoryImpl) FindByFilterWithSort(supplier func() (interface
 	filter, fieldName, direction := supplier()
 	total, err := repo.CountWithFilter(func() interface{} { return filter })
 	if err != nil {
-		total = 128
+		logger.Audit("repo.Count() failed, %s", err)
+		total = int64(defaultDocCount)
 	}
 
 	sortMap := make(map[string]int)
@@ -535,8 +567,12 @@ func (repo iOrderRepositoryImpl) DeleteById(orderId string) (*entities.Order, er
 		return nil, err
 	}
 
-	deletedAt := time.Now().UTC().UTC()
+	deletedAt := time.Now().UTC()
 	order.DeletedAt = &deletedAt
+	for index, _ := range order.Items {
+		order.Items[index].DeletedAt = &deletedAt
+	}
+
 	updateResult, err := repo.mongoAdapter.UpdateOne(databaseName, collectionName,
 					bson.D{{"orderId", order.OrderId},{"deletedAt", nil}},
 					bson.D{{"$set", order}})
@@ -559,9 +595,12 @@ func (repo iOrderRepositoryImpl) DeleteAllWithOrders([]entities.Order) error {
 	panic("implementation required")
 }
 
+// TODO items.$.deleteAt must be checked if nil 
 func (repo iOrderRepositoryImpl) DeleteAll() error {
-	 _, err := repo.mongoAdapter.UpdateMany(databaseName, collectionName, bson.D{{"deletedAt", nil}},
-					bson.M{"$set": bson.M{"deletedAt": time.Now().UTC().UTC()}})
+	 _, err := repo.mongoAdapter.UpdateMany(databaseName, collectionName,
+	 			bson.D{{"deletedAt", nil}, {"items.$.deletedAt", nil}},
+	 			bson.M{"$set": bson.M{"deletedAt": time.Now().UTC(), 
+	 				"items.$.deletedAt": time.Now().UTC()}})
 	 if err != nil {
 	 	return err
 	 }
