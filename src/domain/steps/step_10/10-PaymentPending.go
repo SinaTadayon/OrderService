@@ -2,11 +2,16 @@ package payment_pending_step
 
 import (
 	"context"
+	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/order-project/order-service/domain/actions/actives"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
+	launcher_state "gitlab.faza.io/order-project/order-service/domain/states/launcher"
 	"gitlab.faza.io/order-project/order-service/domain/steps"
+	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	message "gitlab.faza.io/protos/order/general"
+	"time"
 )
 
 const (
@@ -38,10 +43,21 @@ func (paymentPending paymentPendingStep) ProcessMessage(ctx context.Context, req
 	panic("implementation required")
 }
 
-func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order entities.Order) promise.IPromise {
+func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string) promise.IPromise {
 
+	orderPaymentState, ok := paymentPending.StatesMap()[0].(launcher_state.ILauncherState)
+	if ok != true || orderPaymentState.ActiveType() != actives.OrderPaymentAction {
+		logger.Err("orderPayment state doesn't exist in index 0 of statesMap, order: %v", order)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
 
-
+	ctx = context.WithValue(ctx, global.CtxStepName, paymentPending.Name())
+	ctx = context.WithValue(ctx, global.CtxStepIndex, paymentPending.Index())
+	ctx = context.WithValue(ctx, global.CtxStepTimestamp, time.Now().UTC())
+	return orderPaymentState.ActionLauncher(ctx, order, nil, nil)
 }
 
 

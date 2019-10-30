@@ -42,10 +42,39 @@ func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) la
 	panic("implementation required")
 }
 
-
 // TODO sencetive checking for save stock state and stock action
-func (stockState stockActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, param interface{}) promise.IPromise {
+func (stockState stockActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 
+	var iPromise promise.IPromise
+	for _, action := range stockState.Actions().(actives.IActiveAction).ActionEnums() {
+		if action == stock_action.ReservedAction {
+			iPromise = stockState.doReservedAction(ctx, &order, itemsId)
+			break
+		} else if action == stock_action.ReleasedAction {
+			iPromise = stockState.doReleasedAction(ctx, &order, itemsId)
+			break
+		} else if action == stock_action.SettlementAction {
+			iPromise =  stockState.doSettlementAction(ctx, &order, itemsId)
+			break
+		} else if action == stock_action.FailedAction {
+
+		} else {
+			logger.Err("actions in not valid for StockState, order: %v", order)
+			iPromise = stockState.createFailedPromise()
+		}
+	}
+
+	return iPromise
+}
+
+func (stockState stockActionLauncher) createFailedPromise() promise.IPromise {
+	returnChannel := make(chan promise.FutureData, 1)
+	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+	defer close(returnChannel)
+	return promise.NewPromise(returnChannel, 1, 1)
+}
+
+func (stockState stockActionLauncher) doReservedAction(ctx context.Context, order *entities.Order, itemsId []string) promise.IPromise {
 	nextToStepState, ok := stockState.Childes()[0].(launcher_state.ILauncherState)
 	if ok != true {
 		logger.Err("NextToStepState isn't child of StockState, order: %v", order)
@@ -65,58 +94,77 @@ func (stockState stockActionLauncher) ActionLauncher(ctx context.Context, order 
 	}
 
 	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, stock_action.ReservedAction)
-	futureData, err := iPromise.Data()
+	futureData := iPromise.Data()
 	if err != nil {
-		stockState.persistOrderState(ctx, &order, stock_action.ReservedAction, false)
+		stockState.persistOrderState(ctx, order, stock_action.ReservedAction, false)
 		logger.Err("StockService promise channel has been closed, order: %v", order)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
 		defer close(returnChannel)
 		go func() {
-			nextToStepState.ActionLauncher(ctx, order, stock_action.FailedAction)
+			nextToStepState.ActionLauncher(ctx, *order, nil, stock_action.FailedAction)
 		}()
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
 	if futureData.Ex != nil {
 		logger.Err("Reserved stock from stockService failed, error: %s, order: %v", futureData.Ex.Error(), order)
-		stockState.persistOrderState(ctx, &order, stock_action.ReservedAction, false)
+		stockState.persistOrderState(ctx, order, stock_action.ReservedAction, false)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
 		defer close(returnChannel)
 		go func() {
-			nextToStepState.ActionLauncher(ctx, order, stock_action.FailedAction)
+			nextToStepState.ActionLauncher(ctx, *order, nil, stock_action.FailedAction)
 		}()
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	stockState.persistOrderState(ctx, &order, stock_action.ReservedAction, true)
-	return nextToStepState.ActionLauncher(ctx, order, stock_action.ReservedAction)
+	stockState.persistOrderState(ctx, order, stock_action.ReservedAction, true)
+	return nextToStepState.ActionLauncher(ctx, *order, nil, stock_action.ReservedAction)
+}
+
+func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, order *entities.Order, itemsId []string) promise.IPromise {
+	panic("must be implement")
+}
+
+func (stockState stockActionLauncher) doSettlementAction(ctx context.Context, order *entities.Order, itemsId []string) promise.IPromise {
+	panic("must be implement")
 }
 
 func (stockState stockActionLauncher) persistOrderState(ctx context.Context, order *entities.Order,
 	action actions.IEnumAction, result bool) {
 	order.UpdatedAt = time.Now().UTC()
 	for i := 0; i < len(order.Items); i++ {
-		order.Items[i].BuyerInfo = order.BuyerInfo
-		order.Items[i].OrderStep.CreatedAt = time.Now().UTC()
-
+		order.Items[i].OrderStep.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
 		order.Items[i].OrderStep.CurrentName = ctx.Value(global.CtxStepName).(string)
 		order.Items[i].OrderStep.CurrentIndex = ctx.Value(global.CtxStepIndex).(int)
 		order.Items[i].OrderStep.CurrentState.Name = stockState.Name()
 		order.Items[i].OrderStep.CurrentState.Index = stockState.Index()
+		order.Items[i].OrderStep.CurrentState.Type = stockState.Actions().ActionType().Name()
 		order.Items[i].OrderStep.CurrentState.CreatedAt = time.Now().UTC()
-		order.Items[i].OrderStep.CurrentState.ActionResult = result
+		order.Items[i].OrderStep.CurrentState.Result = result
 		order.Items[i].OrderStep.CurrentState.Reason = ""
 
-		order.Items[i].OrderStep.CurrentState.Action.Name = action.Name()
-		order.Items[i].OrderStep.CurrentState.Action.Type = actives.StockAction.String()
-		order.Items[i].OrderStep.CurrentState.Action.Base = actions.ActiveAction.String()
-		order.Items[i].OrderStep.CurrentState.Action.Data = ""
-		order.Items[i].OrderStep.CurrentState.Action.DispatchedTime = nil
+		order.Items[i].OrderStep.CurrentState.AcceptedAction.Name = action.Name()
+		order.Items[i].OrderStep.CurrentState.AcceptedAction.Type = actives.StockAction.String()
+		order.Items[i].OrderStep.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
+		order.Items[i].OrderStep.CurrentState.AcceptedAction.Data = ""
+		order.Items[i].OrderStep.CurrentState.AcceptedAction.Time = &order.UpdatedAt
+
+		order.Items[i].OrderStep.CurrentState.Actions = []entities.Action{order.Items[i].OrderStep.CurrentState.AcceptedAction}
+
+		stateHistory := entities.StateHistory {
+			Name: order.Items[i].OrderStep.CurrentState.Name,
+			Index: order.Items[i].OrderStep.CurrentState.Index,
+			Type: order.Items[i].OrderStep.CurrentState.Type,
+			Action: order.Items[i].OrderStep.CurrentState.AcceptedAction,
+			Result: order.Items[i].OrderStep.CurrentState.Result,
+			Reason: order.Items[i].OrderStep.CurrentState.Reason,
+			CreatedAt:order.Items[i].OrderStep.CurrentState.CreatedAt,
+		}
 
 		order.Items[i].OrderStep.StepsHistory[len(order.Items[i].OrderStep.StepsHistory)].StatesHistory =
-			append(order.Items[i].OrderStep.StepsHistory[0].StatesHistory, order.Items[i].OrderStep.CurrentState)
+			append(order.Items[i].OrderStep.StepsHistory[len(order.Items[i].OrderStep.StepsHistory)].StatesHistory, stateHistory)
 	}
 
 	orderChecked, err := global.Singletons.OrderRepository.Save(*order)

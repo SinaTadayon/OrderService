@@ -15,5 +15,5 @@ type IStep interface {
 	Parents()	[]IStep
 	States() 	[]states.IState
 	ProcessMessage(ctx context.Context, request *message.Request) promise.IPromise
-	ProcessOrder(ctx context.Context, order entities.Order) promise.IPromise
+	ProcessOrder(ctx context.Context, order entities.Order, itemsId []string) promise.IPromise
 }

@@ -47,7 +47,7 @@ func NewValueOf(base *listener_state.BaseListenerImpl, params ...interface{}) li
 }
 
 // TODO context handling
-func (checkoutAction checkoutActionListener) ActionListener(ctx context.Context, event events.IEvent, param interface{}) promise.IPromise {
+func (checkoutActionState checkoutActionListener) ActionListener(ctx context.Context, event events.IEvent, param interface{}) promise.IPromise {
 
 	if event == nil {
 		logger.Err("Received Event is nil")
@@ -57,7 +57,7 @@ func (checkoutAction checkoutActionListener) ActionListener(ctx context.Context,
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	stockState, ok := checkoutAction.Childes()[0].(launcher_state.ILauncherState)
+	stockState, ok := checkoutActionState.Childes()[0].(launcher_state.ILauncherState)
 	if ok != true {
 		logger.Err("StockState isn't child of CheckoutState, event: %v", event)
 		returnChannel := make(chan promise.FutureData, 1)
@@ -101,7 +101,7 @@ func (checkoutAction checkoutActionListener) ActionListener(ctx context.Context,
 	}
 
 	newOrder := value.(entities.Order)
-	checkoutAction.postProcessNewOrder(ctx, &newOrder, event.Timestamp())
+	checkoutActionState.postProcessNewOrder(ctx, &newOrder, event.Timestamp())
 
 	order, err := global.Singletons.OrderRepository.Save(newOrder)
 	if err != nil {
@@ -112,33 +112,46 @@ func (checkoutAction checkoutActionListener) ActionListener(ctx context.Context,
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	return stockState.ActionLauncher(ctx, *order, nil)
+	return stockState.ActionLauncher(ctx, *order, nil, nil)
 }
 
-func (checkoutAction checkoutActionListener) postProcessNewOrder(ctx context.Context, newOrder *entities.Order, timestamp time.Time) {
+func (checkoutActionState checkoutActionListener) postProcessNewOrder(ctx context.Context, newOrder *entities.Order, timestamp time.Time) {
 	for i := 0; i < len(newOrder.Items); i++ {
 		newOrder.Items[i].OrderStep.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
 		newOrder.Items[i].OrderStep.CurrentName = ctx.Value(global.CtxStepName).(string)
 		newOrder.Items[i].OrderStep.CurrentIndex = ctx.Value(global.CtxStepIndex).(int)
-		newOrder.Items[i].OrderStep.CurrentState.Name = checkoutAction.Name()
-		newOrder.Items[i].OrderStep.CurrentState.Index = checkoutAction.Index()
+		newOrder.Items[i].OrderStep.CurrentState.Name = checkoutActionState.Name()
+		newOrder.Items[i].OrderStep.CurrentState.Index = checkoutActionState.Index()
+		newOrder.Items[i].OrderStep.CurrentState.Type = checkoutActionState.Actions().ActionType().Name()
 		newOrder.Items[i].OrderStep.CurrentState.CreatedAt = time.Now().UTC()
-		newOrder.Items[i].OrderStep.CurrentState.ActionResult = true
+		newOrder.Items[i].OrderStep.CurrentState.Result = true
 		newOrder.Items[i].OrderStep.CurrentState.Reason = ""
 
-		newOrder.Items[i].OrderStep.CurrentState.Action.Name = checkout_action.NewOrderAction.String()
-		newOrder.Items[i].OrderStep.CurrentState.Action.Type = actors.CheckoutActor.String()
-		newOrder.Items[i].OrderStep.CurrentState.Action.Base = actions.ActorAction.String()
-		newOrder.Items[i].OrderStep.CurrentState.Action.Data = ""
-		newOrder.Items[i].OrderStep.CurrentState.Action.DispatchedTime = &timestamp
+		newOrder.Items[i].OrderStep.CurrentState.AcceptedAction.Name = checkout_action.NewOrderAction.String()
+		newOrder.Items[i].OrderStep.CurrentState.AcceptedAction.Type = actors.CheckoutActor.String()
+		newOrder.Items[i].OrderStep.CurrentState.AcceptedAction.Base = actions.ActorAction.String()
+		newOrder.Items[i].OrderStep.CurrentState.AcceptedAction.Data = ""
+		newOrder.Items[i].OrderStep.CurrentState.AcceptedAction.Time = &timestamp
+
+		newOrder.Items[i].OrderStep.CurrentState.Actions = []entities.Action{newOrder.Items[i].OrderStep.CurrentState.AcceptedAction}
 
 		newOrder.Items[i].OrderStep.StepsHistory = []entities.StepHistory{{
 			Name: newOrder.Items[i].OrderStep.CurrentState.Name,
 			Index: newOrder.Items[i].OrderStep.CurrentState.Index,
 			CreatedAt: newOrder.Items[i].OrderStep.CurrentState.CreatedAt,
-			StatesHistory: make([]entities.State, 0, 5),
+			StatesHistory: make([]entities.StateHistory, 0, 5),
 		}}
 
-		newOrder.Items[i].OrderStep.StepsHistory[0].StatesHistory = append(newOrder.Items[i].OrderStep.StepsHistory[0].StatesHistory, newOrder.Items[i].OrderStep.CurrentState)
+		stateHistory := entities.StateHistory {
+			Name: newOrder.Items[i].OrderStep.CurrentState.Name,
+			Index: newOrder.Items[i].OrderStep.CurrentState.Index,
+			Type: newOrder.Items[i].OrderStep.CurrentState.Type,
+			Action: newOrder.Items[i].OrderStep.CurrentState.AcceptedAction,
+			Result: newOrder.Items[i].OrderStep.CurrentState.Result,
+			Reason: newOrder.Items[i].OrderStep.CurrentState.Reason,
+			CreatedAt:newOrder.Items[i].OrderStep.CurrentState.CreatedAt,
+		}
+
+		newOrder.Items[i].OrderStep.StepsHistory[0].StatesHistory = append(newOrder.Items[i].OrderStep.StepsHistory[0].StatesHistory, stateHistory)
 	}
 }

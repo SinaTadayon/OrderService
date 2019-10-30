@@ -44,7 +44,7 @@ func (newOrderProcessingFailed newOrderProcessingFailedStep) ProcessMessage(ctx 
 }
 
 // TODO must be dynamic check state
-func (newOrderProcessingFailed newOrderProcessingFailedStep) ProcessOrder(ctx context.Context, order entities.Order) promise.IPromise {
+func (newOrderProcessingFailed newOrderProcessingFailedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string) promise.IPromise {
 
 	//state := newOrderProcessingFailed.StatesMap()[0]
 	//if state.Actions().ActionType() == actions.ActiveAction {
@@ -65,6 +65,6 @@ func (newOrderProcessingFailed newOrderProcessingFailedStep) ProcessOrder(ctx co
 
 	ctx = context.WithValue(ctx, global.CtxStepName, newOrderProcessingFailed.Name())
 	ctx = context.WithValue(ctx, global.CtxStepIndex, newOrderProcessingFailed.Index())
-	return finalizeState.ActionLauncher(ctx, order, finalize_action.OrderFailedFinalizeAction)
+	return finalizeState.ActionLauncher(ctx, order, nil, finalize_action.OrderFailedFinalizeAction)
 }
 

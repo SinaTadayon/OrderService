@@ -85,6 +85,8 @@ func removeCollection() {
 }
 
 func createOrder() entities.Order {
+	currentTime := time.Now().UTC()
+
 	paymentRequest := entities.PaymentRequest {
 		Amount:	     	75400000,
 		Currency:		"RR",
@@ -193,7 +195,6 @@ func createOrder() entities.Order {
 				Image:       "",
 				Returnable:  false,
 				DeletedAt:   nil,
-				BuyerInfo:   buyerInfo,
 				Attributes:	 entities.Attributes{
 					Quantity:  0,
 					Width:     "5cm",
@@ -276,17 +277,25 @@ func createOrder() entities.Order {
 				OrderStep: entities.OrderStep{
 					CurrentName:  "0.NewOrder",
 					CurrentIndex: 0,
-					CurrentState: entities.State{
+					CurrentState: entities.State {
 						Name:  "0.New_Order_Process_State",
 						Index: 0,
-						Action: entities.Action{
-							Name:           "Success",
-							Type:           "NewOrder",
-							Base:           "Active",
-							Data:           "",
-							DispatchedTime: time.Now().UTC(),
+						Type: "LauncherAction",
+						Actions: []entities.Action {{
+							Name: "Success",
+							Type: "NewOrder",
+							Base: "Active",
+							Data: "",
+							Time: &currentTime,
+						}},
+						AcceptedAction:entities.Action {
+							Name: "Success",
+							Type: "NewOrder",
+							Base: "Active",
+							Data: "",
+							Time: &currentTime,
 						},
-						ActionResult: false,
+						Result: false,
 						Reason:       "",
 						CreatedAt:    time.Now().UTC(),
 					},
@@ -295,17 +304,18 @@ func createOrder() entities.Order {
 						Name:      "0.NewOrder",
 						Index:     0,
 						CreatedAt: time.Now().UTC(),
-						StatesHistory: []entities.State{{
+						StatesHistory: []entities.StateHistory{{
 							Name:  "0.New_Order_Process_State",
 							Index: 0,
+							Type: "ListenerAction",
 							Action: entities.Action{
 								Name:           "Success",
 								Type:           "NewOrder",
 								Base:           "Active",
 								Data:           "",
-								DispatchedTime: time.Now().UTC(),
+								Time: 			&currentTime,
 							},
-							ActionResult: false,
+							Result: 	  false,
 							Reason:       "",
 							CreatedAt:    time.Now().UTC(),
 						}},
@@ -322,7 +332,6 @@ func createOrder() entities.Order {
 				Image:       "",
 				Returnable:  true,
 				DeletedAt:   nil,
-				BuyerInfo:   buyerInfo,
 				Attributes:	 entities.Attributes{
 					Quantity:  0,
 					Width:     "5cm",
@@ -408,14 +417,21 @@ func createOrder() entities.Order {
 					CurrentState: entities.State{
 						Name:  "0.New_Order_Process_State",
 						Index: 0,
-						Action: entities.Action{
+						Actions: []entities.Action{{
 							Name:           "Success",
 							Type:           "NewOrder",
 							Base:           "Active",
 							Data:           "",
-							DispatchedTime: time.Now().UTC(),
+							Time: 			&currentTime,
+						}},
+						AcceptedAction: entities.Action{
+							Name:           "Success",
+							Type:           "NewOrder",
+							Base:           "Active",
+							Data:           "",
+							Time: 			&currentTime,
 						},
-						ActionResult: false,
+						Result: false,
 						Reason:       "",
 						CreatedAt:    time.Now().UTC(),
 					},
@@ -424,17 +440,19 @@ func createOrder() entities.Order {
 						Name:      "0.NewOrder",
 						Index:     0,
 						CreatedAt: time.Now().UTC(),
-						StatesHistory: []entities.State{{
+						StatesHistory: []entities.StateHistory{{
 							Name:  "0.New_Order_Process_State",
 							Index: 0,
+							Type: "ListenerAction",
 							Action: entities.Action{
 								Name:           "Success",
 								Type:           "NewOrder",
 								Base:           "Active",
 								Data:           "",
-								DispatchedTime: time.Now().UTC(),
+								Time: 			&currentTime,
 							},
-							ActionResult: false,
+
+							Result: false,
 							Reason:       "",
 							CreatedAt:    time.Now().UTC(),
 						}},

@@ -1,4 +1,4 @@
-package stock
+package stock_service
 
 import (
 	"context"
@@ -7,11 +7,12 @@ import (
 )
 
 type iStockServiceImpl struct {
-
+	serverAddress 	string
+	serverPort		int
 }
 
-func NewStockService() IStockService {
-	return &iStockServiceImpl{}
+func NewStockService(address string, port int) IStockService {
+	return &iStockServiceImpl{address, port}
 }
 
 func (stockService iStockServiceImpl) SingleStockAction(context context.Context, inventoryId string, count int, action stock_action.ActionEnums) promise.IPromise {

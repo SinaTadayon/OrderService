@@ -11,5 +11,5 @@ import (
 type ILauncherState interface {
 	states.IState
 	ActiveType() actives.ActiveType
-	ActionLauncher(ctx context.Context, order entities.Order, param interface{}) promise.IPromise
+	ActionLauncher(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise
 }

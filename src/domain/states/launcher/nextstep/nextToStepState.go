@@ -46,7 +46,7 @@ func (nextStep nextToStepActionLauncher) ActionStepMap() map[actions.IEnumAction
 	return nextStep.actionStepMap
 }
 
-func (nextStep nextToStepActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, param interface{}) promise.IPromise {
+func (nextStep nextToStepActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 
 	if param == nil {
 		logger.Err("received param in NextToStepState is nil, order: %v", order)
@@ -59,7 +59,7 @@ func (nextStep nextToStepActionLauncher) ActionLauncher(ctx context.Context, ord
 	actionEnum, ok := param.(actions.IEnumAction)
 	if ok != true {
 		logger.Err("param in NextToStepState is not actions.IEnumAction type, order: %v", order)
-		nextStep.persistOrderState(ctx, &order, nil, false, "received param type is not a actions.IEnumAction")
+		nextStep.persistOrderState(ctx, &order, itemsId, nil, false, "received param type is not a actions.IEnumAction")
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
 		defer close(returnChannel)
@@ -67,10 +67,10 @@ func (nextStep nextToStepActionLauncher) ActionLauncher(ctx context.Context, ord
 	}
 
 	if step, ok := nextStep.ActionStepMap()[actionEnum]; ok {
-		return step.ProcessOrder(ctx, order)
+		return step.ProcessOrder(ctx, order, nil)
 	} else {
 		logger.Err("Received action not exist in nextStep.ActionStepMap(), order: %v", order)
-		nextStep.persistOrderState(ctx, &order, actionEnum, false, "received actions.IEnumAction is not valid for this nextToStep")
+		nextStep.persistOrderState(ctx, &order, itemsId, actionEnum, false, "received actions.IEnumAction is not valid for this nextToStep")
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
@@ -78,38 +78,68 @@ func (nextStep nextToStepActionLauncher) ActionLauncher(ctx context.Context, ord
 	}
 }
 
-func (nextStep nextToStepActionLauncher) persistOrderState(ctx context.Context, order *entities.Order,
-	action actions.IEnumAction, result bool, reason string) {
+func (nextStep nextToStepActionLauncher) persistOrderState(ctx context.Context, order *entities.Order, itemsId []string,
+	acceptedAction actions.IEnumAction, result bool, reason string) {
 	order.UpdatedAt = time.Now().UTC()
-	for i := 0; i < len(order.Items); i++ {
-		order.Items[i].BuyerInfo = order.BuyerInfo
-		order.Items[i].OrderStep.CreatedAt = time.Now().UTC()
 
-		order.Items[i].OrderStep.CurrentName = ctx.Value(global.CtxStepName).(string)
-		order.Items[i].OrderStep.CurrentIndex = ctx.Value(global.CtxStepIndex).(int)
-		order.Items[i].OrderStep.CurrentState.Name = nextStep.Name()
-		order.Items[i].OrderStep.CurrentState.Index = nextStep.Index()
-		order.Items[i].OrderStep.CurrentState.CreatedAt = time.Now().UTC()
-		order.Items[i].OrderStep.CurrentState.ActionResult = result
-		order.Items[i].OrderStep.CurrentState.Reason = reason
-
-		if action != nil {
-			order.Items[i].OrderStep.CurrentState.Action.Name = action.Name()
-		} else {
-			order.Items[i].OrderStep.CurrentState.Action.Name = ""
+	if itemsId != nil && len(itemsId) > 0 {
+		for _, id := range itemsId {
+			for i := 0; i < len(order.Items); i++ {
+				if order.Items[i].ItemId == id {
+					nextStep.doUpdateOrderState(ctx, order, i, acceptedAction, result, reason)
+				} else {
+					logger.Err("nextToStep received itemId %s not exist in order, order: %v", id, order)
+				}
+			}
 		}
-
-		order.Items[i].OrderStep.CurrentState.Action.Type = actives.NextToStepAction.String()
-		order.Items[i].OrderStep.CurrentState.Action.Base = actions.ActiveAction.String()
-		order.Items[i].OrderStep.CurrentState.Action.Data = ""
-		order.Items[i].OrderStep.CurrentState.Action.DispatchedTime = nil
-
-		order.Items[i].OrderStep.StepsHistory[len(order.Items[i].OrderStep.StepsHistory)].StatesHistory =
-			append(order.Items[i].OrderStep.StepsHistory[0].StatesHistory, order.Items[i].OrderStep.CurrentState)
+	} else {
+		for i := 0; i < len(order.Items); i++ {
+			nextStep.doUpdateOrderState(ctx, order, i, acceptedAction, result, reason)
+		}
 	}
 
 	orderChecked, err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("Save NextToStep State Failed, error: %s, order: %v", err, orderChecked)
 	}
+}
+
+func (nextStep nextToStepActionLauncher) doUpdateOrderState(ctx context.Context, order *entities.Order, index int,
+	acceptedAction actions.IEnumAction, result bool, reason string) {
+	order.Items[index].OrderStep.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
+	order.Items[index].OrderStep.CurrentName = ctx.Value(global.CtxStepName).(string)
+	order.Items[index].OrderStep.CurrentIndex = ctx.Value(global.CtxStepIndex).(int)
+
+	order.Items[index].OrderStep.CurrentState.Name = nextStep.Name()
+	order.Items[index].OrderStep.CurrentState.Index = nextStep.Index()
+	order.Items[index].OrderStep.CurrentState.Type = nextStep.Actions().ActionType().Name()
+	order.Items[index].OrderStep.CurrentState.CreatedAt = time.Now().UTC()
+	order.Items[index].OrderStep.CurrentState.Result = result
+	order.Items[index].OrderStep.CurrentState.Reason = reason
+
+	if acceptedAction != nil {
+		order.Items[index].OrderStep.CurrentState.AcceptedAction.Name = acceptedAction.Name()
+	} else {
+		order.Items[index].OrderStep.CurrentState.AcceptedAction.Name = ""
+	}
+
+	order.Items[index].OrderStep.CurrentState.AcceptedAction.Type = actives.NextToStepAction.String()
+	order.Items[index].OrderStep.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
+	order.Items[index].OrderStep.CurrentState.AcceptedAction.Data = ""
+	order.Items[index].OrderStep.CurrentState.AcceptedAction.Time = &order.Items[index].OrderStep.CurrentState.CreatedAt
+
+	order.Items[index].OrderStep.CurrentState.Actions = []entities.Action{order.Items[index].OrderStep.CurrentState.AcceptedAction}
+
+	stateHistory := entities.StateHistory {
+		Name: order.Items[index].OrderStep.CurrentState.Name,
+		Index: order.Items[index].OrderStep.CurrentState.Index,
+		Type: order.Items[index].OrderStep.CurrentState.Type,
+		Action: order.Items[index].OrderStep.CurrentState.AcceptedAction,
+		Result: order.Items[index].OrderStep.CurrentState.Result,
+		Reason: order.Items[index].OrderStep.CurrentState.Reason,
+		CreatedAt:order.Items[index].OrderStep.CurrentState.CreatedAt,
+	}
+
+	order.Items[index].OrderStep.StepsHistory[len(order.Items[index].OrderStep.StepsHistory)].StatesHistory =
+		append(order.Items[index].OrderStep.StepsHistory[len(order.Items[index].OrderStep.StepsHistory)].StatesHistory, stateHistory)
 }

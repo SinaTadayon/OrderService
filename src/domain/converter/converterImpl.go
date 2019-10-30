@@ -91,59 +91,63 @@ func convert(newOrderDto *ordersrv.NewOrderRequest) (*entities.Order, error) {
 	}
 
 	for _, item := range newOrderDto.Items {
-		var newItem = entities.Item{}
-
 		if len(item.InventoryId) == 0 {
 			return nil, errors.New("inventoryId of newOrderRequest invalid")
 		}
 
-		newItem.InventoryId	= item.InventoryId
-		newItem.Title = item.Title
-		newItem.Brand = item.Brand
-		newItem.Warranty = item.Warranty
-		newItem.Categories = item.Categories
-		newItem.Image = item.Image
-		newItem.Returnable = item.Returnable
-		newItem.SellerInfo.SellerId = item.SellerId
-
-		if item.Attributes != nil {
-			newItem.Attributes.Quantity = item.Attributes.Quantity
-			newItem.Attributes.Width = item.Attributes.Width
-			newItem.Attributes.Height = item.Attributes.Height
-			newItem.Attributes.Length = item.Attributes.Length
-			newItem.Attributes.Weight = item.Attributes.Weight
-			newItem.Attributes.Color = item.Attributes.Color
-			newItem.Attributes.Materials = item.Attributes.Materials
-			// Todo Implements extra attributes
+		if item.Count <= 0 {
+			return nil, errors.New("item Count of newOrderRequest invalid")
 		}
 
-		if item.Price == nil {
-			return nil, errors.New("item price of newOrderRequest invalid")
+		for i:= 0; i < item.Count; i++ {
+			var newItem = entities.Item{}
+			newItem.InventoryId	= item.InventoryId
+			newItem.Title = item.Title
+			newItem.Brand = item.Brand
+			newItem.Warranty = item.Warranty
+			newItem.Categories = item.Categories
+			newItem.Image = item.Image
+			newItem.Returnable = item.Returnable
+			newItem.SellerInfo.SellerId = item.SellerId
+
+			if item.Attributes != nil {
+				newItem.Attributes.Quantity = int(item.Attributes.Quantity)
+				newItem.Attributes.Width = item.Attributes.Width
+				newItem.Attributes.Height = item.Attributes.Height
+				newItem.Attributes.Length = item.Attributes.Length
+				newItem.Attributes.Weight = item.Attributes.Weight
+				newItem.Attributes.Color = item.Attributes.Color
+				newItem.Attributes.Materials = item.Attributes.Materials
+				// Todo Implements extra attributes
+			}
+
+			if item.Price == nil {
+				return nil, errors.New("item price of newOrderRequest invalid")
+			}
+
+			newItem.PriceInfo.Unit = item.Price.Unit
+			newItem.PriceInfo.Payable = item.Price.Payable
+			newItem.PriceInfo.Discount = item.Price.Discount
+			newItem.PriceInfo.SellerCommission = item.Price.SellerCommission
+			newItem.PriceInfo.Currency = item.Price.Currency
+
+			if item.Shipment == nil {
+				return nil, errors.New("item shipment of newOrderRequest invalid")
+			}
+
+			newItem.ShipmentSpec.CarrierName = item.Shipment.CarrierName
+			newItem.ShipmentSpec.CarrierProduct = item.Shipment.CarrierProduct
+			newItem.ShipmentSpec.CarrierType = item.Shipment.CarrierType
+			newItem.ShipmentSpec.ShippingAmount = item.Shipment.ShippingAmount
+			newItem.ShipmentSpec.VoucherAmount = item.Shipment.VoucherAmount
+			newItem.ShipmentSpec.Currency = item.Shipment.Currency
+			newItem.ShipmentSpec.ReactionTime = item.Shipment.ReactionTime
+			newItem.ShipmentSpec.ShippingTime = item.Shipment.ShippingTime
+			newItem.ShipmentSpec.ReturnTime = item.Shipment.ReturnTime
+			newItem.ShipmentSpec.Details = item.Shipment.Details
+
+			order.Items = append(order.Items, newItem)
 		}
-
-		newItem.PriceInfo.Unit = item.Price.Unit
-		newItem.PriceInfo.Total = item.Price.Total
-		newItem.PriceInfo.Payable = item.Price.Payable
-		newItem.PriceInfo.Discount = item.Price.Discount
-		newItem.PriceInfo.SellerCommission = item.Price.SellerCommission
-		newItem.PriceInfo.Currency = item.Price.Currency
-
-		if item.Shipment == nil {
-			return nil, errors.New("item shipment of newOrderRequest invalid")
-		}
-
-		newItem.ShipmentSpec.CarrierName = item.Shipment.CarrierName
-		newItem.ShipmentSpec.CarrierProduct = item.Shipment.CarrierProduct
-		newItem.ShipmentSpec.CarrierType = item.Shipment.CarrierType
-		newItem.ShipmentSpec.ShippingAmount = item.Shipment.ShippingAmount
-		newItem.ShipmentSpec.VoucherAmount = item.Shipment.VoucherAmount
-		newItem.ShipmentSpec.Currency = item.Shipment.Currency
-		newItem.ShipmentSpec.ReactionTime = item.Shipment.ReactionTime
-		newItem.ShipmentSpec.ShippingTime = item.Shipment.ShippingTime
-		newItem.ShipmentSpec.ReturnTime = item.Shipment.ReturnTime
-		newItem.ShipmentSpec.Details = item.Shipment.Details
-
-		order.Items = append(order.Items, newItem)
 	}
 
 	return &order, nil

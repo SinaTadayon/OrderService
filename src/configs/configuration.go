@@ -14,10 +14,22 @@ type Cfg struct {
 		SmsTemplateDir                       string `env:"NOTIFICATION_SMS_TEMPLATES"`
 		EmailTemplateNotifySellerForNewOrder string `env:"EMAIL_TMP_NOTIFY_SELLER_FOR_NEW_ORDER"`
 	}
+
 	GRPCServer struct {
 		Address string `env:"ORDER_SERVER_ADDRESS"`
 		Port   	int `env:"ORDER_SERVER_PORT"`
 	}
+
+	PaymentGatewayService struct {
+		Address string `env:"PAYMENT_GATEWAY_ADDRESS"`
+		Port   	int `env:"PAYMENT_GATEWAY_PORT"`
+	}
+
+	StockService struct {
+		Address string `env:"STOCK_SERVICE_ADDRESS"`
+		Port   	int `env:"STOCK_SERVICE_PORT"`
+	}
+
 	Kafka struct {
 		Version       string `env:"ORDER_SERVICE_KAFKA_VERSION"`
 		Brokers       string `env:"ORDER_SERVICE_KAFKA_BROKERS"`

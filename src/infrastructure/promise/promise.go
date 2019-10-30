@@ -23,7 +23,7 @@ const (
 type DataChan <-chan FutureData
 
 type IPromise interface {
-	Data()		(*FutureData, error)
+	Data() *FutureData
 	Channel() 	DataChan
 	Count()		int
 	Capacity()	int

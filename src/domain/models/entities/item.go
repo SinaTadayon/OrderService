@@ -1,6 +1,8 @@
 package entities
 
-import "time"
+import (
+	"time"
+)
 
 type Item struct {
 	ItemId 				string 				`bson:"itemId"`
@@ -15,7 +17,6 @@ type Item struct {
 	CreatedAt      		time.Time			`bson:"createdAt"`
 	UpdatedAt      		time.Time			`bson:"updatedAt"`
 	DeletedAt       	*time.Time      	`bson:"deletedAt"`
-	BuyerInfo       	BuyerInfo       	`bson:"buyerInfo"`
 	SellerInfo      	SellerInfo      	`bson:"sellerInfo"`
 	PriceInfo       	PriceInfo       	`bson:"priceInfo"`
 	ShipmentSpec    	ShipmentSpec    	`bson:"shipmentSpec"`
@@ -24,7 +25,7 @@ type Item struct {
 }
 
 type Attributes struct {
-	Quantity        	int32            	`bson:"quantity"`
+	Quantity        	int	            	`bson:"quantity"`
 	Width 				string				`bson:"with"`
 	Height				string				`bson:"height"`
 	Length				string				`bson:"length"`
@@ -65,14 +66,26 @@ type StepHistory struct {
 	Name    			string				`bson:"name"`
 	Index				int					`bson:"index"`
 	CreatedAt 			time.Time			`bson:"createdAt"`
-	StatesHistory		[]State				`bson:"statesHistory"`
+	StatesHistory		[]StateHistory		`bson:"statesHistory"`
+}
+
+type StateHistory struct {
+	Name         		string				`bson:"name"`
+	Index        		int					`bson:"index"`
+	Type 				string				`bson:"type"`
+	Action      		Action				`bson:"action"`
+	Result 				bool				`bson:"result"`
+	Reason       		string				`bson:"reason"`
+	CreatedAt    		time.Time			`bson:"createdAt"`
 }
 
 type State struct {
 	Name         		string				`bson:"name"`
 	Index        		int					`bson:"index"`
-	Action       		Action				`bson:"action"`
-	ActionResult 		bool				`bson:"actionResult"`
+	Type 				string				`bson:"type"`
+	Actions				[]Action			`bson:"actions"`
+	AcceptedAction      Action				`bson:"acceptedAction"`
+	Result 				bool				`bson:"actionResult"`
 	Reason       		string				`bson:"reason"`
 	CreatedAt    		time.Time			`bson:"createdAt"`
 }
@@ -83,14 +96,14 @@ type State struct {
 	Type: SellerInfoActor
 	Base: ActorAction
 	Data: "sample data"
-	DispatchedTime: dispatched timestamp
+	Time: dispatched timestamp
 */
 type Action struct {
 	Name				string				`bson:"name"`
 	Type 				string				`bson:"type"`
 	Base 				string				`bson:"base"`
 	Data				string				`bson:"data"`
-	DispatchedTime		*time.Time			`bson:"DispatchedTime"`
+	Time				*time.Time			`bson:"time"`
 }
 
 type SellerInfo struct {
@@ -98,9 +111,9 @@ type SellerInfo struct {
 	Profile				*SellerProfile			`bson:"profile"`
 }
 
+// TODO remove Total
 type PriceInfo struct {
 	Unit             	uint64					`bson:"unit"`
-	Total            	uint64					`bson:"total"`
 	Payable          	uint64					`bson:"payable"`
 	Discount         	uint64					`bson:"discount"`
 	SellerCommission 	uint64					`bson:"sellerCommission"`

@@ -38,7 +38,7 @@ func (returnShipmentDetailDelayed returnShipmentDetailDelayedStep) ProcessMessag
 	panic("implementation required")
 }
 
-func (returnShipmentDetailDelayed returnShipmentDetailDelayedStep) ProcessOrder(ctx context.Context, order entities.Order) promise.IPromise {
+func (returnShipmentDetailDelayed returnShipmentDetailDelayedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string) promise.IPromise {
 	panic("implementation required")
 }
 

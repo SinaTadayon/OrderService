@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package payment_gateway;
+
+service PaymentGateway{
+  rpc GenerateRedirectURL(GenerateRedirRequest) returns (GenerateRedirResponse) {};
+  rpc ListGateways(ListGatewaysRequest) returns (ListGatewaysResponse) {};
+}
+
+message GenerateRedirRequest{
+  string  gateway   = 1;
+  int64   amount    = 2; 
+  string  currency  = 3; 
+  string  orderID   = 4;
+}
+
+
+message GenerateRedirResponse{
+  string callback_url = 1;
+  int64  invoice_id   = 2;
+  string payment_id   = 3;
+}
+
+message ListGatewaysRequest {
+}
+
+message ListGatewaysResponse {
+  message GateWay{
+    string name = 1;
+    string title = 2;
+    string logo_image_address = 3;
+  }
+  repeated GateWay gateways = 1;
+}
+

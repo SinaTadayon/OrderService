@@ -1023,7 +1023,7 @@ func (flowManager *iFlowManagerImpl) createStep0() {
 	}
 
 	nextToStepState := next_to_step_state.New(3, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
-	stockReservedActionState := stock_action_state.New(1, []states.IState{nextToStepState}, emptyState, stock_action.NewOf(stock_action.ReservedAction))
+	stockReservedActionState := stock_action_state.New(1, []states.IState{nextToStepState}, emptyState, stock_action.NewOf(stock_action.ReservedAction, stock_action.FailedAction))
 	checkoutStateAction := checkout_action_state.New(0, []states.IState{stockReservedActionState, nextToStepState}, emptyState, checkout_action.NewOf(checkout_action.NewOrderAction))
 
 	step0 := new_order_step.New([]steps.IStep{step1, step10}, emptyStep,

@@ -6,6 +6,8 @@ import (
 )
 
 type IEvent interface {
+	OrderId()		string
+	ItemsId()		[]string
 	ActorType() 	actors.ActorType
 	ActorAction() 	actors.IActorAction
 	Data() 			interface{}

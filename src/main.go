@@ -102,8 +102,9 @@ func init() {
 	 App.grpcServer = grpc.NewServer(App.Config.GRPCServer.Address, uint16(App.Config.GRPCServer.Port), App.flowManager)
 
 	global.Singletons.Converter = converter.NewConverter()
-	global.Singletons.StockService = stock.NewStockService()
-	global.Singletons.PaymentService = payment.NewPaymentService()
+	global.Singletons.StockService = stock_service.NewStockService(App.Config.StockService.Address, App.Config.StockService.Port)
+	global.Singletons.PaymentService = payment_service.NewPaymentService(App.Config.PaymentGatewayService.Address,
+		App.Config.PaymentGatewayService.Port)
 	//brokers = strings.Split(App.config.Kafka.Brokers, ",")
 	//if App.config.App.Port == "" {
 	//	logger.Err("grpc PORT env not defined")

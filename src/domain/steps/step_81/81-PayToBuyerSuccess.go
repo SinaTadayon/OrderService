@@ -38,7 +38,7 @@ func (payToBuyerSuccess payToBuyerSuccessStep) ProcessMessage(ctx context.Contex
 	panic("implementation required")
 }
 
-func (payToBuyerSuccess payToBuyerSuccessStep) ProcessOrder(ctx context.Context, order entities.Order) promise.IPromise {
+func (payToBuyerSuccess payToBuyerSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string) promise.IPromise {
 	panic("implementation required")
 }
 

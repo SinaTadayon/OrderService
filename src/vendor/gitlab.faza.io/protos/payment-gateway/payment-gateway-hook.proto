@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package payment_gateway;
+
+service BankResultHook {
+  rpc PaymentGatewayHook(PaygateHookRequest) returns (PaygateHookResponse) {};
+}
+
+message PaygateHookRequest{
+  string  oderID    = 1;
+  string  paymentId = 2;
+  int64   invoiceId = 3;
+  int64   amount    = 4;
+  string  reqBody   = 5;
+  string  resBody   = 6;
+  bool    result    = 7;
+}
+
+message PaygateHookResponse {
+  bool ok = 1; 
+}

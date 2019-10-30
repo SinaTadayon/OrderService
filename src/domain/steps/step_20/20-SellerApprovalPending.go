@@ -38,7 +38,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessMessage(ctx contex
 	panic("implementation required")
 }
 
-func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.Context, order entities.Order) promise.IPromise {
+func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string) promise.IPromise {
 	panic("implementation required")
 }
 

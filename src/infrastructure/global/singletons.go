@@ -23,6 +23,6 @@ var Singletons struct {
 	OrderRepository order_repository.IOrderRepository
 	ItemRepository  item_repository.IItemRepository
 	Converter       converter.IConverter
-	StockService	stock.IStockService
-	PaymentService 	payment.IPaymentService
+	StockService	stock_service.IStockService
+	PaymentService 	payment_service.IPaymentService
 }

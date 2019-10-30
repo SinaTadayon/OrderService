@@ -38,7 +38,7 @@ func (payToMarket payToMarketStep) ProcessMessage(ctx context.Context, request *
 	panic("implementation required")
 }
 
-func (payToMarket payToMarketStep) ProcessOrder(ctx context.Context, order entities.Order) promise.IPromise {
+func (payToMarket payToMarketStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string) promise.IPromise {
 	panic("implementation required")
 }
 

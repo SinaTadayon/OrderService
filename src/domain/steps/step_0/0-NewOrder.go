@@ -64,7 +64,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	}
 
 	newOrderEvent := events.New(actors.CheckoutActor, checkout_action.NewOf(checkout_action.NewOrderAction),
-		newOrderRequest, timestamp)
+		"", nil, newOrderRequest, timestamp)
 
 	checkoutState, ok := newOrderProcessing.StatesMap()[0].(listener_state.IListenerState)
 	if ok != true || checkoutState.ActorType() != actors.CheckoutActor {
@@ -81,7 +81,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	return checkoutState.ActionListener(ctx, newOrderEvent, nil)
 }
 
-func (newOrderProcessing newOrderProcessingStep) ProcessOrder(ctx context.Context, order entities.Order) promise.IPromise {
+func (newOrderProcessing newOrderProcessingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string) promise.IPromise {
 	panic("implementation required")
 }
 
