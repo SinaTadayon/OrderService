@@ -1,8 +1,12 @@
 package steps
 
 import (
+	"context"
+	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"strconv"
+	"time"
 )
 
 //422 - Validation Errors, an array of objects, each object containing the field and the value (message) of the error
@@ -111,4 +115,43 @@ func (base *BaseStepImpl) GetConfigs() map[string]interface{} {
 
 func (base BaseStepImpl) String() string {
 	return strconv.Itoa(base.index) + "." + base.name
+}
+
+func (base BaseStepImpl) UpdateOrderStep(ctx context.Context, order *entities.Order, itemsId []string) {
+	order.UpdatedAt = time.Now().UTC()
+
+	if itemsId != nil && len(itemsId) > 0 {
+		for _, id := range itemsId {
+			for i := 0; i < len(order.Items); i++ {
+				if order.Items[i].ItemId == id {
+					base.doUpdateOrderStep(ctx, order, i)
+				} else {
+					logger.Err("paymentSuccess received itemId %s not exist in order, order: %v", id, order)
+				}
+			}
+		}
+	} else {
+		for i := 0; i < len(order.Items); i++ {
+			base.doUpdateOrderStep(ctx, order, i)
+		}
+	}
+}
+
+func (base BaseStepImpl) doUpdateOrderStep(ctx context.Context, order *entities.Order, index int) {
+	order.Items[index].OrderStep.CreatedAt = time.Now().UTC()
+	order.Items[index].OrderStep.CurrentName = base.Name()
+	order.Items[index].OrderStep.CurrentIndex = base.Index()
+
+	stepHistory := entities.StepHistory{
+		Name: order.Items[index].OrderStep.CurrentState.Name,
+		Index: order.Items[index].OrderStep.CurrentState.Index,
+		CreatedAt: order.Items[index].OrderStep.CurrentState.CreatedAt,
+		StatesHistory: make([]entities.StateHistory, 0, len(base.States())),
+	}
+
+	if order.Items[index].OrderStep.StepsHistory == nil || len(order.Items[index].OrderStep.StepsHistory) == 0 {
+		order.Items[index].OrderStep.StepsHistory = make([]entities.StepHistory, 0, 5)
+	}
+
+	order.Items[index].OrderStep.StepsHistory = append(order.Items[index].OrderStep.StepsHistory, stepHistory)
 }

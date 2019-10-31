@@ -4,14 +4,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	pb "gitlab.faza.io/protos/order"
-	_ "gitlab.faza.io/protos/order/general"
 	"testing"
 )
 
 func TestOrderConverter(t *testing.T) {
 	converter := NewConverter()
-	newOrderRequest := createNewOrderRequest()
-	out, err := converter.Map(newOrderRequest, entities.Order{})
+	RequestNewOrder := createRequestNewOrder()
+	out, err := converter.Map(RequestNewOrder, entities.Order{})
 	assert.NoError(t, err, "mapping order request to order failed")
 	order , ok := out.(*entities.Order)
 	assert.True(t, ok, "mapping order request to order failed")
@@ -19,8 +18,8 @@ func TestOrderConverter(t *testing.T) {
 }
 
 
-func createNewOrderRequest() *pb.NewOrderRequest {
-	order := &pb.NewOrderRequest{
+func createRequestNewOrder() *pb.RequestNewOrder {
+	order := &pb.RequestNewOrder{
 		Amount: &pb.Amount{},
 		Buyer: &pb.Buyer{
 			Finance: &pb.FinanceInfo{},
@@ -65,8 +64,8 @@ func createNewOrderRequest() *pb.NewOrderRequest {
 
 	item := pb.Item {
 		Price:    &pb.PriceInfo{},
+		Attributes: make(map[string]string, 10),
 		Shipment: &pb.ShippingSpec{},
-		Attributes: &pb.Attributes{},
 		SellerId: "6546345",
 	}
 
@@ -74,24 +73,24 @@ func createNewOrderRequest() *pb.NewOrderRequest {
 	item.Brand = "Asus"
 	item.Categories = "Electronic/laptop"
 	item.Title = "Asus G503 i7, 256SSD, 32G Ram"
-	item.Warranty = "ضمانت سلامت کالا"
+	item.Guarantee = "ضمانت سلامت کالا"
 	item.Image = "http://baman.io/image/asus.png"
 	item.Returnable = true
 
 	item.Price.Discount = 200000
 	item.Price.Payable = 20000000
-	item.Price.Total = 1600000
 	item.Price.SellerCommission = 10
 	item.Price.Unit = 100000
 	item.Price.Currency = "RR"
 
-	item.Attributes.Quantity = 10
-	item.Attributes.Width = "8cm"
-	item.Attributes.Height = "10cm"
-	item.Attributes.Length = "15cm"
-	item.Attributes.Weight = "20kg"
-	item.Attributes.Color = "blue"
-	item.Attributes.Materials = "stone"
+	
+	item.Attributes["Quantity"] = "10"
+	item.Attributes["Width"] = "8cm"
+	item.Attributes["Height"] = "10cm"
+	item.Attributes["Length"] = "15cm"
+	item.Attributes["Weight"] = "20kg"
+	item.Attributes["Color"] = "blue"
+	item.Attributes["Materials"] = "stone"
 
 	//Standard, Express, Economy or Sameday.
 	item.Shipment.Details = "پست پیشتاز و تیپاکس برای شهرستان ها و پیک برای تهران به صورت رایگان می باشد"

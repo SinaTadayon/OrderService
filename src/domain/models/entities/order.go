@@ -36,9 +36,9 @@ type Order struct {
 
 
 type PaymentService struct {
-	PaymentRequest  PaymentRequest  		`bson:"paymentRequest"`
-	PaymentResponse PaymentResponse 		`bson:"paymentResponse"`
-	PaymentResult   PaymentResult   		`bson:"paymentResult"`
+	PaymentRequest  *PaymentRequest  		`bson:"paymentRequest"`
+	PaymentResponse *PaymentResponse 		`bson:"paymentResponse"`
+	PaymentResult   *PaymentResult   		`bson:"paymentResult"`
 }
 
 
@@ -50,21 +50,21 @@ type SystemPayment struct {
 }
 
 type PayToBuyerInfo struct {
-	PaymentRequest  PaymentRequest  		`bson:"paymentRequest"`
-	PaymentResponse PaymentResponse 		`bson:"paymentResponse"`
-	PaymentResult   PaymentResult   		`bson:"paymentResult"`
+	PaymentRequest  *PaymentRequest  		`bson:"paymentRequest"`
+	PaymentResponse *PaymentResponse 		`bson:"paymentResponse"`
+	PaymentResult   *PaymentResult   		`bson:"paymentResult"`
 }
 
 type PayToSellerInfo struct {
-	PaymentRequest  PaymentRequest  		`bson:"paymentRequest"`
-	PaymentResponse PaymentResponse 		`bson:"paymentResponse"`
-	PaymentResult   PaymentResult   		`bson:"paymentResult"`
+	PaymentRequest  *PaymentRequest  		`bson:"paymentRequest"`
+	PaymentResponse *PaymentResponse 		`bson:"paymentResponse"`
+	PaymentResult   *PaymentResult   		`bson:"paymentResult"`
 }
 
 type PayToMarket struct {
-	PaymentRequest  PaymentRequest  		`bson:"paymentRequest"`
-	PaymentResponse PaymentResponse 		`bson:"paymentResponse"`
-	PaymentResult   PaymentResult   		`bson:"paymentResult"`
+	PaymentRequest  *PaymentRequest  		`bson:"paymentRequest"`
+	PaymentResponse *PaymentResponse 		`bson:"paymentResponse"`
+	PaymentResult   *PaymentResult   		`bson:"paymentResult"`
 }
 
 type Amount struct {

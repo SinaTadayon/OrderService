@@ -56,7 +56,8 @@ func (finalizeState finalizeActionLauncher) ActionLauncher(ctx context.Context, 
 		} else if action == finalize_action.BuyerFinalizeAction {
 			panic("must be implement")
 		} else if action == finalize_action.PaymentFailedFinalizeAction {
-			panic("must be implement")
+			finalizeState.persistOrderState(ctx, &order, itemsId, action, true, "")
+			returnChannel <- promise.FutureData{Data:promise.FutureData{}, Ex:nil}
 		} else if action == finalize_action.MarketFinalizeAction {
 			panic("must be implement")
 		} else {
@@ -97,10 +98,6 @@ func (finalizeState finalizeActionLauncher) persistOrderState(ctx context.Contex
 
 func (finalizeState finalizeActionLauncher) doUpdateOrderState(ctx context.Context, order *entities.Order, index int,
 	acceptedAction actions.IEnumAction, result bool, reason string) {
-	order.Items[index].OrderStep.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
-	order.Items[index].OrderStep.CurrentName = ctx.Value(global.CtxStepName).(string)
-	order.Items[index].OrderStep.CurrentIndex = ctx.Value(global.CtxStepIndex).(int)
-
 	order.Items[index].OrderStep.CurrentState.Name = finalizeState.Name()
 	order.Items[index].OrderStep.CurrentState.Index = finalizeState.Index()
 	order.Items[index].OrderStep.CurrentState.Type = finalizeState.Actions().ActionType().Name()

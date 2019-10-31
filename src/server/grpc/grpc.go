@@ -2,10 +2,12 @@ package grpc
 
 import (
 	"context"
+	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/any"
 	"gitlab.faza.io/order-project/order-service/domain"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	pb "gitlab.faza.io/protos/order"
-	message "gitlab.faza.io/protos/order/general"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"strconv"
@@ -36,7 +38,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 // TODO mongo query for id
 // TODO mapping from order request to order model
 // TODO Test Response
-func (server *Server) OrderRequestsHandler(ctx context.Context, req *message.Request) (*message.Response, error) {
+func (server *Server) OrderRequestsHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
 
 	flowManagerCtx, _ := context.WithTimeout(context.Background(), 3*time.Second)
 	promiseHandler := server.flowManager.MessageHandler(flowManagerCtx, req)
@@ -46,7 +48,7 @@ func (server *Server) OrderRequestsHandler(ctx context.Context, req *message.Req
 		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
 	}
 
-	response, ok := futureData.Data.(message.Response)
+	response, ok := futureData.Data.(pb.MessageResponse)
 	if ok != true {
 		logger.Err("received data of futureData invalid, type: %T, value, %v", futureData.Data, futureData.Data)
 		return nil, status.Error(500, "Unknown Error")
@@ -71,18 +73,18 @@ func (server *Server) OrderRequestsHandler(ctx context.Context, req *message.Req
 	//	logger.Audit("Req Meta Filter.filters[%d].values = %v", index, filter.GetValue())
 	//}
 	//
-	//var newOrderRequest pb.NewOrderRequest
-	//if err := ptypes.UnmarshalAny(req.Data, &newOrderRequest); err != nil {
+	//var RequestNewOrder pb.RequestNewOrder
+	//if err := ptypes.UnmarshalAny(req.Data, &RequestNewOrder); err != nil {
 	//	logger.Err("Could not unmarshal OrderRequest from anything field: %s", err)
 	//	return &message.Response{}, err
 	//}
 	//
-	//logger.Audit("Req NewOrderRequest Buyer.firstName: %v", newOrderRequest.GetBuyer().GetFirstName())
-	//logger.Audit("Req NewOrderRequest Buyer.lastName: %v", newOrderRequest.GetBuyer().GetLastName())
-	//logger.Audit("Req NewOrderRequest Buyer.finance: %v", newOrderRequest.GetBuyer().GetFinance())
-	//logger.Audit("Req NewOrderRequest Buyer.Address: %v", newOrderRequest.GetBuyer().GetShippingAddress())
+	//logger.Audit("Req RequestNewOrder Buyer.firstName: %v", RequestNewOrder.GetBuyer().GetFirstName())
+	//logger.Audit("Req RequestNewOrder Buyer.lastName: %v", RequestNewOrder.GetBuyer().GetLastName())
+	//logger.Audit("Req RequestNewOrder Buyer.finance: %v", RequestNewOrder.GetBuyer().GetFinance())
+	//logger.Audit("Req RequestNewOrder Buyer.Address: %v", RequestNewOrder.GetBuyer().GetShippingAddress())
 	//
-	//res1 , err1 := json.Marshal(newOrderRequest)
+	//res1 , err1 := json.Marshal(RequestNewOrder)
 	//if err1 != nil {
 	//	logger.Err("json.Marshal failed, %s", err1)
 	//}
@@ -128,6 +130,64 @@ func (server *Server) OrderRequestsHandler(ctx context.Context, req *message.Req
 	//}
 	//
 	//return &message.Response{}, st.Err()
+}
+
+func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb.ResponseNewOrder, error) {
+
+	//var request *pb.MessageRequest
+	//var response *pb.MessageResponse
+
+	convertNewOrderRequestToMessage(req)
+
+	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
+	promiseHandler := server.flowManager.MessageHandler(flowManagerCtx, req)
+	futureData := <- promiseHandler.Channel()
+	if futureData.Ex != nil {
+		futureErr := futureData.Ex.(promise.FutureError)
+		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+	}
+
+	response, ok := futureData.Data.(pb.MessageResponse)
+	if ok != true {
+		logger.Err("received data of futureData invalid, type: %T, value, %v", futureData.Data, futureData.Data)
+		return nil, status.Error(500, "Unknown Error")
+	}
+
+	return &response, nil
+
+}
+
+func (server Server) SellerFindAllItems(context.Context, *pb.RequestSellerFindAllItems) (*pb.ResponseSellerFindAllItems, error) {
+
+}
+
+func (server Server) SellerOrderAction(context.Context, *pb.RequestSellerOrderAction) (*pb.ResponseSellerOrderAction, error) {
+
+}
+
+func (server Server) BuyerFindAllOrders(context.Context, *pb.RequestBuyerFindAllOrders) (*pb.ResponseBuyerFindAllOrders, error) {
+
+}
+
+func convertNewOrderRequestToMessage(req *pb.RequestNewOrder) *pb.MessageRequest {
+
+	serializedOrder, err := proto.Marshal(req)
+	if err != nil {
+		logger.Err("could not serialize timestamp")
+	}
+
+	request := pb.MessageRequest {
+		OrderId: "",
+		//ItemId: orderId + strconv.Itoa(int(entities.GenerateRandomNumber())),
+		Time: ptypes.TimestampNow(),
+		Meta: nil,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(req),
+			Value:   serializedOrder,
+		},
+	}
+
+	return &request
 }
 
 func (server Server) Start() {

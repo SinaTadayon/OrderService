@@ -30,5 +30,6 @@ type PaymentResult struct {
 	Amount 		int64
 	ReqBody 	string
 	ResBody		string
+	CardMask	string
 	Result		bool
 }

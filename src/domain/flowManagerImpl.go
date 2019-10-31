@@ -84,7 +84,7 @@ import (
 	pay_to_market_step "gitlab.faza.io/order-project/order-service/domain/steps/step_93"
 	pay_to_market_success_step "gitlab.faza.io/order-project/order-service/domain/steps/step_94"
 	pay_to_market_failed_step "gitlab.faza.io/order-project/order-service/domain/steps/step_95"
-	message "gitlab.faza.io/protos/order/general"
+	message "gitlab.faza.io/protos/order"
 )
 
 type iFlowManagerImpl struct {
@@ -961,7 +961,7 @@ func (flowManager *iFlowManagerImpl) createStep12() {
 	notificationState := notification_state.New(1, []states.IState{finalizeState}, emptyState,
 		notification_action.NewOf(notification_action.BuyerNotificationAction))
 
-	stockReleaseActionState := stock_action_state.New(0, []states.IState{notificationState}, emptyState, stock_action.NewOf(stock_action.ReleasedAction))
+	stockReleaseActionState := stock_action_state.New(0, []states.IState{notificationState, finalizeState}, emptyState, stock_action.NewOf(stock_action.ReleasedAction, stock_action.FailedAction))
 	step12 := payment_failed_step.New(emptyStep, emptyStep,
 		stockReleaseActionState, notificationState, finalizeState)
 

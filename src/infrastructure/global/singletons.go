@@ -5,6 +5,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/converter"
 	"gitlab.faza.io/order-project/order-service/domain/models/repository/item"
 	"gitlab.faza.io/order-project/order-service/domain/models/repository/order"
+	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	"gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	"gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 )
@@ -23,6 +24,7 @@ var Singletons struct {
 	OrderRepository order_repository.IOrderRepository
 	ItemRepository  item_repository.IItemRepository
 	Converter       converter.IConverter
-	StockService	stock_service.IStockService
-	PaymentService 	payment_service.IPaymentService
+	StockService    stock_service.IStockService
+	PaymentService  payment_service.IPaymentService
+	NotifyService   notify_service.INotificationService
 }

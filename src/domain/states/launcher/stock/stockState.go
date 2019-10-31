@@ -5,6 +5,7 @@ import (
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/domain/actions/actives"
+	finalize_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/finalize"
 	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/stock"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
@@ -95,7 +96,7 @@ func (stockState stockActionLauncher) doReservedAction(ctx context.Context, orde
 
 	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, stock_action.ReservedAction)
 	futureData := iPromise.Data()
-	if err != nil {
+	if futureData == nil {
 		stockState.persistOrderState(ctx, order, stock_action.ReservedAction, false)
 		logger.Err("StockService promise channel has been closed, order: %v", order)
 		returnChannel := make(chan promise.FutureData, 1)
@@ -124,13 +125,84 @@ func (stockState stockActionLauncher) doReservedAction(ctx context.Context, orde
 }
 
 func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, order *entities.Order, itemsId []string) promise.IPromise {
-	panic("must be implement")
+	notificationState, ok := stockState.Childes()[0].(launcher_state.ILauncherState)
+	if ok != true {
+		logger.Err("notificationState isn't child of StockState, order: %v", order)
+		returnChannel := make(chan promise.FutureData, 1)
+		defer close(returnChannel)
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	finalizedState, ok := stockState.Childes()[0].(launcher_state.ILauncherState)
+	if ok != true {
+		logger.Err("finalizedState isn't child of StockState, order: %v", order)
+		returnChannel := make(chan promise.FutureData, 1)
+		defer close(returnChannel)
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	var itemStocks map[string]int
+	if itemsId != nil && len(itemsId) > 0 {
+		itemStocks = make(map[string]int, len(itemsId))
+		for _ , itemId :=range itemsId {
+			for i := 0; i < len(order.Items); i++ {
+				if order.Items[i].ItemId == itemId {
+					if value, ok := itemStocks[order.Items[i].InventoryId]; ok {
+						itemStocks[order.Items[i].InventoryId] = value + 1
+					} else {
+						itemStocks[order.Items[i].InventoryId] = 1
+					}
+				}
+			}
+		}
+	} else {
+		itemStocks = make(map[string]int, len(order.Items))
+		for i:= 0; i < len(order.Items); i++ {
+			if value, ok := itemStocks[order.Items[i].InventoryId]; ok {
+				itemStocks[order.Items[i].InventoryId] = value + 1
+			} else {
+				itemStocks[order.Items[i].InventoryId] = 1
+			}
+		}
+	}
+
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, stock_action.ReleasedAction)
+	futureData := iPromise.Data()
+	if futureData == nil {
+		stockState.persistOrderState(ctx, order, stock_action.ReleasedAction, false)
+		logger.Err("StockService promise channel has been closed, order: %v", order)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		defer close(returnChannel)
+		go func() {
+			finalizedState.ActionLauncher(ctx, *order, nil, finalize_action.PaymentFailedFinalizeAction)
+		}()
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	if futureData.Ex != nil {
+		logger.Err("Reserved stock from stockService failed, error: %s, order: %v", futureData.Ex.Error(), order)
+		stockState.persistOrderState(ctx, order, stock_action.ReleasedAction, false)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		defer close(returnChannel)
+		go func() {
+			finalizedState.ActionLauncher(ctx, *order, nil, finalize_action.PaymentFailedFinalizeAction)
+		}()
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	stockState.persistOrderState(ctx, order, stock_action.ReleasedAction, true)
+	return notificationState.ActionLauncher(ctx, *order, itemsId, nil)
 }
 
 func (stockState stockActionLauncher) doSettlementAction(ctx context.Context, order *entities.Order, itemsId []string) promise.IPromise {
 	panic("must be implement")
 }
 
+// TODO add reason
 func (stockState stockActionLauncher) persistOrderState(ctx context.Context, order *entities.Order,
 	action actions.IEnumAction, result bool) {
 	order.UpdatedAt = time.Now().UTC()

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 //go:generate protoc -I . --go_out=plugins=grpc:. message.proto
 
-package message;
+package ordersrv;
 import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -12,7 +12,7 @@ message ResponseMetadata {
    uint32 perPage = 3;
 }
 
-message Response {
+message MessageResponse {
     string entity = 1;
     string id = 2;
     ResponseMetadata meta = 3;
@@ -43,12 +43,11 @@ message RequestMetadata {
     repeated MetaFilter filters = 4;
 }
 
-message Request {
+message MessageRequest {
     string orderId = 1;
-    string itemId = 2;
-    google.protobuf.Timestamp time = 3;
-    RequestMetadata meta = 4;
-    google.protobuf.Any Data = 5;
+    google.protobuf.Timestamp time = 2;
+    RequestMetadata meta = 3;
+    google.protobuf.Any Data = 4;
 }
 
 message ErrorDetails {

@@ -6,7 +6,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/domain/steps"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
-	message "gitlab.faza.io/protos/order/general"
+	message "gitlab.faza.io/protos/order"
 )
 
 const (
@@ -34,7 +34,7 @@ func NewValueOf(base *steps.BaseStepImpl, params ...interface{}) steps.IStep {
 	panic("implementation required")
 }
 
-func (returnShipmentDeliveryProblem returnShipmentDeliveryProblemStep) ProcessMessage(ctx context.Context, request *message.Request) promise.IPromise {
+func (returnShipmentDeliveryProblem returnShipmentDeliveryProblemStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) promise.IPromise {
 	panic("implementation required")
 }
 

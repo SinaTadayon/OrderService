@@ -6,7 +6,6 @@ type PaymentRequest struct {
 	Amount				uint64				`bson:"amount"`
 	Currency			string				`bson:"currency"`
 	Gateway 			string				`bson:"gateway"`
-	FinanceInfo			FinanceInfo			`bson:"financeInfo"`
 	CreatedAt   		time.Time			`bson:"createdAt"`
 }
 

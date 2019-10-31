@@ -7,7 +7,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	pb "gitlab.faza.io/protos/order"
-	message "gitlab.faza.io/protos/order/general"
+	message "gitlab.faza.io/protos/order"
 	"google.golang.org/grpc/status"
 	"strconv"
 
@@ -45,8 +45,8 @@ func init() {
 	go server.Start()
 }
 
-func createNewOrderRequest() *pb.NewOrderRequest {
-	order := &pb.NewOrderRequest{
+func createRequestNewOrder() *pb.RequestNewOrder {
+	order := &pb.RequestNewOrder{
 		Amount: &pb.Amount{},
 		Buyer: &pb.Buyer{
 			Finance: &pb.FinanceInfo{},
@@ -92,7 +92,7 @@ func createNewOrderRequest() *pb.NewOrderRequest {
 	item := pb.Item {
 		Price:    &pb.PriceInfo{},
 		Shipment: &pb.ShippingSpec{},
-		Attributes: &pb.Attributes{},
+		Attributes: make(map[string]string, 10),
 		SellerId: "6546345",
 	}
 
@@ -100,21 +100,20 @@ func createNewOrderRequest() *pb.NewOrderRequest {
 	item.Brand = "Asus"
 	item.Categories = "Electronic/laptop"
 	item.Title = "Asus G503 i7, 256SSD, 32G Ram"
-	item.Warranty = "ضمانت سلامت کالا"
+	item.Guarantee = "ضمانت سلامت کالا"
 	item.Image = "http://baman.io/image/asus.png"
 	item.Returnable = true
 
-	item.Attributes.Quantity = 10
-	item.Attributes.Width = "8cm"
-	item.Attributes.Height = "10cm"
-	item.Attributes.Length = "15cm"
-	item.Attributes.Weight = "20kg"
-	item.Attributes.Color = "blue"
-	item.Attributes.Materials = "stone"
+	item.Attributes["Quantity"] = "10"
+	item.Attributes["Width"] = "8cm"
+	item.Attributes["Height"] = "10cm"
+	item.Attributes["Length"] = "15cm"
+	item.Attributes["Weight"] = "20kg"
+	item.Attributes["Color"] = "blue"
+	item.Attributes["Materials"] = "stone"
 
 	item.Price.Discount = 200000
 	item.Price.Payable = 20000000
-	item.Price.Total = 1600000
 	item.Price.SellerCommission = 10
 	item.Price.Unit = 100000
 	item.Price.Currency = "RR"
@@ -196,22 +195,22 @@ func TestNewOrder(t *testing.T) {
 	assert.Nil(t, err)
 	OrderService := pb.NewOrderServiceClient(grpcConnNewOrder)
 
-	newOrderRequest := createNewOrderRequest()
+	RequestNewOrder := createRequestNewOrder()
 	metadata := createMetaDataRequest()
 
-	serializedOrder, err := proto.Marshal(newOrderRequest)
+	serializedOrder, err := proto.Marshal(RequestNewOrder)
 	if err != nil {
 		logger.Err("could not serialize timestamp")
 	}
 
 	orderId := entities.GenerateOrderId()
-	request := message.Request {
+	request := message.MessageRequest {
 		OrderId: orderId,
-		ItemId: orderId + strconv.Itoa(int(entities.GenerateRandomNumber())),
+		//ItemId: orderId + strconv.Itoa(int(entities.GenerateRandomNumber())),
 		Time: ptypes.TimestampNow(),
 		Meta: metadata,
 		Data: &any.Any{
-			TypeUrl: "baman.io/" + proto.MessageName(newOrderRequest),
+			TypeUrl: "baman.io/" + proto.MessageName(RequestNewOrder),
 			Value:   serializedOrder,
 		},
 	}

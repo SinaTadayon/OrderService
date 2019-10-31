@@ -8,10 +8,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	launcher_state "gitlab.faza.io/order-project/order-service/domain/states/launcher"
 	"gitlab.faza.io/order-project/order-service/domain/steps"
-	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
-	message "gitlab.faza.io/protos/order/general"
-	"time"
+	message "gitlab.faza.io/protos/order"
 )
 
 const (
@@ -39,7 +37,7 @@ func NewValueOf(base *steps.BaseStepImpl, params ...interface{}) steps.IStep {
 	panic("implementation required")
 }
 
-func (paymentPending paymentPendingStep) ProcessMessage(ctx context.Context, request *message.Request) promise.IPromise {
+func (paymentPending paymentPendingStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) promise.IPromise {
 	panic("implementation required")
 }
 
@@ -54,11 +52,10 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	ctx = context.WithValue(ctx, global.CtxStepName, paymentPending.Name())
-	ctx = context.WithValue(ctx, global.CtxStepIndex, paymentPending.Index())
-	ctx = context.WithValue(ctx, global.CtxStepTimestamp, time.Now().UTC())
+	paymentPending.UpdateOrderStep(ctx, &order, itemsId)
 	return orderPaymentState.ActionLauncher(ctx, order, nil, nil)
 }
+
 
 
 //func (ppr *PaymentPendingRequest) validate() error {

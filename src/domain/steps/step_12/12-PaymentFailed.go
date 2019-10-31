@@ -2,11 +2,14 @@ package payment_failed_step
 
 import (
 	"context"
+	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/order-project/order-service/domain/actions/actives"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
+	launcher_state "gitlab.faza.io/order-project/order-service/domain/states/launcher"
 	"gitlab.faza.io/order-project/order-service/domain/steps"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
-	message "gitlab.faza.io/protos/order/general"
+	message "gitlab.faza.io/protos/order"
 )
 
 const (
@@ -34,12 +37,24 @@ func NewValueOf(base *steps.BaseStepImpl, params ...interface{}) steps.IStep {
 	panic("implementation required")
 }
 
-func (paymentFailed paymentFailedStep) ProcessMessage(ctx context.Context, request *message.Request) promise.IPromise {
+func (paymentFailed paymentFailedStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) promise.IPromise {
 	panic("implementation required")
 }
 
+
+// TODO steps must be append step history and changes to order object
 func (paymentFailed paymentFailedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string) promise.IPromise {
-	panic("implementation required")
+	stockState, ok := paymentFailed.Childes()[0].(launcher_state.ILauncherState)
+	if ok != true || stockState.ActiveType() != actives.StockAction {
+		logger.Err("stock state doesn't exist in index 0 of %s statesMap , order: %v", paymentFailed.Name(), order)
+		returnChannel := make(chan promise.FutureData, 1)
+		defer close(returnChannel)
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	paymentFailed.UpdateOrderStep(ctx, &order, itemsId)
+	return stockState.ActionLauncher(ctx, order, itemsId, nil)
 }
 
 

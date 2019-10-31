@@ -2,9 +2,12 @@ package order_payment_action_state
 
 import (
 	"context"
+	"fmt"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/domain/actions/actives"
+	order_payment_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/orderpayment"
+	active_event "gitlab.faza.io/order-project/order-service/domain/events/active"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/domain/states/launcher"
@@ -69,9 +72,32 @@ func (orderPayment orderPaymentActionLauncher) ActionLauncher(ctx context.Contex
 		OrderId:  order.OrderId,
 	}
 
+	order.PaymentService = []entities.PaymentService{
+		{
+			PaymentRequest: &entities.PaymentRequest{
+				Amount:      uint64(paymentRequest.Amount),
+				Currency:    paymentRequest.Currency,
+				Gateway:     paymentRequest.Gateway,
+				CreatedAt:   time.Time{},
+			},
+		},
+	}
+
 	iPromise := global.Singletons.PaymentService.OrderPayment(ctx, paymentRequest)
 	futureData := iPromise.Data()
 	if futureData == nil {
+		order.PaymentService[0].PaymentResponse = &entities.PaymentResponse{
+			Result:      false,
+			Reason:      "PaymentService.OrderPayment in orderPaymentState failed",
+			Description: "",
+			CallBackUrl: "",
+			InvoiceId:   0,
+			PaymentId:   "",
+			CreatedAt:   time.Now(),
+		}
+
+		orderPayment.persistOrderState(ctx, &order, itemsId, order_payment_action.OrderPaymentAction, false,
+			"PaymentService.OrderPayment in orderPaymentState failed", nil)
 		logger.Err("PaymentService.OrderPayment in orderPaymentState failed, order: %v", order)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
@@ -80,26 +106,56 @@ func (orderPayment orderPaymentActionLauncher) ActionLauncher(ctx context.Contex
 	}
 
 	if futureData.Ex != nil {
+		order.PaymentService[0].PaymentResponse = &entities.PaymentResponse{
+			Result:      false,
+			Reason:      futureData.Ex.Error(),
+			Description: "",
+			CallBackUrl: "",
+			InvoiceId:   0,
+			PaymentId:   "",
+			CreatedAt:   time.Now(),
+		}
+
+		orderPayment.persistOrderState(ctx, &order, itemsId, order_payment_action.OrderPaymentAction, false,
+			futureData.Ex.Error(), nil)
 		logger.Err("PaymentService.OrderPayment in orderPaymentState failed, order: %v, error", order, futureData.Ex.Error())
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
 		returnChannel <- promise.FutureData{Data:nil, Ex:futureData.Ex}
+		go func() {
+			nextToStepState.ActionLauncher(ctx, order, nil, order_payment_action.OrderPaymentFailedAction)
+		}()
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	paymentResponse := futureData.Data.(entities.PaymentResponse)
+	paymentResponse := futureData.Data.(payment_service.PaymentResponse)
+	activeEvent := active_event.NewActiveEvent(order, itemsId, actives.OrderPaymentAction, order_payment_action.NewOf(order_payment_action.OrderPaymentAction),
+		paymentResponse, time.Now())
 
+	order.PaymentService[0].PaymentResponse = &entities.PaymentResponse{
+		Result:      true,
+		Reason:      "",
+		Description: "",
+		CallBackUrl: paymentResponse.CallbackUrl,
+		InvoiceId:   paymentResponse.InvoiceId,
+		PaymentId:   paymentResponse.PaymentId,
+		CreatedAt:   time.Now(),
+	}
+
+	orderPayment.persistOrderState(ctx, &order, itemsId, order_payment_action.OrderPaymentAction,
+		true, "", &paymentResponse)
+	return paymentState.ActionListener(ctx, activeEvent, nil)
 }
 
 func (orderPayment orderPaymentActionLauncher) persistOrderState(ctx context.Context, order *entities.Order, itemsId []string,
-	acceptedAction actions.IEnumAction, result bool, reason string) {
+	acceptedAction actions.IEnumAction, result bool, reason string, paymentResponse *payment_service.PaymentResponse) {
 	order.UpdatedAt = time.Now().UTC()
 
 	if itemsId != nil && len(itemsId) > 0 {
 		for _, id := range itemsId {
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == id {
-					orderPayment.doUpdateOrderState(ctx, order, i, acceptedAction, result, reason)
+					orderPayment.doUpdateOrderState(ctx, order, i, acceptedAction, result, reason, paymentResponse)
 				} else {
 					logger.Err("orderPayment received itemId %s not exist in order, order: %v", id, order)
 				}
@@ -107,7 +163,7 @@ func (orderPayment orderPaymentActionLauncher) persistOrderState(ctx context.Con
 		}
 	} else {
 		for i := 0; i < len(order.Items); i++ {
-			orderPayment.doUpdateOrderState(ctx, order, i, acceptedAction, result, reason)
+			orderPayment.doUpdateOrderState(ctx, order, i, acceptedAction, result, reason, paymentResponse)
 		}
 	}
 
@@ -117,10 +173,7 @@ func (orderPayment orderPaymentActionLauncher) persistOrderState(ctx context.Con
 }
 
 func (orderPayment orderPaymentActionLauncher) doUpdateOrderState(ctx context.Context, order *entities.Order, index int,
-	acceptedAction actions.IEnumAction, result bool, reason string) {
-	order.Items[index].OrderStep.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
-	order.Items[index].OrderStep.CurrentName = ctx.Value(global.CtxStepName).(string)
-	order.Items[index].OrderStep.CurrentIndex = ctx.Value(global.CtxStepIndex).(int)
+	acceptedAction actions.IEnumAction, result bool, reason string, paymentResponse *payment_service.PaymentResponse) {
 
 	order.Items[index].OrderStep.CurrentState.Name = orderPayment.Name()
 	order.Items[index].OrderStep.CurrentState.Index = orderPayment.Index()
@@ -137,17 +190,11 @@ func (orderPayment orderPaymentActionLauncher) doUpdateOrderState(ctx context.Co
 
 	order.Items[index].OrderStep.CurrentState.AcceptedAction.Type = actives.OrderPaymentAction.String()
 	order.Items[index].OrderStep.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
-	order.Items[index].OrderStep.CurrentState.AcceptedAction.Data = ""
+	order.Items[index].OrderStep.CurrentState.AcceptedAction.Data = fmt.Sprintf("CallbackUrl: %s, InvoiceId: %d, PaymentId: %s",
+		paymentResponse.CallbackUrl, paymentResponse.InvoiceId, paymentResponse.PaymentId)
 	order.Items[index].OrderStep.CurrentState.AcceptedAction.Time = &order.Items[index].OrderStep.CurrentState.CreatedAt
 
 	order.Items[index].OrderStep.CurrentState.Actions = []entities.Action{order.Items[index].OrderStep.CurrentState.AcceptedAction}
-
-	order.Items[index].OrderStep.StepsHistory = []entities.StepHistory{{
-		Name: order.Items[index].OrderStep.CurrentState.Name,
-		Index: order.Items[index].OrderStep.CurrentState.Index,
-		CreatedAt: order.Items[index].OrderStep.CurrentState.CreatedAt,
-		StatesHistory: make([]entities.StateHistory, 0, 5),
-	}}
 
 	stateHistory := entities.StateHistory {
 		Name: order.Items[index].OrderStep.CurrentState.Name,

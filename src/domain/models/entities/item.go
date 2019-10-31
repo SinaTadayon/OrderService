@@ -13,7 +13,7 @@ type Item struct {
 	Categories      	string          	`bson:"categories"`
 	Image           	string          	`bson:"image"`
 	Returnable      	bool            	`bson:"returnable"`
-	Attributes      	Attributes      	`bson:"attributes"`
+	Attributes      	map[string]string   `bson:"attributes"`
 	CreatedAt      		time.Time			`bson:"createdAt"`
 	UpdatedAt      		time.Time			`bson:"updatedAt"`
 	DeletedAt       	*time.Time      	`bson:"deletedAt"`
@@ -22,17 +22,6 @@ type Item struct {
 	ShipmentSpec    	ShipmentSpec    	`bson:"shipmentSpec"`
 	ShipmentDetails 	ShipmentDetails 	`bson:"shipmentDetails"`
 	OrderStep       	OrderStep       	`bson:"orderStep"`
-}
-
-type Attributes struct {
-	Quantity        	int	            	`bson:"quantity"`
-	Width 				string				`bson:"with"`
-	Height				string				`bson:"height"`
-	Length				string				`bson:"length"`
-	Weight				string				`bson:"weight"`
-	Color 				string				`bson:"color"`
-	Materials			string				`bson:"materials"`
-	Extra				*ExtraAttributes	`bson:"extra"`
 }
 
 // TODO will be complete

@@ -7,16 +7,16 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/actions/actors"
 	checkout_action "gitlab.faza.io/order-project/order-service/domain/actions/actors/checkout"
 	"gitlab.faza.io/order-project/order-service/domain/events"
+	actor_event "gitlab.faza.io/order-project/order-service/domain/events/actor"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	launcher_state "gitlab.faza.io/order-project/order-service/domain/states/launcher"
 	listener_state "gitlab.faza.io/order-project/order-service/domain/states/listener"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
-	pb "gitlab.faza.io/protos/order"
 	"time"
 
-	//message "gitlab.faza.io/protos/order/general"
+	//message "gitlab.faza.io/protos/order"
 )
 
 const (
@@ -66,7 +66,10 @@ func (checkoutActionState checkoutActionListener) ActionListener(ctx context.Con
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	if event.ActorType() != actors.CheckoutActor {
+	// TODO checking type and result cast
+	actorEvent := event.(actor_event.IActorEvent)
+
+	if actorEvent.ActorType() != actors.CheckoutActor {
 		logger.Err("Received actorType of event is not CheckoutActor, event: %v", event)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
@@ -74,7 +77,7 @@ func (checkoutActionState checkoutActionListener) ActionListener(ctx context.Con
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	if event.ActorAction().ActionEnums()[0] != checkout_action.NewOrderAction {
+	if actorEvent.ActorAction().ActionEnums()[0] != checkout_action.NewOrderAction {
 		logger.Err("Received actorAction of event is not NewOrderAction, event: %v", event)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
@@ -82,26 +85,8 @@ func (checkoutActionState checkoutActionListener) ActionListener(ctx context.Con
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	newOrderRequest, ok := event.Data().(pb.NewOrderRequest)
-	if ok != true {
-		logger.Err("Received data of event is not NewOrderRequest, event: %v", event)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
-		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
-	}
-
-	value, err := global.Singletons.Converter.Map(newOrderRequest, entities.Order{})
-	if err != nil {
-		logger.Err("Received NewOrderRequest invalid, error: %s, newOrderRequest: %v", err, newOrderRequest)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.BadRequest, Reason:"Received NewOrderRequest invalid"}}
-		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
-	}
-
-	newOrder := value.(entities.Order)
-	checkoutActionState.postProcessNewOrder(ctx, &newOrder, event.Timestamp())
+	newOrder := actorEvent.Order()
+	checkoutActionState.updateOrderStates(ctx, &newOrder, event.Timestamp())
 
 	order, err := global.Singletons.OrderRepository.Save(newOrder)
 	if err != nil {
@@ -115,11 +100,8 @@ func (checkoutActionState checkoutActionListener) ActionListener(ctx context.Con
 	return stockState.ActionLauncher(ctx, *order, nil, nil)
 }
 
-func (checkoutActionState checkoutActionListener) postProcessNewOrder(ctx context.Context, newOrder *entities.Order, timestamp time.Time) {
+func (checkoutActionState checkoutActionListener) updateOrderStates(ctx context.Context, newOrder *entities.Order, timestamp time.Time) {
 	for i := 0; i < len(newOrder.Items); i++ {
-		newOrder.Items[i].OrderStep.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
-		newOrder.Items[i].OrderStep.CurrentName = ctx.Value(global.CtxStepName).(string)
-		newOrder.Items[i].OrderStep.CurrentIndex = ctx.Value(global.CtxStepIndex).(int)
 		newOrder.Items[i].OrderStep.CurrentState.Name = checkoutActionState.Name()
 		newOrder.Items[i].OrderStep.CurrentState.Index = checkoutActionState.Index()
 		newOrder.Items[i].OrderStep.CurrentState.Type = checkoutActionState.Actions().ActionType().Name()
@@ -135,13 +117,6 @@ func (checkoutActionState checkoutActionListener) postProcessNewOrder(ctx contex
 
 		newOrder.Items[i].OrderStep.CurrentState.Actions = []entities.Action{newOrder.Items[i].OrderStep.CurrentState.AcceptedAction}
 
-		newOrder.Items[i].OrderStep.StepsHistory = []entities.StepHistory{{
-			Name: newOrder.Items[i].OrderStep.CurrentState.Name,
-			Index: newOrder.Items[i].OrderStep.CurrentState.Index,
-			CreatedAt: newOrder.Items[i].OrderStep.CurrentState.CreatedAt,
-			StatesHistory: make([]entities.StateHistory, 0, 5),
-		}}
-
 		stateHistory := entities.StateHistory {
 			Name: newOrder.Items[i].OrderStep.CurrentState.Name,
 			Index: newOrder.Items[i].OrderStep.CurrentState.Index,
@@ -152,6 +127,6 @@ func (checkoutActionState checkoutActionListener) postProcessNewOrder(ctx contex
 			CreatedAt:newOrder.Items[i].OrderStep.CurrentState.CreatedAt,
 		}
 
-		newOrder.Items[i].OrderStep.StepsHistory[0].StatesHistory = append(newOrder.Items[i].OrderStep.StepsHistory[0].StatesHistory, stateHistory)
+		newOrder.Items[i].OrderStep.StepsHistory[len(newOrder.Items[i].OrderStep.StepsHistory)].StatesHistory = append(newOrder.Items[i].OrderStep.StepsHistory[len(newOrder.Items[i].OrderStep.StepsHistory)].StatesHistory, stateHistory)
 	}
 }

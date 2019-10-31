@@ -9,9 +9,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	launcher_state "gitlab.faza.io/order-project/order-service/domain/states/launcher"
 	"gitlab.faza.io/order-project/order-service/domain/steps"
-	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
-	message "gitlab.faza.io/protos/order/general"
+	message "gitlab.faza.io/protos/order"
 )
 
 const (
@@ -39,7 +38,7 @@ func NewValueOf(base *steps.BaseStepImpl, params ...interface{}) steps.IStep {
 	panic("implementation required")
 }
 
-func (newOrderProcessingFailed newOrderProcessingFailedStep) ProcessMessage(ctx context.Context, request *message.Request) promise.IPromise {
+func (newOrderProcessingFailed newOrderProcessingFailedStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) promise.IPromise {
 	panic("implementation required")
 }
 
@@ -63,8 +62,7 @@ func (newOrderProcessingFailed newOrderProcessingFailedStep) ProcessOrder(ctx co
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	ctx = context.WithValue(ctx, global.CtxStepName, newOrderProcessingFailed.Name())
-	ctx = context.WithValue(ctx, global.CtxStepIndex, newOrderProcessingFailed.Index())
+	newOrderProcessingFailed.UpdateOrderStep(ctx, &order, itemsId)
 	return finalizeState.ActionLauncher(ctx, order, nil, finalize_action.OrderFailedFinalizeAction)
 }
 

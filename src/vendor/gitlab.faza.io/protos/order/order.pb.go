@@ -6,7 +6,6 @@ package ordersrv
 import (
 	context "context"
 	fmt "fmt"
-	general "gitlab.faza.io/protos/order/general"
 	proto "github.com/golang/protobuf/proto"
 	any "github.com/golang/protobuf/ptypes/any"
 	grpc "google.golang.org/grpc"
@@ -26,7 +25,46 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
-type NewOrderRequest struct {
+type ResponseNewOrder struct {
+	CallbackUrl          string   `protobuf:"bytes,1,opt,name=callbackUrl,proto3" json:"callbackUrl,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ResponseNewOrder) Reset()         { *m = ResponseNewOrder{} }
+func (m *ResponseNewOrder) String() string { return proto.CompactTextString(m) }
+func (*ResponseNewOrder) ProtoMessage()    {}
+func (*ResponseNewOrder) Descriptor() ([]byte, []int) {
+	return fileDescriptor_cd01338c35d87077, []int{0}
+}
+
+func (m *ResponseNewOrder) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ResponseNewOrder.Unmarshal(m, b)
+}
+func (m *ResponseNewOrder) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ResponseNewOrder.Marshal(b, m, deterministic)
+}
+func (m *ResponseNewOrder) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResponseNewOrder.Merge(m, src)
+}
+func (m *ResponseNewOrder) XXX_Size() int {
+	return xxx_messageInfo_ResponseNewOrder.Size(m)
+}
+func (m *ResponseNewOrder) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResponseNewOrder.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResponseNewOrder proto.InternalMessageInfo
+
+func (m *ResponseNewOrder) GetCallbackUrl() string {
+	if m != nil {
+		return m.CallbackUrl
+	}
+	return ""
+}
+
+type RequestNewOrder struct {
 	Buyer                *Buyer   `protobuf:"bytes,1,opt,name=buyer,proto3" json:"buyer,omitempty"`
 	Amount               *Amount  `protobuf:"bytes,2,opt,name=amount,proto3" json:"amount,omitempty"`
 	Items                []*Item  `protobuf:"bytes,3,rep,name=items,proto3" json:"items,omitempty"`
@@ -35,46 +73,46 @@ type NewOrderRequest struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *NewOrderRequest) Reset()         { *m = NewOrderRequest{} }
-func (m *NewOrderRequest) String() string { return proto.CompactTextString(m) }
-func (*NewOrderRequest) ProtoMessage()    {}
-func (*NewOrderRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{0}
+func (m *RequestNewOrder) Reset()         { *m = RequestNewOrder{} }
+func (m *RequestNewOrder) String() string { return proto.CompactTextString(m) }
+func (*RequestNewOrder) ProtoMessage()    {}
+func (*RequestNewOrder) Descriptor() ([]byte, []int) {
+	return fileDescriptor_cd01338c35d87077, []int{1}
 }
 
-func (m *NewOrderRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_NewOrderRequest.Unmarshal(m, b)
+func (m *RequestNewOrder) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RequestNewOrder.Unmarshal(m, b)
 }
-func (m *NewOrderRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_NewOrderRequest.Marshal(b, m, deterministic)
+func (m *RequestNewOrder) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RequestNewOrder.Marshal(b, m, deterministic)
 }
-func (m *NewOrderRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_NewOrderRequest.Merge(m, src)
+func (m *RequestNewOrder) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RequestNewOrder.Merge(m, src)
 }
-func (m *NewOrderRequest) XXX_Size() int {
-	return xxx_messageInfo_NewOrderRequest.Size(m)
+func (m *RequestNewOrder) XXX_Size() int {
+	return xxx_messageInfo_RequestNewOrder.Size(m)
 }
-func (m *NewOrderRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_NewOrderRequest.DiscardUnknown(m)
+func (m *RequestNewOrder) XXX_DiscardUnknown() {
+	xxx_messageInfo_RequestNewOrder.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_NewOrderRequest proto.InternalMessageInfo
+var xxx_messageInfo_RequestNewOrder proto.InternalMessageInfo
 
-func (m *NewOrderRequest) GetBuyer() *Buyer {
+func (m *RequestNewOrder) GetBuyer() *Buyer {
 	if m != nil {
 		return m.Buyer
 	}
 	return nil
 }
 
-func (m *NewOrderRequest) GetAmount() *Amount {
+func (m *RequestNewOrder) GetAmount() *Amount {
 	if m != nil {
 		return m.Amount
 	}
 	return nil
 }
 
-func (m *NewOrderRequest) GetItems() []*Item {
+func (m *RequestNewOrder) GetItems() []*Item {
 	if m != nil {
 		return m.Items
 	}
@@ -99,7 +137,7 @@ func (m *Amount) Reset()         { *m = Amount{} }
 func (m *Amount) String() string { return proto.CompactTextString(m) }
 func (*Amount) ProtoMessage()    {}
 func (*Amount) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{1}
+	return fileDescriptor_cd01338c35d87077, []int{2}
 }
 
 func (m *Amount) XXX_Unmarshal(b []byte) error {
@@ -189,7 +227,7 @@ func (m *Voucher) Reset()         { *m = Voucher{} }
 func (m *Voucher) String() string { return proto.CompactTextString(m) }
 func (*Voucher) ProtoMessage()    {}
 func (*Voucher) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{2}
+	return fileDescriptor_cd01338c35d87077, []int{3}
 }
 
 func (m *Voucher) XXX_Unmarshal(b []byte) error {
@@ -232,27 +270,28 @@ func (m *Voucher) GetDetails() *any.Any {
 }
 
 type Item struct {
-	InventoryId          string        `protobuf:"bytes,1,opt,name=inventoryId,proto3" json:"inventoryId,omitempty"`
-	Title                string        `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Brand                string        `protobuf:"bytes,3,opt,name=brand,proto3" json:"brand,omitempty"`
-	Categories           string        `protobuf:"bytes,4,opt,name=categories,proto3" json:"categories,omitempty"`
-	Warranty             string        `protobuf:"bytes,5,opt,name=warranty,proto3" json:"warranty,omitempty"`
-	Image                string        `protobuf:"bytes,6,opt,name=image,proto3" json:"image,omitempty"`
-	Returnable           bool          `protobuf:"varint,7,opt,name=returnable,proto3" json:"returnable,omitempty"`
-	SellerId             string        `protobuf:"bytes,8,opt,name=sellerId,proto3" json:"sellerId,omitempty"`
-	Attributes           *Attributes   `protobuf:"bytes,9,opt,name=attributes,proto3" json:"attributes,omitempty"`
-	Price                *PriceInfo    `protobuf:"bytes,10,opt,name=price,proto3" json:"price,omitempty"`
-	Shipment             *ShippingSpec `protobuf:"bytes,11,opt,name=shipment,proto3" json:"shipment,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
-	XXX_unrecognized     []byte        `json:"-"`
-	XXX_sizecache        int32         `json:"-"`
+	InventoryId          string            `protobuf:"bytes,1,opt,name=inventoryId,proto3" json:"inventoryId,omitempty"`
+	Title                string            `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Brand                string            `protobuf:"bytes,3,opt,name=brand,proto3" json:"brand,omitempty"`
+	Categories           string            `protobuf:"bytes,4,opt,name=categories,proto3" json:"categories,omitempty"`
+	Guarantee            string            `protobuf:"bytes,5,opt,name=guarantee,proto3" json:"guarantee,omitempty"`
+	Image                string            `protobuf:"bytes,6,opt,name=image,proto3" json:"image,omitempty"`
+	Returnable           bool              `protobuf:"varint,7,opt,name=returnable,proto3" json:"returnable,omitempty"`
+	SellerId             string            `protobuf:"bytes,8,opt,name=sellerId,proto3" json:"sellerId,omitempty"`
+	Quantity             int32             `protobuf:"varint,9,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	Attributes           map[string]string `protobuf:"bytes,10,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Price                *PriceInfo        `protobuf:"bytes,11,opt,name=price,proto3" json:"price,omitempty"`
+	Shipment             *ShippingSpec     `protobuf:"bytes,12,opt,name=shipment,proto3" json:"shipment,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
 }
 
 func (m *Item) Reset()         { *m = Item{} }
 func (m *Item) String() string { return proto.CompactTextString(m) }
 func (*Item) ProtoMessage()    {}
 func (*Item) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{3}
+	return fileDescriptor_cd01338c35d87077, []int{4}
 }
 
 func (m *Item) XXX_Unmarshal(b []byte) error {
@@ -301,9 +340,9 @@ func (m *Item) GetCategories() string {
 	return ""
 }
 
-func (m *Item) GetWarranty() string {
+func (m *Item) GetGuarantee() string {
 	if m != nil {
-		return m.Warranty
+		return m.Guarantee
 	}
 	return ""
 }
@@ -329,7 +368,14 @@ func (m *Item) GetSellerId() string {
 	return ""
 }
 
-func (m *Item) GetAttributes() *Attributes {
+func (m *Item) GetQuantity() int32 {
+	if m != nil {
+		return m.Quantity
+	}
+	return 0
+}
+
+func (m *Item) GetAttributes() map[string]string {
 	if m != nil {
 		return m.Attributes
 	}
@@ -369,7 +415,7 @@ func (m *Buyer) Reset()         { *m = Buyer{} }
 func (m *Buyer) String() string { return proto.CompactTextString(m) }
 func (*Buyer) ProtoMessage()    {}
 func (*Buyer) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{4}
+	return fileDescriptor_cd01338c35d87077, []int{5}
 }
 
 func (m *Buyer) XXX_Unmarshal(b []byte) error {
@@ -449,101 +495,6 @@ func (m *Buyer) GetFinance() *FinanceInfo {
 func (m *Buyer) GetShippingAddress() *Address {
 	if m != nil {
 		return m.ShippingAddress
-	}
-	return nil
-}
-
-type Attributes struct {
-	Quantity             int32    `protobuf:"varint,1,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	Width                string   `protobuf:"bytes,2,opt,name=width,proto3" json:"width,omitempty"`
-	Height               string   `protobuf:"bytes,3,opt,name=height,proto3" json:"height,omitempty"`
-	Length               string   `protobuf:"bytes,4,opt,name=length,proto3" json:"length,omitempty"`
-	Weight               string   `protobuf:"bytes,5,opt,name=weight,proto3" json:"weight,omitempty"`
-	Color                string   `protobuf:"bytes,6,opt,name=color,proto3" json:"color,omitempty"`
-	Materials            string   `protobuf:"bytes,7,opt,name=materials,proto3" json:"materials,omitempty"`
-	Extra                *any.Any `protobuf:"bytes,8,opt,name=extra,proto3" json:"extra,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *Attributes) Reset()         { *m = Attributes{} }
-func (m *Attributes) String() string { return proto.CompactTextString(m) }
-func (*Attributes) ProtoMessage()    {}
-func (*Attributes) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{5}
-}
-
-func (m *Attributes) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_Attributes.Unmarshal(m, b)
-}
-func (m *Attributes) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_Attributes.Marshal(b, m, deterministic)
-}
-func (m *Attributes) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Attributes.Merge(m, src)
-}
-func (m *Attributes) XXX_Size() int {
-	return xxx_messageInfo_Attributes.Size(m)
-}
-func (m *Attributes) XXX_DiscardUnknown() {
-	xxx_messageInfo_Attributes.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_Attributes proto.InternalMessageInfo
-
-func (m *Attributes) GetQuantity() int32 {
-	if m != nil {
-		return m.Quantity
-	}
-	return 0
-}
-
-func (m *Attributes) GetWidth() string {
-	if m != nil {
-		return m.Width
-	}
-	return ""
-}
-
-func (m *Attributes) GetHeight() string {
-	if m != nil {
-		return m.Height
-	}
-	return ""
-}
-
-func (m *Attributes) GetLength() string {
-	if m != nil {
-		return m.Length
-	}
-	return ""
-}
-
-func (m *Attributes) GetWeight() string {
-	if m != nil {
-		return m.Weight
-	}
-	return ""
-}
-
-func (m *Attributes) GetColor() string {
-	if m != nil {
-		return m.Color
-	}
-	return ""
-}
-
-func (m *Attributes) GetMaterials() string {
-	if m != nil {
-		return m.Materials
-	}
-	return ""
-}
-
-func (m *Attributes) GetExtra() *any.Any {
-	if m != nil {
-		return m.Extra
 	}
 	return nil
 }
@@ -716,11 +667,10 @@ func (m *Address) GetZipCode() string {
 
 type PriceInfo struct {
 	Unit                 uint64   `protobuf:"varint,1,opt,name=unit,proto3" json:"unit,omitempty"`
-	Total                uint64   `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
-	Payable              uint64   `protobuf:"varint,3,opt,name=payable,proto3" json:"payable,omitempty"`
-	Discount             uint64   `protobuf:"varint,4,opt,name=discount,proto3" json:"discount,omitempty"`
-	SellerCommission     uint64   `protobuf:"varint,5,opt,name=sellerCommission,proto3" json:"sellerCommission,omitempty"`
-	Currency             string   `protobuf:"bytes,6,opt,name=currency,proto3" json:"currency,omitempty"`
+	Payable              uint64   `protobuf:"varint,2,opt,name=payable,proto3" json:"payable,omitempty"`
+	Discount             uint64   `protobuf:"varint,3,opt,name=discount,proto3" json:"discount,omitempty"`
+	SellerCommission     uint64   `protobuf:"varint,4,opt,name=sellerCommission,proto3" json:"sellerCommission,omitempty"`
+	Currency             string   `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -754,13 +704,6 @@ var xxx_messageInfo_PriceInfo proto.InternalMessageInfo
 func (m *PriceInfo) GetUnit() uint64 {
 	if m != nil {
 		return m.Unit
-	}
-	return 0
-}
-
-func (m *PriceInfo) GetTotal() uint64 {
-	if m != nil {
-		return m.Total
 	}
 	return 0
 }
@@ -907,7 +850,8 @@ func (m *ShippingSpec) GetDetails() string {
 type Event struct {
 	Actor                string   `protobuf:"bytes,1,opt,name=actor,proto3" json:"actor,omitempty"`
 	Action               string   `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"`
-	Data                 *any.Any `protobuf:"bytes,3,opt,name=data,proto3" json:"data,omitempty"`
+	ItemsId              []string `protobuf:"bytes,3,rep,name=itemsId,proto3" json:"itemsId,omitempty"`
+	Data                 *any.Any `protobuf:"bytes,4,opt,name=data,proto3" json:"data,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -952,6 +896,13 @@ func (m *Event) GetAction() string {
 	return ""
 }
 
+func (m *Event) GetItemsId() []string {
+	if m != nil {
+		return m.ItemsId
+	}
+	return nil
+}
+
 func (m *Event) GetData() *any.Any {
 	if m != nil {
 		return m.Data
@@ -959,933 +910,649 @@ func (m *Event) GetData() *any.Any {
 	return nil
 }
 
-// SellerApprovalPending Start
-type ApprovalRequest struct {
-	Approval             bool     `protobuf:"varint,1,opt,name=approval,proto3" json:"approval,omitempty"`
-	Reason               string   `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+type RequestBuyerFindAllOrders struct {
+	BuyerId              string   `protobuf:"bytes,1,opt,name=buyerId,proto3" json:"buyerId,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ApprovalRequest) Reset()         { *m = ApprovalRequest{} }
-func (m *ApprovalRequest) String() string { return proto.CompactTextString(m) }
-func (*ApprovalRequest) ProtoMessage()    {}
-func (*ApprovalRequest) Descriptor() ([]byte, []int) {
+func (m *RequestBuyerFindAllOrders) Reset()         { *m = RequestBuyerFindAllOrders{} }
+func (m *RequestBuyerFindAllOrders) String() string { return proto.CompactTextString(m) }
+func (*RequestBuyerFindAllOrders) ProtoMessage()    {}
+func (*RequestBuyerFindAllOrders) Descriptor() ([]byte, []int) {
 	return fileDescriptor_cd01338c35d87077, []int{11}
 }
 
-func (m *ApprovalRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ApprovalRequest.Unmarshal(m, b)
+func (m *RequestBuyerFindAllOrders) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RequestBuyerFindAllOrders.Unmarshal(m, b)
 }
-func (m *ApprovalRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ApprovalRequest.Marshal(b, m, deterministic)
+func (m *RequestBuyerFindAllOrders) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RequestBuyerFindAllOrders.Marshal(b, m, deterministic)
 }
-func (m *ApprovalRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ApprovalRequest.Merge(m, src)
+func (m *RequestBuyerFindAllOrders) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RequestBuyerFindAllOrders.Merge(m, src)
 }
-func (m *ApprovalRequest) XXX_Size() int {
-	return xxx_messageInfo_ApprovalRequest.Size(m)
+func (m *RequestBuyerFindAllOrders) XXX_Size() int {
+	return xxx_messageInfo_RequestBuyerFindAllOrders.Size(m)
 }
-func (m *ApprovalRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ApprovalRequest.DiscardUnknown(m)
+func (m *RequestBuyerFindAllOrders) XXX_DiscardUnknown() {
+	xxx_messageInfo_RequestBuyerFindAllOrders.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ApprovalRequest proto.InternalMessageInfo
+var xxx_messageInfo_RequestBuyerFindAllOrders proto.InternalMessageInfo
 
-func (m *ApprovalRequest) GetApproval() bool {
+func (m *RequestBuyerFindAllOrders) GetBuyerId() string {
 	if m != nil {
-		return m.Approval
+		return m.BuyerId
+	}
+	return ""
+}
+
+type ResponseBuyerFindAllOrders struct {
+	OrderId              string   `protobuf:"bytes,1,opt,name=orderId,proto3" json:"orderId,omitempty"`
+	CreatedAt            string   `protobuf:"bytes,2,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
+	Amount               *Amount  `protobuf:"bytes,3,opt,name=amount,proto3" json:"amount,omitempty"`
+	Items                []*Item  `protobuf:"bytes,4,rep,name=Items,proto3" json:"Items,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ResponseBuyerFindAllOrders) Reset()         { *m = ResponseBuyerFindAllOrders{} }
+func (m *ResponseBuyerFindAllOrders) String() string { return proto.CompactTextString(m) }
+func (*ResponseBuyerFindAllOrders) ProtoMessage()    {}
+func (*ResponseBuyerFindAllOrders) Descriptor() ([]byte, []int) {
+	return fileDescriptor_cd01338c35d87077, []int{12}
+}
+
+func (m *ResponseBuyerFindAllOrders) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ResponseBuyerFindAllOrders.Unmarshal(m, b)
+}
+func (m *ResponseBuyerFindAllOrders) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ResponseBuyerFindAllOrders.Marshal(b, m, deterministic)
+}
+func (m *ResponseBuyerFindAllOrders) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResponseBuyerFindAllOrders.Merge(m, src)
+}
+func (m *ResponseBuyerFindAllOrders) XXX_Size() int {
+	return xxx_messageInfo_ResponseBuyerFindAllOrders.Size(m)
+}
+func (m *ResponseBuyerFindAllOrders) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResponseBuyerFindAllOrders.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResponseBuyerFindAllOrders proto.InternalMessageInfo
+
+func (m *ResponseBuyerFindAllOrders) GetOrderId() string {
+	if m != nil {
+		return m.OrderId
+	}
+	return ""
+}
+
+func (m *ResponseBuyerFindAllOrders) GetCreatedAt() string {
+	if m != nil {
+		return m.CreatedAt
+	}
+	return ""
+}
+
+func (m *ResponseBuyerFindAllOrders) GetAmount() *Amount {
+	if m != nil {
+		return m.Amount
+	}
+	return nil
+}
+
+func (m *ResponseBuyerFindAllOrders) GetItems() []*Item {
+	if m != nil {
+		return m.Items
+	}
+	return nil
+}
+
+type ResponseSellerOrderAction struct {
+	Result               bool     `protobuf:"varint,1,opt,name=result,proto3" json:"result,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ResponseSellerOrderAction) Reset()         { *m = ResponseSellerOrderAction{} }
+func (m *ResponseSellerOrderAction) String() string { return proto.CompactTextString(m) }
+func (*ResponseSellerOrderAction) ProtoMessage()    {}
+func (*ResponseSellerOrderAction) Descriptor() ([]byte, []int) {
+	return fileDescriptor_cd01338c35d87077, []int{13}
+}
+
+func (m *ResponseSellerOrderAction) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ResponseSellerOrderAction.Unmarshal(m, b)
+}
+func (m *ResponseSellerOrderAction) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ResponseSellerOrderAction.Marshal(b, m, deterministic)
+}
+func (m *ResponseSellerOrderAction) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResponseSellerOrderAction.Merge(m, src)
+}
+func (m *ResponseSellerOrderAction) XXX_Size() int {
+	return xxx_messageInfo_ResponseSellerOrderAction.Size(m)
+}
+func (m *ResponseSellerOrderAction) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResponseSellerOrderAction.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ResponseSellerOrderAction proto.InternalMessageInfo
+
+func (m *ResponseSellerOrderAction) GetResult() bool {
+	if m != nil {
+		return m.Result
 	}
 	return false
 }
 
-func (m *ApprovalRequest) GetReason() string {
-	if m != nil {
-		return m.Reason
-	}
-	return ""
+type RequestSellerOrderAction struct {
+	OrderId    string `protobuf:"bytes,1,opt,name=orderId,proto3" json:"orderId,omitempty"`
+	SellerId   string `protobuf:"bytes,2,opt,name=sellerId,proto3" json:"sellerId,omitempty"`
+	ActionType string `protobuf:"bytes,3,opt,name=actionType,proto3" json:"actionType,omitempty"`
+	Action     string `protobuf:"bytes,4,opt,name=action,proto3" json:"action,omitempty"`
+	// Types that are valid to be assigned to Data:
+	//	*RequestSellerOrderAction_Success
+	//	*RequestSellerOrderAction_Failed
+	Data                 isRequestSellerOrderAction_Data `protobuf_oneof:"data"`
+	XXX_NoUnkeyedLiteral struct{}                        `json:"-"`
+	XXX_unrecognized     []byte                          `json:"-"`
+	XXX_sizecache        int32                           `json:"-"`
 }
 
-type ShipmentDetailRequest struct {
-	OrderNumber            string   `protobuf:"bytes,1,opt,name=orderNumber,proto3" json:"orderNumber,omitempty"`
-	ShipmentProvider       string   `protobuf:"bytes,2,opt,name=shipmentProvider,proto3" json:"shipmentProvider,omitempty"`
-	ShipmentTrackingNumber string   `protobuf:"bytes,3,opt,name=shipmentTrackingNumber,proto3" json:"shipmentTrackingNumber,omitempty"`
-	Description            string   `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
-	Image                  string   `protobuf:"bytes,5,opt,name=image,proto3" json:"image,omitempty"`
-	XXX_NoUnkeyedLiteral   struct{} `json:"-"`
-	XXX_unrecognized       []byte   `json:"-"`
-	XXX_sizecache          int32    `json:"-"`
-}
-
-func (m *ShipmentDetailRequest) Reset()         { *m = ShipmentDetailRequest{} }
-func (m *ShipmentDetailRequest) String() string { return proto.CompactTextString(m) }
-func (*ShipmentDetailRequest) ProtoMessage()    {}
-func (*ShipmentDetailRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{12}
-}
-
-func (m *ShipmentDetailRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ShipmentDetailRequest.Unmarshal(m, b)
-}
-func (m *ShipmentDetailRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ShipmentDetailRequest.Marshal(b, m, deterministic)
-}
-func (m *ShipmentDetailRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ShipmentDetailRequest.Merge(m, src)
-}
-func (m *ShipmentDetailRequest) XXX_Size() int {
-	return xxx_messageInfo_ShipmentDetailRequest.Size(m)
-}
-func (m *ShipmentDetailRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ShipmentDetailRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ShipmentDetailRequest proto.InternalMessageInfo
-
-func (m *ShipmentDetailRequest) GetOrderNumber() string {
-	if m != nil {
-		return m.OrderNumber
-	}
-	return ""
-}
-
-func (m *ShipmentDetailRequest) GetShipmentProvider() string {
-	if m != nil {
-		return m.ShipmentProvider
-	}
-	return ""
-}
-
-func (m *ShipmentDetailRequest) GetShipmentTrackingNumber() string {
-	if m != nil {
-		return m.ShipmentTrackingNumber
-	}
-	return ""
-}
-
-func (m *ShipmentDetailRequest) GetDescription() string {
-	if m != nil {
-		return m.Description
-	}
-	return ""
-}
-
-func (m *ShipmentDetailRequest) GetImage() string {
-	if m != nil {
-		return m.Image
-	}
-	return ""
-}
-
-type BuyerCancelRequest struct {
-	Reason               string   `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *BuyerCancelRequest) Reset()         { *m = BuyerCancelRequest{} }
-func (m *BuyerCancelRequest) String() string { return proto.CompactTextString(m) }
-func (*BuyerCancelRequest) ProtoMessage()    {}
-func (*BuyerCancelRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{13}
-}
-
-func (m *BuyerCancelRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_BuyerCancelRequest.Unmarshal(m, b)
-}
-func (m *BuyerCancelRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_BuyerCancelRequest.Marshal(b, m, deterministic)
-}
-func (m *BuyerCancelRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BuyerCancelRequest.Merge(m, src)
-}
-func (m *BuyerCancelRequest) XXX_Size() int {
-	return xxx_messageInfo_BuyerCancelRequest.Size(m)
-}
-func (m *BuyerCancelRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_BuyerCancelRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_BuyerCancelRequest proto.InternalMessageInfo
-
-func (m *BuyerCancelRequest) GetReason() string {
-	if m != nil {
-		return m.Reason
-	}
-	return ""
-}
-
-type ShipmentDeliveredRequest struct {
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *ShipmentDeliveredRequest) Reset()         { *m = ShipmentDeliveredRequest{} }
-func (m *ShipmentDeliveredRequest) String() string { return proto.CompactTextString(m) }
-func (*ShipmentDeliveredRequest) ProtoMessage()    {}
-func (*ShipmentDeliveredRequest) Descriptor() ([]byte, []int) {
+func (m *RequestSellerOrderAction) Reset()         { *m = RequestSellerOrderAction{} }
+func (m *RequestSellerOrderAction) String() string { return proto.CompactTextString(m) }
+func (*RequestSellerOrderAction) ProtoMessage()    {}
+func (*RequestSellerOrderAction) Descriptor() ([]byte, []int) {
 	return fileDescriptor_cd01338c35d87077, []int{14}
 }
 
-func (m *ShipmentDeliveredRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ShipmentDeliveredRequest.Unmarshal(m, b)
+func (m *RequestSellerOrderAction) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RequestSellerOrderAction.Unmarshal(m, b)
 }
-func (m *ShipmentDeliveredRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ShipmentDeliveredRequest.Marshal(b, m, deterministic)
+func (m *RequestSellerOrderAction) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RequestSellerOrderAction.Marshal(b, m, deterministic)
 }
-func (m *ShipmentDeliveredRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ShipmentDeliveredRequest.Merge(m, src)
+func (m *RequestSellerOrderAction) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RequestSellerOrderAction.Merge(m, src)
 }
-func (m *ShipmentDeliveredRequest) XXX_Size() int {
-	return xxx_messageInfo_ShipmentDeliveredRequest.Size(m)
+func (m *RequestSellerOrderAction) XXX_Size() int {
+	return xxx_messageInfo_RequestSellerOrderAction.Size(m)
 }
-func (m *ShipmentDeliveredRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ShipmentDeliveredRequest.DiscardUnknown(m)
+func (m *RequestSellerOrderAction) XXX_DiscardUnknown() {
+	xxx_messageInfo_RequestSellerOrderAction.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ShipmentDeliveredRequest proto.InternalMessageInfo
+var xxx_messageInfo_RequestSellerOrderAction proto.InternalMessageInfo
 
-type ReturnShipmentDeliveredRequest struct {
-	Operator             string   `protobuf:"bytes,1,opt,name=operator,proto3" json:"operator,omitempty"`
-	Reason               string   `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+func (m *RequestSellerOrderAction) GetOrderId() string {
+	if m != nil {
+		return m.OrderId
+	}
+	return ""
+}
+
+func (m *RequestSellerOrderAction) GetSellerId() string {
+	if m != nil {
+		return m.SellerId
+	}
+	return ""
+}
+
+func (m *RequestSellerOrderAction) GetActionType() string {
+	if m != nil {
+		return m.ActionType
+	}
+	return ""
+}
+
+func (m *RequestSellerOrderAction) GetAction() string {
+	if m != nil {
+		return m.Action
+	}
+	return ""
+}
+
+type isRequestSellerOrderAction_Data interface {
+	isRequestSellerOrderAction_Data()
+}
+
+type RequestSellerOrderAction_Success struct {
+	Success *RequestSellerOrderActionSuccess `protobuf:"bytes,5,opt,name=success,proto3,oneof"`
+}
+
+type RequestSellerOrderAction_Failed struct {
+	Failed *RequestSellerOrderActionFailed `protobuf:"bytes,6,opt,name=failed,proto3,oneof"`
+}
+
+func (*RequestSellerOrderAction_Success) isRequestSellerOrderAction_Data() {}
+
+func (*RequestSellerOrderAction_Failed) isRequestSellerOrderAction_Data() {}
+
+func (m *RequestSellerOrderAction) GetData() isRequestSellerOrderAction_Data {
+	if m != nil {
+		return m.Data
+	}
+	return nil
+}
+
+func (m *RequestSellerOrderAction) GetSuccess() *RequestSellerOrderActionSuccess {
+	if x, ok := m.GetData().(*RequestSellerOrderAction_Success); ok {
+		return x.Success
+	}
+	return nil
+}
+
+func (m *RequestSellerOrderAction) GetFailed() *RequestSellerOrderActionFailed {
+	if x, ok := m.GetData().(*RequestSellerOrderAction_Failed); ok {
+		return x.Failed
+	}
+	return nil
+}
+
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*RequestSellerOrderAction) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
+		(*RequestSellerOrderAction_Success)(nil),
+		(*RequestSellerOrderAction_Failed)(nil),
+	}
+}
+
+type RequestSellerOrderActionSuccess struct {
+	TrackingId           string   `protobuf:"bytes,1,opt,name=trackingId,proto3" json:"trackingId,omitempty"`
+	ShipmentMethod       string   `protobuf:"bytes,2,opt,name=shipmentMethod,proto3" json:"shipmentMethod,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ReturnShipmentDeliveredRequest) Reset()         { *m = ReturnShipmentDeliveredRequest{} }
-func (m *ReturnShipmentDeliveredRequest) String() string { return proto.CompactTextString(m) }
-func (*ReturnShipmentDeliveredRequest) ProtoMessage()    {}
-func (*ReturnShipmentDeliveredRequest) Descriptor() ([]byte, []int) {
+func (m *RequestSellerOrderActionSuccess) Reset()         { *m = RequestSellerOrderActionSuccess{} }
+func (m *RequestSellerOrderActionSuccess) String() string { return proto.CompactTextString(m) }
+func (*RequestSellerOrderActionSuccess) ProtoMessage()    {}
+func (*RequestSellerOrderActionSuccess) Descriptor() ([]byte, []int) {
 	return fileDescriptor_cd01338c35d87077, []int{15}
 }
 
-func (m *ReturnShipmentDeliveredRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ReturnShipmentDeliveredRequest.Unmarshal(m, b)
+func (m *RequestSellerOrderActionSuccess) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RequestSellerOrderActionSuccess.Unmarshal(m, b)
 }
-func (m *ReturnShipmentDeliveredRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ReturnShipmentDeliveredRequest.Marshal(b, m, deterministic)
+func (m *RequestSellerOrderActionSuccess) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RequestSellerOrderActionSuccess.Marshal(b, m, deterministic)
 }
-func (m *ReturnShipmentDeliveredRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ReturnShipmentDeliveredRequest.Merge(m, src)
+func (m *RequestSellerOrderActionSuccess) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RequestSellerOrderActionSuccess.Merge(m, src)
 }
-func (m *ReturnShipmentDeliveredRequest) XXX_Size() int {
-	return xxx_messageInfo_ReturnShipmentDeliveredRequest.Size(m)
+func (m *RequestSellerOrderActionSuccess) XXX_Size() int {
+	return xxx_messageInfo_RequestSellerOrderActionSuccess.Size(m)
 }
-func (m *ReturnShipmentDeliveredRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ReturnShipmentDeliveredRequest.DiscardUnknown(m)
+func (m *RequestSellerOrderActionSuccess) XXX_DiscardUnknown() {
+	xxx_messageInfo_RequestSellerOrderActionSuccess.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ReturnShipmentDeliveredRequest proto.InternalMessageInfo
+var xxx_messageInfo_RequestSellerOrderActionSuccess proto.InternalMessageInfo
 
-func (m *ReturnShipmentDeliveredRequest) GetOperator() string {
+func (m *RequestSellerOrderActionSuccess) GetTrackingId() string {
 	if m != nil {
-		return m.Operator
+		return m.TrackingId
 	}
 	return ""
 }
 
-func (m *ReturnShipmentDeliveredRequest) GetReason() string {
+func (m *RequestSellerOrderActionSuccess) GetShipmentMethod() string {
 	if m != nil {
-		return m.Reason
+		return m.ShipmentMethod
 	}
 	return ""
 }
 
-type ShipmentDeliveryDelayedRequest struct {
+type RequestSellerOrderActionFailed struct {
+	Reason               string   `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ShipmentDeliveryDelayedRequest) Reset()         { *m = ShipmentDeliveryDelayedRequest{} }
-func (m *ShipmentDeliveryDelayedRequest) String() string { return proto.CompactTextString(m) }
-func (*ShipmentDeliveryDelayedRequest) ProtoMessage()    {}
-func (*ShipmentDeliveryDelayedRequest) Descriptor() ([]byte, []int) {
+func (m *RequestSellerOrderActionFailed) Reset()         { *m = RequestSellerOrderActionFailed{} }
+func (m *RequestSellerOrderActionFailed) String() string { return proto.CompactTextString(m) }
+func (*RequestSellerOrderActionFailed) ProtoMessage()    {}
+func (*RequestSellerOrderActionFailed) Descriptor() ([]byte, []int) {
 	return fileDescriptor_cd01338c35d87077, []int{16}
 }
 
-func (m *ShipmentDeliveryDelayedRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ShipmentDeliveryDelayedRequest.Unmarshal(m, b)
+func (m *RequestSellerOrderActionFailed) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RequestSellerOrderActionFailed.Unmarshal(m, b)
 }
-func (m *ShipmentDeliveryDelayedRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ShipmentDeliveryDelayedRequest.Marshal(b, m, deterministic)
+func (m *RequestSellerOrderActionFailed) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RequestSellerOrderActionFailed.Marshal(b, m, deterministic)
 }
-func (m *ShipmentDeliveryDelayedRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ShipmentDeliveryDelayedRequest.Merge(m, src)
+func (m *RequestSellerOrderActionFailed) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RequestSellerOrderActionFailed.Merge(m, src)
 }
-func (m *ShipmentDeliveryDelayedRequest) XXX_Size() int {
-	return xxx_messageInfo_ShipmentDeliveryDelayedRequest.Size(m)
+func (m *RequestSellerOrderActionFailed) XXX_Size() int {
+	return xxx_messageInfo_RequestSellerOrderActionFailed.Size(m)
 }
-func (m *ShipmentDeliveryDelayedRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ShipmentDeliveryDelayedRequest.DiscardUnknown(m)
+func (m *RequestSellerOrderActionFailed) XXX_DiscardUnknown() {
+	xxx_messageInfo_RequestSellerOrderActionFailed.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ShipmentDeliveryDelayedRequest proto.InternalMessageInfo
+var xxx_messageInfo_RequestSellerOrderActionFailed proto.InternalMessageInfo
 
-type ReturnShipmentDeliveryDelayedRequest struct {
+func (m *RequestSellerOrderActionFailed) GetReason() string {
+	if m != nil {
+		return m.Reason
+	}
+	return ""
+}
+
+type RequestSellerFindAllItems struct {
+	SellerId             string   `protobuf:"bytes,1,opt,name=sellerId,proto3" json:"sellerId,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ReturnShipmentDeliveryDelayedRequest) Reset()         { *m = ReturnShipmentDeliveryDelayedRequest{} }
-func (m *ReturnShipmentDeliveryDelayedRequest) String() string { return proto.CompactTextString(m) }
-func (*ReturnShipmentDeliveryDelayedRequest) ProtoMessage()    {}
-func (*ReturnShipmentDeliveryDelayedRequest) Descriptor() ([]byte, []int) {
+func (m *RequestSellerFindAllItems) Reset()         { *m = RequestSellerFindAllItems{} }
+func (m *RequestSellerFindAllItems) String() string { return proto.CompactTextString(m) }
+func (*RequestSellerFindAllItems) ProtoMessage()    {}
+func (*RequestSellerFindAllItems) Descriptor() ([]byte, []int) {
 	return fileDescriptor_cd01338c35d87077, []int{17}
 }
 
-func (m *ReturnShipmentDeliveryDelayedRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ReturnShipmentDeliveryDelayedRequest.Unmarshal(m, b)
+func (m *RequestSellerFindAllItems) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RequestSellerFindAllItems.Unmarshal(m, b)
 }
-func (m *ReturnShipmentDeliveryDelayedRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ReturnShipmentDeliveryDelayedRequest.Marshal(b, m, deterministic)
+func (m *RequestSellerFindAllItems) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RequestSellerFindAllItems.Marshal(b, m, deterministic)
 }
-func (m *ReturnShipmentDeliveryDelayedRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ReturnShipmentDeliveryDelayedRequest.Merge(m, src)
+func (m *RequestSellerFindAllItems) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RequestSellerFindAllItems.Merge(m, src)
 }
-func (m *ReturnShipmentDeliveryDelayedRequest) XXX_Size() int {
-	return xxx_messageInfo_ReturnShipmentDeliveryDelayedRequest.Size(m)
+func (m *RequestSellerFindAllItems) XXX_Size() int {
+	return xxx_messageInfo_RequestSellerFindAllItems.Size(m)
 }
-func (m *ReturnShipmentDeliveryDelayedRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ReturnShipmentDeliveryDelayedRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ReturnShipmentDeliveryDelayedRequest proto.InternalMessageInfo
-
-type ShipmentCanceledRequest struct {
-	//    string orderNumber = 1;
-	Reason               string   `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
-	Operator             string   `protobuf:"bytes,2,opt,name=operator,proto3" json:"operator,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+func (m *RequestSellerFindAllItems) XXX_DiscardUnknown() {
+	xxx_messageInfo_RequestSellerFindAllItems.DiscardUnknown(m)
 }
 
-func (m *ShipmentCanceledRequest) Reset()         { *m = ShipmentCanceledRequest{} }
-func (m *ShipmentCanceledRequest) String() string { return proto.CompactTextString(m) }
-func (*ShipmentCanceledRequest) ProtoMessage()    {}
-func (*ShipmentCanceledRequest) Descriptor() ([]byte, []int) {
+var xxx_messageInfo_RequestSellerFindAllItems proto.InternalMessageInfo
+
+func (m *RequestSellerFindAllItems) GetSellerId() string {
+	if m != nil {
+		return m.SellerId
+	}
+	return ""
+}
+
+type ResponseSellerFindAllItems struct {
+	OrderId              string            `protobuf:"bytes,1,opt,name=orderId,proto3" json:"orderId,omitempty"`
+	ItemId               string            `protobuf:"bytes,2,opt,name=itemId,proto3" json:"itemId,omitempty"`
+	InventoryId          string            `protobuf:"bytes,3,opt,name=inventoryId,proto3" json:"inventoryId,omitempty"`
+	Title                string            `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	Brand                string            `protobuf:"bytes,5,opt,name=brand,proto3" json:"brand,omitempty"`
+	Guarantee            string            `protobuf:"bytes,6,opt,name=guarantee,proto3" json:"guarantee,omitempty"`
+	Categories           string            `protobuf:"bytes,7,opt,name=categories,proto3" json:"categories,omitempty"`
+	Image                string            `protobuf:"bytes,8,opt,name=image,proto3" json:"image,omitempty"`
+	Returnable           string            `protobuf:"bytes,9,opt,name=returnable,proto3" json:"returnable,omitempty"`
+	Quantity             string            `protobuf:"bytes,10,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	CreatedAt            string            `protobuf:"bytes,11,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
+	Attributes           map[string]string `protobuf:"bytes,12,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Status               string            `protobuf:"bytes,13,opt,name=status,proto3" json:"status,omitempty"`
+	Price                *PriceInfo        `protobuf:"bytes,14,opt,name=price,proto3" json:"price,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
+}
+
+func (m *ResponseSellerFindAllItems) Reset()         { *m = ResponseSellerFindAllItems{} }
+func (m *ResponseSellerFindAllItems) String() string { return proto.CompactTextString(m) }
+func (*ResponseSellerFindAllItems) ProtoMessage()    {}
+func (*ResponseSellerFindAllItems) Descriptor() ([]byte, []int) {
 	return fileDescriptor_cd01338c35d87077, []int{18}
 }
 
-func (m *ShipmentCanceledRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ShipmentCanceledRequest.Unmarshal(m, b)
+func (m *ResponseSellerFindAllItems) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ResponseSellerFindAllItems.Unmarshal(m, b)
 }
-func (m *ShipmentCanceledRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ShipmentCanceledRequest.Marshal(b, m, deterministic)
+func (m *ResponseSellerFindAllItems) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ResponseSellerFindAllItems.Marshal(b, m, deterministic)
 }
-func (m *ShipmentCanceledRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ShipmentCanceledRequest.Merge(m, src)
+func (m *ResponseSellerFindAllItems) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ResponseSellerFindAllItems.Merge(m, src)
 }
-func (m *ShipmentCanceledRequest) XXX_Size() int {
-	return xxx_messageInfo_ShipmentCanceledRequest.Size(m)
+func (m *ResponseSellerFindAllItems) XXX_Size() int {
+	return xxx_messageInfo_ResponseSellerFindAllItems.Size(m)
 }
-func (m *ShipmentCanceledRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ShipmentCanceledRequest.DiscardUnknown(m)
+func (m *ResponseSellerFindAllItems) XXX_DiscardUnknown() {
+	xxx_messageInfo_ResponseSellerFindAllItems.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ShipmentCanceledRequest proto.InternalMessageInfo
+var xxx_messageInfo_ResponseSellerFindAllItems proto.InternalMessageInfo
 
-func (m *ShipmentCanceledRequest) GetReason() string {
+func (m *ResponseSellerFindAllItems) GetOrderId() string {
 	if m != nil {
-		return m.Reason
+		return m.OrderId
 	}
 	return ""
 }
 
-func (m *ShipmentCanceledRequest) GetOperator() string {
+func (m *ResponseSellerFindAllItems) GetItemId() string {
 	if m != nil {
-		return m.Operator
+		return m.ItemId
 	}
 	return ""
 }
 
-type ReturnShipmentCanceledRequest struct {
-	//    string orderNumber = 1;
-	Reason               string   `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *ReturnShipmentCanceledRequest) Reset()         { *m = ReturnShipmentCanceledRequest{} }
-func (m *ReturnShipmentCanceledRequest) String() string { return proto.CompactTextString(m) }
-func (*ReturnShipmentCanceledRequest) ProtoMessage()    {}
-func (*ReturnShipmentCanceledRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{19}
-}
-
-func (m *ReturnShipmentCanceledRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ReturnShipmentCanceledRequest.Unmarshal(m, b)
-}
-func (m *ReturnShipmentCanceledRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ReturnShipmentCanceledRequest.Marshal(b, m, deterministic)
-}
-func (m *ReturnShipmentCanceledRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ReturnShipmentCanceledRequest.Merge(m, src)
-}
-func (m *ReturnShipmentCanceledRequest) XXX_Size() int {
-	return xxx_messageInfo_ReturnShipmentCanceledRequest.Size(m)
-}
-func (m *ReturnShipmentCanceledRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ReturnShipmentCanceledRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ReturnShipmentCanceledRequest proto.InternalMessageInfo
-
-func (m *ReturnShipmentCanceledRequest) GetReason() string {
+func (m *ResponseSellerFindAllItems) GetInventoryId() string {
 	if m != nil {
-		return m.Reason
+		return m.InventoryId
 	}
 	return ""
 }
 
-type ShipmentDeliveryProblem struct {
-	//    string orderNumber = 1;
-	Reason               string   `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *ShipmentDeliveryProblem) Reset()         { *m = ShipmentDeliveryProblem{} }
-func (m *ShipmentDeliveryProblem) String() string { return proto.CompactTextString(m) }
-func (*ShipmentDeliveryProblem) ProtoMessage()    {}
-func (*ShipmentDeliveryProblem) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{20}
-}
-
-func (m *ShipmentDeliveryProblem) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ShipmentDeliveryProblem.Unmarshal(m, b)
-}
-func (m *ShipmentDeliveryProblem) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ShipmentDeliveryProblem.Marshal(b, m, deterministic)
-}
-func (m *ShipmentDeliveryProblem) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ShipmentDeliveryProblem.Merge(m, src)
-}
-func (m *ShipmentDeliveryProblem) XXX_Size() int {
-	return xxx_messageInfo_ShipmentDeliveryProblem.Size(m)
-}
-func (m *ShipmentDeliveryProblem) XXX_DiscardUnknown() {
-	xxx_messageInfo_ShipmentDeliveryProblem.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ShipmentDeliveryProblem proto.InternalMessageInfo
-
-func (m *ShipmentDeliveryProblem) GetReason() string {
+func (m *ResponseSellerFindAllItems) GetTitle() string {
 	if m != nil {
-		return m.Reason
+		return m.Title
 	}
 	return ""
 }
 
-type ShipmentDeliveryProblemRequest struct {
-	//    string orderNumber = 1;
-	Reason               string   `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *ShipmentDeliveryProblemRequest) Reset()         { *m = ShipmentDeliveryProblemRequest{} }
-func (m *ShipmentDeliveryProblemRequest) String() string { return proto.CompactTextString(m) }
-func (*ShipmentDeliveryProblemRequest) ProtoMessage()    {}
-func (*ShipmentDeliveryProblemRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{21}
-}
-
-func (m *ShipmentDeliveryProblemRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ShipmentDeliveryProblemRequest.Unmarshal(m, b)
-}
-func (m *ShipmentDeliveryProblemRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ShipmentDeliveryProblemRequest.Marshal(b, m, deterministic)
-}
-func (m *ShipmentDeliveryProblemRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ShipmentDeliveryProblemRequest.Merge(m, src)
-}
-func (m *ShipmentDeliveryProblemRequest) XXX_Size() int {
-	return xxx_messageInfo_ShipmentDeliveryProblemRequest.Size(m)
-}
-func (m *ShipmentDeliveryProblemRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ShipmentDeliveryProblemRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ShipmentDeliveryProblemRequest proto.InternalMessageInfo
-
-func (m *ShipmentDeliveryProblemRequest) GetReason() string {
+func (m *ResponseSellerFindAllItems) GetBrand() string {
 	if m != nil {
-		return m.Reason
+		return m.Brand
 	}
 	return ""
 }
 
-type ReturnShipmentDeliveryProblemRequest struct {
-	//    string orderNumber = 1;
-	Reason               string   `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *ReturnShipmentDeliveryProblemRequest) Reset()         { *m = ReturnShipmentDeliveryProblemRequest{} }
-func (m *ReturnShipmentDeliveryProblemRequest) String() string { return proto.CompactTextString(m) }
-func (*ReturnShipmentDeliveryProblemRequest) ProtoMessage()    {}
-func (*ReturnShipmentDeliveryProblemRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{22}
-}
-
-func (m *ReturnShipmentDeliveryProblemRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ReturnShipmentDeliveryProblemRequest.Unmarshal(m, b)
-}
-func (m *ReturnShipmentDeliveryProblemRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ReturnShipmentDeliveryProblemRequest.Marshal(b, m, deterministic)
-}
-func (m *ReturnShipmentDeliveryProblemRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ReturnShipmentDeliveryProblemRequest.Merge(m, src)
-}
-func (m *ReturnShipmentDeliveryProblemRequest) XXX_Size() int {
-	return xxx_messageInfo_ReturnShipmentDeliveryProblemRequest.Size(m)
-}
-func (m *ReturnShipmentDeliveryProblemRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ReturnShipmentDeliveryProblemRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ReturnShipmentDeliveryProblemRequest proto.InternalMessageInfo
-
-func (m *ReturnShipmentDeliveryProblemRequest) GetReason() string {
+func (m *ResponseSellerFindAllItems) GetGuarantee() string {
 	if m != nil {
-		return m.Reason
+		return m.Guarantee
 	}
 	return ""
 }
 
-type ShipmentSuccessRequest struct {
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *ShipmentSuccessRequest) Reset()         { *m = ShipmentSuccessRequest{} }
-func (m *ShipmentSuccessRequest) String() string { return proto.CompactTextString(m) }
-func (*ShipmentSuccessRequest) ProtoMessage()    {}
-func (*ShipmentSuccessRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{23}
-}
-
-func (m *ShipmentSuccessRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ShipmentSuccessRequest.Unmarshal(m, b)
-}
-func (m *ShipmentSuccessRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ShipmentSuccessRequest.Marshal(b, m, deterministic)
-}
-func (m *ShipmentSuccessRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ShipmentSuccessRequest.Merge(m, src)
-}
-func (m *ShipmentSuccessRequest) XXX_Size() int {
-	return xxx_messageInfo_ShipmentSuccessRequest.Size(m)
-}
-func (m *ShipmentSuccessRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ShipmentSuccessRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ShipmentSuccessRequest proto.InternalMessageInfo
-
-type ReturnShipmentSuccessRequest struct {
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *ReturnShipmentSuccessRequest) Reset()         { *m = ReturnShipmentSuccessRequest{} }
-func (m *ReturnShipmentSuccessRequest) String() string { return proto.CompactTextString(m) }
-func (*ReturnShipmentSuccessRequest) ProtoMessage()    {}
-func (*ReturnShipmentSuccessRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{24}
-}
-
-func (m *ReturnShipmentSuccessRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ReturnShipmentSuccessRequest.Unmarshal(m, b)
-}
-func (m *ReturnShipmentSuccessRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ReturnShipmentSuccessRequest.Marshal(b, m, deterministic)
-}
-func (m *ReturnShipmentSuccessRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ReturnShipmentSuccessRequest.Merge(m, src)
-}
-func (m *ReturnShipmentSuccessRequest) XXX_Size() int {
-	return xxx_messageInfo_ReturnShipmentSuccessRequest.Size(m)
-}
-func (m *ReturnShipmentSuccessRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ReturnShipmentSuccessRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ReturnShipmentSuccessRequest proto.InternalMessageInfo
-
-type ReturnShipmentPendingRequest struct {
-	//    string orderNumber = 1;
-	Reason               string   `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
-	Operator             string   `protobuf:"bytes,2,opt,name=operator,proto3" json:"operator,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *ReturnShipmentPendingRequest) Reset()         { *m = ReturnShipmentPendingRequest{} }
-func (m *ReturnShipmentPendingRequest) String() string { return proto.CompactTextString(m) }
-func (*ReturnShipmentPendingRequest) ProtoMessage()    {}
-func (*ReturnShipmentPendingRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{25}
-}
-
-func (m *ReturnShipmentPendingRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ReturnShipmentPendingRequest.Unmarshal(m, b)
-}
-func (m *ReturnShipmentPendingRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ReturnShipmentPendingRequest.Marshal(b, m, deterministic)
-}
-func (m *ReturnShipmentPendingRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ReturnShipmentPendingRequest.Merge(m, src)
-}
-func (m *ReturnShipmentPendingRequest) XXX_Size() int {
-	return xxx_messageInfo_ReturnShipmentPendingRequest.Size(m)
-}
-func (m *ReturnShipmentPendingRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ReturnShipmentPendingRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ReturnShipmentPendingRequest proto.InternalMessageInfo
-
-func (m *ReturnShipmentPendingRequest) GetReason() string {
+func (m *ResponseSellerFindAllItems) GetCategories() string {
 	if m != nil {
-		return m.Reason
+		return m.Categories
 	}
 	return ""
 }
 
-func (m *ReturnShipmentPendingRequest) GetOperator() string {
-	if m != nil {
-		return m.Operator
-	}
-	return ""
-}
-
-type ReturnShipmentDetailRequest struct {
-	//    string orderNumber = 1;
-	ShipmentProvider       string   `protobuf:"bytes,1,opt,name=shipmentProvider,proto3" json:"shipmentProvider,omitempty"`
-	ShipmentTrackingNumber string   `protobuf:"bytes,2,opt,name=shipmentTrackingNumber,proto3" json:"shipmentTrackingNumber,omitempty"`
-	Description            string   `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
-	Image                  string   `protobuf:"bytes,4,opt,name=image,proto3" json:"image,omitempty"`
-	XXX_NoUnkeyedLiteral   struct{} `json:"-"`
-	XXX_unrecognized       []byte   `json:"-"`
-	XXX_sizecache          int32    `json:"-"`
-}
-
-func (m *ReturnShipmentDetailRequest) Reset()         { *m = ReturnShipmentDetailRequest{} }
-func (m *ReturnShipmentDetailRequest) String() string { return proto.CompactTextString(m) }
-func (*ReturnShipmentDetailRequest) ProtoMessage()    {}
-func (*ReturnShipmentDetailRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{26}
-}
-
-func (m *ReturnShipmentDetailRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ReturnShipmentDetailRequest.Unmarshal(m, b)
-}
-func (m *ReturnShipmentDetailRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ReturnShipmentDetailRequest.Marshal(b, m, deterministic)
-}
-func (m *ReturnShipmentDetailRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ReturnShipmentDetailRequest.Merge(m, src)
-}
-func (m *ReturnShipmentDetailRequest) XXX_Size() int {
-	return xxx_messageInfo_ReturnShipmentDetailRequest.Size(m)
-}
-func (m *ReturnShipmentDetailRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_ReturnShipmentDetailRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_ReturnShipmentDetailRequest proto.InternalMessageInfo
-
-func (m *ReturnShipmentDetailRequest) GetShipmentProvider() string {
-	if m != nil {
-		return m.ShipmentProvider
-	}
-	return ""
-}
-
-func (m *ReturnShipmentDetailRequest) GetShipmentTrackingNumber() string {
-	if m != nil {
-		return m.ShipmentTrackingNumber
-	}
-	return ""
-}
-
-func (m *ReturnShipmentDetailRequest) GetDescription() string {
-	if m != nil {
-		return m.Description
-	}
-	return ""
-}
-
-func (m *ReturnShipmentDetailRequest) GetImage() string {
+func (m *ResponseSellerFindAllItems) GetImage() string {
 	if m != nil {
 		return m.Image
 	}
 	return ""
 }
 
-type PayToBuyerSuccessRequest struct {
-	//    string orderNumber = 1;
-	Description          string   `protobuf:"bytes,1,opt,name=description,proto3" json:"description,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *PayToBuyerSuccessRequest) Reset()         { *m = PayToBuyerSuccessRequest{} }
-func (m *PayToBuyerSuccessRequest) String() string { return proto.CompactTextString(m) }
-func (*PayToBuyerSuccessRequest) ProtoMessage()    {}
-func (*PayToBuyerSuccessRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{27}
-}
-
-func (m *PayToBuyerSuccessRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_PayToBuyerSuccessRequest.Unmarshal(m, b)
-}
-func (m *PayToBuyerSuccessRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_PayToBuyerSuccessRequest.Marshal(b, m, deterministic)
-}
-func (m *PayToBuyerSuccessRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PayToBuyerSuccessRequest.Merge(m, src)
-}
-func (m *PayToBuyerSuccessRequest) XXX_Size() int {
-	return xxx_messageInfo_PayToBuyerSuccessRequest.Size(m)
-}
-func (m *PayToBuyerSuccessRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_PayToBuyerSuccessRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_PayToBuyerSuccessRequest proto.InternalMessageInfo
-
-func (m *PayToBuyerSuccessRequest) GetDescription() string {
+func (m *ResponseSellerFindAllItems) GetReturnable() string {
 	if m != nil {
-		return m.Description
+		return m.Returnable
 	}
 	return ""
 }
 
-type PayToSellerSuccessRequest struct {
-	//    string orderNumber = 1;
-	Description          string   `protobuf:"bytes,1,opt,name=description,proto3" json:"description,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *PayToSellerSuccessRequest) Reset()         { *m = PayToSellerSuccessRequest{} }
-func (m *PayToSellerSuccessRequest) String() string { return proto.CompactTextString(m) }
-func (*PayToSellerSuccessRequest) ProtoMessage()    {}
-func (*PayToSellerSuccessRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{28}
-}
-
-func (m *PayToSellerSuccessRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_PayToSellerSuccessRequest.Unmarshal(m, b)
-}
-func (m *PayToSellerSuccessRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_PayToSellerSuccessRequest.Marshal(b, m, deterministic)
-}
-func (m *PayToSellerSuccessRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PayToSellerSuccessRequest.Merge(m, src)
-}
-func (m *PayToSellerSuccessRequest) XXX_Size() int {
-	return xxx_messageInfo_PayToSellerSuccessRequest.Size(m)
-}
-func (m *PayToSellerSuccessRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_PayToSellerSuccessRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_PayToSellerSuccessRequest proto.InternalMessageInfo
-
-func (m *PayToSellerSuccessRequest) GetDescription() string {
+func (m *ResponseSellerFindAllItems) GetQuantity() string {
 	if m != nil {
-		return m.Description
+		return m.Quantity
 	}
 	return ""
 }
 
-type PayToMarketSuccessRequest struct {
-	//    string orderNumber = 1;
-	Description          string   `protobuf:"bytes,1,opt,name=description,proto3" json:"description,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *PayToMarketSuccessRequest) Reset()         { *m = PayToMarketSuccessRequest{} }
-func (m *PayToMarketSuccessRequest) String() string { return proto.CompactTextString(m) }
-func (*PayToMarketSuccessRequest) ProtoMessage()    {}
-func (*PayToMarketSuccessRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_cd01338c35d87077, []int{29}
-}
-
-func (m *PayToMarketSuccessRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_PayToMarketSuccessRequest.Unmarshal(m, b)
-}
-func (m *PayToMarketSuccessRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_PayToMarketSuccessRequest.Marshal(b, m, deterministic)
-}
-func (m *PayToMarketSuccessRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_PayToMarketSuccessRequest.Merge(m, src)
-}
-func (m *PayToMarketSuccessRequest) XXX_Size() int {
-	return xxx_messageInfo_PayToMarketSuccessRequest.Size(m)
-}
-func (m *PayToMarketSuccessRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_PayToMarketSuccessRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_PayToMarketSuccessRequest proto.InternalMessageInfo
-
-func (m *PayToMarketSuccessRequest) GetDescription() string {
+func (m *ResponseSellerFindAllItems) GetCreatedAt() string {
 	if m != nil {
-		return m.Description
+		return m.CreatedAt
 	}
 	return ""
+}
+
+func (m *ResponseSellerFindAllItems) GetAttributes() map[string]string {
+	if m != nil {
+		return m.Attributes
+	}
+	return nil
+}
+
+func (m *ResponseSellerFindAllItems) GetStatus() string {
+	if m != nil {
+		return m.Status
+	}
+	return ""
+}
+
+func (m *ResponseSellerFindAllItems) GetPrice() *PriceInfo {
+	if m != nil {
+		return m.Price
+	}
+	return nil
 }
 
 func init() {
-	proto.RegisterType((*NewOrderRequest)(nil), "ordersrv.NewOrderRequest")
+	proto.RegisterType((*ResponseNewOrder)(nil), "ordersrv.ResponseNewOrder")
+	proto.RegisterType((*RequestNewOrder)(nil), "ordersrv.RequestNewOrder")
 	proto.RegisterType((*Amount)(nil), "ordersrv.Amount")
 	proto.RegisterType((*Voucher)(nil), "ordersrv.Voucher")
 	proto.RegisterType((*Item)(nil), "ordersrv.Item")
+	proto.RegisterMapType((map[string]string)(nil), "ordersrv.Item.AttributesEntry")
 	proto.RegisterType((*Buyer)(nil), "ordersrv.Buyer")
-	proto.RegisterType((*Attributes)(nil), "ordersrv.Attributes")
 	proto.RegisterType((*FinanceInfo)(nil), "ordersrv.FinanceInfo")
 	proto.RegisterType((*Address)(nil), "ordersrv.Address")
 	proto.RegisterType((*PriceInfo)(nil), "ordersrv.PriceInfo")
 	proto.RegisterType((*ShippingSpec)(nil), "ordersrv.ShippingSpec")
 	proto.RegisterType((*Event)(nil), "ordersrv.Event")
-	proto.RegisterType((*ApprovalRequest)(nil), "ordersrv.ApprovalRequest")
-	proto.RegisterType((*ShipmentDetailRequest)(nil), "ordersrv.ShipmentDetailRequest")
-	proto.RegisterType((*BuyerCancelRequest)(nil), "ordersrv.BuyerCancelRequest")
-	proto.RegisterType((*ShipmentDeliveredRequest)(nil), "ordersrv.ShipmentDeliveredRequest")
-	proto.RegisterType((*ReturnShipmentDeliveredRequest)(nil), "ordersrv.ReturnShipmentDeliveredRequest")
-	proto.RegisterType((*ShipmentDeliveryDelayedRequest)(nil), "ordersrv.ShipmentDeliveryDelayedRequest")
-	proto.RegisterType((*ReturnShipmentDeliveryDelayedRequest)(nil), "ordersrv.ReturnShipmentDeliveryDelayedRequest")
-	proto.RegisterType((*ShipmentCanceledRequest)(nil), "ordersrv.ShipmentCanceledRequest")
-	proto.RegisterType((*ReturnShipmentCanceledRequest)(nil), "ordersrv.ReturnShipmentCanceledRequest")
-	proto.RegisterType((*ShipmentDeliveryProblem)(nil), "ordersrv.ShipmentDeliveryProblem")
-	proto.RegisterType((*ShipmentDeliveryProblemRequest)(nil), "ordersrv.ShipmentDeliveryProblemRequest")
-	proto.RegisterType((*ReturnShipmentDeliveryProblemRequest)(nil), "ordersrv.ReturnShipmentDeliveryProblemRequest")
-	proto.RegisterType((*ShipmentSuccessRequest)(nil), "ordersrv.ShipmentSuccessRequest")
-	proto.RegisterType((*ReturnShipmentSuccessRequest)(nil), "ordersrv.ReturnShipmentSuccessRequest")
-	proto.RegisterType((*ReturnShipmentPendingRequest)(nil), "ordersrv.ReturnShipmentPendingRequest")
-	proto.RegisterType((*ReturnShipmentDetailRequest)(nil), "ordersrv.ReturnShipmentDetailRequest")
-	proto.RegisterType((*PayToBuyerSuccessRequest)(nil), "ordersrv.PayToBuyerSuccessRequest")
-	proto.RegisterType((*PayToSellerSuccessRequest)(nil), "ordersrv.PayToSellerSuccessRequest")
-	proto.RegisterType((*PayToMarketSuccessRequest)(nil), "ordersrv.PayToMarketSuccessRequest")
+	proto.RegisterType((*RequestBuyerFindAllOrders)(nil), "ordersrv.RequestBuyerFindAllOrders")
+	proto.RegisterType((*ResponseBuyerFindAllOrders)(nil), "ordersrv.ResponseBuyerFindAllOrders")
+	proto.RegisterType((*ResponseSellerOrderAction)(nil), "ordersrv.ResponseSellerOrderAction")
+	proto.RegisterType((*RequestSellerOrderAction)(nil), "ordersrv.RequestSellerOrderAction")
+	proto.RegisterType((*RequestSellerOrderActionSuccess)(nil), "ordersrv.RequestSellerOrderActionSuccess")
+	proto.RegisterType((*RequestSellerOrderActionFailed)(nil), "ordersrv.RequestSellerOrderActionFailed")
+	proto.RegisterType((*RequestSellerFindAllItems)(nil), "ordersrv.RequestSellerFindAllItems")
+	proto.RegisterType((*ResponseSellerFindAllItems)(nil), "ordersrv.ResponseSellerFindAllItems")
+	proto.RegisterMapType((map[string]string)(nil), "ordersrv.ResponseSellerFindAllItems.AttributesEntry")
 }
 
 func init() { proto.RegisterFile("order.proto", fileDescriptor_cd01338c35d87077) }
 
 var fileDescriptor_cd01338c35d87077 = []byte{
-	// 1430 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x57, 0x5d, 0x6f, 0x1b, 0x45,
-	0x17, 0x96, 0x1d, 0x3b, 0xb1, 0x4f, 0xfa, 0x36, 0xe9, 0xbc, 0x6d, 0x5e, 0xd7, 0x6f, 0x89, 0xa2,
-	0x55, 0xa9, 0x42, 0x41, 0x8e, 0x08, 0x08, 0x90, 0xf8, 0x90, 0x42, 0x5b, 0x44, 0x84, 0xda, 0x46,
-	0x9b, 0x88, 0x5b, 0x34, 0xde, 0x3d, 0xb1, 0x47, 0xdd, 0x9d, 0xd9, 0xce, 0xce, 0x26, 0x98, 0x5b,
-	0x6e, 0xb8, 0xe3, 0x57, 0xf0, 0x0b, 0xb8, 0xe2, 0x87, 0xf0, 0x17, 0x2a, 0xf1, 0x0b, 0xb8, 0x45,
-	0x67, 0x66, 0xf6, 0xcb, 0xa9, 0x4b, 0x0b, 0x77, 0x7e, 0x9e, 0x79, 0xe6, 0xcc, 0xcc, 0x33, 0x67,
-	0xce, 0x59, 0xc3, 0xa6, 0xd2, 0x31, 0xea, 0x49, 0xa6, 0x95, 0x51, 0x6c, 0x60, 0x41, 0xae, 0x2f,
-	0xc6, 0xb7, 0x66, 0x28, 0x51, 0xf3, 0xe4, 0x20, 0xc5, 0x3c, 0xe7, 0x33, 0x74, 0x82, 0xf1, 0xed,
-	0x99, 0x52, 0xb3, 0x04, 0x0f, 0x2c, 0x9a, 0x16, 0xe7, 0x07, 0x5c, 0x2e, 0xdc, 0x50, 0xf0, 0x53,
-	0x07, 0xb6, 0x9e, 0xe0, 0xe5, 0x53, 0x8a, 0x10, 0xe2, 0xf3, 0x02, 0x73, 0xc3, 0xde, 0x86, 0xfe,
-	0xb4, 0x58, 0xa0, 0x1e, 0x75, 0xf6, 0x3a, 0xfb, 0x9b, 0x87, 0x5b, 0x93, 0x32, 0xfe, 0xe4, 0x4b,
-	0xa2, 0x43, 0x37, 0xca, 0xf6, 0x61, 0x9d, 0xa7, 0xaa, 0x90, 0x66, 0xd4, 0xb5, 0xba, 0xed, 0x5a,
-	0x77, 0x64, 0xf9, 0xd0, 0x8f, 0xb3, 0xbb, 0xd0, 0x17, 0x06, 0xd3, 0x7c, 0xb4, 0xb6, 0xb7, 0xb6,
-	0xbf, 0x79, 0x78, 0xbd, 0x16, 0x1e, 0x1b, 0x4c, 0x43, 0x37, 0x18, 0xfc, 0xdc, 0x85, 0x75, 0x37,
-	0x91, 0xdd, 0x84, 0xbe, 0x51, 0x86, 0x27, 0x76, 0x07, 0xbd, 0xd0, 0x01, 0x36, 0x82, 0x8d, 0x8c,
-	0x2f, 0xf8, 0x34, 0x41, 0xbb, 0x62, 0x2f, 0x2c, 0x21, 0x1b, 0xc3, 0x20, 0x16, 0x79, 0x64, 0x37,
-	0xb3, 0x66, 0x87, 0x2a, 0xcc, 0xee, 0xc2, 0x7f, 0xf2, 0xb9, 0xc8, 0x52, 0x94, 0xe6, 0xcc, 0xc6,
-	0xec, 0x59, 0x41, 0x9b, 0xa4, 0x08, 0x51, 0xa1, 0x35, 0xca, 0x68, 0x31, 0xea, 0xef, 0x75, 0xf6,
-	0x87, 0x61, 0x85, 0x29, 0x42, 0xc6, 0x17, 0xa4, 0x7d, 0x8c, 0x66, 0xae, 0xe2, 0xd1, 0xba, 0x15,
-	0xb4, 0xc9, 0x86, 0xea, 0x69, 0x66, 0x84, 0x92, 0xa3, 0x8d, 0x96, 0xca, 0x91, 0xec, 0x5d, 0xd8,
-	0xb8, 0x50, 0x45, 0x34, 0x47, 0x3d, 0x1a, 0x58, 0xd7, 0x6e, 0xd4, 0x66, 0x7c, 0xeb, 0x06, 0xc2,
-	0x52, 0x11, 0x20, 0x6c, 0x78, 0x8e, 0xed, 0x54, 0x66, 0x3b, 0x4b, 0x4a, 0x6b, 0x19, 0xf4, 0x22,
-	0x15, 0x3b, 0x43, 0x86, 0xa1, 0xfd, 0xcd, 0x26, 0xb0, 0x11, 0xa3, 0xe1, 0x22, 0xc9, 0xad, 0x19,
-	0x9b, 0x87, 0x37, 0x27, 0x2e, 0x01, 0x26, 0x65, 0x02, 0x4c, 0x8e, 0xe4, 0x22, 0x2c, 0x45, 0xc1,
-	0x9f, 0x5d, 0xe8, 0xd1, 0x45, 0xb0, 0x3d, 0xd8, 0x14, 0xf2, 0x02, 0xa5, 0x51, 0x7a, 0x71, 0x1c,
-	0xdb, 0x95, 0x86, 0x61, 0x93, 0xb2, 0x17, 0x23, 0x4c, 0x52, 0xae, 0xe7, 0x00, 0xb1, 0x53, 0xcd,
-	0x65, 0x6c, 0x97, 0x1b, 0x86, 0x0e, 0xb0, 0x5d, 0x80, 0x88, 0x1b, 0x9c, 0x29, 0x2d, 0x30, 0xb7,
-	0xae, 0x0f, 0xc3, 0x06, 0x43, 0x96, 0x5f, 0x72, 0xad, 0xb9, 0x34, 0x95, 0xe5, 0x25, 0xa6, 0x88,
-	0x22, 0xe5, 0x33, 0xf4, 0x56, 0x3b, 0x40, 0x11, 0x35, 0x9a, 0x42, 0x4b, 0x9b, 0x03, 0xe4, 0xef,
-	0x20, 0x6c, 0x30, 0x14, 0x31, 0xc7, 0x24, 0x41, 0x7d, 0x1c, 0x5b, 0x77, 0x87, 0x61, 0x85, 0xd9,
-	0x87, 0x00, 0xdc, 0x18, 0x2d, 0xa6, 0x85, 0xc1, 0x7c, 0x34, 0xf4, 0xbe, 0xd4, 0x19, 0x5b, 0x8d,
-	0x85, 0x0d, 0x1d, 0x7b, 0x07, 0xfa, 0x99, 0x16, 0x11, 0x8e, 0xc0, 0x4e, 0xf8, 0x6f, 0x3d, 0xe1,
-	0x84, 0xe8, 0x63, 0x79, 0xae, 0x42, 0xa7, 0x60, 0x87, 0x30, 0x28, 0x53, 0x6a, 0xb4, 0x69, 0xd5,
-	0x3b, 0xb5, 0xfa, 0x74, 0x2e, 0xb2, 0x4c, 0xc8, 0xd9, 0x69, 0x86, 0x51, 0x58, 0xe9, 0x82, 0x5f,
-	0xba, 0xd0, 0xb7, 0x6f, 0x8a, 0xdd, 0x81, 0xe1, 0xb9, 0xd0, 0xb9, 0x79, 0xc2, 0x53, 0xf4, 0xc6,
-	0xd7, 0x04, 0x1d, 0x2c, 0xe1, 0x7e, 0xd0, 0x39, 0x5f, 0x61, 0xca, 0x8c, 0x54, 0x4d, 0x45, 0x82,
-	0xde, 0x7d, 0x8f, 0xc8, 0x42, 0x4c, 0xb9, 0x48, 0xbc, 0xf3, 0x0e, 0x90, 0x85, 0x92, 0x53, 0x26,
-	0xf2, 0xe4, 0x38, 0xf6, 0xb6, 0x37, 0x18, 0x76, 0x1d, 0xba, 0x22, 0xf3, 0xae, 0x77, 0x45, 0x46,
-	0xd1, 0x67, 0x28, 0x63, 0xd4, 0x3e, 0x9d, 0x3d, 0x62, 0x07, 0xb0, 0x71, 0x2e, 0x24, 0x97, 0x11,
-	0x7a, 0x2f, 0x6f, 0xd5, 0x87, 0xfd, 0xca, 0x0d, 0x58, 0x73, 0x4a, 0x15, 0xfb, 0x14, 0xb6, 0x72,
-	0x6f, 0xc2, 0x51, 0x1c, 0x6b, 0xcc, 0x73, 0xef, 0x69, 0xe3, 0x01, 0xf8, 0x81, 0x70, 0x59, 0x19,
-	0xbc, 0xe8, 0x00, 0xd4, 0x37, 0x44, 0x76, 0x3c, 0x2f, 0xb8, 0x34, 0xc2, 0x2c, 0xac, 0x57, 0xfd,
-	0xb0, 0xc2, 0x74, 0xec, 0x4b, 0x11, 0x9b, 0x79, 0x99, 0xa1, 0x16, 0xd0, 0x31, 0xe6, 0x28, 0x66,
-	0x73, 0x53, 0x9a, 0xe4, 0x10, 0xf1, 0x09, 0xca, 0x99, 0x99, 0x7b, 0x97, 0x3c, 0x22, 0xfe, 0xd2,
-	0xe9, 0x9d, 0x45, 0x1e, 0x51, 0xf4, 0x48, 0x25, 0x4a, 0x97, 0x79, 0x69, 0x01, 0x5d, 0x5e, 0xca,
-	0x0d, 0x6a, 0xc1, 0x93, 0xdc, 0xfb, 0x54, 0x13, 0xec, 0x3e, 0xf4, 0xf1, 0x7b, 0xa3, 0xb9, 0x7f,
-	0xf0, 0x2f, 0x7f, 0x8c, 0x4e, 0x12, 0xfc, 0xd8, 0x81, 0xcd, 0x86, 0x7d, 0xf4, 0xbc, 0xc5, 0x94,
-	0x4b, 0x9f, 0x11, 0xf6, 0xb7, 0x7b, 0x57, 0x3a, 0x7e, 0x52, 0xa4, 0x53, 0xd4, 0xfe, 0x98, 0x0d,
-	0x86, 0x0a, 0x11, 0x8f, 0x6c, 0xed, 0xf3, 0x12, 0x77, 0xe4, 0x36, 0x49, 0x1e, 0x4e, 0xb9, 0x7c,
-	0x66, 0x53, 0xca, 0x9d, 0xbd, 0xc2, 0xc1, 0x1f, 0x1d, 0xd8, 0xf0, 0xd6, 0x53, 0xd1, 0xe5, 0xfe,
-	0xbe, 0xdc, 0x26, 0x4a, 0x48, 0x5e, 0x64, 0x73, 0x25, 0xab, 0x5a, 0x60, 0x01, 0xe9, 0xed, 0x32,
-	0x7a, 0xe1, 0xd7, 0x2d, 0xa1, 0x2d, 0x55, 0x74, 0x63, 0x3d, 0x5f, 0xaa, 0xe8, 0xb6, 0xc6, 0x30,
-	0xc8, 0xb4, 0xba, 0x10, 0x94, 0x47, 0xbe, 0x06, 0x94, 0x98, 0xce, 0x21, 0xc9, 0xf5, 0xa9, 0x2a,
-	0xf4, 0x5c, 0xd5, 0x65, 0xb7, 0x45, 0xb2, 0x6d, 0x58, 0x4b, 0xb8, 0xf1, 0xae, 0xd3, 0x4f, 0x5a,
-	0x27, 0x51, 0x72, 0xe6, 0x2b, 0x80, 0xfd, 0x4d, 0xbb, 0xfa, 0x41, 0x64, 0x0f, 0xa8, 0x52, 0x0e,
-	0xdd, 0xae, 0x3c, 0x0c, 0x7e, 0xed, 0xc0, 0xb0, 0x7a, 0xcb, 0x34, 0xb7, 0x90, 0xa2, 0x2c, 0xb2,
-	0xf6, 0x77, 0xdd, 0x8c, 0xba, 0x2b, 0x9a, 0xd1, 0xda, 0xea, 0x66, 0xd4, 0x5b, 0x6a, 0x46, 0xf7,
-	0x61, 0xdb, 0x55, 0xa4, 0x07, 0x2a, 0x4d, 0x45, 0x9e, 0x53, 0x9f, 0xe8, 0x5b, 0xcd, 0x15, 0xbe,
-	0xd5, 0x92, 0xd6, 0xdb, 0x2d, 0x29, 0x78, 0xd1, 0x85, 0x6b, 0xcd, 0x9a, 0x42, 0xa5, 0x3b, 0xe2,
-	0x5a, 0x0b, 0xd4, 0x8d, 0x0a, 0xd2, 0xa4, 0xd8, 0x3d, 0xb8, 0xee, 0xe1, 0x89, 0x56, 0x71, 0x11,
-	0x19, 0x7f, 0x6f, 0x4b, 0x6c, 0x23, 0xd2, 0xd9, 0x22, 0x2b, 0x8b, 0x4a, 0x93, 0xa2, 0x48, 0xd5,
-	0x03, 0x4d, 0x1b, 0xc7, 0x5c, 0x62, 0xe9, 0x02, 0x7d, 0x27, 0xf3, 0x32, 0x77, 0xd2, 0x36, 0xf9,
-	0xaa, 0x63, 0xb2, 0x00, 0xae, 0x69, 0xe4, 0x11, 0x55, 0xa7, 0x33, 0x91, 0xba, 0x92, 0xdf, 0x0f,
-	0x5b, 0x1c, 0x69, 0xca, 0x75, 0xad, 0x66, 0xe0, 0x34, 0x4d, 0xae, 0x6e, 0x1c, 0x56, 0x31, 0xb4,
-	0x8a, 0x06, 0x43, 0x97, 0x59, 0x76, 0x4c, 0x70, 0xe9, 0x51, 0xf6, 0xc6, 0xef, 0xa0, 0xff, 0x88,
-	0xda, 0x1f, 0x65, 0x01, 0x8f, 0x8c, 0xd2, 0xde, 0x5a, 0x07, 0x6c, 0x5b, 0xb6, 0x5b, 0xf1, 0x66,
-	0x7a, 0xc4, 0xf6, 0xa1, 0x17, 0x73, 0xc3, 0x5f, 0xd9, 0x7f, 0xad, 0x22, 0x78, 0x04, 0x5b, 0x47,
-	0x19, 0xe5, 0x3c, 0x4f, 0xca, 0xef, 0xaf, 0x31, 0x0c, 0xb8, 0xa7, 0xec, 0x6a, 0x83, 0xb0, 0xc2,
-	0xb4, 0xa0, 0x46, 0x9e, 0xd7, 0x0b, 0x3a, 0x14, 0xfc, 0xde, 0x81, 0x5b, 0xa7, 0xbe, 0xad, 0x3c,
-	0xb4, 0x7b, 0x2f, 0xa3, 0xed, 0xf9, 0x8f, 0x45, 0x5f, 0x0c, 0x7c, 0x66, 0x34, 0x28, 0x9b, 0x94,
-	0x7e, 0xea, 0x09, 0x3d, 0xbe, 0xb8, 0x2a, 0x2b, 0x57, 0x78, 0xf6, 0x11, 0xec, 0x54, 0x1f, 0x4e,
-	0x9a, 0x47, 0xcf, 0x84, 0x9c, 0xb5, 0xaa, 0xcc, 0x8a, 0x51, 0xda, 0x45, 0x8c, 0x79, 0xa4, 0x85,
-	0xfb, 0x36, 0x72, 0x35, 0xa0, 0x49, 0xd5, 0x2d, 0xbf, 0xdf, 0x68, 0xf9, 0xc1, 0x7b, 0xc0, 0x6c,
-	0x83, 0x7c, 0x40, 0x25, 0xb1, 0x3a, 0x53, 0xed, 0x42, 0xa7, 0xe5, 0xc2, 0x18, 0x46, 0xb5, 0x09,
-	0x89, 0xb8, 0x40, 0x8d, 0xb1, 0x9f, 0x13, 0x9c, 0xc1, 0x6e, 0x68, 0x6f, 0x7c, 0x95, 0x82, 0x7c,
-	0x57, 0x19, 0x6a, 0x5e, 0xdf, 0x72, 0x85, 0x57, 0xfa, 0xbe, 0x07, 0xbb, 0x4b, 0xf1, 0x16, 0x0f,
-	0x31, 0xe1, 0x8b, 0x7a, 0xdd, 0x7b, 0x70, 0xf7, 0xa5, 0xeb, 0x2e, 0xeb, 0x1e, 0xc3, 0xff, 0x4a,
-	0x85, 0x3b, 0x6c, 0xbd, 0xb1, 0x15, 0xc7, 0x6d, 0x6d, 0xb8, 0xdb, 0xde, 0x70, 0xf0, 0x31, 0xbc,
-	0xd5, 0x5e, 0xf6, 0x35, 0x83, 0x06, 0xef, 0xd7, 0xfb, 0x28, 0x77, 0x7a, 0xa2, 0xd5, 0x34, 0xc1,
-	0x74, 0xe5, 0x94, 0x4f, 0xae, 0x9a, 0xe0, 0xa7, 0xfc, 0xdd, 0x62, 0x5f, 0xac, 0x32, 0xe7, 0x35,
-	0xe7, 0x8f, 0x60, 0xa7, 0x9c, 0x79, 0x5a, 0x44, 0x11, 0x7d, 0x3c, 0x78, 0x3b, 0x77, 0xe1, 0x4e,
-	0x3b, 0xf2, 0xd2, 0x78, 0xb8, 0x3c, 0x7e, 0x82, 0x32, 0x16, 0x72, 0xf6, 0x6f, 0x3c, 0xff, 0xad,
-	0x03, 0xff, 0x5f, 0x3e, 0x4e, 0xf3, 0x29, 0xbe, 0xec, 0xa1, 0x75, 0xde, 0xf8, 0xa1, 0x75, 0xdf,
-	0xe4, 0xa1, 0xad, 0xbd, 0xe2, 0xa1, 0xf5, 0x9a, 0x0f, 0xed, 0x33, 0x18, 0x9d, 0xf0, 0xc5, 0x99,
-	0xb2, 0xaf, 0xad, 0xed, 0xd5, 0x72, 0xcc, 0xce, 0x95, 0x98, 0xc1, 0xe7, 0x70, 0xdb, 0xce, 0x3e,
-	0xb5, 0x4d, 0xec, 0x1f, 0x4f, 0x7f, 0xcc, 0xf5, 0x33, 0x34, 0x6f, 0x3a, 0xfd, 0xf0, 0x1b, 0xb8,
-	0x66, 0xff, 0xc0, 0x9e, 0xa2, 0xbe, 0x10, 0xf6, 0x5b, 0xf3, 0x66, 0xf3, 0x0f, 0x6d, 0xfe, 0x35,
-	0x97, 0x71, 0x82, 0x9a, 0x6d, 0x4f, 0xca, 0xff, 0xc5, 0x7e, 0x64, 0x7c, 0xa3, 0xc1, 0xe4, 0x99,
-	0x92, 0x39, 0x4e, 0xd7, 0x6d, 0x91, 0xfe, 0xe0, 0xaf, 0x00, 0x00, 0x00, 0xff, 0xff, 0x97, 0x8e,
-	0x23, 0xac, 0x63, 0x0f, 0x00, 0x00,
+	// 1503 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x57, 0xdb, 0x6e, 0x1b, 0x45,
+	0x18, 0xae, 0xcf, 0xf6, 0xef, 0x34, 0x49, 0x87, 0x12, 0x6d, 0x2c, 0x14, 0xa2, 0x6d, 0x41, 0x29,
+	0x48, 0xae, 0xe4, 0x16, 0x51, 0x81, 0x40, 0x72, 0xab, 0x56, 0xb5, 0x50, 0x0f, 0xda, 0x04, 0xae,
+	0x90, 0xaa, 0xf1, 0xee, 0xc4, 0x1e, 0x65, 0x3d, 0xbb, 0x9d, 0x9d, 0x0d, 0x32, 0xb7, 0xdc, 0x70,
+	0xc7, 0x03, 0x20, 0x6e, 0x10, 0xbc, 0x06, 0x8f, 0xc2, 0x25, 0x12, 0x6f, 0x81, 0xe6, 0x9f, 0xd9,
+	0x93, 0x0f, 0x09, 0x82, 0x3b, 0x7f, 0xff, 0x7c, 0x73, 0xd8, 0xef, 0x3f, 0x1a, 0xfa, 0x91, 0x0c,
+	0x98, 0x1c, 0xc6, 0x32, 0x52, 0x11, 0xe9, 0x22, 0x48, 0xe4, 0xe5, 0xe0, 0xe6, 0x82, 0x25, 0x09,
+	0x9d, 0x31, 0xb3, 0x30, 0x38, 0x9c, 0x45, 0xd1, 0x2c, 0x64, 0xf7, 0x11, 0x4d, 0xd3, 0xf3, 0xfb,
+	0x54, 0x2c, 0xcd, 0x92, 0xfb, 0x10, 0xf6, 0x3d, 0x96, 0xc4, 0x91, 0x48, 0xd8, 0x4b, 0xf6, 0xdd,
+	0x2b, 0x7d, 0x00, 0x39, 0x86, 0xbe, 0x4f, 0xc3, 0x70, 0x4a, 0xfd, 0x8b, 0xaf, 0x65, 0xe8, 0xd4,
+	0x8e, 0x6b, 0x27, 0x3d, 0xaf, 0x6c, 0x72, 0x7f, 0xac, 0xc1, 0x9e, 0xc7, 0xde, 0xa6, 0x2c, 0x51,
+	0xf9, 0xae, 0x0f, 0xa0, 0x35, 0x4d, 0x97, 0x4c, 0x22, 0xbf, 0x3f, 0xda, 0x1b, 0x66, 0xaf, 0x19,
+	0x3e, 0xd6, 0x66, 0xcf, 0xac, 0x92, 0x13, 0x68, 0xd3, 0x45, 0x94, 0x0a, 0xe5, 0xd4, 0x91, 0xb7,
+	0x5f, 0xf0, 0xc6, 0x68, 0xf7, 0xec, 0x3a, 0xb9, 0x0b, 0x2d, 0xae, 0xd8, 0x22, 0x71, 0x1a, 0xc7,
+	0x8d, 0x93, 0xfe, 0x68, 0xb7, 0x20, 0x4e, 0x14, 0x5b, 0x78, 0x66, 0xd1, 0xfd, 0xa9, 0x0e, 0x6d,
+	0xb3, 0x91, 0xdc, 0x86, 0x96, 0x8a, 0x14, 0x35, 0x2f, 0x6e, 0x7a, 0x06, 0x10, 0x07, 0x3a, 0x31,
+	0x5d, 0xd2, 0x69, 0xc8, 0xf0, 0xc6, 0xa6, 0x97, 0x41, 0x32, 0x80, 0x6e, 0xc0, 0x13, 0x1f, 0x1f,
+	0xd3, 0xc0, 0xa5, 0x1c, 0x93, 0xbb, 0x70, 0x33, 0x99, 0xf3, 0x78, 0xc1, 0x84, 0x3a, 0xc3, 0x33,
+	0x9b, 0x48, 0xa8, 0x1a, 0xf5, 0x09, 0x7e, 0x2a, 0x25, 0x13, 0xfe, 0xd2, 0x69, 0xa1, 0x4c, 0x39,
+	0xd6, 0x27, 0xc4, 0x74, 0xa9, 0xb9, 0x2f, 0x98, 0x9a, 0x47, 0x81, 0xd3, 0x46, 0x42, 0xd5, 0x58,
+	0x62, 0xbd, 0x8a, 0x15, 0x8f, 0x84, 0xd3, 0xa9, 0xb0, 0x8c, 0x91, 0x7c, 0x0c, 0x9d, 0xcb, 0x28,
+	0xf5, 0xe7, 0x4c, 0x3a, 0x5d, 0x54, 0xed, 0x56, 0x21, 0xc6, 0x37, 0x66, 0xc1, 0xcb, 0x18, 0x2e,
+	0x83, 0x8e, 0xb5, 0x91, 0x83, 0x5c, 0x6c, 0x23, 0x49, 0x26, 0x2d, 0x81, 0xa6, 0x1f, 0x05, 0x46,
+	0x90, 0x9e, 0x87, 0xbf, 0xc9, 0x10, 0x3a, 0x01, 0x53, 0x94, 0x87, 0x09, 0x8a, 0xd1, 0x1f, 0xdd,
+	0x1e, 0x9a, 0xb0, 0x19, 0x66, 0x61, 0x33, 0x1c, 0x8b, 0xa5, 0x97, 0x91, 0xdc, 0x3f, 0x1b, 0xd0,
+	0xd4, 0x8e, 0xd0, 0xe1, 0xc2, 0xc5, 0x25, 0x13, 0x2a, 0x92, 0xcb, 0x49, 0x90, 0x85, 0x4b, 0xc9,
+	0x84, 0x8e, 0xe1, 0x2a, 0xcc, 0xee, 0x33, 0x40, 0x5b, 0xa7, 0x92, 0x8a, 0x00, 0xaf, 0xeb, 0x79,
+	0x06, 0x90, 0x23, 0x00, 0x9f, 0x2a, 0x36, 0x8b, 0x24, 0x67, 0x09, 0xaa, 0xde, 0xf3, 0x4a, 0x16,
+	0xf2, 0x1e, 0xf4, 0x66, 0x29, 0x95, 0x54, 0x28, 0xc6, 0xac, 0xe6, 0x85, 0x41, 0x9f, 0xc9, 0x17,
+	0x74, 0xc6, 0xac, 0xd8, 0x06, 0xe8, 0x33, 0x25, 0x53, 0xa9, 0x14, 0x18, 0x05, 0x5a, 0xe1, 0xae,
+	0x57, 0xb2, 0x68, 0x37, 0x26, 0x2c, 0x0c, 0x99, 0x9c, 0x04, 0xa8, 0x6f, 0xcf, 0xcb, 0xb1, 0x5e,
+	0x7b, 0x9b, 0x52, 0xa1, 0xb8, 0x5a, 0x3a, 0xbd, 0xe3, 0xda, 0x49, 0xcb, 0xcb, 0x31, 0xf9, 0x12,
+	0x80, 0x2a, 0x25, 0xf9, 0x34, 0x55, 0x2c, 0x71, 0x00, 0xc3, 0xf4, 0xa8, 0x1a, 0xa6, 0xc3, 0x71,
+	0x4e, 0x78, 0x2a, 0x94, 0x5c, 0x7a, 0xa5, 0x1d, 0xe4, 0x1e, 0xb4, 0x62, 0xc9, 0x7d, 0xe6, 0xf4,
+	0x51, 0xf0, 0x77, 0x8a, 0xad, 0xaf, 0xb5, 0x79, 0x22, 0xce, 0x23, 0xcf, 0x30, 0xc8, 0x08, 0xba,
+	0x59, 0xe8, 0x39, 0x3b, 0xc8, 0x3e, 0x28, 0xd8, 0xa7, 0x73, 0x1e, 0xc7, 0x5c, 0xcc, 0x4e, 0x63,
+	0xe6, 0x7b, 0x39, 0x6f, 0xf0, 0x05, 0xec, 0xad, 0xdc, 0x4e, 0xf6, 0xa1, 0x71, 0xc1, 0x96, 0xd6,
+	0x47, 0xfa, 0xa7, 0x56, 0xec, 0x92, 0x86, 0x69, 0xee, 0x1b, 0x04, 0x9f, 0xd5, 0x1f, 0xd5, 0xdc,
+	0xdf, 0xeb, 0xd0, 0xc2, 0xd4, 0xd5, 0x9a, 0x9f, 0x73, 0x99, 0xa8, 0x97, 0x74, 0xc1, 0xec, 0xde,
+	0xc2, 0xa0, 0x15, 0x0a, 0xa9, 0x5d, 0x34, 0x87, 0xe4, 0x58, 0x07, 0xe0, 0x22, 0x9a, 0xf2, 0x90,
+	0x59, 0x27, 0x5b, 0xa4, 0x6f, 0x65, 0x0b, 0xca, 0x43, 0xeb, 0x60, 0x03, 0xb4, 0x9f, 0x04, 0xd5,
+	0x01, 0x4f, 0xc3, 0x49, 0x60, 0x9d, 0x5b, 0xb2, 0x90, 0x5d, 0xa8, 0xf3, 0xd8, 0xba, 0xb6, 0xce,
+	0x63, 0x7d, 0xfa, 0x8c, 0x89, 0x80, 0x49, 0x9b, 0x35, 0x16, 0x91, 0xfb, 0xd0, 0x39, 0xe7, 0x82,
+	0x0a, 0x9f, 0xa1, 0xcb, 0xfa, 0xa3, 0x77, 0x0b, 0xad, 0x9e, 0x99, 0x05, 0xd4, 0x36, 0x63, 0x91,
+	0xcf, 0x61, 0x2f, 0xb1, 0x1a, 0x8e, 0x83, 0x40, 0xb2, 0x44, 0x7b, 0x73, 0x25, 0xcf, 0xec, 0x82,
+	0xb7, 0xca, 0x74, 0x7f, 0xa8, 0x41, 0xbf, 0x74, 0xaa, 0x4e, 0x2e, 0x3e, 0xa5, 0xc2, 0x0a, 0x85,
+	0xbf, 0x4d, 0x54, 0xcb, 0xe0, 0x65, 0xba, 0x98, 0x32, 0x69, 0x55, 0x2a, 0x59, 0x74, 0x19, 0xa0,
+	0x3e, 0x56, 0x1e, 0x4b, 0x31, 0x72, 0x55, 0x8d, 0x5a, 0xe9, 0x29, 0x15, 0x17, 0xa8, 0xb4, 0x11,
+	0x2e, 0xc7, 0xee, 0xdf, 0x35, 0xe8, 0xd8, 0x17, 0xe9, 0x92, 0x47, 0xed, 0x67, 0x98, 0x47, 0x64,
+	0x50, 0xeb, 0x1e, 0xcf, 0x23, 0x91, 0x7b, 0x1b, 0x81, 0xe6, 0xe3, 0x35, 0x72, 0x69, 0xef, 0xcd,
+	0x20, 0x16, 0x0a, 0x1d, 0xf9, 0x4d, 0x5b, 0x28, 0x74, 0xd4, 0x0f, 0xa0, 0x1b, 0xcb, 0xe8, 0x92,
+	0x6b, 0x79, 0x6d, 0xd1, 0xcb, 0xb0, 0xfe, 0x0e, 0xc1, 0xf8, 0x6c, 0x3e, 0x8d, 0x52, 0x39, 0x8f,
+	0x8a, 0xa2, 0x57, 0x31, 0xea, 0x28, 0x0c, 0xa9, 0xb2, 0x4e, 0xd3, 0x3f, 0xf5, 0x3d, 0x61, 0x24,
+	0x66, 0x36, 0xfb, 0xf0, 0xb7, 0x7e, 0xd5, 0xf7, 0x3c, 0x7e, 0xa2, 0xeb, 0x54, 0xcf, 0xbc, 0xca,
+	0x42, 0xf7, 0x97, 0x1a, 0xf4, 0xf2, 0x0c, 0xd1, 0x7b, 0x53, 0xc1, 0xb3, 0x12, 0x87, 0xbf, 0xff,
+	0x63, 0xd1, 0xff, 0x08, 0xf6, 0x4d, 0xde, 0x3f, 0x89, 0x16, 0x0b, 0x9e, 0x24, 0xba, 0x1e, 0x9b,
+	0xba, 0xbf, 0x66, 0xbf, 0xaa, 0xf4, 0xbb, 0x7f, 0xd5, 0x61, 0xa7, 0x9c, 0x93, 0xa6, 0xa3, 0x4a,
+	0xc9, 0x99, 0x2c, 0xa5, 0x50, 0xd9, 0x44, 0x3e, 0x84, 0x5d, 0x0b, 0x5f, 0xcb, 0x28, 0x48, 0x7d,
+	0x65, 0x3d, 0xb4, 0x62, 0x2d, 0x9d, 0x74, 0xb6, 0x8c, 0xb3, 0xac, 0x2a, 0x9b, 0xf4, 0x49, 0x79,
+	0x84, 0x9a, 0xda, 0x6f, 0x3e, 0x61, 0xc5, 0xaa, 0x5d, 0x65, 0x3b, 0x86, 0xa5, 0xb5, 0x4c, 0x87,
+	0xab, 0x18, 0x2b, 0x9f, 0xd9, 0x5e, 0xe9, 0x70, 0x2e, 0xec, 0x48, 0x46, 0x7d, 0x9d, 0x9e, 0x67,
+	0x7c, 0x61, 0x0a, 0x6b, 0xcb, 0xab, 0xd8, 0x34, 0x27, 0xbb, 0x17, 0x39, 0x5d, 0xc3, 0x29, 0xdb,
+	0x8a, 0xf2, 0x8c, 0x0c, 0x53, 0x64, 0x4b, 0x16, 0xed, 0xcc, 0xac, 0x33, 0x81, 0x09, 0x84, 0xac,
+	0x07, 0x2d, 0xa1, 0xf5, 0x54, 0xb7, 0x19, 0x1d, 0xd7, 0xd4, 0x57, 0x91, 0xb4, 0xd2, 0x1a, 0x80,
+	0xed, 0x0f, 0x9f, 0x62, 0xc5, 0xb4, 0x48, 0x1f, 0x88, 0xc3, 0xc3, 0x24, 0xc0, 0xd9, 0xa2, 0xe7,
+	0x65, 0x90, 0x9c, 0x40, 0x33, 0xa0, 0x8a, 0xa2, 0x64, 0xdb, 0x3a, 0x20, 0x32, 0xdc, 0x4f, 0xe0,
+	0xd0, 0x4e, 0x40, 0x58, 0x23, 0x9f, 0x71, 0x11, 0x8c, 0xc3, 0x10, 0x47, 0x21, 0x4c, 0x40, 0x9c,
+	0x76, 0xf2, 0x76, 0x98, 0x41, 0xf7, 0xb7, 0x1a, 0x0c, 0xb2, 0x81, 0x6b, 0xf3, 0x46, 0x2c, 0x38,
+	0xc5, 0x46, 0x0b, 0x75, 0x0d, 0xf6, 0x25, 0xa3, 0x8a, 0x05, 0xe3, 0x2c, 0x36, 0x0a, 0x43, 0x69,
+	0xaa, 0x6a, 0x5c, 0x3f, 0x55, 0x4d, 0x70, 0xaa, 0x6a, 0x6e, 0x9e, 0xaa, 0x70, 0xd1, 0x7d, 0xa0,
+	0xbf, 0xce, 0xbc, 0xf2, 0x14, 0x23, 0x1f, 0xdf, 0x37, 0x36, 0xf2, 0x1d, 0x40, 0x5b, 0xb2, 0x24,
+	0x0d, 0x4d, 0xca, 0x75, 0x3d, 0x8b, 0xdc, 0x9f, 0xeb, 0xe0, 0x58, 0x4d, 0xd6, 0x37, 0x6d, 0xff,
+	0xb2, 0x72, 0xf7, 0xad, 0xaf, 0x74, 0xdf, 0x23, 0x00, 0x1b, 0x4c, 0x45, 0xb4, 0x97, 0x2c, 0x25,
+	0x0f, 0x37, 0x2b, 0x1e, 0x7e, 0x0a, 0x9d, 0x24, 0xf5, 0x7d, 0x5d, 0x01, 0x5b, 0x28, 0xc8, 0xbd,
+	0xe2, 0x3b, 0xb7, 0x3d, 0xf1, 0xd4, 0x6c, 0x78, 0x7e, 0xc3, 0xcb, 0xf6, 0x92, 0xc7, 0xd0, 0x3e,
+	0xa7, 0x3c, 0x64, 0xa6, 0x8e, 0xf5, 0x47, 0x27, 0xd7, 0x9f, 0xf2, 0x0c, 0xf9, 0xcf, 0x6f, 0x78,
+	0x76, 0xe7, 0xe3, 0xb6, 0x09, 0x29, 0x97, 0xc3, 0xfb, 0xd7, 0xdc, 0xac, 0xbf, 0x56, 0x49, 0xea,
+	0x5f, 0x70, 0x31, 0xcb, 0x65, 0x2a, 0x59, 0xb2, 0xd4, 0x2e, 0xcd, 0x94, 0xb6, 0x48, 0x54, 0xad,
+	0xee, 0x23, 0x38, 0xba, 0xfa, 0x79, 0xc6, 0x85, 0x34, 0x89, 0xb2, 0x2e, 0x65, 0x91, 0xfb, 0x69,
+	0x1e, 0xd5, 0x66, 0xa7, 0x8d, 0x4e, 0x0c, 0x8a, 0x8a, 0xa3, 0x6a, 0x55, 0x47, 0xb9, 0xbf, 0x36,
+	0x8b, 0xb8, 0xde, 0xb0, 0x75, 0xbb, 0xf7, 0x0f, 0xa0, 0xad, 0x93, 0x2f, 0xf7, 0xbd, 0x45, 0xab,
+	0x53, 0x65, 0xe3, 0x8a, 0xa9, 0xb2, 0xb9, 0x71, 0xaa, 0x6c, 0x95, 0xa7, 0xca, 0xca, 0xd4, 0xd8,
+	0x5e, 0x9d, 0x1a, 0xab, 0x33, 0x67, 0x67, 0x6d, 0xe6, 0xcc, 0xa7, 0xca, 0xee, 0xf6, 0xa9, 0xd2,
+	0xb4, 0xa8, 0x95, 0xa9, 0x32, 0x9f, 0x1c, 0x4d, 0xdd, 0x2a, 0x26, 0xc7, 0x4a, 0x36, 0xf7, 0x57,
+	0xb3, 0xf9, 0xac, 0x32, 0x57, 0xee, 0x60, 0xa2, 0x3e, 0x2c, 0x87, 0xde, 0x36, 0x9d, 0xaf, 0x9c,
+	0x36, 0x0f, 0xa0, 0x9d, 0x28, 0xaa, 0xd2, 0xc4, 0xb9, 0x69, 0x94, 0x36, 0xa8, 0x98, 0x42, 0x77,
+	0xaf, 0x9b, 0x42, 0xff, 0xe7, 0x44, 0x39, 0xfa, 0xa3, 0x01, 0x3b, 0x18, 0x8b, 0xa7, 0x4c, 0x5e,
+	0xea, 0xa9, 0xf6, 0x2b, 0xb8, 0x8d, 0xd8, 0xc6, 0x5c, 0xf2, 0x9c, 0x8a, 0x20, 0x64, 0x92, 0x38,
+	0xc5, 0x1b, 0x5e, 0x98, 0x7f, 0xb2, 0x96, 0x31, 0x38, 0xdc, 0xb0, 0x62, 0xd4, 0x20, 0x63, 0xe8,
+	0xe6, 0x7f, 0x46, 0x0f, 0xd7, 0x12, 0x35, 0x5b, 0x1a, 0x0c, 0xd6, 0x85, 0xcc, 0xb7, 0xbd, 0x01,
+	0xb2, 0x21, 0x78, 0xef, 0x6c, 0xc9, 0xfa, 0x32, 0x69, 0x70, 0xf7, 0xdf, 0xf8, 0x87, 0x7c, 0x0b,
+	0xb7, 0xd6, 0x4b, 0xa3, 0x7b, 0x7d, 0x55, 0x19, 0xdc, 0xd9, 0x76, 0x7c, 0xf9, 0xa0, 0x37, 0x40,
+	0x36, 0xf4, 0x94, 0xf5, 0xe7, 0xaf, 0x93, 0x36, 0x3d, 0x7f, 0x9d, 0x35, 0x6d, 0x63, 0x23, 0x7c,
+	0xf0, 0x4f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xe3, 0x22, 0x2c, 0x95, 0x77, 0x10, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -1900,7 +1567,11 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type OrderServiceClient interface {
-	OrderRequestsHandler(ctx context.Context, in *general.Request, opts ...grpc.CallOption) (*general.Response, error)
+	OrderRequestsHandler(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (*MessageResponse, error)
+	NewOrder(ctx context.Context, in *RequestNewOrder, opts ...grpc.CallOption) (*ResponseNewOrder, error)
+	SellerFindAllItems(ctx context.Context, in *RequestSellerFindAllItems, opts ...grpc.CallOption) (*ResponseSellerFindAllItems, error)
+	SellerOrderAction(ctx context.Context, in *RequestSellerOrderAction, opts ...grpc.CallOption) (*ResponseSellerOrderAction, error)
+	BuyerFindAllOrders(ctx context.Context, in *RequestBuyerFindAllOrders, opts ...grpc.CallOption) (*ResponseBuyerFindAllOrders, error)
 }
 
 type orderServiceClient struct {
@@ -1911,9 +1582,45 @@ func NewOrderServiceClient(cc *grpc.ClientConn) OrderServiceClient {
 	return &orderServiceClient{cc}
 }
 
-func (c *orderServiceClient) OrderRequestsHandler(ctx context.Context, in *general.Request, opts ...grpc.CallOption) (*general.Response, error) {
-	out := new(general.Response)
+func (c *orderServiceClient) OrderRequestsHandler(ctx context.Context, in *MessageRequest, opts ...grpc.CallOption) (*MessageResponse, error) {
+	out := new(MessageResponse)
 	err := c.cc.Invoke(ctx, "/ordersrv.OrderService/OrderRequestsHandler", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *orderServiceClient) NewOrder(ctx context.Context, in *RequestNewOrder, opts ...grpc.CallOption) (*ResponseNewOrder, error) {
+	out := new(ResponseNewOrder)
+	err := c.cc.Invoke(ctx, "/ordersrv.OrderService/NewOrder", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *orderServiceClient) SellerFindAllItems(ctx context.Context, in *RequestSellerFindAllItems, opts ...grpc.CallOption) (*ResponseSellerFindAllItems, error) {
+	out := new(ResponseSellerFindAllItems)
+	err := c.cc.Invoke(ctx, "/ordersrv.OrderService/SellerFindAllItems", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *orderServiceClient) SellerOrderAction(ctx context.Context, in *RequestSellerOrderAction, opts ...grpc.CallOption) (*ResponseSellerOrderAction, error) {
+	out := new(ResponseSellerOrderAction)
+	err := c.cc.Invoke(ctx, "/ordersrv.OrderService/SellerOrderAction", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *orderServiceClient) BuyerFindAllOrders(ctx context.Context, in *RequestBuyerFindAllOrders, opts ...grpc.CallOption) (*ResponseBuyerFindAllOrders, error) {
+	out := new(ResponseBuyerFindAllOrders)
+	err := c.cc.Invoke(ctx, "/ordersrv.OrderService/BuyerFindAllOrders", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1922,15 +1629,31 @@ func (c *orderServiceClient) OrderRequestsHandler(ctx context.Context, in *gener
 
 // OrderServiceServer is the server API for OrderService service.
 type OrderServiceServer interface {
-	OrderRequestsHandler(context.Context, *general.Request) (*general.Response, error)
+	OrderRequestsHandler(context.Context, *MessageRequest) (*MessageResponse, error)
+	NewOrder(context.Context, *RequestNewOrder) (*ResponseNewOrder, error)
+	SellerFindAllItems(context.Context, *RequestSellerFindAllItems) (*ResponseSellerFindAllItems, error)
+	SellerOrderAction(context.Context, *RequestSellerOrderAction) (*ResponseSellerOrderAction, error)
+	BuyerFindAllOrders(context.Context, *RequestBuyerFindAllOrders) (*ResponseBuyerFindAllOrders, error)
 }
 
 // UnimplementedOrderServiceServer can be embedded to have forward compatible implementations.
 type UnimplementedOrderServiceServer struct {
 }
 
-func (*UnimplementedOrderServiceServer) OrderRequestsHandler(ctx context.Context, req *general.Request) (*general.Response, error) {
+func (*UnimplementedOrderServiceServer) OrderRequestsHandler(ctx context.Context, req *MessageRequest) (*MessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method OrderRequestsHandler not implemented")
+}
+func (*UnimplementedOrderServiceServer) NewOrder(ctx context.Context, req *RequestNewOrder) (*ResponseNewOrder, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NewOrder not implemented")
+}
+func (*UnimplementedOrderServiceServer) SellerFindAllItems(ctx context.Context, req *RequestSellerFindAllItems) (*ResponseSellerFindAllItems, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SellerFindAllItems not implemented")
+}
+func (*UnimplementedOrderServiceServer) SellerOrderAction(ctx context.Context, req *RequestSellerOrderAction) (*ResponseSellerOrderAction, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SellerOrderAction not implemented")
+}
+func (*UnimplementedOrderServiceServer) BuyerFindAllOrders(ctx context.Context, req *RequestBuyerFindAllOrders) (*ResponseBuyerFindAllOrders, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BuyerFindAllOrders not implemented")
 }
 
 func RegisterOrderServiceServer(s *grpc.Server, srv OrderServiceServer) {
@@ -1938,7 +1661,7 @@ func RegisterOrderServiceServer(s *grpc.Server, srv OrderServiceServer) {
 }
 
 func _OrderService_OrderRequestsHandler_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(general.Request)
+	in := new(MessageRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -1950,7 +1673,79 @@ func _OrderService_OrderRequestsHandler_Handler(srv interface{}, ctx context.Con
 		FullMethod: "/ordersrv.OrderService/OrderRequestsHandler",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrderServiceServer).OrderRequestsHandler(ctx, req.(*general.Request))
+		return srv.(OrderServiceServer).OrderRequestsHandler(ctx, req.(*MessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OrderService_NewOrder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestNewOrder)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrderServiceServer).NewOrder(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ordersrv.OrderService/NewOrder",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrderServiceServer).NewOrder(ctx, req.(*RequestNewOrder))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OrderService_SellerFindAllItems_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestSellerFindAllItems)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrderServiceServer).SellerFindAllItems(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ordersrv.OrderService/SellerFindAllItems",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrderServiceServer).SellerFindAllItems(ctx, req.(*RequestSellerFindAllItems))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OrderService_SellerOrderAction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestSellerOrderAction)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrderServiceServer).SellerOrderAction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ordersrv.OrderService/SellerOrderAction",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrderServiceServer).SellerOrderAction(ctx, req.(*RequestSellerOrderAction))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _OrderService_BuyerFindAllOrders_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RequestBuyerFindAllOrders)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(OrderServiceServer).BuyerFindAllOrders(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/ordersrv.OrderService/BuyerFindAllOrders",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(OrderServiceServer).BuyerFindAllOrders(ctx, req.(*RequestBuyerFindAllOrders))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1962,6 +1757,22 @@ var _OrderService_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "OrderRequestsHandler",
 			Handler:    _OrderService_OrderRequestsHandler_Handler,
+		},
+		{
+			MethodName: "NewOrder",
+			Handler:    _OrderService_NewOrder_Handler,
+		},
+		{
+			MethodName: "SellerFindAllItems",
+			Handler:    _OrderService_SellerFindAllItems_Handler,
+		},
+		{
+			MethodName: "SellerOrderAction",
+			Handler:    _OrderService_SellerOrderAction_Handler,
+		},
+		{
+			MethodName: "BuyerFindAllOrders",
+			Handler:    _OrderService_BuyerFindAllOrders_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

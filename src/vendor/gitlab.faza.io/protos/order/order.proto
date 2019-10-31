@@ -2,34 +2,24 @@ syntax = "proto3";
 
 package ordersrv;
 
-import "general/message.proto";
+import "message.proto";
 import "google/protobuf/any.proto";
 
 service OrderService {
-    rpc OrderRequestsHandler(message.Request) returns (message.Response);
+    rpc OrderRequestsHandler(MessageRequest) returns (MessageResponse);
 
-//    rpc NewOrder (OrderPaymentRequest) returns (OrderResponse);
-//    rpc SellerApprovalPending (ApprovalRequest) returns (Response);
-//    rpc ShipmentDetail (ShipmentDetailRequest) returns (Response);
-//    rpc BuyerCancel (BuyerCancelRequest) returns (Response);
-//    rpc ShipmentDelivered (ShipmentDeliveredRequest) returns (Response);
-//    rpc ShipmentDeliveryDelayed (ShipmentDeliveryDelayedRequest) returns (Response);
-//    rpc ReturnShipmentDeliveryDelayed (ReturnShipmentDeliveryDelayedRequest) returns (Response);
-//    rpc ShipmentCanceled (ShipmentCanceledRequest) returns (Response);
-//    rpc ReturnShipmentCanceled (ReturnShipmentCanceledRequest) returns (Response);
-//    rpc ShipmentDeliveryProblem (ShipmentDeliveryProblemRequest) returns (Response);
-//    rpc ReturnShipmentDeliveryProblem (ReturnShipmentDeliveryProblemRequest) returns (Response);
-//    rpc ShipmentSuccess (ShipmentSuccessRequest) returns (Response);
-//    rpc ReturnShipmentPending (ReturnShipmentPendingRequest) returns (Response);
-//    rpc ReturnShipmentDetail (ReturnShipmentDetailRequest) returns (Response);
-//    rpc ReturnShipmentDelivered (ReturnShipmentDeliveredRequest) returns (Response);
-//    rpc ReturnShipmentSuccess (ReturnShipmentSuccessRequest) returns (Response);
-//    rpc PayToBuyerSuccess (PayToBuyerSuccessRequest) returns (Response);
-//    rpc PayToSellerSuccess (PayToSellerSuccessRequest) returns (Response);
-//    rpc PayToMarketSuccess (PayToMarketSuccessRequest) returns (Response);
+    rpc NewOrder(RequestNewOrder) returns (ResponseNewOrder);
+    rpc SellerFindAllItems(RequestSellerFindAllItems) returns (ResponseSellerFindAllItems);
+    rpc SellerOrderAction(RequestSellerOrderAction) returns (ResponseSellerOrderAction);
+    rpc BuyerFindAllOrders(RequestBuyerFindAllOrders) returns (ResponseBuyerFindAllOrders);
+
 }
 
-message NewOrderRequest {
+message ResponseNewOrder {
+    string callbackUrl  = 1;
+}
+
+message RequestNewOrder {
     Buyer buyer = 1;
     Amount amount = 2;
     repeated Item items = 3;
@@ -57,13 +47,14 @@ message Item {
     string title = 2;
     string brand = 3;
     string categories = 4;
-    string warranty = 5;
+    string guarantee = 5;
     string image = 6;
     bool returnable = 7;
     string sellerId = 8;
-    Attributes attributes = 9;
-    PriceInfo price = 10;
-    ShippingSpec shipment = 11;
+    int32 quantity = 9;
+    map<string, string> attributes = 10;
+    PriceInfo price = 11;
+    ShippingSpec shipment = 12;
 }
 
 message Buyer {
@@ -76,17 +67,6 @@ message Buyer {
     string gender = 7;
     FinanceInfo finance = 9;
     Address shippingAddress = 10;
-}
-
-message Attributes {
-    int32 quantity = 1;
-    string width = 2;
-    string height = 3;
-    string length = 4;
-    string weight = 5;
-    string color = 6;
-    string materials = 7;
-    google.protobuf.Any extra = 8;
 }
 
 message FinanceInfo {
@@ -110,11 +90,10 @@ message Address {
 
 message PriceInfo {
     uint64 unit = 1;
-    uint64 total = 2;
-    uint64 payable = 3;
-    uint64 discount = 4;
-    uint64 sellerCommission = 5;
-    string currency = 6;
+    uint64 payable = 2;
+    uint64 discount = 3;
+    uint64 sellerCommission = 4;
+    string currency = 5;
 }
 
 message ShippingSpec {
@@ -133,110 +112,62 @@ message ShippingSpec {
 message Event {
     string actor = 1;
     string action = 2;
-    google.protobuf.Any data = 3;
+    repeated string itemsId = 3;
+    google.protobuf.Any data = 4;
 }
 
-// SellerApprovalPending Start
-message ApprovalRequest {
-    bool approval = 1;
-    string reason = 2;
+message RequestBuyerFindAllOrders {
+    string buyerId  = 1;
 }
 
-//message Response {
-//    string orderNumber = 1;
-//    string status = 2;
-//    string message = 3;
-//}
-// SellerApprovalPending End
-
-message ShipmentDetailRequest {
-    string orderNumber = 1;
-    string shipmentProvider = 2;
-    string shipmentTrackingNumber = 3;
-    string description = 4;
-    string image = 5;
+message ResponseBuyerFindAllOrders {
+    string  orderId     = 1;
+    string  createdAt   = 2;
+    Amount  amount      = 3;
+    repeated Item Items = 4;
 }
 
-message BuyerCancelRequest {
-    string reason = 1;
+message ResponseSellerOrderAction {
+    bool result = 1;
 }
 
-message ShipmentDeliveredRequest {
-//    string orderNumber = 1;
+message RequestSellerOrderAction {
+    string orderId      = 1;
+    string sellerId     = 2;
+    string actionType   = 3;
+    string action       = 4;
+    oneof data {
+        RequestSellerOrderActionSuccess success = 5;
+        RequestSellerOrderActionFailed failed = 6;
+    }
 }
 
-message ReturnShipmentDeliveredRequest {
-    string operator = 1;
-    string reason = 2;
+message RequestSellerOrderActionSuccess {
+    string trackingId   = 1;
+    string shipmentMethod = 2;
 }
 
-message ShipmentDeliveryDelayedRequest {
-//    string orderNumber = 1;
+message RequestSellerOrderActionFailed {
+    string reason   = 1;
 }
 
-message ReturnShipmentDeliveryDelayedRequest {
-//    string orderNumber = 1;
+message RequestSellerFindAllItems {
+    string sellerId = 1;
 }
 
-message ShipmentCanceledRequest {
-//    string orderNumber = 1;
-    string reason = 1;
-    string operator = 2;
-}
-
-message ReturnShipmentCanceledRequest {
-//    string orderNumber = 1;
-    string reason = 1;
-}
-
-message ShipmentDeliveryProblem {
-//    string orderNumber = 1;
-    string reason = 1;
-}
-
-message ShipmentDeliveryProblemRequest {
-//    string orderNumber = 1;
-    string reason = 1;
-}
-
-message ReturnShipmentDeliveryProblemRequest {
-//    string orderNumber = 1;
-    string reason = 1;
-}
-
-message ShipmentSuccessRequest {
-//    string orderNumber = 1;
-}
-
-message ReturnShipmentSuccessRequest {
-//    string orderNumber = 1;
-}
-
-message ReturnShipmentPendingRequest {
-//    string orderNumber = 1;
-    string reason = 1;
-    string operator = 2;
-}
-
-message ReturnShipmentDetailRequest {
-//    string orderNumber = 1;
-    string shipmentProvider = 1;
-    string shipmentTrackingNumber = 2;
-    string description = 3;
-    string image = 4;
-}
-
-message PayToBuyerSuccessRequest {
-//    string orderNumber = 1;
-    string description = 1;
-}
-
-message PayToSellerSuccessRequest {
-//    string orderNumber = 1;
-    string description = 1;
-}
-
-message PayToMarketSuccessRequest {
-//    string orderNumber = 1;
-    string description = 1;
+message ResponseSellerFindAllItems {
+    string  orderId     = 1;
+    string  itemId      = 2;
+    string  inventoryId = 3;
+    string  title       = 4;
+    string  brand       = 5;
+    string  guarantee   = 6;
+    string  categories  = 7;
+    string  image       = 8;
+    string  returnable  = 9;
+    string  quantity    = 10;
+    string  createdAt   = 11;
+    map<string, string> attributes = 12;
+    string  status      = 13;
+    PriceInfo  price    = 14;
 }

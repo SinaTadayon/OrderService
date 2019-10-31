@@ -8,6 +8,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/converter"
 	"gitlab.faza.io/order-project/order-service/domain/models/repository/order"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
+	"gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	"gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	"gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	"gitlab.faza.io/order-project/order-service/server/grpc"
@@ -105,6 +106,7 @@ func init() {
 	global.Singletons.StockService = stock_service.NewStockService(App.Config.StockService.Address, App.Config.StockService.Port)
 	global.Singletons.PaymentService = payment_service.NewPaymentService(App.Config.PaymentGatewayService.Address,
 		App.Config.PaymentGatewayService.Port)
+	global.Singletons.NotifyService = notify_service.NewNotificationService()
 	//brokers = strings.Split(App.config.Kafka.Brokers, ",")
 	//if App.config.App.Port == "" {
 	//	logger.Err("grpc PORT env not defined")

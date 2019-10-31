@@ -16,12 +16,12 @@ func NewConverter() IConverter {
 	return &iConverterImpl{}
 }
 
-// Get *ordersrv.NewOrderRequest then map to *entities.Order
+// Get *ordersrv.RequestNewOrder then map to *entities.Order
 func (iconv iConverterImpl) Map(in interface{}, out interface{}) (interface{}, error) {
 
 	var ok bool
-	var newOrderDto *ordersrv.NewOrderRequest
-	newOrderDto ,ok = in.(*ordersrv.NewOrderRequest)
+	var newOrderDto *ordersrv.RequestNewOrder
+	newOrderDto ,ok = in.(*ordersrv.RequestNewOrder)
 	if ok == false {
 		return nil, errors.New("mapping from input type not supported")
 	}
@@ -34,12 +34,12 @@ func (iconv iConverterImpl) Map(in interface{}, out interface{}) (interface{}, e
 	return convert(newOrderDto)
 }
 
-func convert(newOrderDto *ordersrv.NewOrderRequest) (*entities.Order, error) {
+func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 
 	var order entities.Order
 
 	if newOrderDto.Buyer == nil {
-		return nil, errors.New("buyer of newOrderRequest invalid")
+		return nil, errors.New("buyer of RequestNewOrder invalid")
 	}
 
 	order.BuyerInfo.FirstName = newOrderDto.Buyer.FirstName
@@ -51,7 +51,7 @@ func convert(newOrderDto *ordersrv.NewOrderRequest) (*entities.Order, error) {
 	order.BuyerInfo.IP = newOrderDto.Buyer.Ip
 
 	if newOrderDto.Buyer.Finance == nil {
-		return nil, errors.New("buyer.finance of newOrderRequest invalid")
+		return nil, errors.New("buyer.finance of RequestNewOrder invalid")
 	}
 
 	order.BuyerInfo.FinanceInfo.Iban = newOrderDto.Buyer.Finance.Iban
@@ -60,7 +60,7 @@ func convert(newOrderDto *ordersrv.NewOrderRequest) (*entities.Order, error) {
 	order.BuyerInfo.FinanceInfo.BankName = newOrderDto.Buyer.Finance.BankName
 
 	if newOrderDto.Buyer.ShippingAddress == nil {
-		return nil, errors.New("buyer.shippingAddress of newOrderRequest invalid")
+		return nil, errors.New("buyer.shippingAddress of RequestNewOrder invalid")
 	}
 
 	order.BuyerInfo.ShippingAddress.Address = newOrderDto.Buyer.ShippingAddress.Address
@@ -73,7 +73,7 @@ func convert(newOrderDto *ordersrv.NewOrderRequest) (*entities.Order, error) {
 	setOrderLocation(newOrderDto.Buyer.ShippingAddress.Lat, newOrderDto.Buyer.ShippingAddress.Long, &order)
 
 	if newOrderDto.Amount == nil {
-		return nil, errors.New("amount of newOrderRequest invalid")
+		return nil, errors.New("amount of RequestNewOrder invalid")
 	}
 
 	order.Amount.Total = newOrderDto.Amount.Total
@@ -92,37 +92,27 @@ func convert(newOrderDto *ordersrv.NewOrderRequest) (*entities.Order, error) {
 
 	for _, item := range newOrderDto.Items {
 		if len(item.InventoryId) == 0 {
-			return nil, errors.New("inventoryId of newOrderRequest invalid")
+			return nil, errors.New("inventoryId of RequestNewOrder invalid")
 		}
 
-		if item.Count <= 0 {
-			return nil, errors.New("item Count of newOrderRequest invalid")
+		if item.Quantity <= 0 {
+			return nil, errors.New("item Count of RequestNewOrder invalid")
 		}
 
-		for i:= 0; i < item.Count; i++ {
+		for i:= 0; i < int(item.Quantity); i++ {
 			var newItem = entities.Item{}
 			newItem.InventoryId	= item.InventoryId
 			newItem.Title = item.Title
 			newItem.Brand = item.Brand
-			newItem.Warranty = item.Warranty
+			newItem.Warranty = item.Guarantee
 			newItem.Categories = item.Categories
 			newItem.Image = item.Image
 			newItem.Returnable = item.Returnable
 			newItem.SellerInfo.SellerId = item.SellerId
-
-			if item.Attributes != nil {
-				newItem.Attributes.Quantity = int(item.Attributes.Quantity)
-				newItem.Attributes.Width = item.Attributes.Width
-				newItem.Attributes.Height = item.Attributes.Height
-				newItem.Attributes.Length = item.Attributes.Length
-				newItem.Attributes.Weight = item.Attributes.Weight
-				newItem.Attributes.Color = item.Attributes.Color
-				newItem.Attributes.Materials = item.Attributes.Materials
-				// Todo Implements extra attributes
-			}
+			newItem.Attributes = item.Attributes
 
 			if item.Price == nil {
-				return nil, errors.New("item price of newOrderRequest invalid")
+				return nil, errors.New("item price of RequestNewOrder invalid")
 			}
 
 			newItem.PriceInfo.Unit = item.Price.Unit
@@ -132,7 +122,7 @@ func convert(newOrderDto *ordersrv.NewOrderRequest) (*entities.Order, error) {
 			newItem.PriceInfo.Currency = item.Price.Currency
 
 			if item.Shipment == nil {
-				return nil, errors.New("item shipment of newOrderRequest invalid")
+				return nil, errors.New("item shipment of RequestNewOrder invalid")
 			}
 
 			newItem.ShipmentSpec.CarrierName = item.Shipment.CarrierName
@@ -161,12 +151,12 @@ func setOrderLocation(lat, long string , order *entities.Order) {
 	}
 
 	if latitude, err = strconv.ParseFloat(lat, 64); err != nil {
-		logger.Err("shippingAddress.latitude of newOrderRequest ")
+		logger.Err("shippingAddress.latitude of RequestNewOrder ")
 		return
 	}
 
 	if longitude, err = strconv.ParseFloat(long, 64); err != nil {
-		logger.Err("shippingAddress.longitude of newOrderRequest ")
+		logger.Err("shippingAddress.longitude of RequestNewOrder ")
 		return
 	}
 

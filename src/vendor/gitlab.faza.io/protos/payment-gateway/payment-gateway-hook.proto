@@ -7,13 +7,14 @@ service BankResultHook {
 }
 
 message PaygateHookRequest{
-  string  oderID    = 1;
+  string  orderID    = 1;
   string  paymentId = 2;
   int64   invoiceId = 3;
   int64   amount    = 4;
   string  reqBody   = 5;
   string  resBody   = 6;
-  bool    result    = 7;
+  string  cardMask  = 7;
+  bool    result    = 8;
 }
 
 message PaygateHookResponse {
