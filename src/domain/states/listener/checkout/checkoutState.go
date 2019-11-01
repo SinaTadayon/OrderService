@@ -102,31 +102,31 @@ func (checkoutActionState checkoutActionListener) ActionListener(ctx context.Con
 
 func (checkoutActionState checkoutActionListener) updateOrderStates(ctx context.Context, newOrder *entities.Order, timestamp time.Time) {
 	for i := 0; i < len(newOrder.Items); i++ {
-		newOrder.Items[i].OrderStep.CurrentState.Name = checkoutActionState.Name()
-		newOrder.Items[i].OrderStep.CurrentState.Index = checkoutActionState.Index()
-		newOrder.Items[i].OrderStep.CurrentState.Type = checkoutActionState.Actions().ActionType().Name()
-		newOrder.Items[i].OrderStep.CurrentState.CreatedAt = time.Now().UTC()
-		newOrder.Items[i].OrderStep.CurrentState.Result = true
-		newOrder.Items[i].OrderStep.CurrentState.Reason = ""
+		newOrder.Items[i].Progress.CurrentState.Name = checkoutActionState.Name()
+		newOrder.Items[i].Progress.CurrentState.Index = checkoutActionState.Index()
+		newOrder.Items[i].Progress.CurrentState.Type = checkoutActionState.Actions().ActionType().Name()
+		newOrder.Items[i].Progress.CurrentState.CreatedAt = time.Now().UTC()
+		newOrder.Items[i].Progress.CurrentState.Result = true
+		newOrder.Items[i].Progress.CurrentState.Reason = ""
 
-		newOrder.Items[i].OrderStep.CurrentState.AcceptedAction.Name = checkout_action.NewOrderAction.String()
-		newOrder.Items[i].OrderStep.CurrentState.AcceptedAction.Type = actors.CheckoutActor.String()
-		newOrder.Items[i].OrderStep.CurrentState.AcceptedAction.Base = actions.ActorAction.String()
-		newOrder.Items[i].OrderStep.CurrentState.AcceptedAction.Data = ""
-		newOrder.Items[i].OrderStep.CurrentState.AcceptedAction.Time = &timestamp
+		newOrder.Items[i].Progress.CurrentState.AcceptedAction.Name = checkout_action.NewOrderAction.String()
+		newOrder.Items[i].Progress.CurrentState.AcceptedAction.Type = actors.CheckoutActor.String()
+		newOrder.Items[i].Progress.CurrentState.AcceptedAction.Base = actions.ActorAction.String()
+		newOrder.Items[i].Progress.CurrentState.AcceptedAction.Data = nil
+		newOrder.Items[i].Progress.CurrentState.AcceptedAction.Time = &timestamp
 
-		newOrder.Items[i].OrderStep.CurrentState.Actions = []entities.Action{newOrder.Items[i].OrderStep.CurrentState.AcceptedAction}
+		newOrder.Items[i].Progress.CurrentState.Actions = []entities.Action{newOrder.Items[i].Progress.CurrentState.AcceptedAction}
 
 		stateHistory := entities.StateHistory {
-			Name: newOrder.Items[i].OrderStep.CurrentState.Name,
-			Index: newOrder.Items[i].OrderStep.CurrentState.Index,
-			Type: newOrder.Items[i].OrderStep.CurrentState.Type,
-			Action: newOrder.Items[i].OrderStep.CurrentState.AcceptedAction,
-			Result: newOrder.Items[i].OrderStep.CurrentState.Result,
-			Reason: newOrder.Items[i].OrderStep.CurrentState.Reason,
-			CreatedAt:newOrder.Items[i].OrderStep.CurrentState.CreatedAt,
+			Name: newOrder.Items[i].Progress.CurrentState.Name,
+			Index: newOrder.Items[i].Progress.CurrentState.Index,
+			Type: newOrder.Items[i].Progress.CurrentState.Type,
+			Action: newOrder.Items[i].Progress.CurrentState.AcceptedAction,
+			Result: newOrder.Items[i].Progress.CurrentState.Result,
+			Reason: newOrder.Items[i].Progress.CurrentState.Reason,
+			CreatedAt:newOrder.Items[i].Progress.CurrentState.CreatedAt,
 		}
 
-		newOrder.Items[i].OrderStep.StepsHistory[len(newOrder.Items[i].OrderStep.StepsHistory)].StatesHistory = append(newOrder.Items[i].OrderStep.StepsHistory[len(newOrder.Items[i].OrderStep.StepsHistory)].StatesHistory, stateHistory)
+		newOrder.Items[i].Progress.StepsHistory[len(newOrder.Items[i].Progress.StepsHistory)].StatesHistory = append(newOrder.Items[i].Progress.StepsHistory[len(newOrder.Items[i].Progress.StepsHistory)].StatesHistory, stateHistory)
 	}
 }

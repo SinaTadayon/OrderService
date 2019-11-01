@@ -38,7 +38,7 @@ func (payToMarketFailed payToMarketFailedStep) ProcessMessage(ctx context.Contex
 	panic("implementation required")
 }
 
-func (payToMarketFailed payToMarketFailedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string) promise.IPromise {
+func (payToMarketFailed payToMarketFailedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	panic("implementation required")
 }
 

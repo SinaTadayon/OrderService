@@ -7,7 +7,9 @@ import (
 	"github.com/golang/protobuf/ptypes/any"
 	"gitlab.faza.io/order-project/order-service/domain"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	pb "gitlab.faza.io/protos/order"
+	pg "gitlab.faza.io/protos/payment-gateway"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"strconv"
@@ -25,6 +27,7 @@ import (
 
 type Server struct{
 	pb.UnimplementedOrderServiceServer
+	pg.UnimplementedBankResultHookServer
 	flowManager 	domain.IFlowManager
 	address 		string
 	port			uint16
@@ -132,44 +135,93 @@ func (server *Server) OrderRequestsHandler(ctx context.Context, req *pb.MessageR
 	//return &message.Response{}, st.Err()
 }
 
-func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb.ResponseNewOrder, error) {
+func (server *Server) PaymentGatewayHook(ctx context.Context, req *pg.PaygateHookRequest) (*pg.PaygateHookResponse, error) {
+	promiseHandler := server.flowManager.PaymentGatewayResult(ctx, req)
+	futureData := promiseHandler.Data()
+	if futureData == nil {
+		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
 
-	//var request *pb.MessageRequest
-	//var response *pb.MessageResponse
-
-	convertNewOrderRequestToMessage(req)
-
-	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
-	promiseHandler := server.flowManager.MessageHandler(flowManagerCtx, req)
-	futureData := <- promiseHandler.Channel()
 	if futureData.Ex != nil {
 		futureErr := futureData.Ex.(promise.FutureError)
 		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
 	}
 
-	response, ok := futureData.Data.(pb.MessageResponse)
+	return &pg.PaygateHookResponse{Ok: true}, nil
+}
+
+func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb.ResponseNewOrder, error) {
+
+	//var request *pb.MessageRequest
+	//var response *pb.MessageResponse
+
+	messageRequest := server.convertNewOrderRequestToMessage(req)
+
+	//ctx, _ = context.WithTimeout(context.Background(), 3*time.Second)
+	promiseHandler := server.flowManager.MessageHandler(ctx, messageRequest)
+	futureData := promiseHandler.Data()
+	if futureData == nil {
+		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	if futureData.Ex != nil {
+		futureErr := futureData.Ex.(promise.FutureError)
+		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+	}
+
+	paymentResponse, ok := futureData.Data.(payment_service.PaymentResponse)
 	if ok != true {
-		logger.Err("received data of futureData invalid, type: %T, value, %v", futureData.Data, futureData.Data)
+		logger.Err("NewOrder received data of futureData invalid, type: %T, value, %v", futureData.Data, futureData.Data)
 		return nil, status.Error(500, "Unknown Error")
 	}
 
-	return &response, nil
+	responseNewOrder := pb.ResponseNewOrder{
+		CallbackUrl: paymentResponse.CallbackUrl,
+	}
+
+	return &responseNewOrder, nil
 
 }
 
 func (server Server) SellerFindAllItems(context.Context, *pb.RequestSellerFindAllItems) (*pb.ResponseSellerFindAllItems, error) {
-
+	panic("must be implement")
 }
 
-func (server Server) SellerOrderAction(context.Context, *pb.RequestSellerOrderAction) (*pb.ResponseSellerOrderAction, error) {
+func (server Server) BuyerOrderAction(ctx context.Context, req *pb.RequestBuyerOrderAction) (*pb.ResponseBuyerOrderAction, error) {
+	promiseHandler := server.flowManager.SellerApprovalPending(ctx, req)
+	futureData := promiseHandler.Data()
+	if futureData == nil {
+		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
 
+	if futureData.Ex != nil {
+		futureErr := futureData.Ex.(promise.FutureError)
+		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+	}
+
+	return &pb.ResponseBuyerOrderAction{Result: true}, nil
+}
+
+func (server Server) SellerOrderAction(ctx context.Context, req *pb.RequestSellerOrderAction) (*pb.ResponseSellerOrderAction, error) {
+	promiseHandler := server.flowManager.SellerApprovalPending(ctx, req)
+	futureData := promiseHandler.Data()
+	if futureData == nil {
+		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	if futureData.Ex != nil {
+		futureErr := futureData.Ex.(promise.FutureError)
+		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+	}
+
+	return &pb.ResponseSellerOrderAction{Result: true}, nil
 }
 
 func (server Server) BuyerFindAllOrders(context.Context, *pb.RequestBuyerFindAllOrders) (*pb.ResponseBuyerFindAllOrders, error) {
-
+	panic("must be implement")
 }
 
-func convertNewOrderRequestToMessage(req *pb.RequestNewOrder) *pb.MessageRequest {
+func (server Server) convertNewOrderRequestToMessage(req *pb.RequestNewOrder) *pb.MessageRequest {
 
 	serializedOrder, err := proto.Marshal(req)
 	if err != nil {
@@ -261,7 +313,7 @@ func (server Server) Start() {
 //			i.Title = item.Title
 //			i.Categories = item.Categories
 //			i.Brand = item.Brand
-//			i.Warranty = item.Warranty
+//			i.Guarantee = item.Guarantee
 //			if item.Price != nil {
 //				i.Price.Total = float64(item.Price.Total)
 //				i.Price.Payable = float64(item.Price.Payable)

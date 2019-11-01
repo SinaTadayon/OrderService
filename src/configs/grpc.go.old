@@ -132,7 +132,7 @@
 //			i.Title = item.Title
 //			i.Categories = item.Categories
 //			i.Brand = item.Brand
-//			i.Warranty = item.Warranty
+//			i.Guarantee = item.Guarantee
 //			if item.Price != nil {
 //				i.Price.Total = float64(item.Price.Total)
 //				i.Price.Payable = float64(item.Price.Payable)

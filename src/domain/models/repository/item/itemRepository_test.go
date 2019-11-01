@@ -186,11 +186,11 @@ func createOrder() entities.Order {
 		},
 		Items: []entities.Item{
 			{
-				ItemId:		 "",
+				ItemId:      "",
 				InventoryId: "1111111111",
 				Title:       "Mobile",
 				Brand:       "Nokia",
-				Warranty:    "Sazegar",
+				Guarantee:   "Sazegar",
 				Categories:  "Electronic",
 				Image:       "",
 				Returnable:  false,
@@ -274,7 +274,7 @@ func createOrder() entities.Order {
 						CreatedAt:              time.Now().UTC(),
 					},
 				},
-				OrderStep: entities.OrderStep{
+				Progress: entities.Progress{
 					CurrentName:  "0.NewOrder",
 					CurrentIndex: 0,
 					CurrentState: entities.State {
@@ -323,11 +323,11 @@ func createOrder() entities.Order {
 				},
 			},
 			{
-				ItemId:		 "",
+				ItemId:      "",
 				InventoryId: "2222222222",
 				Title:       "Laptop",
 				Brand:       "Lenovo",
-				Warranty:    "Iranargham",
+				Guarantee:   "Iranargham",
 				Categories:  "Electronic",
 				Image:       "",
 				Returnable:  true,
@@ -411,7 +411,7 @@ func createOrder() entities.Order {
 						CreatedAt:              time.Now().UTC(),
 					},
 				},
-				OrderStep: entities.OrderStep{
+				Progress: entities.Progress{
 					CurrentName:  "0.NewOrder",
 					CurrentIndex: 0,
 					CurrentState: entities.State{

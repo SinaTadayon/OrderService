@@ -44,7 +44,7 @@ func (paymentControl paymentControlStep) ProcessMessage(ctx context.Context, req
 	panic("implementation required")
 }
 
-func (paymentControl paymentControlStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string) promise.IPromise {
+func (paymentControl paymentControlStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	panic("implementation required")
 }
 

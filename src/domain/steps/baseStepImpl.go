@@ -117,41 +117,47 @@ func (base BaseStepImpl) String() string {
 	return strconv.Itoa(base.index) + "." + base.name
 }
 
-func (base BaseStepImpl) UpdateOrderStep(ctx context.Context, order *entities.Order, itemsId []string) {
-	order.UpdatedAt = time.Now().UTC()
+func (base BaseStepImpl) UpdateOrderStep(ctx context.Context, order *entities.Order, itemsId []string, status string, isUpdateStatus bool) {
 
-	if itemsId != nil && len(itemsId) > 0 {
-		for _, id := range itemsId {
-			for i := 0; i < len(order.Items); i++ {
-				if order.Items[i].ItemId == id {
-					base.doUpdateOrderStep(ctx, order, i)
-				} else {
-					logger.Err("paymentSuccess received itemId %s not exist in order, order: %v", id, order)
+	if isUpdateStatus == true {
+		order.UpdatedAt = time.Now().UTC()
+		order.Status = status
+	} else {
+		order.UpdatedAt = time.Now().UTC()
+		order.Status = status
+		if itemsId != nil && len(itemsId) > 0 {
+			for _, id := range itemsId {
+				for i := 0; i < len(order.Items); i++ {
+					if order.Items[i].ItemId == id {
+						base.doUpdateOrderStep(ctx, order, i)
+					} else {
+						logger.Err("paymentSuccess received itemId %s not exist in order, order: %v", id, order)
+					}
 				}
 			}
-		}
-	} else {
-		for i := 0; i < len(order.Items); i++ {
-			base.doUpdateOrderStep(ctx, order, i)
+		} else {
+			for i := 0; i < len(order.Items); i++ {
+				base.doUpdateOrderStep(ctx, order, i)
+			}
 		}
 	}
 }
 
 func (base BaseStepImpl) doUpdateOrderStep(ctx context.Context, order *entities.Order, index int) {
-	order.Items[index].OrderStep.CreatedAt = time.Now().UTC()
-	order.Items[index].OrderStep.CurrentName = base.Name()
-	order.Items[index].OrderStep.CurrentIndex = base.Index()
+	order.Items[index].Progress.CreatedAt = time.Now().UTC()
+	order.Items[index].Progress.CurrentName = base.Name()
+	order.Items[index].Progress.CurrentIndex = base.Index()
 
 	stepHistory := entities.StepHistory{
-		Name: order.Items[index].OrderStep.CurrentState.Name,
-		Index: order.Items[index].OrderStep.CurrentState.Index,
-		CreatedAt: order.Items[index].OrderStep.CurrentState.CreatedAt,
+		Name: order.Items[index].Progress.CurrentState.Name,
+		Index: order.Items[index].Progress.CurrentState.Index,
+		CreatedAt: order.Items[index].Progress.CurrentState.CreatedAt,
 		StatesHistory: make([]entities.StateHistory, 0, len(base.States())),
 	}
 
-	if order.Items[index].OrderStep.StepsHistory == nil || len(order.Items[index].OrderStep.StepsHistory) == 0 {
-		order.Items[index].OrderStep.StepsHistory = make([]entities.StepHistory, 0, 5)
+	if order.Items[index].Progress.StepsHistory == nil || len(order.Items[index].Progress.StepsHistory) == 0 {
+		order.Items[index].Progress.StepsHistory = make([]entities.StepHistory, 0, 5)
 	}
 
-	order.Items[index].OrderStep.StepsHistory = append(order.Items[index].OrderStep.StepsHistory, stepHistory)
+	order.Items[index].Progress.StepsHistory = append(order.Items[index].Progress.StepsHistory, stepHistory)
 }

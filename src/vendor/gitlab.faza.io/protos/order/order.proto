@@ -11,6 +11,7 @@ service OrderService {
     rpc NewOrder(RequestNewOrder) returns (ResponseNewOrder);
     rpc SellerFindAllItems(RequestSellerFindAllItems) returns (ResponseSellerFindAllItems);
     rpc SellerOrderAction(RequestSellerOrderAction) returns (ResponseSellerOrderAction);
+    rpc BuyerOrderAction(RequestBuyerOrderAction) returns (ResponseBuyerOrderAction);
     rpc BuyerFindAllOrders(RequestBuyerFindAllOrders) returns (ResponseBuyerFindAllOrders);
 
 }
@@ -130,6 +131,19 @@ message ResponseBuyerFindAllOrders {
 message ResponseSellerOrderAction {
     bool result = 1;
 }
+
+message RequestBuyerOrderAction {
+    string orderId      = 1;
+    repeated string itemId       = 2;
+    string actionType   = 4;
+    string action       = 5;
+    string reason       = 6;
+}
+
+message ResponseBuyerOrderAction {
+    bool result = 1;
+}
+
 
 message RequestSellerOrderAction {
     string orderId      = 1;

@@ -39,7 +39,7 @@ package payment_pending_step
 //		Brand:      "Asus",
 //		Categories: "Electronic/laptop",
 //		Title:      "Asus G503 i7, 256SSD, 32G Ram",
-//		Warranty:   "ضمانت سلامت کالا",
+//		Guarantee:   "ضمانت سلامت کالا",
 //		Price: ItemPrice{
 //			Unit:             20000,
 //			Total:            200000,
@@ -86,7 +86,7 @@ package payment_pending_step
 //		Categories: "Electronic/laptop",
 //		Title:      "Asus G503 i7, 256SSD, 32G Ram",
 //		Quantity:   1,
-//		Warranty:   "صلامت کالا",
+//		Guarantee:   "صلامت کالا",
 //		Price: ItemPrice{
 //			Total:            300000,
 //			Payable:          160000,

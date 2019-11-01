@@ -43,7 +43,7 @@ func (paymentFailed paymentFailedStep) ProcessMessage(ctx context.Context, reque
 
 
 // TODO steps must be append step history and changes to order object
-func (paymentFailed paymentFailedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string) promise.IPromise {
+func (paymentFailed paymentFailedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	stockState, ok := paymentFailed.Childes()[0].(launcher_state.ILauncherState)
 	if ok != true || stockState.ActiveType() != actives.StockAction {
 		logger.Err("stock state doesn't exist in index 0 of %s statesMap , order: %v", paymentFailed.Name(), order)
@@ -53,7 +53,7 @@ func (paymentFailed paymentFailedStep) ProcessOrder(ctx context.Context, order e
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	paymentFailed.UpdateOrderStep(ctx, &order, itemsId)
+	paymentFailed.UpdateOrderStep(ctx, &order, itemsId, "CLOSED")
 	return stockState.ActionLauncher(ctx, order, itemsId, nil)
 }
 

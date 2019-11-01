@@ -2,8 +2,12 @@ package domain
 
 import (
 	"context"
+	"gitlab.faza.io/go-framework/logger"
 	order_payment_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/orderpayment"
+	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	order_payment_action_state "gitlab.faza.io/order-project/order-service/domain/states/launcher/orderpayment"
+	"gitlab.faza.io/order-project/order-service/infrastructure/global"
+	"time"
 
 	//"errors"
 	checkout_action "gitlab.faza.io/order-project/order-service/domain/actions/actors/checkout"
@@ -12,13 +16,12 @@ import (
 	//pb "gitlab.faza.io/protos/order"
 	////"google.golang.org/grpc/codes"
 	//"google.golang.org/grpc/status"
-	//
+	pg "gitlab.faza.io/protos/payment-gateway"
 	//"github.com/golang/protobuf/ptypes"
 	//"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	finalize_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/finalize"
 	manual_payment_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/manualpayment"
-	new_order_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/neworder"
 	next_to_step_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/nextstep"
 	notification_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/notification"
 	pay_to_buyer_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/paytobuyer"
@@ -197,6 +200,9 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	flowManager.createStep1()
 	flowManager.createStep0()
 
+
+	// Change route to support seller shipped reject route to shipment to
+	flowManager.indexStepsMap[31].Childes()[1] = flowManager.indexStepsMap[21]
 	return nil
 }
 
@@ -1033,17 +1039,114 @@ func (flowManager *iFlowManagerImpl) createStep0() {
 	flowManager.nameStepsMap[step0.Name()] = step0
 }
 
-func (flowManager iFlowManagerImpl) MessageHandler(ctx context.Context, req *message.Request) promise.IPromise {
+
+// TODO Must be refactored
+func (flowManager iFlowManagerImpl) MessageHandler(ctx context.Context, req *message.MessageRequest) promise.IPromise {
 	// received New Order Request
-	if len(req.OrderId) == 0 && len(req.ItemId) == 0 {
+	//if len(req.OrderId) == 0 {
 
 		step0 := flowManager.indexStepsMap[0]
 		return step0.ProcessMessage(ctx, req)
 
 		// TODO must be implement
-	} else if len(req.ItemId) != 0 {
+	//}
+	//} else if len(req.ItemId) != 0 {
 
-	} else {
-		// TODO must be implement orderId
+	//} else {
+	//	order, err := global.Singletons.OrderRepository.FindById(req.OrderId)
+	//	if err != nil {
+	//		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
+	//			req.OrderId, err)
+	//		returnChannel := make(chan promise.FutureData, 1)
+	//		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.NotFound, Reason:"OrderId Not Found"}}
+	//		defer close(returnChannel)
+	//		return promise.NewPromise(returnChannel, 1, 1)
+	//	}
+	//}
+}
+
+func (flowManager iFlowManagerImpl) SellerApprovalPending(ctx context.Context, req *message.RequestSellerOrderAction) promise.IPromise {
+	order, err := global.Singletons.OrderRepository.FindById(req.OrderId)
+	if err != nil {
+		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
+			req.OrderId, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.NotFound, Reason:"OrderId Not Found"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
 	}
+
+	itemsId := make([]string, 0, len(order.Items))
+	for i:= 0; i < len(order.Items); i++ {
+		if order.Items[i].SellerInfo.SellerId == req.SellerId {
+			itemsId = append(itemsId,order.Items[i].ItemId)
+		}
+	}
+
+	if req.ActionType == "Approved" {
+		return flowManager.indexStepsMap[20].ProcessOrder(ctx, *order, itemsId, req)
+	} else if req.ActionType == "Shipped" {
+		return flowManager.indexStepsMap[31].ProcessOrder(ctx, *order, itemsId, req)
+	}
+
+	returnChannel := make(chan promise.FutureData, 1)
+	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.NotFound, Reason:"ActionType Not Found"}}
+	defer close(returnChannel)
+	return promise.NewPromise(returnChannel, 1, 1)
+}
+
+
+func (flowManager iFlowManagerImpl) BuyerApprovalPending(ctx context.Context, req *message.RequestBuyerOrderAction) promise.IPromise {
+	order, err := global.Singletons.OrderRepository.FindById(req.OrderId)
+	if err != nil {
+		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
+			req.OrderId, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.NotFound, Reason:"OrderId Not Found"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	//itemsId := make([]string, 0, len(order.Items))
+	//for i:= 0; i < len(order.Items); i++ {
+	//	if order.Items[i].SellerInfo.SellerId == req.ItemId[i] {
+	//		itemsId = append(itemsId,order.Items[i].ItemId)
+	//	}
+	//}
+
+	if req.ActionType == "Approved" {
+		return flowManager.indexStepsMap[32].ProcessOrder(ctx, *order, req.ItemId, req)
+	}
+
+	returnChannel := make(chan promise.FutureData, 1)
+	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.NotFound, Reason:"ActionType Not Found"}}
+	defer close(returnChannel)
+	return promise.NewPromise(returnChannel, 1, 1)
+}
+
+
+func (flowManager iFlowManagerImpl) PaymentGatewayResult(ctx context.Context, req *pg.PaygateHookRequest) promise.IPromise {
+	order, err := global.Singletons.OrderRepository.FindById(req.OrderID)
+	if err != nil {
+		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
+			req.OrderID, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.NotFound, Reason:"OrderId Not Found"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	order.PaymentService[0].PaymentResult = &entities.PaymentResult{
+		Result:      req.Result,
+		Reason:      "",
+		PaymentId:   req.PaymentId,
+		InvoiceId:   req.InvoiceId,
+		Amount:      uint64(req.Amount),
+		ReqBody:     req.ReqBody,
+		ResBody:     req.ResBody,
+		CardNumMask: req.CardMask,
+		CreatedAt:   time.Now().UTC(),
+	}
+
+	return flowManager.indexStepsMap[10].ProcessOrder(ctx, *order, nil, "PaymentPending")
 }

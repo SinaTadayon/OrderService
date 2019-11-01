@@ -104,7 +104,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 			newItem.InventoryId	= item.InventoryId
 			newItem.Title = item.Title
 			newItem.Brand = item.Brand
-			newItem.Warranty = item.Guarantee
+			newItem.Guarantee = item.Guarantee
 			newItem.Categories = item.Categories
 			newItem.Image = item.Image
 			newItem.Returnable = item.Returnable

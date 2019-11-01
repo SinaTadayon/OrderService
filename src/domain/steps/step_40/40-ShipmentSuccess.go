@@ -2,11 +2,14 @@ package shipment_success_step
 
 import (
 	"context"
+	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/domain/steps"
+	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	message "gitlab.faza.io/protos/order"
+	"time"
 )
 
 const (
@@ -38,8 +41,57 @@ func (shipmentSuccess shipmentSuccessStep) ProcessMessage(ctx context.Context, r
 	panic("implementation required")
 }
 
-func (shipmentSuccess shipmentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string) promise.IPromise {
-	panic("implementation required")
+func (shipmentSuccess shipmentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+	shipmentSuccess.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
+	shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, "ShipmentSuccess", true)
+	shipmentSuccess.persistOrder(ctx, &order)
+	return shipmentSuccess.Childes()[0].ProcessOrder(ctx, order, itemsId, nil)
+}
+
+func (shipmentSuccess shipmentSuccessStep) persistOrder(ctx context.Context, order *entities.Order) {
+	_ , err := global.Singletons.OrderRepository.Save(*order)
+	if err != nil {
+		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", shipmentSuccess.Name(), order, err.Error())
+	}
+}
+
+func (shipmentSuccess shipmentSuccessStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
+	action string, result bool) {
+
+	if itemsId != nil && len(itemsId) > 0 {
+		for _, id := range itemsId {
+			for i := 0; i < len(order.Items); i++ {
+				if order.Items[i].ItemId == id {
+					shipmentSuccess.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+				} else {
+					logger.Err("%s received itemId %s not exist in order, order: %v", shipmentSuccess.Name(), id, order)
+				}
+			}
+		}
+	} else {
+		for i := 0; i < len(order.Items); i++ {
+			shipmentSuccess.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+		}
+	}
+}
+
+func (shipmentSuccess shipmentSuccessStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
+	actionName string, result bool) {
+
+	order.Items[index].Status = actionName
+	order.Items[index].UpdatedAt = time.Now().UTC()
+
+	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {
+		order.Items[index].Progress.ActionHistory = make([]entities.Action, 0, 5)
+	}
+
+	action := entities.Action{
+		Name:      actionName,
+		Result:    result,
+		CreatedAt: order.Items[index].UpdatedAt,
+	}
+
+	order.Items[index].Progress.ActionHistory = append(order.Items[index].Progress.ActionHistory, action)
 }
 
 

@@ -5,23 +5,24 @@ import (
 )
 
 type Item struct {
-	ItemId 				string 				`bson:"itemId"`
-	InventoryId 		string 				`bson:"inventoryId"`
-	Title       		string 				`bson:"title"`
-	Brand           	string          	`bson:"brand"`
-	Warranty        	string          	`bson:"warranty"`
-	Categories      	string          	`bson:"categories"`
-	Image           	string          	`bson:"image"`
-	Returnable      	bool            	`bson:"returnable"`
-	Attributes      	map[string]string   `bson:"attributes"`
-	CreatedAt      		time.Time			`bson:"createdAt"`
-	UpdatedAt      		time.Time			`bson:"updatedAt"`
-	DeletedAt       	*time.Time      	`bson:"deletedAt"`
-	SellerInfo      	SellerInfo      	`bson:"sellerInfo"`
-	PriceInfo       	PriceInfo       	`bson:"priceInfo"`
-	ShipmentSpec    	ShipmentSpec    	`bson:"shipmentSpec"`
-	ShipmentDetails 	ShipmentDetails 	`bson:"shipmentDetails"`
-	OrderStep       	OrderStep       	`bson:"orderStep"`
+	ItemId      string            `bson:"itemId"`
+	InventoryId string            `bson:"inventoryId"`
+	Title       string            `bson:"title"`
+	Brand       string            `bson:"brand"`
+	Guarantee   string            `bson:"guarantee"`
+	Categories  string            `bson:"categories"`
+	Image       string            `bson:"image"`
+	Returnable      bool              `bson:"returnable"`
+	Status          string            `bson:"status"`
+	Attributes      map[string]string `bson:"attributes"`
+	CreatedAt       time.Time         `bson:"createdAt"`
+	UpdatedAt       time.Time         `bson:"updatedAt"`
+	DeletedAt       *time.Time        `bson:"deletedAt"`
+	SellerInfo      SellerInfo        `bson:"sellerInfo"`
+	PriceInfo       PriceInfo         `bson:"priceInfo"`
+	ShipmentSpec    ShipmentSpec      `bson:"shipmentSpec"`
+	ShipmentDetails ShipmentDetails   `bson:"shipmentDetails"`
+	Progress        Progress          `bson:"progress"`
 }
 
 // TODO will be complete
@@ -43,10 +44,11 @@ type ShipmentDetail struct {
 	CreatedAt        	time.Time 			`bson:"createdAt"`
 }
 
-type OrderStep struct {
+type Progress struct {
 	CurrentName   		string				`bson:"currentName"`
 	CurrentIndex		int					`bson:"currentIndex"`
 	CurrentState		State				`bson:"currentState"`
+	ActionHistory		[]Action			`bson:"actionHistory"`
 	CreatedAt 			time.Time			`bson:"createdAt"`
 	StepsHistory   		[]StepHistory		`bson:"stepsHistory"`
 }
@@ -88,12 +90,16 @@ type State struct {
 	Time: dispatched timestamp
 */
 type Action struct {
-	Name				string				`bson:"name"`
-	Type 				string				`bson:"type"`
-	Base 				string				`bson:"base"`
-	Data				string				`bson:"data"`
-	Time				*time.Time			`bson:"time"`
+	Name				string					`bson:"name"`
+	Type 				string					`bson:"type"`
+	Base 				string					`bson:"base"`
+	Data				map[string]interface{}	`bson:"data"`
+	Result 				bool					`bson:"result"`
+	Reason       		string					`bson:"reason"`
+	Time				*time.Time				`bson:"time"`
+	CreatedAt			time.Time				`bson:"createdAt"`
 }
+
 
 type SellerInfo struct {
 	SellerId 			string 					`bson:"sellerId"`

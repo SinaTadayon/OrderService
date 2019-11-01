@@ -67,7 +67,7 @@ func (nextStep nextToStepActionLauncher) ActionLauncher(ctx context.Context, ord
 	}
 
 	if step, ok := nextStep.ActionStepMap()[actionEnum]; ok {
-		return step.ProcessOrder(ctx, order, nil)
+		return step.ProcessOrder(ctx, order, nil, nil)
 	} else {
 		logger.Err("Received action not exist in nextStep.ActionStepMap(), order: %v", order)
 		nextStep.persistOrderState(ctx, &order, itemsId, actionEnum, false, "received actions.IEnumAction is not valid for this nextToStep")
@@ -106,40 +106,40 @@ func (nextStep nextToStepActionLauncher) persistOrderState(ctx context.Context, 
 
 func (nextStep nextToStepActionLauncher) doUpdateOrderState(ctx context.Context, order *entities.Order, index int,
 	acceptedAction actions.IEnumAction, result bool, reason string) {
-	order.Items[index].OrderStep.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
-	order.Items[index].OrderStep.CurrentName = ctx.Value(global.CtxStepName).(string)
-	order.Items[index].OrderStep.CurrentIndex = ctx.Value(global.CtxStepIndex).(int)
+	order.Items[index].Progress.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
+	order.Items[index].Progress.CurrentName = ctx.Value(global.CtxStepName).(string)
+	order.Items[index].Progress.CurrentIndex = ctx.Value(global.CtxStepIndex).(int)
 
-	order.Items[index].OrderStep.CurrentState.Name = nextStep.Name()
-	order.Items[index].OrderStep.CurrentState.Index = nextStep.Index()
-	order.Items[index].OrderStep.CurrentState.Type = nextStep.Actions().ActionType().Name()
-	order.Items[index].OrderStep.CurrentState.CreatedAt = time.Now().UTC()
-	order.Items[index].OrderStep.CurrentState.Result = result
-	order.Items[index].OrderStep.CurrentState.Reason = reason
+	order.Items[index].Progress.CurrentState.Name = nextStep.Name()
+	order.Items[index].Progress.CurrentState.Index = nextStep.Index()
+	order.Items[index].Progress.CurrentState.Type = nextStep.Actions().ActionType().Name()
+	order.Items[index].Progress.CurrentState.CreatedAt = time.Now().UTC()
+	order.Items[index].Progress.CurrentState.Result = result
+	order.Items[index].Progress.CurrentState.Reason = reason
 
 	if acceptedAction != nil {
-		order.Items[index].OrderStep.CurrentState.AcceptedAction.Name = acceptedAction.Name()
+		order.Items[index].Progress.CurrentState.AcceptedAction.Name = acceptedAction.Name()
 	} else {
-		order.Items[index].OrderStep.CurrentState.AcceptedAction.Name = ""
+		order.Items[index].Progress.CurrentState.AcceptedAction.Name = ""
 	}
 
-	order.Items[index].OrderStep.CurrentState.AcceptedAction.Type = actives.NextToStepAction.String()
-	order.Items[index].OrderStep.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
-	order.Items[index].OrderStep.CurrentState.AcceptedAction.Data = ""
-	order.Items[index].OrderStep.CurrentState.AcceptedAction.Time = &order.Items[index].OrderStep.CurrentState.CreatedAt
+	order.Items[index].Progress.CurrentState.AcceptedAction.Type = actives.NextToStepAction.String()
+	order.Items[index].Progress.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
+	order.Items[index].Progress.CurrentState.AcceptedAction.Data = ""
+	order.Items[index].Progress.CurrentState.AcceptedAction.Time = &order.Items[index].Progress.CurrentState.CreatedAt
 
-	order.Items[index].OrderStep.CurrentState.Actions = []entities.Action{order.Items[index].OrderStep.CurrentState.AcceptedAction}
+	order.Items[index].Progress.CurrentState.Actions = []entities.Action{order.Items[index].Progress.CurrentState.AcceptedAction}
 
 	stateHistory := entities.StateHistory {
-		Name: order.Items[index].OrderStep.CurrentState.Name,
-		Index: order.Items[index].OrderStep.CurrentState.Index,
-		Type: order.Items[index].OrderStep.CurrentState.Type,
-		Action: order.Items[index].OrderStep.CurrentState.AcceptedAction,
-		Result: order.Items[index].OrderStep.CurrentState.Result,
-		Reason: order.Items[index].OrderStep.CurrentState.Reason,
-		CreatedAt:order.Items[index].OrderStep.CurrentState.CreatedAt,
+		Name: order.Items[index].Progress.CurrentState.Name,
+		Index: order.Items[index].Progress.CurrentState.Index,
+		Type: order.Items[index].Progress.CurrentState.Type,
+		Action: order.Items[index].Progress.CurrentState.AcceptedAction,
+		Result: order.Items[index].Progress.CurrentState.Result,
+		Reason: order.Items[index].Progress.CurrentState.Reason,
+		CreatedAt:order.Items[index].Progress.CurrentState.CreatedAt,
 	}
 
-	order.Items[index].OrderStep.StepsHistory[len(order.Items[index].OrderStep.StepsHistory)].StatesHistory =
-		append(order.Items[index].OrderStep.StepsHistory[len(order.Items[index].OrderStep.StepsHistory)].StatesHistory, stateHistory)
+	order.Items[index].Progress.StepsHistory[len(order.Items[index].Progress.StepsHistory)].StatesHistory =
+		append(order.Items[index].Progress.StepsHistory[len(order.Items[index].Progress.StepsHistory)].StatesHistory, stateHistory)
 }

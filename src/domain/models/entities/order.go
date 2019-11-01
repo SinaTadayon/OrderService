@@ -21,11 +21,14 @@ func init () {
 //	ID 	primitive.ObjectID `bson:"_id"`
 //}
 
+
+//Order Status: New, InProgress, Closed
 type Order struct {
 	ID           			primitive.ObjectID  `bson:"-"`
 	OrderId        			string				`bson:"orderId"`
 	PaymentService 			[]PaymentService	`bson:"paymentService"`
 	SystemPayment  			SystemPayment		`bson:"systemPayment"`
+	Status					string				`bson:"status"`
 	BuyerInfo          		BuyerInfo			`bson:"buyerInfo"`
 	Amount         			Amount				`bson:"amount"`
 	Items          			[]Item				`bson:"items"`

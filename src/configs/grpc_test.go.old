@@ -60,7 +60,7 @@
 //	i.Brand = req.Items[0].Brand
 //	i.Categories = req.Items[0].Categories
 //	i.Title = req.Items[0].Title
-//	i.Warranty = req.Items[0].Warranty
+//	i.Guarantee = req.Items[0].Guarantee
 //	i.Quantity = req.Items[0].Quantity
 //
 //	i.Price.Discount = float32(req.Items[0].Price.Discount)
