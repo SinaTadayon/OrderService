@@ -16,6 +16,7 @@ const (
 	stepName string 	= "Shipment_Pending"
 	stepIndex int		= 30
 	Shipped				= "Shipped"
+	SellerShipmentPending = "SellerShipmentPending"
 )
 
 type shipmentPendingStep struct {
@@ -43,13 +44,76 @@ func (shipmentPending shipmentPendingStep) ProcessMessage(ctx context.Context, r
 }
 
 func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
-	shipmentPending.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
-	shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, "SellerShipmentPending", true)
-	shipmentPending.persistOrder(ctx, &order)
-	returnChannel := make(chan promise.FutureData, 1)
-	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data:nil, Ex:nil}
-	return promise.NewPromise(returnChannel, 1, 1)
+
+	if param == nil {
+		shipmentPending.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
+		shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, SellerShipmentPending, true, "", nil, true)
+		shipmentPending.persistOrder(ctx, &order)
+		returnChannel := make(chan promise.FutureData, 1)
+		defer close(returnChannel)
+		returnChannel <- promise.FutureData{Data: nil, Ex: nil}
+		return promise.NewPromise(returnChannel, 1, 1)
+	} else {
+		req, ok := param.(message.RequestSellerOrderAction)
+		if ok != true {
+			//if len(order.Items) == len(itemsId) {
+			//	shipped.UpdateOrderStep(ctx, &order, nil, "CLOSED", false)
+			//} else {
+			//	shipped.UpdateOrderStep(ctx, &order, nil, "InProgress", false)
+			//}
+			//shipped.persistOrder(ctx, &order)
+
+			logger.Err("param not a message.RequestSellerOrderAction type , order: %v", order)
+			returnChannel := make(chan promise.FutureData, 1)
+			defer close(returnChannel)
+			returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+			return promise.NewPromise(returnChannel, 1, 1)
+		}
+
+		if !shipmentPending.validateAction(ctx, &order, itemsId) {
+			logger.Err("%s step received invalid action, order: %v, action: %s", shipmentPending.Name(), order, req.Action)
+			returnChannel := make(chan promise.FutureData, 1)
+			defer close(returnChannel)
+			returnChannel <- promise.FutureData{Data: nil, Ex:promise.FutureError{Code:promise.NotAccepted, Reason:"Action Expired"}}
+			return promise.NewPromise(returnChannel, 1, 1)
+		}
+
+
+		if req.Action == "success" {
+			actionData, ok := req.Data.(*message.RequestSellerOrderAction_Success)
+			if ok != true {
+				logger.Err("request data not a message.RequestSellerOrderAction_Success type , order: %v", order)
+				returnChannel := make(chan promise.FutureData, 1)
+				defer close(returnChannel)
+				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+				return promise.NewPromise(returnChannel, 1, 1)
+			}
+
+			shipmentPending.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
+			shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, Shipped, true, "", actionData, false)
+			shipmentPending.persistOrder(ctx, &order)
+			return shipmentPending.Childes()[0].ProcessOrder(ctx, order, itemsId, nil)
+		} else if req.Action == "failed" {
+			actionData, ok := req.Data.(*message.RequestSellerOrderAction_Failed)
+			if ok != true {
+				logger.Err("request data not a message.RequestSellerOrderAction_Failed type , order: %v", order)
+				returnChannel := make(chan promise.FutureData, 1)
+				defer close(returnChannel)
+				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+				return promise.NewPromise(returnChannel, 1, 1)
+			}
+			shipmentPending.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
+			shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, Shipped, false, actionData.Failed.Reason, nil, false)
+			shipmentPending.persistOrder(ctx, &order)
+			return shipmentPending.Childes()[1].ProcessOrder(ctx, order, itemsId, nil)
+		}
+
+		logger.Err("%s step received invalid action, order: %v, action: %s", shipmentPending.Name(), order, req.Action)
+		returnChannel := make(chan promise.FutureData, 1)
+		defer close(returnChannel)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
 }
 
 func (shipmentPending shipmentPendingStep) persistOrder(ctx context.Context, order *entities.Order) {
@@ -59,14 +123,42 @@ func (shipmentPending shipmentPendingStep) persistOrder(ctx context.Context, ord
 	}
 }
 
+func (shipmentPending shipmentPendingStep) validateAction(ctx context.Context, order *entities.Order,
+	itemsId []string) bool {
+	if itemsId != nil && len(itemsId) > 0 {
+		for _, id := range itemsId {
+			for i := 0; i < len(order.Items); i++ {
+				if order.Items[i].ItemId == id && order.Items[i].Status != SellerShipmentPending {
+					return false
+				}
+			}
+		}
+	} else {
+		for i := 0; i < len(order.Items); i++ {
+			if order.Items[i].Status != SellerShipmentPending {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+
 func (shipmentPending shipmentPendingStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
-	action string, result bool) {
+	action string, result bool, reason string, req *message.RequestSellerOrderAction_Success, isSetExpireTime bool) {
 
 	if itemsId != nil && len(itemsId) > 0 {
 		for _, id := range itemsId {
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == id {
-					shipmentPending.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+					if req != nil {
+						order.Items[i].ShipmentDetails.SellerShipmentDetail = entities.ShipmentDetail{
+							TrackingNumber: req.Success.TrackingId,
+							ShippingMethod: req.Success.ShipmentMethod,
+						}
+					}
+					shipmentPending.doUpdateOrderItemsProgress(ctx, order, i, action, result, reason, isSetExpireTime)
 				} else {
 					logger.Err("%s received itemId %s not exist in order, order: %v", shipmentPending.Name(), id, order)
 				}
@@ -74,13 +166,13 @@ func (shipmentPending shipmentPendingStep) updateOrderItemsProgress(ctx context.
 		}
 	} else {
 		for i := 0; i < len(order.Items); i++ {
-			shipmentPending.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+			shipmentPending.doUpdateOrderItemsProgress(ctx, order, i, action, result, reason, isSetExpireTime)
 		}
 	}
 }
 
 func (shipmentPending shipmentPendingStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
-	actionName string, result bool) {
+	actionName string, result bool, reason string, isSetExpireTime bool) {
 
 	order.Items[index].Status = actionName
 	order.Items[index].UpdatedAt = time.Now().UTC()
@@ -89,18 +181,29 @@ func (shipmentPending shipmentPendingStep) doUpdateOrderItemsProgress(ctx contex
 		order.Items[index].Progress.ActionHistory = make([]entities.Action, 0, 5)
 	}
 
-	expiredTime := order.Items[index].UpdatedAt.Add(
-		time.Hour * time.Duration(order.Items[index].ShipmentSpec.ReactionTime) +
-		time.Minute * time.Duration(0) +
-		time.Second * time.Duration(0))
+	var action entities.Action
+	if isSetExpireTime {
+		expiredTime := order.Items[index].UpdatedAt.Add(time.Hour *
+			time.Duration(order.Items[index].ShipmentSpec.ReactionTime) +
+			time.Minute * time.Duration(0) +
+			time.Second * time.Duration(0))
 
-	action := entities.Action{
-		Name:      actionName,
-		Result:    result,
-		Data: map[string]interface{}{
-			"expiredTime": expiredTime,
-		},
-		CreatedAt: order.Items[index].UpdatedAt,
+		action = entities.Action{
+			Name:      actionName,
+			Result:    result,
+			Reason:    reason,
+			Data:		map[string]interface{}{
+				"expiredTime": expiredTime,
+			},
+			CreatedAt: order.Items[index].UpdatedAt,
+		}
+	} else {
+		action = entities.Action{
+			Name:      actionName,
+			Result:    result,
+			Reason:    reason,
+			CreatedAt: order.Items[index].UpdatedAt,
+		}
 	}
 
 	order.Items[index].Progress.ActionHistory = append(order.Items[index].Progress.ActionHistory, action)

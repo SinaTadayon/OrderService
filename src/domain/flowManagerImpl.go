@@ -202,7 +202,7 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 
 
 	// Change route to support seller shipped reject route to shipment to
-	flowManager.indexStepsMap[31].Childes()[1] = flowManager.indexStepsMap[21]
+	flowManager.indexStepsMap[30].Childes()[1] = flowManager.indexStepsMap[21]
 	return nil
 }
 

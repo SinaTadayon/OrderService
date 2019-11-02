@@ -43,13 +43,13 @@ func (shipmentDeliveryProblem shipmentDeliveryProblemStep) ProcessMessage(ctx co
 
 // TODO operator action required handled
 func (shipmentDeliveryProblem shipmentDeliveryProblemStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
-	shipmentDeliveryProblem.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
-	shipmentDeliveryProblem.updateOrderItemsProgress(ctx, &order, itemsId, "BuyerShipmentDeliveryProblem", true)
-	shipmentDeliveryProblem.persistOrder(ctx, &order)
-	returnChannel := make(chan promise.FutureData, 1)
-	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data:nil, Ex:nil}
-	return promise.NewPromise(returnChannel, 1, 1)
+	//shipmentDeliveryProblem.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
+	//shipmentDeliveryProblem.updateOrderItemsProgress(ctx, &order, itemsId, "BuyerShipmentDeliveryProblem", true)
+	//shipmentDeliveryProblem.persistOrder(ctx, &order)
+	//returnChannel := make(chan promise.FutureData, 1)
+	//defer close(returnChannel)
+	//returnChannel <- promise.FutureData{Data:nil, Ex:nil}
+	//return promise.NewPromise(returnChannel, 1, 1)
 }
 
 func (shipmentDeliveryProblem shipmentDeliveryProblemStep) persistOrder(ctx context.Context, order *entities.Order) {

@@ -41,6 +41,8 @@ func (shipmentSuccess shipmentSuccessStep) ProcessMessage(ctx context.Context, r
 	panic("implementation required")
 }
 
+
+// TODO scheduler must be call this step
 func (shipmentSuccess shipmentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	shipmentSuccess.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
 	shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, "ShipmentSuccess", true)
