@@ -60,14 +60,18 @@ func (shipmentSuccess shipmentSuccessStep) persistOrder(ctx context.Context, ord
 func (shipmentSuccess shipmentSuccessStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
 	action string, result bool) {
 
+	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
 		for _, id := range itemsId {
+			findFlag = false
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == id {
 					shipmentSuccess.doUpdateOrderItemsProgress(ctx, order, i, action, result)
-				} else {
-					logger.Err("%s received itemId %s not exist in order, order: %v", shipmentSuccess.Name(), id, order)
+					findFlag = true
 				}
+			}
+			if !findFlag {
+				logger.Err("%s received itemId %s not exist in order, order: %v", shipmentSuccess.Name(), id, order)
 			}
 		}
 	} else {

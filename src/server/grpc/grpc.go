@@ -255,6 +255,7 @@ func (server Server) Start() {
 	// Start GRPC server and register the server
 	grpcServer := grpc.NewServer()
 	pb.RegisterOrderServiceServer(grpcServer, &server)
+	pg.RegisterBankResultHookServer(grpcServer, &server)
 	if err := grpcServer.Serve(lis); err != nil {
 		logger.Err("GRPC server start field " + err.Error())
 		panic("GRPC server start field")

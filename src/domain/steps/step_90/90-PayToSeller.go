@@ -66,14 +66,19 @@ func (payToSeller payToSellerStep) persistOrder(ctx context.Context, order *enti
 func (payToSeller payToSellerStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
 	action string, result bool) {
 
+	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
 		for _, id := range itemsId {
+			findFlag = false
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == id {
 					payToSeller.doUpdateOrderItemsProgress(ctx, order, i, action, result)
-				} else {
-					logger.Err("%s received itemId %s not exist in order, order: %v", payToSeller.Name(), id, order)
+					findFlag = true
 				}
+			}
+
+			if findFlag == false {
+				logger.Err("%s received itemId %s not exist in order, orderId: %v", payToSeller.Name(), id, order.OrderId)
 			}
 		}
 	} else {

@@ -15,6 +15,7 @@ import (
 const (
 	stepName string 	= "Pay_To_Buyer"
 	stepIndex int		= 80
+	PayToBuyer			= "PayToBuyer"
 )
 
 type payToBuyerStep struct {
@@ -49,32 +50,43 @@ func (payToBuyer payToBuyerStep) ProcessOrder(ctx context.Context, order entitie
 		payToBuyer.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
 	}
 
-	payToBuyer.updateOrderItemsProgress(ctx, &order, itemsId, "PayToBuyer", true)
-	payToBuyer.persistOrder(ctx, &order)
+	payToBuyer.updateOrderItemsProgress(ctx, &order, itemsId, PayToBuyer, true)
+	if err := payToBuyer.persistOrder(ctx, &order); err != nil{
+		returnChannel := make(chan promise.FutureData, 1)
+		defer close(returnChannel)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
 	returnChannel := make(chan promise.FutureData, 1)
 	defer close(returnChannel)
 	returnChannel <- promise.FutureData{Data:nil, Ex:nil}
 	return promise.NewPromise(returnChannel, 1, 1)
 }
 
-func (payToBuyer payToBuyerStep) persistOrder(ctx context.Context, order *entities.Order) {
+func (payToBuyer payToBuyerStep) persistOrder(ctx context.Context, order *entities.Order) error {
 	_ , err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", payToBuyer.Name(), order, err.Error())
 	}
+	return err
 }
 
 func (payToBuyer payToBuyerStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
 	action string, result bool) {
 
+	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
 		for _, id := range itemsId {
+			findFlag = false
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == id {
 					payToBuyer.doUpdateOrderItemsProgress(ctx, order, i, action, result)
-				} else {
-					logger.Err("%s received itemId %s not exist in order, order: %v", payToBuyer.Name(), id, order)
+					findFlag = true
 				}
+			}
+
+			if findFlag == false {
+				logger.Err("%s received itemId %s not exist in order, orderId: %v", payToBuyer.Name(), id, order.OrderId)
 			}
 		}
 	} else {

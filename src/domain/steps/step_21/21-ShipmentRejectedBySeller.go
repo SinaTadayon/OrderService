@@ -15,6 +15,7 @@ import (
 const (
 	stepName string 	= "Shipment_Rejected_By_Seller"
 	stepIndex int		= 21
+	RejectedBySeller	= "RejectedBySeller"
 )
 
 type shipmentRejectedBySellerStep struct {
@@ -43,29 +44,41 @@ func (shipmentRejectedBySeller shipmentRejectedBySellerStep) ProcessMessage(ctx 
 
 func (shipmentRejectedBySeller shipmentRejectedBySellerStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	shipmentRejectedBySeller.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
-	shipmentRejectedBySeller.updateOrderItemsProgress(ctx, &order, itemsId, "RejectedBySeller", true)
-	shipmentRejectedBySeller.persistOrder(ctx, &order)
+	shipmentRejectedBySeller.updateOrderItemsProgress(ctx, &order, itemsId, RejectedBySeller, true)
+	if err := shipmentRejectedBySeller.persistOrder(ctx, &order); err != nil {
+		returnChannel := make(chan promise.FutureData, 1)
+		defer close(returnChannel)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
 	return shipmentRejectedBySeller.Childes()[0].ProcessOrder(ctx, order, itemsId, nil)
 }
 
-func (shipmentRejectedBySeller shipmentRejectedBySellerStep) persistOrder(ctx context.Context, order *entities.Order) {
+func (shipmentRejectedBySeller shipmentRejectedBySellerStep) persistOrder(ctx context.Context, order *entities.Order) error {
 	_ , err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", shipmentRejectedBySeller.Name(), order, err.Error())
 	}
+
+	return err
 }
 
 func (shipmentRejectedBySeller shipmentRejectedBySellerStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
 	action string, result bool) {
 
+	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
 		for _, id := range itemsId {
+			findFlag = false
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == id {
 					shipmentRejectedBySeller.doUpdateOrderItemsProgress(ctx, order, i, action, result)
-				} else {
-					logger.Err("%s received itemId %s not exist in order, order: %v", shipmentRejectedBySeller.Name(), id, order)
+					findFlag = true
 				}
+			}
+
+			if findFlag == false {
+				logger.Err("%s received itemId %s not exist in order, orderId: %v", shipmentRejectedBySeller.Name(), id, order.OrderId)
 			}
 		}
 	} else {
@@ -78,7 +91,7 @@ func (shipmentRejectedBySeller shipmentRejectedBySellerStep) updateOrderItemsPro
 func (shipmentRejectedBySeller shipmentRejectedBySellerStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
 	actionName string, result bool) {
 
-	order.Items[index].Status = actionName
+	order.Items[index].Status = shipmentRejectedBySeller.Name()
 	order.Items[index].UpdatedAt = time.Now().UTC()
 
 	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {

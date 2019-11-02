@@ -16,7 +16,7 @@ const (
 	stepName string 	= "Seller_Approval_Pending"
 	stepIndex int		= 20
 	Approved			= "Approved"
-	SellerApprovalPending = "SellerApprovalPending"
+	ApprovalPending = "ApprovalPending"
 )
 
 type sellerApprovalPendingStep struct {
@@ -46,16 +46,17 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessMessage(ctx contex
 func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 
 	if param == nil {
+		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", sellerApprovalPending.Name(), order.OrderId, ApprovalPending)
 		sellerApprovalPending.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
-		sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, SellerApprovalPending, true, "", true)
-		sellerApprovalPending.persistOrder(ctx, &order)
+		sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, ApprovalPending, true, "", true)
+		if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {}
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
 		returnChannel <- promise.FutureData{Data: nil, Ex: nil}
 		return promise.NewPromise(returnChannel, 1, 1)
 	} else {
-
-		req, ok := param.(message.RequestSellerOrderAction)
+		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", sellerApprovalPending.Name(), order.OrderId, Approved)
+		req, ok := param.(*message.RequestSellerOrderAction)
 		if ok != true {
 			//if len(order.Items) == len(itemsId) {
 			//	sellerApprovalPending.UpdateOrderStep(ctx, &order, nil, "CLOSED", false)
@@ -82,7 +83,12 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 		if req.Action == "success" {
 			sellerApprovalPending.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
 			sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, Approved, true, "", false)
-			sellerApprovalPending.persistOrder(ctx, &order)
+			if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
+				returnChannel := make(chan promise.FutureData, 1)
+				defer close(returnChannel)
+				returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+				return promise.NewPromise(returnChannel, 1, 1)
+			}
 			return sellerApprovalPending.Childes()[0].ProcessOrder(ctx, order, itemsId, nil)
 		} else if req.Action == "failed" {
 			actionData := req.Data.(*message.RequestSellerOrderAction_Failed)
@@ -95,7 +101,13 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 			}
 			sellerApprovalPending.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
 			sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, Approved, false, actionData.Failed.Reason, false)
-			sellerApprovalPending.persistOrder(ctx, &order)
+			if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
+				returnChannel := make(chan promise.FutureData, 1)
+				defer close(returnChannel)
+				returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+				return promise.NewPromise(returnChannel, 1, 1)
+			}
+
 			return sellerApprovalPending.Childes()[1].ProcessOrder(ctx, order, itemsId, nil)
 		}
 
@@ -112,14 +124,14 @@ func (sellerApprovalPending sellerApprovalPendingStep) validateAction(ctx contex
 	if itemsId != nil && len(itemsId) > 0 {
 		for _, id := range itemsId {
 			for i := 0; i < len(order.Items); i++ {
-				if order.Items[i].ItemId == id && order.Items[i].Status != SellerApprovalPending {
+				if order.Items[i].ItemId == id && order.Items[i].Status != sellerApprovalPending.Name() {
 						return false
 				}
 			}
 		}
 	} else {
 		for i := 0; i < len(order.Items); i++ {
-			if order.Items[i].Status != SellerApprovalPending {
+			if order.Items[i].Status != sellerApprovalPending.Name() {
 				return false
 			}
 		}
@@ -128,24 +140,30 @@ func (sellerApprovalPending sellerApprovalPendingStep) validateAction(ctx contex
 	return true
 }
 
-func (sellerApprovalPending sellerApprovalPendingStep) persistOrder(ctx context.Context, order *entities.Order) {
+func (sellerApprovalPending sellerApprovalPendingStep) persistOrder(ctx context.Context, order *entities.Order) error {
 	_ , err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", sellerApprovalPending.Name(), order, err.Error())
 	}
+
+	return err
 }
 
 func (sellerApprovalPending sellerApprovalPendingStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order,
 	itemsId []string, action string, result bool, reason string, isSetExpireTime bool) {
 
+	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
 		for _, id := range itemsId {
+			findFlag = false
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == id {
 					sellerApprovalPending.doUpdateOrderItemsProgress(ctx, order, i, action, result, reason, isSetExpireTime)
-				} else {
-					logger.Err("%s received itemId %s not exist in order, order: %v", sellerApprovalPending.Name(), id, order)
+					findFlag = true
 				}
+			}
+			if findFlag == false {
+				logger.Err("%s received itemId %s not exist in order, orderId: %v", sellerApprovalPending.Name(), id, order.OrderId)
 			}
 		}
 	} else {
@@ -159,7 +177,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) updateOrderItemsProgress(
 func (sellerApprovalPending sellerApprovalPendingStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
 	actionName string, result bool, reason string, isSetExpireTime bool) {
 
-	order.Items[index].Status = actionName
+	order.Items[index].Status = sellerApprovalPending.Name()
 	order.Items[index].UpdatedAt = time.Now().UTC()
 
 	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {
@@ -198,7 +216,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) doUpdateOrderItemsProgres
 //
 //import "gitlab.faza.io/order-project/order-service"
 //
-//func SellerApprovalPendingApproved(ppr PaymentPendingRequest) error {
+//func ApprovalPendingApproved(ppr PaymentPendingRequest) error {
 //	err := main.MoveOrderToNewState("seller", "", main.ShipmentPending, "shipment-pending", ppr)
 //	if err != nil {
 //		return err
@@ -206,8 +224,8 @@ func (sellerApprovalPending sellerApprovalPendingStep) doUpdateOrderItemsProgres
 //	return nil
 //}
 //
-//// TODO: Improvement SellerApprovalPendingRejected
-//func SellerApprovalPendingRejected(ppr PaymentPendingRequest, reason string) error {
+//// TODO: Improvement ApprovalPendingRejected
+//func ApprovalPendingRejected(ppr PaymentPendingRequest, reason string) error {
 //	err := main.MoveOrderToNewState("seller", reason, main.ShipmentRejectedBySeller, "shipment-rejected-by-seller", ppr)
 //	if err != nil {
 //		return err

@@ -14,7 +14,6 @@ import (
 const (
 	stepName string 	= "Shipped"
 	stepIndex int		= 31
-	Shipped				= "Shipped"
 )
 
 type shippedStep struct {

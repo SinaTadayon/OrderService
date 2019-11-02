@@ -41,32 +41,32 @@ func NewValueOf(base *steps.BaseStepImpl, params ...interface{}) steps.IStep {
 }
 
 func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) promise.IPromise {
-	var RequestNewOrder pb.RequestNewOrder
+	var requestNewOrder pb.RequestNewOrder
 
 	logger.Audit("New Order Received . . .")
 
-	if err := ptypes.UnmarshalAny(request.Data, &RequestNewOrder); err != nil {
-		logger.Err("Could not unmarshal RequestNewOrder from anything field, error: %s, request: %v", err, request)
+	if err := ptypes.UnmarshalAny(request.Data, &requestNewOrder); err != nil {
+		logger.Err("Could not unmarshal requestNewOrder from anything field, error: %s, request: %v", err, request)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.BadRequest, Reason:"Invalid RequestNewOrder"}}
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.BadRequest, Reason:"Invalid requestNewOrder"}}
 		close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
 	//timestamp, err := ptypes.Timestamp(request.Time)
 	//if err != nil {
-	//	logger.Err("timestamp of RequestNewOrder invalid, error: %s, RequestNewOrder: %v", err, RequestNewOrder)
+	//	logger.Err("timestamp of requestNewOrder invalid, error: %s, requestNewOrder: %v", err, requestNewOrder)
 	//	returnChannel := make(chan promise.FutureData, 1)
 	//	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.BadRequest, Reason:"Invalid Request Timestamp"}}
 	//	defer close(returnChannel)
 	//	return promise.NewPromise(returnChannel, 1, 1)
 	//}
 
-	value, err := global.Singletons.Converter.Map(RequestNewOrder, entities.Order{})
+	value, err := global.Singletons.Converter.Map(requestNewOrder, entities.Order{})
 	if err != nil {
-		logger.Err("Converter.Map RequestNewOrder to order object failed, error: %s, RequestNewOrder: %v", err, RequestNewOrder)
+		logger.Err("Converter.Map requestNewOrder to order object failed, error: %s, requestNewOrder: %v", err, requestNewOrder)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.BadRequest, Reason:"Received RequestNewOrder invalid"}}
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.BadRequest, Reason:"Received requestNewOrder invalid"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
@@ -77,7 +77,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	//
 	//checkoutState, ok := newOrderProcessing.StatesMap()[0].(listener_state.IListenerState)
 	//if ok != true || checkoutState.ActorType() != actors.CheckoutActor {
-	//	logger.Err("checkout state doesn't exist in index 0 of statesMap, RequestNewOrder: %v", RequestNewOrder)
+	//	logger.Err("checkout state doesn't exist in index 0 of statesMap, requestNewOrder: %v", requestNewOrder)
 	//	returnChannel := make(chan promise.FutureData, 1)
 	//	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
 	//	defer close(returnChannel)
@@ -154,14 +154,19 @@ func (newOrderProcessing newOrderProcessingStep) persistOrder(ctx context.Contex
 
 func (newOrderProcessing newOrderProcessingStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string, action string, result bool) {
 
+	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
 		for _, id := range itemsId {
+			findFlag = false
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == id {
 					newOrderProcessing.doUpdateOrderItemsProgress(ctx, order, i, action, result)
-				} else {
-					logger.Err("newOrderProcessing received itemId %s not exist in order, order: %v", id, order)
+					findFlag = true
 				}
+			}
+
+			if !findFlag {
+				logger.Err("%s received itemId %s not exist in order, orderId: %v", newOrderProcessing.Name(), id, order.OrderId)
 			}
 		}
 	} else {

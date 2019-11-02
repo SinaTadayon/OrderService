@@ -144,24 +144,26 @@ func (shipmentPending shipmentPendingStep) validateAction(ctx context.Context, o
 	return true
 }
 
-
 func (shipmentPending shipmentPendingStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
 	action string, result bool, reason string, req *message.RequestSellerOrderAction_Success, isSetExpireTime bool) {
 
+	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
 		for _, id := range itemsId {
+			findFlag = false
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == id {
+					findFlag = true
 					if req != nil {
 						order.Items[i].ShipmentDetails.SellerShipmentDetail = entities.ShipmentDetail{
 							TrackingNumber: req.Success.TrackingId,
 							ShippingMethod: req.Success.ShipmentMethod,
 						}
 					}
-					shipmentPending.doUpdateOrderItemsProgress(ctx, order, i, action, result, reason, isSetExpireTime)
-				} else {
-					logger.Err("%s received itemId %s not exist in order, order: %v", shipmentPending.Name(), id, order)
 				}
+			}
+			if !findFlag {
+				logger.Err("%s received itemId %s not exist in order, orderId: %v", shipmentPending.Name(), id, order.OrderId)
 			}
 		}
 	} else {

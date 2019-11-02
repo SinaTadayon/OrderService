@@ -7,6 +7,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain"
 	"gitlab.faza.io/order-project/order-service/domain/converter"
+	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	order_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/order"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
@@ -299,11 +300,116 @@ func TestNewOrderRequest(t *testing.T) {
 }
 
 func TestPaymentGateway(t *testing.T) {
-	//ctx, _ := context.WithCancel(context.Background())
-	//grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
-	//	strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure())
-	//assert.Nil(t, err)
-	//
-	//request :=  *pg.PaygateHookRequest
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure())
+	assert.Nil(t, err, "DialContext failed")
 
+	requestNewOrder := createRequestNewOrder()
+	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
+	assert.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	newOrder.PaymentService = []entities.PaymentService{{
+		PaymentRequest: &entities.PaymentRequest{
+			Amount:    newOrder.Amount.Total,
+			Currency:  "RR",
+			Gateway:   "APP",
+			CreatedAt: time.Now().UTC(),
+		},
+	}}
+
+	order , err := global.Singletons.OrderRepository.Save(*newOrder)
+	assert.Nil(t, err, "save failed")
+
+	request :=  pg.PaygateHookRequest {
+		OrderID: order.OrderId,
+		PaymentId: "534545345",
+		InvoiceId: 3434234234,
+		Amount:	int64(order.Amount.Total),
+		ReqBody: "request test url",
+		ResBody: "response test url",
+		CardMask: "293488374****7234",
+		Result:	true,
+	}
+
+	paymentService := pg.NewBankResultHookClient(grpcConn)
+	response, err := paymentService.PaymentGatewayHook(ctx, &request)
+
+	assert.Nil(t, err)
+	assert.True(t, response.Ok, "payment result false")
+}
+
+func TestSellerApprovalPending_Success(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure())
+	assert.Nil(t, err)
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
+	assert.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	order , err := global.Singletons.OrderRepository.Save(*newOrder)
+	assert.Nil(t, err, "save failed")
+
+	for i:=0 ; i < len(order.Items); i++ {
+		order.Items[i].Status = "20.Seller_Approval_Pending"
+	}
+	_ , err = global.Singletons.OrderRepository.Save(*order)
+	assert.Nil(t, err, "save failed")
+
+	request := pb.RequestSellerOrderAction {
+		OrderId: order.OrderId,
+		SellerId: order.Items[0].SellerInfo.SellerId,
+		ActionType: "Approved",
+		Action: "success",
+		Data: 	&pb.RequestSellerOrderAction_Success{
+			Success: &pb.RequestSellerOrderActionSuccess{ShipmentMethod: "Post", TrackingId: "839832742"},
+		},
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	result, err := OrderService.SellerOrderAction(ctx, &request)
+
+	assert.Nil(t, err)
+	assert.True(t, result.Result)
+}
+
+func TestSellerApprovalPending_Failed(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure())
+	assert.Nil(t, err)
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
+	assert.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	order , err := global.Singletons.OrderRepository.Save(*newOrder)
+	assert.Nil(t, err, "save failed")
+
+	for i:=0 ; i < len(order.Items); i++ {
+		order.Items[i].Status = "20.Seller_Approval_Pending"
+	}
+	_ , err = global.Singletons.OrderRepository.Save(*order)
+	assert.Nil(t, err, "save failed")
+
+	request := pb.RequestSellerOrderAction {
+		OrderId: order.OrderId,
+		SellerId: order.Items[0].SellerInfo.SellerId,
+		ActionType: "approved",
+		Action: "failed",
+		Data: 	&pb.RequestSellerOrderAction_Failed{
+			Failed: &pb.RequestSellerOrderActionFailed{Reason: "Not Enough Stuff"},
+		},
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	result, err := OrderService.SellerOrderAction(ctx, &request)
+
+	assert.Nil(t, err)
+	assert.True(t, result.Result)
 }

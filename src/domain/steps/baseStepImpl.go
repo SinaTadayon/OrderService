@@ -125,14 +125,19 @@ func (base BaseStepImpl) UpdateOrderStep(ctx context.Context, order *entities.Or
 	} else {
 		order.UpdatedAt = time.Now().UTC()
 		order.Status = status
+		findFlag := true
 		if itemsId != nil && len(itemsId) > 0 {
 			for _, id := range itemsId {
+				findFlag = false
 				for i := 0; i < len(order.Items); i++ {
 					if order.Items[i].ItemId == id {
 						base.doUpdateOrderStep(ctx, order, i)
-					} else {
-						logger.Err("paymentSuccess received itemId %s not exist in order, order: %v", id, order)
+						findFlag = true
+						break
 					}
+				}
+				if !findFlag {
+					logger.Err("%s received itemId %s not exist in order, orderId: %v", base.Name(), id, order.OrderId)
 				}
 			}
 		} else {
@@ -149,9 +154,9 @@ func (base BaseStepImpl) doUpdateOrderStep(ctx context.Context, order *entities.
 	order.Items[index].Progress.CurrentIndex = base.Index()
 
 	stepHistory := entities.StepHistory{
-		Name: order.Items[index].Progress.CurrentState.Name,
-		Index: order.Items[index].Progress.CurrentState.Index,
-		CreatedAt: order.Items[index].Progress.CurrentState.CreatedAt,
+		Name: base.Name(),
+		Index: base.Index(),
+		CreatedAt: order.Items[index].Progress.CreatedAt,
 		StatesHistory: make([]entities.StateHistory, 0, len(base.States())),
 	}
 

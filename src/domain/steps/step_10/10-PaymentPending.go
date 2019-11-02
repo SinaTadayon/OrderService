@@ -61,7 +61,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 	paymentAction := param.(string)
 
 	if paymentAction == PaymentCallbackUrlRequest {
-		logger.Audit("New Order Received in %s, orderId: %s, Action: %s", paymentPending.Name(), order.OrderId, PaymentCallbackUrlRequest)
+		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", paymentPending.Name(), order.OrderId, PaymentCallbackUrlRequest)
 		paymentPending.UpdateOrderStep(ctx, &order, itemsId, "NEW", false)
 		//return orderPaymentState.ActionLauncher(ctx, order, nil, nil)
 
@@ -142,7 +142,8 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 		returnChannel <- promise.FutureData{Data:paymentResponse, Ex:nil}
 		return promise.NewPromise(returnChannel, 1, 1)
 
-	} else if paymentAction == PaymentCallbackUrlRequest {
+	} else if paymentAction == PaymentPending {
+		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", paymentPending.Name(), order.OrderId, PaymentPending)
 		if order.PaymentService[0].PaymentResult.Result == false {
 			logger.Audit("PaymentResult of order failed, order: %v", order)
 			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentPending, false)
@@ -207,17 +208,21 @@ func (paymentPending paymentPendingStep) persistOrder(ctx context.Context, order
 	return err
 }
 
-
 func (paymentPending paymentPendingStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string, action string, result bool) {
 
+	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
 		for _, id := range itemsId {
+			findFlag = false
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == id {
 					paymentPending.doUpdateOrderItemsProgress(ctx, order, i, action, result)
-				} else {
-					logger.Err("%s received itemId %s not exist in order, order: %v", paymentPending.Name(), id, order)
+					findFlag = true
 				}
+			}
+
+			if !findFlag {
+				logger.Err("%s received itemId %s not exist in order, orderId: %v", paymentPending.Name(), id, order.OrderId)
 			}
 		}
 	} else {
