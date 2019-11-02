@@ -15,6 +15,7 @@ import (
 const (
 	stepName string 	= "Pay_To_Seller"
 	stepIndex int		= 90
+	PayToSeller			= "PayToSeller"
 )
 
 type payToSellerStep struct {
@@ -48,19 +49,25 @@ func (payToSeller payToSellerStep) ProcessOrder(ctx context.Context, order entit
 		payToSeller.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
 	}
 
-	payToSeller.updateOrderItemsProgress(ctx, &order, itemsId, "PayToSeller", true)
-	payToSeller.persistOrder(ctx, &order)
+	payToSeller.updateOrderItemsProgress(ctx, &order, itemsId, PayToSeller, true)
+	if err := payToSeller.persistOrder(ctx, &order); err != nil {
+		returnChannel := make(chan promise.FutureData, 1)
+		defer close(returnChannel)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
 	returnChannel := make(chan promise.FutureData, 1)
 	defer close(returnChannel)
 	returnChannel <- promise.FutureData{Data:nil, Ex:nil}
 	return promise.NewPromise(returnChannel, 1, 1)
 }
 
-func (payToSeller payToSellerStep) persistOrder(ctx context.Context, order *entities.Order) {
+func (payToSeller payToSellerStep) persistOrder(ctx context.Context, order *entities.Order) error {
 	_ , err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", payToSeller.Name(), order, err.Error())
 	}
+	return err
 }
 
 func (payToSeller payToSellerStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
@@ -74,6 +81,7 @@ func (payToSeller payToSellerStep) updateOrderItemsProgress(ctx context.Context,
 				if order.Items[i].ItemId == id {
 					payToSeller.doUpdateOrderItemsProgress(ctx, order, i, action, result)
 					findFlag = true
+					break
 				}
 			}
 
@@ -91,7 +99,7 @@ func (payToSeller payToSellerStep) updateOrderItemsProgress(ctx context.Context,
 func (payToSeller payToSellerStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
 	actionName string, result bool) {
 
-	order.Items[index].Status = actionName
+	order.Items[index].Status = payToSeller.Name()
 	order.Items[index].UpdatedAt = time.Now().UTC()
 
 	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {

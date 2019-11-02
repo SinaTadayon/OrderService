@@ -48,13 +48,18 @@ func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, ord
 	if param == nil {
 		shipmentPending.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
 		shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, SellerShipmentPending, true, "", nil, true)
-		shipmentPending.persistOrder(ctx, &order)
+		if err := shipmentPending.persistOrder(ctx, &order); err != nil {
+			returnChannel := make(chan promise.FutureData, 1)
+			defer close(returnChannel)
+			returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+			return promise.NewPromise(returnChannel, 1, 1)
+		}
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
 		returnChannel <- promise.FutureData{Data: nil, Ex: nil}
 		return promise.NewPromise(returnChannel, 1, 1)
 	} else {
-		req, ok := param.(message.RequestSellerOrderAction)
+		req, ok := param.(*message.RequestSellerOrderAction)
 		if ok != true {
 			//if len(order.Items) == len(itemsId) {
 			//	shipped.UpdateOrderStep(ctx, &order, nil, "CLOSED", false)
@@ -91,7 +96,13 @@ func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, ord
 
 			shipmentPending.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
 			shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, Shipped, true, "", actionData, false)
-			shipmentPending.persistOrder(ctx, &order)
+			if err := shipmentPending.persistOrder(ctx, &order); err != nil {
+				returnChannel := make(chan promise.FutureData, 1)
+				defer close(returnChannel)
+				returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+				return promise.NewPromise(returnChannel, 1, 1)
+			}
+
 			return shipmentPending.Childes()[0].ProcessOrder(ctx, order, itemsId, nil)
 		} else if req.Action == "failed" {
 			actionData, ok := req.Data.(*message.RequestSellerOrderAction_Failed)
@@ -104,7 +115,13 @@ func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, ord
 			}
 			shipmentPending.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
 			shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, Shipped, false, actionData.Failed.Reason, nil, false)
-			shipmentPending.persistOrder(ctx, &order)
+			if err := shipmentPending.persistOrder(ctx, &order); err != nil {
+				returnChannel := make(chan promise.FutureData, 1)
+				defer close(returnChannel)
+				returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+				return promise.NewPromise(returnChannel, 1, 1)
+			}
+
 			return shipmentPending.Childes()[1].ProcessOrder(ctx, order, itemsId, nil)
 		}
 
@@ -116,11 +133,13 @@ func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, ord
 	}
 }
 
-func (shipmentPending shipmentPendingStep) persistOrder(ctx context.Context, order *entities.Order) {
+func (shipmentPending shipmentPendingStep) persistOrder(ctx context.Context, order *entities.Order) error {
 	_ , err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", shipmentPending.Name(), order, err.Error())
 	}
+
+	return err
 }
 
 func (shipmentPending shipmentPendingStep) validateAction(ctx context.Context, order *entities.Order,
@@ -128,14 +147,14 @@ func (shipmentPending shipmentPendingStep) validateAction(ctx context.Context, o
 	if itemsId != nil && len(itemsId) > 0 {
 		for _, id := range itemsId {
 			for i := 0; i < len(order.Items); i++ {
-				if order.Items[i].ItemId == id && order.Items[i].Status != SellerShipmentPending {
+				if order.Items[i].ItemId == id && order.Items[i].Status != shipmentPending.Name() {
 					return false
 				}
 			}
 		}
 	} else {
 		for i := 0; i < len(order.Items); i++ {
-			if order.Items[i].Status != SellerShipmentPending {
+			if order.Items[i].Status != shipmentPending.Name() {
 				return false
 			}
 		}
@@ -159,6 +178,7 @@ func (shipmentPending shipmentPendingStep) updateOrderItemsProgress(ctx context.
 							TrackingNumber: req.Success.TrackingId,
 							ShippingMethod: req.Success.ShipmentMethod,
 						}
+						break
 					}
 				}
 			}
@@ -176,7 +196,7 @@ func (shipmentPending shipmentPendingStep) updateOrderItemsProgress(ctx context.
 func (shipmentPending shipmentPendingStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
 	actionName string, result bool, reason string, isSetExpireTime bool) {
 
-	order.Items[index].Status = actionName
+	order.Items[index].Status = shipmentPending.Name()
 	order.Items[index].UpdatedAt = time.Now().UTC()
 
 	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {

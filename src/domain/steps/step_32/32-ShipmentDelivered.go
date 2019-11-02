@@ -15,7 +15,7 @@ import (
 const (
 	stepName string 	= "Shipment_Delivered"
 	stepIndex int		= 32
-	Approved			= "Approved"
+	ShipmentDeliveredPending			= "ShipmentDeliveredPending"
 )
 
 type shipmentDeliveredStep struct {
@@ -46,8 +46,13 @@ func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context,
 
 	//if param == nil {
 		shipmentDelivered.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
-		shipmentDelivered.updateOrderItemsProgress(ctx, &order, itemsId, "BuyerShipmentDeliveredPending", true, "", true)
-		shipmentDelivered.persistOrder(ctx, &order)
+		shipmentDelivered.updateOrderItemsProgress(ctx, &order, itemsId, ShipmentDeliveredPending, true, "", true)
+		if err:= shipmentDelivered.persistOrder(ctx, &order); err != nil {
+			returnChannel := make(chan promise.FutureData, 1)
+			defer close(returnChannel)
+			returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+			return promise.NewPromise(returnChannel, 1, 1)
+		}
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
 		returnChannel <- promise.FutureData{Data: nil, Ex: nil}
@@ -98,11 +103,12 @@ func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context,
 	//}
 }
 
-func (shipmentDelivered shipmentDeliveredStep) persistOrder(ctx context.Context, order *entities.Order) {
+func (shipmentDelivered shipmentDeliveredStep) persistOrder(ctx context.Context, order *entities.Order) error {
 	_ , err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", shipmentDelivered.Name(), order, err.Error())
 	}
+	return err
 }
 
 func (shipmentDelivered shipmentDeliveredStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
@@ -116,6 +122,7 @@ func (shipmentDelivered shipmentDeliveredStep) updateOrderItemsProgress(ctx cont
 				if order.Items[i].ItemId == id {
 					shipmentDelivered.doUpdateOrderItemsProgress(ctx, order, i, action, result, reason, isSetExpireTime)
 					findFlag = true
+					break
 				}
 			}
 			if !findFlag {
@@ -132,7 +139,7 @@ func (shipmentDelivered shipmentDeliveredStep) updateOrderItemsProgress(ctx cont
 func (shipmentDelivered shipmentDeliveredStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
 	actionName string, result bool, reason string, isSetExpireTime bool) {
 
-	order.Items[index].Status = actionName
+	order.Items[index].Status = shipmentDelivered.Name()
 	order.Items[index].UpdatedAt = time.Now().UTC()
 
 	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {

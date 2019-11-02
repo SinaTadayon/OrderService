@@ -15,6 +15,7 @@ import (
 const (
 	stepName string 	= "Shipment_Success"
 	stepIndex int		= 40
+	ShipmentSuccess		= "ShipmentSuccess"
 )
 
 type shipmentSuccessStep struct {
@@ -45,16 +46,22 @@ func (shipmentSuccess shipmentSuccessStep) ProcessMessage(ctx context.Context, r
 // TODO scheduler must be call this step
 func (shipmentSuccess shipmentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	shipmentSuccess.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
-	shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, "ShipmentSuccess", true)
-	shipmentSuccess.persistOrder(ctx, &order)
+	shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, ShipmentSuccess, true)
+	if err := shipmentSuccess.persistOrder(ctx, &order); err != nil {
+		returnChannel := make(chan promise.FutureData, 1)
+		defer close(returnChannel)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
 	return shipmentSuccess.Childes()[0].ProcessOrder(ctx, order, itemsId, nil)
 }
 
-func (shipmentSuccess shipmentSuccessStep) persistOrder(ctx context.Context, order *entities.Order) {
+func (shipmentSuccess shipmentSuccessStep) persistOrder(ctx context.Context, order *entities.Order) error {
 	_ , err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", shipmentSuccess.Name(), order, err.Error())
 	}
+	return err
 }
 
 func (shipmentSuccess shipmentSuccessStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
@@ -68,6 +75,7 @@ func (shipmentSuccess shipmentSuccessStep) updateOrderItemsProgress(ctx context.
 				if order.Items[i].ItemId == id {
 					shipmentSuccess.doUpdateOrderItemsProgress(ctx, order, i, action, result)
 					findFlag = true
+					break
 				}
 			}
 			if !findFlag {
@@ -84,7 +92,7 @@ func (shipmentSuccess shipmentSuccessStep) updateOrderItemsProgress(ctx context.
 func (shipmentSuccess shipmentSuccessStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
 	actionName string, result bool) {
 
-	order.Items[index].Status = actionName
+	order.Items[index].Status = shipmentSuccess.Name()
 	order.Items[index].UpdatedAt = time.Now().UTC()
 
 	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {

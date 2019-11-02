@@ -363,11 +363,9 @@ func TestSellerApprovalPending_Success(t *testing.T) {
 	request := pb.RequestSellerOrderAction {
 		OrderId: order.OrderId,
 		SellerId: order.Items[0].SellerInfo.SellerId,
-		ActionType: "Approved",
+		ActionType: "approved",
 		Action: "success",
-		Data: 	&pb.RequestSellerOrderAction_Success{
-			Success: &pb.RequestSellerOrderActionSuccess{ShipmentMethod: "Post", TrackingId: "839832742"},
-		},
+		Data: 	nil,
 	}
 
 	OrderService := pb.NewOrderServiceClient(grpcConn)
@@ -404,6 +402,80 @@ func TestSellerApprovalPending_Failed(t *testing.T) {
 		Action: "failed",
 		Data: 	&pb.RequestSellerOrderAction_Failed{
 			Failed: &pb.RequestSellerOrderActionFailed{Reason: "Not Enough Stuff"},
+		},
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	result, err := OrderService.SellerOrderAction(ctx, &request)
+
+	assert.Nil(t, err)
+	assert.True(t, result.Result)
+}
+
+func TestShipmentPending_Success(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure())
+	assert.Nil(t, err)
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
+	assert.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	order , err := global.Singletons.OrderRepository.Save(*newOrder)
+	assert.Nil(t, err, "save failed")
+
+	for i:=0 ; i < len(order.Items); i++ {
+		order.Items[i].Status = "30.Shipment_Pending"
+	}
+	_ , err = global.Singletons.OrderRepository.Save(*order)
+	assert.Nil(t, err, "save failed")
+
+	request := pb.RequestSellerOrderAction {
+		OrderId: order.OrderId,
+		SellerId: order.Items[0].SellerInfo.SellerId,
+		ActionType: "shipped",
+		Action: "success",
+		Data: 	&pb.RequestSellerOrderAction_Success{
+			Success: &pb.RequestSellerOrderActionSuccess{ShipmentMethod: "Post", TrackingId: "839832742"},
+		},
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	result, err := OrderService.SellerOrderAction(ctx, &request)
+
+	assert.Nil(t, err)
+	assert.True(t, result.Result)
+}
+
+func TestShipmentPending_Failed(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure())
+	assert.Nil(t, err)
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
+	assert.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	order , err := global.Singletons.OrderRepository.Save(*newOrder)
+	assert.Nil(t, err, "save failed")
+
+	for i:=0 ; i < len(order.Items); i++ {
+		order.Items[i].Status = "30.Shipment_Pending"
+	}
+	_ , err = global.Singletons.OrderRepository.Save(*order)
+	assert.Nil(t, err, "save failed")
+
+	request := pb.RequestSellerOrderAction {
+		OrderId: order.OrderId,
+		SellerId: order.Items[0].SellerInfo.SellerId,
+		ActionType: "shipped",
+		Action: "failed",
+		Data: 	&pb.RequestSellerOrderAction_Failed{
+			Failed: &pb.RequestSellerOrderActionFailed{Reason: "Post Failed"},
 		},
 	}
 

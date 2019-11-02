@@ -1086,7 +1086,7 @@ func (flowManager iFlowManagerImpl) SellerApprovalPending(ctx context.Context, r
 	if req.ActionType == "approved" {
 		return flowManager.indexStepsMap[20].ProcessOrder(ctx, *order, itemsId, req)
 	} else if req.ActionType == "shipped" {
-		return flowManager.indexStepsMap[31].ProcessOrder(ctx, *order, itemsId, req)
+		return flowManager.indexStepsMap[30].ProcessOrder(ctx, *order, itemsId, req)
 	}
 
 	returnChannel := make(chan promise.FutureData, 1)

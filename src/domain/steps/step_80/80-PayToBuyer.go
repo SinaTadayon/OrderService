@@ -82,6 +82,7 @@ func (payToBuyer payToBuyerStep) updateOrderItemsProgress(ctx context.Context, o
 				if order.Items[i].ItemId == id {
 					payToBuyer.doUpdateOrderItemsProgress(ctx, order, i, action, result)
 					findFlag = true
+					break
 				}
 			}
 
@@ -99,7 +100,7 @@ func (payToBuyer payToBuyerStep) updateOrderItemsProgress(ctx context.Context, o
 func (payToBuyer payToBuyerStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
 	actionName string, result bool) {
 
-	order.Items[index].Status = actionName
+	order.Items[index].Status = payToBuyer.Name()
 	order.Items[index].UpdatedAt = time.Now().UTC()
 
 	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {
