@@ -94,7 +94,7 @@ func (stockState stockActionLauncher) doReservedAction(ctx context.Context, orde
 		}
 	}
 
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, stock_action.ReservedAction)
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, stock_action.ReservedAction.Name())
 	futureData := iPromise.Data()
 	if futureData == nil {
 		stockState.persistOrderState(ctx, order, stock_action.ReservedAction, false)
@@ -168,7 +168,7 @@ func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, orde
 		}
 	}
 
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, stock_action.ReleasedAction)
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, stock_action.ReleasedAction.Name())
 	futureData := iPromise.Data()
 	if futureData == nil {
 		stockState.persistOrderState(ctx, order, stock_action.ReleasedAction, false)
@@ -220,7 +220,7 @@ func (stockState stockActionLauncher) persistOrderState(ctx context.Context, ord
 		order.Items[i].Progress.CurrentState.AcceptedAction.Name = action.Name()
 		order.Items[i].Progress.CurrentState.AcceptedAction.Type = actives.StockAction.String()
 		order.Items[i].Progress.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
-		order.Items[i].Progress.CurrentState.AcceptedAction.Data = ""
+		order.Items[i].Progress.CurrentState.AcceptedAction.Data = nil
 		order.Items[i].Progress.CurrentState.AcceptedAction.Time = &order.UpdatedAt
 
 		order.Items[i].Progress.CurrentState.Actions = []entities.Action{order.Items[i].Progress.CurrentState.AcceptedAction}

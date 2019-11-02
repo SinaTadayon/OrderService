@@ -17,9 +17,9 @@ const (
 	stepName string 	= "Payment_Pending"
 	stepIndex int		= 10
 	
-	PaymentRequest		= "PaymentRequest"
-	PaymentPending		= "PaymentPending"
-	StockReleased		= "StockReleased"
+	PaymentCallbackUrlRequest		= "PaymentCallbackUrlRequest"
+	PaymentPending					= "PaymentPending"
+	StockReleased					= "StockReleased"
 )
 
 type paymentPendingStep struct {
@@ -57,9 +57,11 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 	//	return promise.NewPromise(returnChannel, 1, 1)
 	//}
 
+
 	paymentAction := param.(string)
 
-	if paymentAction == PaymentRequest {
+	if paymentAction == PaymentCallbackUrlRequest {
+		logger.Audit("New Order Received in %s, orderId: %s, Action: %s", paymentPending.Name(), order.OrderId, PaymentCallbackUrlRequest)
 		paymentPending.UpdateOrderStep(ctx, &order, itemsId, "NEW", false)
 		//return orderPaymentState.ActionLauncher(ctx, order, nil, nil)
 
@@ -76,7 +78,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 					Amount:      uint64(paymentRequest.Amount),
 					Currency:    paymentRequest.Currency,
 					Gateway:     paymentRequest.Gateway,
-					CreatedAt:   time.Time{},
+					CreatedAt:   time.Now().UTC(),
 				},
 			},
 		}
@@ -91,9 +93,9 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			}
 
 			paymentPending.UpdateOrderStep(ctx, &order, nil, "CLOSED", true)
-			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentRequest, false)
+			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, false)
 			paymentPending.releasedStock(ctx, &order)
-			paymentPending.persistOrder(ctx, &order)
+			if err := paymentPending.persistOrder(ctx, &order); err != nil {}
 
 			logger.Err("PaymentService promise channel has been closed, order: %v", order)
 			returnChannel := make(chan promise.FutureData, 1)
@@ -110,9 +112,9 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			}
 
 			paymentPending.UpdateOrderStep(ctx, &order, nil, "CLOSED", true)
-			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentRequest, false)
+			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, false)
 			paymentPending.releasedStock(ctx, &order)
-			paymentPending.persistOrder(ctx, &order)
+			if err := paymentPending.persistOrder(ctx, &order); err != nil {}
 			logger.Err("PaymentService.OrderPayment in orderPaymentState failed, order: %v, error", order, futureData.Ex.Error())
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
@@ -129,24 +131,24 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			CallBackUrl: paymentResponse.CallbackUrl,
 			InvoiceId:   paymentResponse.InvoiceId,
 			PaymentId:   paymentResponse.PaymentId,
-			CreatedAt:   time.Now(),
+			CreatedAt:   time.Now().UTC(),
 		}
 
-		paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentRequest, true)
-		paymentPending.persistOrder(ctx, &order)
+		paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, true)
+		if err := paymentPending.persistOrder(ctx, &order); err != nil {}
 
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data:paymentResponse.CallbackUrl, Ex:nil}
+		returnChannel <- promise.FutureData{Data:paymentResponse, Ex:nil}
 		return promise.NewPromise(returnChannel, 1, 1)
 
-	} else if paymentAction == PaymentRequest {
+	} else if paymentAction == PaymentCallbackUrlRequest {
 		if order.PaymentService[0].PaymentResult.Result == false {
 			logger.Audit("PaymentResult of order failed, order: %v", order)
 			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentPending, false)
 			paymentPending.UpdateOrderStep(ctx, &order, nil, "CLOSED", true)
 			paymentPending.releasedStock(ctx, &order)
-			paymentPending.persistOrder(ctx, &order)
+			if err := paymentPending.persistOrder(ctx, &order); err != nil {}
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
 			returnChannel <- promise.FutureData{Data:nil, Ex:nil}
@@ -196,11 +198,13 @@ func (paymentPending paymentPendingStep) releasedStock(ctx context.Context, orde
 	logger.Audit("Reserved stock from stockService success, step: %s, order: %v", paymentPending.Name(), order)
 }
 
-func (paymentPending paymentPendingStep) persistOrder(ctx context.Context, order *entities.Order) {
+func (paymentPending paymentPendingStep) persistOrder(ctx context.Context, order *entities.Order) error {
 	_ , err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", paymentPending.Name(), order, err.Error())
 	}
+
+	return err
 }
 
 
@@ -226,7 +230,7 @@ func (paymentPending paymentPendingStep) updateOrderItemsProgress(ctx context.Co
 func (paymentPending paymentPendingStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
 	actionName string, result bool) {
 
-	order.Items[index].Status = actionName
+	order.Items[index].Status = paymentPending.Name()
 	order.Items[index].UpdatedAt = time.Now().UTC()
 
 	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {
@@ -247,35 +251,35 @@ func (paymentPending paymentPendingStep) doUpdateOrderItemsProgress(ctx context.
 //func (ppr *PaymentPendingRequest) validate() error {
 //	var errValidation []string
 //	// Validate order number
-//	errPaymentRequest := validation.ValidateStruct(ppr,
+//	errPaymentCallbackUrlRequest := validation.ValidateStruct(ppr,
 //		validation.Field(&ppr.OrderNumber, validation.Required, validation.Length(5, 250)),
 //	)
-//	if errPaymentRequest != nil {
-//		errValidation = append(errValidation, errPaymentRequest.Error())
+//	if errPaymentCallbackUrlRequest != nil {
+//		errValidation = append(errValidation, errPaymentCallbackUrlRequest.Error())
 //	}
 //
 //	// Validate Buyer
-//	errPaymentRequestBuyer := validation.ValidateStruct(&ppr.Buyer,
+//	errPaymentCallbackUrlRequestBuyer := validation.ValidateStruct(&ppr.Buyer,
 //		validation.Field(&ppr.Buyer.FirstName, validation.Required),
 //		validation.Field(&ppr.Buyer.LastName, validation.Required),
 //		validation.Field(&ppr.Buyer.Email, validation.Required, is.Email),
 //		validation.Field(&ppr.Buyer.NationalId, validation.Required, validation.Length(10, 10)),
 //		validation.Field(&ppr.Buyer.Mobile, validation.Required),
 //	)
-//	if errPaymentRequestBuyer != nil {
-//		errValidation = append(errValidation, errPaymentRequestBuyer.Error())
+//	if errPaymentCallbackUrlRequestBuyer != nil {
+//		errValidation = append(errValidation, errPaymentCallbackUrlRequestBuyer.Error())
 //	}
 //
 //	// Validate Buyer finance
-//	errPaymentRequestBuyerFinance := validation.ValidateStruct(&ppr.Buyer.Finance,
+//	errPaymentCallbackUrlRequestBuyerFinance := validation.ValidateStruct(&ppr.Buyer.Finance,
 //		validation.Field(&ppr.Buyer.Finance.Iban, validation.Required, validation.Length(26, 26)),
 //	)
-//	if errPaymentRequestBuyerFinance != nil {
-//		errValidation = append(errValidation, errPaymentRequestBuyerFinance.Error())
+//	if errPaymentCallbackUrlRequestBuyerFinance != nil {
+//		errValidation = append(errValidation, errPaymentCallbackUrlRequestBuyerFinance.Error())
 //	}
 //
 //	// Validate Buyer address
-//	errPaymentRequestBuyerAddress := validation.ValidateStruct(&ppr.Buyer.Address,
+//	errPaymentCallbackUrlRequestBuyerAddress := validation.ValidateStruct(&ppr.Buyer.Address,
 //		validation.Field(&ppr.Buyer.Address.Address, validation.Required),
 //		validation.Field(&ppr.Buyer.Address.State, validation.Required),
 //		validation.Field(&ppr.Buyer.Address.City, validation.Required),
@@ -283,53 +287,53 @@ func (paymentPending paymentPendingStep) doUpdateOrderItemsProgress(ctx context.
 //		validation.Field(&ppr.Buyer.Address.ZipCode, validation.Required),
 //		validation.Field(&ppr.Buyer.Address.Phone, validation.Required),
 //	)
-//	if errPaymentRequestBuyerAddress != nil {
-//		errValidation = append(errValidation, errPaymentRequestBuyerAddress.Error())
+//	if errPaymentCallbackUrlRequestBuyerAddress != nil {
+//		errValidation = append(errValidation, errPaymentCallbackUrlRequestBuyerAddress.Error())
 //	}
 //
 //	// Validate amount
-//	errPaymentRequestAmount := validation.ValidateStruct(&ppr.Amount,
+//	errPaymentCallbackUrlRequestAmount := validation.ValidateStruct(&ppr.Amount,
 //		validation.Field(&ppr.Amount.Total, validation.Required),
 //		validation.Field(&ppr.Amount.Discount, validation.Required),
 //		validation.Field(&ppr.Amount.Payable, validation.Required),
 //	)
-//	if errPaymentRequestAmount != nil {
-//		errValidation = append(errValidation, errPaymentRequestAmount.Error())
+//	if errPaymentCallbackUrlRequestAmount != nil {
+//		errValidation = append(errValidation, errPaymentCallbackUrlRequestAmount.Error())
 //	}
 //
 //	if len(ppr.Items) != 0 {
 //		for i := range ppr.Items {
 //			// Validate amount
-//			errPaymentRequestItems := validation.ValidateStruct(&ppr.Items[i],
+//			errPaymentCallbackUrlRequestItems := validation.ValidateStruct(&ppr.Items[i],
 //				validation.Field(&ppr.Items[i].Sku, validation.Required),
 //				validation.Field(&ppr.Items[i].Quantity, validation.Required),
 //				validation.Field(&ppr.Items[i].Title, validation.Required),
 //				validation.Field(&ppr.Items[i].Categories, validation.Required),
 //				validation.Field(&ppr.Items[i].Brand, validation.Required),
 //			)
-//			if errPaymentRequestItems != nil {
-//				errValidation = append(errValidation, errPaymentRequestItems.Error())
+//			if errPaymentCallbackUrlRequestItems != nil {
+//				errValidation = append(errValidation, errPaymentCallbackUrlRequestItems.Error())
 //			}
 //
-//			errPaymentRequestItemsSeller := validation.ValidateStruct(&ppr.Items[i].Seller,
+//			errPaymentCallbackUrlRequestItemsSeller := validation.ValidateStruct(&ppr.Items[i].Seller,
 //				validation.Field(&ppr.Items[i].Seller.Title, validation.Required),
 //				validation.Field(&ppr.Items[i].Seller.FirstName, validation.Required),
 //				validation.Field(&ppr.Items[i].Seller.LastName, validation.Required),
 //				validation.Field(&ppr.Items[i].Seller.Mobile, validation.Required),
 //				validation.Field(&ppr.Items[i].Seller.Email, validation.Required),
 //			)
-//			if errPaymentRequestItemsSeller != nil {
-//				errValidation = append(errValidation, errPaymentRequestItemsSeller.Error())
+//			if errPaymentCallbackUrlRequestItemsSeller != nil {
+//				errValidation = append(errValidation, errPaymentCallbackUrlRequestItemsSeller.Error())
 //			}
 //
-//			errPaymentRequestItemsSellerFinance := validation.ValidateStruct(&ppr.Items[i].Seller.Finance,
+//			errPaymentCallbackUrlRequestItemsSellerFinance := validation.ValidateStruct(&ppr.Items[i].Seller.Finance,
 //				validation.Field(&ppr.Items[i].Seller.Finance.Iban, validation.Required),
 //			)
-//			if errPaymentRequestItemsSellerFinance != nil {
-//				errValidation = append(errValidation, errPaymentRequestItemsSellerFinance.Error())
+//			if errPaymentCallbackUrlRequestItemsSellerFinance != nil {
+//				errValidation = append(errValidation, errPaymentCallbackUrlRequestItemsSellerFinance.Error())
 //			}
 //
-//			errPaymentRequestItemsSellerAddress := validation.ValidateStruct(&ppr.Items[i].Seller.Address,
+//			errPaymentCallbackUrlRequestItemsSellerAddress := validation.ValidateStruct(&ppr.Items[i].Seller.Address,
 //				validation.Field(&ppr.Items[i].Seller.Address.Title, validation.Required),
 //				validation.Field(&ppr.Items[i].Seller.Address.Address, validation.Required),
 //				validation.Field(&ppr.Items[i].Seller.Address.Phone, validation.Required),
@@ -338,30 +342,30 @@ func (paymentPending paymentPendingStep) doUpdateOrderItemsProgress(ctx context.
 //				validation.Field(&ppr.Items[i].Seller.Address.City, validation.Required),
 //				validation.Field(&ppr.Items[i].Seller.Address.ZipCode, validation.Required),
 //			)
-//			if errPaymentRequestItemsSellerAddress != nil {
-//				errValidation = append(errValidation, errPaymentRequestItemsSellerAddress.Error())
+//			if errPaymentCallbackUrlRequestItemsSellerAddress != nil {
+//				errValidation = append(errValidation, errPaymentCallbackUrlRequestItemsSellerAddress.Error())
 //			}
 //
-//			errPaymentRequestItemsPrice := validation.ValidateStruct(&ppr.Items[i].Price,
+//			errPaymentCallbackUrlRequestItemsPrice := validation.ValidateStruct(&ppr.Items[i].Price,
 //				validation.Field(&ppr.Items[i].Price.Unit, validation.Required),
 //				validation.Field(&ppr.Items[i].Price.Total, validation.Required),
 //				validation.Field(&ppr.Items[i].Price.Payable, validation.Required),
 //				validation.Field(&ppr.Items[i].Price.Discount, validation.Required),
 //				validation.Field(&ppr.Items[i].Price.SellerCommission, validation.Required),
 //			)
-//			if errPaymentRequestItemsPrice != nil {
-//				errValidation = append(errValidation, errPaymentRequestItemsPrice.Error())
+//			if errPaymentCallbackUrlRequestItemsPrice != nil {
+//				errValidation = append(errValidation, errPaymentCallbackUrlRequestItemsPrice.Error())
 //			}
 //
-//			errPaymentRequestItemsShipment := validation.ValidateStruct(&ppr.Items[i].Shipment,
+//			errPaymentCallbackUrlRequestItemsShipment := validation.ValidateStruct(&ppr.Items[i].Shipment,
 //				validation.Field(&ppr.Items[i].Shipment.ProviderName, validation.Required),
 //				validation.Field(&ppr.Items[i].Shipment.ReactionTime, validation.Required),
 //				validation.Field(&ppr.Items[i].Shipment.ShippingTime, validation.Required),
 //				validation.Field(&ppr.Items[i].Shipment.ReturnTime, validation.Required),
 //				validation.Field(&ppr.Items[i].Shipment.ShipmentDetail, validation.Required),
 //			)
-//			if errPaymentRequestItemsShipment != nil {
-//				errValidation = append(errValidation, errPaymentRequestItemsShipment.Error())
+//			if errPaymentCallbackUrlRequestItemsShipment != nil {
+//				errValidation = append(errValidation, errPaymentCallbackUrlRequestItemsShipment.Error())
 //			}
 //		}
 //	}

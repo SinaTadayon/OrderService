@@ -62,7 +62,7 @@ func (newOrderProcessingFailed newOrderProcessingFailedStep) ProcessOrder(ctx co
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	newOrderProcessingFailed.UpdateOrderStep(ctx, &order, itemsId, "CLOSED")
+	newOrderProcessingFailed.UpdateOrderStep(ctx, &order, itemsId, "CLOSED", true)
 	return finalizeState.ActionLauncher(ctx, order, nil, finalize_action.OrderFailedFinalizeAction)
 }
 

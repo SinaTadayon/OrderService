@@ -1,19 +1,11 @@
-package grpc
+package grpc_server
 
 import (
 	"context"
-	"fmt"
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
-	"gitlab.faza.io/order-project/order-service/domain/models/entities"
-	pb "gitlab.faza.io/protos/order"
 	message "gitlab.faza.io/protos/order"
-	"google.golang.org/grpc/status"
+	pb "gitlab.faza.io/protos/order"
 	"strconv"
 
-	//"github.com/golang
-	// /protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/any"
 	"github.com/stretchr/testify/assert"
 	//"log"
 	"testing"
@@ -35,13 +27,13 @@ var config *configs.Cfg
 
 func init() {
 	var err error
-	config, err = configs.LoadConfig("")
+	config, err = configs.LoadConfig("../../testdata/.env")
 	if err != nil {
 		logger.Err(err.Error())
 		return
 	}
 
-	server := NewServer(config.GRPCServer.Address, config.GRPCServer.Port, nil)
+	server := NewServer(config.GRPCServer.Address, uint16(config.GRPCServer.Port), nil)
 	go server.Start()
 }
 
@@ -93,16 +85,17 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Price:    &pb.PriceInfo{},
 		Shipment: &pb.ShippingSpec{},
 		Attributes: make(map[string]string, 10),
-		SellerId: "6546345",
+		SellerId: "123456",
 	}
 
-	item.InventoryId = "453564554435345"
+	item.InventoryId = "11111-22222"
 	item.Brand = "Asus"
 	item.Categories = "Electronic/laptop"
 	item.Title = "Asus G503 i7, 256SSD, 32G Ram"
 	item.Guarantee = "ضمانت سلامت کالا"
 	item.Image = "http://baman.io/image/asus.png"
 	item.Returnable = true
+	item.Quantity = 5
 
 	item.Attributes["Quantity"] = "10"
 	item.Attributes["Width"] = "8cm"
@@ -130,34 +123,51 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item.Shipment.VoucherAmount = 0
 	item.Shipment.Currency = "RR"
 
-	item.SellerId = "345346343"
-	//item. Seller.FirstName = "farzan"
-	//item.Seller.LastName = "dalaii"
-	//item.Seller.Title = "Digikala"
-	//item.Seller.NationalId = "4353435343"
-	//item.Seller.Email = "farzan.dalaii@bamilo.com"
-	//item.Seller.Mobile = "0912329389"
-	//item.Seller.CompanyName = "Digi"
-	//item.Seller.RegistrationName = "Digikala gostaran e shargh"
-	//item.Seller.EconomicCode = "13211"
-
-	//item.Seller.Address.Address = "address"
-	//item.Seller.Address.Lan = "23031121"
-	//item.Seller.Address.Lat = "03221211"
-	//item.Seller.Address.Country = "Iran"
-	//item.Seller.Address.City = "Tehran"
-	//item.Seller.Address.ZipCode = "1651145864"
-	//item.Seller.Address.Phone = "0212222222"
-	//item.Seller.Address.State = "Tehran"
-	//item.Seller.Address.Title = "office"
-
-	//item.Seller.Finance.Iban = "IR165411211001514313143545354134"
-	//item.Seller.Finance.CardNumber = "1234123412341234"
-	//item.Seller.Finance.AccountNumber = "234.545.12342344.4"
-	//item.Seller.Finance.BankName = "melli"
-	//item.Seller.Finance.Gateway = ""
-
 	order.Items = append(order.Items, &item)
+
+	item1 := pb.Item {
+		Price:    &pb.PriceInfo{},
+		Shipment: &pb.ShippingSpec{},
+		Attributes: make(map[string]string, 10),
+		SellerId: "678912",
+	}
+
+	item1.InventoryId = "11111-33333"
+	item1.Brand = "Lenovo"
+	item1.Categories = "Electronic/laptop"
+	item1.Title = "Lenove G503 i7, 256SSD, 32G Ram"
+	item1.Guarantee = "ضمانت سلامت کالا"
+	item1.Image = "http://baman.io/image/asus.png"
+	item1.Returnable = true
+	item1.Quantity = 5
+
+	item1.Attributes["Quantity"] = "10"
+	item1.Attributes["Width"] = "8cm"
+	item1.Attributes["Height"] = "10cm"
+	item1.Attributes["Length"] = "15cm"
+	item1.Attributes["Weight"] = "20kg"
+	item1.Attributes["Color"] = "blue"
+	item1.Attributes["Materials"] = "stone"
+
+	item1.Price.Discount = 250000
+	item1.Price.Payable = 200000
+	item1.Price.SellerCommission = 10
+	item1.Price.Unit = 200000
+	item1.Price.Currency = "RR"
+
+	//Standard, Express, Economy or Sameday.
+	item1.Shipment.Details = "پست پیشتاز و تیپاکس برای شهرستان ها و پیک برای تهران به صورت رایگان می باشد"
+	item1.Shipment.ShippingTime = 72
+	item1.Shipment.ReturnTime = 72
+	item1.Shipment.ReactionTime = 24
+	item1.Shipment.CarrierName = "Post"
+	item1.Shipment.CarrierProduct = "Post Express"
+	item1.Shipment.CarrierType = "standard"
+	item1.Shipment.ShippingAmount = 100000
+	item1.Shipment.VoucherAmount = 0
+	item1.Shipment.Currency = "RR"
+
+	order.Items = append(order.Items, &item1)
 	return order
 }
 
@@ -187,50 +197,66 @@ func createMetaDataRequest() *message.RequestMetadata {
 }
 
 // Grpc test
+//func TestOrderRequestsHandler(t *testing.T) {
+//
+//	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
+//	grpcConnNewOrder, err := grpc.DialContext(ctx, config.GRPCServer.Address + ":" +
+//		strconv.Itoa(int(config.GRPCServer.Port)), grpc.WithInsecure())
+//	assert.Nil(t, err)
+//	OrderService := pb.NewOrderServiceClient(grpcConnNewOrder)
+//
+//	RequestNewOrder := createRequestNewOrder()
+//	metadata := createMetaDataRequest()
+//
+//	serializedOrder, err := proto.Marshal(RequestNewOrder)
+//	if err != nil {
+//		logger.Err("could not serialize timestamp")
+//	}
+//
+//	orderId := entities.GenerateOrderId()
+//	request := message.MessageRequest {
+//		OrderId: orderId,
+//		//ItemId: orderId + strconv.Itoa(int(entities.GenerateRandomNumber())),
+//		Time: ptypes.TimestampNow(),
+//		Meta: metadata,
+//		Data: &any.Any{
+//			TypeUrl: "baman.io/" + proto.MessageName(RequestNewOrder),
+//			Value:   serializedOrder,
+//		},
+//	}
+//
+//	resOrder, err := OrderService.OrderRequestsHandler(ctx, &request)
+//
+//	if err != nil {
+//		st := status.Convert(err)
+//		for _, detail := range st.Details() {
+//			switch t := detail.(type) {
+//			case *message.ErrorDetails:
+//				fmt.Println("Oops! Your request was rejected by the server.")
+//				for _, validate := range t.Validation {
+//					fmt.Printf("The %q field was wrong:\n", validate.GetField())
+//					fmt.Printf("\t%s\n", validate.GetDesc())
+//				}
+//			}
+//		}
+//	}
+//
+//	//assert.Nil(t, err)
+//	assert.NotNil(t, resOrder)
+//}
+
 func TestNewOrder(t *testing.T) {
 
-	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
 	grpcConnNewOrder, err := grpc.DialContext(ctx, config.GRPCServer.Address + ":" +
 		strconv.Itoa(int(config.GRPCServer.Port)), grpc.WithInsecure())
 	assert.Nil(t, err)
+
+	requestNewOrder := createRequestNewOrder()
+
 	OrderService := pb.NewOrderServiceClient(grpcConnNewOrder)
+	resOrder, err := OrderService.NewOrder(ctx, requestNewOrder)
 
-	RequestNewOrder := createRequestNewOrder()
-	metadata := createMetaDataRequest()
-
-	serializedOrder, err := proto.Marshal(RequestNewOrder)
-	if err != nil {
-		logger.Err("could not serialize timestamp")
-	}
-
-	orderId := entities.GenerateOrderId()
-	request := message.MessageRequest {
-		OrderId: orderId,
-		//ItemId: orderId + strconv.Itoa(int(entities.GenerateRandomNumber())),
-		Time: ptypes.TimestampNow(),
-		Meta: metadata,
-		Data: &any.Any{
-			TypeUrl: "baman.io/" + proto.MessageName(RequestNewOrder),
-			Value:   serializedOrder,
-		},
-	}
-
-	resOrder, err := OrderService.OrderRequestsHandler(ctx, &request)
-
-	if err != nil {
-		st := status.Convert(err)
-		for _, detail := range st.Details() {
-			switch t := detail.(type) {
-			case *message.ErrorDetails:
-				fmt.Println("Oops! Your request was rejected by the server.")
-				for _, validate := range t.Validation {
-					fmt.Printf("The %q field was wrong:\n", validate.GetField())
-					fmt.Printf("\t%s\n", validate.GetDesc())
-				}
-			}
-		}
-	}
-
-	//assert.Nil(t, err)
-	assert.NotNil(t, resOrder)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, resOrder.CallbackUrl, "CallbackUrl is empty")
 }

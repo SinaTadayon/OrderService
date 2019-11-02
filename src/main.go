@@ -11,7 +11,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	"gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	"gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
-	"gitlab.faza.io/order-project/order-service/server/grpc"
+	grpc_server "gitlab.faza.io/order-project/order-service/server/grpc"
 	"os"
 	"time"
 
@@ -21,7 +21,7 @@ import (
 var App struct {
 	Config          *configs.Cfg
 	flowManager     domain.IFlowManager
-	grpcServer      grpc.Server
+	grpcServer      grpc_server.Server
 }
 var brokers []string
 
@@ -100,7 +100,8 @@ func init() {
 		panic("flowManager creation failed, " + err.Error())
 	}
 
-	 App.grpcServer = grpc.NewServer(App.Config.GRPCServer.Address, uint16(App.Config.GRPCServer.Port), App.flowManager)
+
+	 App.grpcServer = grpc_server.NewServer(App.Config.GRPCServer.Address, uint16(App.Config.GRPCServer.Port), App.flowManager)
 
 	global.Singletons.Converter = converter.NewConverter()
 	global.Singletons.StockService = stock_service.NewStockService(App.Config.StockService.Address, App.Config.StockService.Port)

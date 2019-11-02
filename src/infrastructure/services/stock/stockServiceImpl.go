@@ -45,14 +45,20 @@ func (stockService iStockServiceImpl) BatchStockActions(context context.Context,
 	//}
 	//return nil
 
-	if action == "StockReserved" {
-		panic("must be implement")
-	} else if action == "StockReleased" {
-		panic("must be implement")
-	} else if action == "StockSettlement" {
-		panic("must be implement")
-	}
-	return nil
+		returnChannel := make(chan promise.FutureData, 1)
+		defer close(returnChannel)
+		returnChannel <- promise.FutureData{Data:nil, Ex:nil}
+		return promise.NewPromise(returnChannel, 1, 1)
+
+
+	//if action == "StockReserved" {
+	//	panic("must be implement")
+	//} else if action == "StockReleased" {
+	//	panic("must be implement")
+	//} else if action == "StockSettlement" {
+	//	panic("must be implement")
+	//}
+	//return nil
 
 }
 

@@ -1,4 +1,4 @@
-package grpc
+package grpc_server
 
 import (
 	"context"
@@ -188,7 +188,7 @@ func (server Server) SellerFindAllItems(context.Context, *pb.RequestSellerFindAl
 }
 
 func (server Server) BuyerOrderAction(ctx context.Context, req *pb.RequestBuyerOrderAction) (*pb.ResponseBuyerOrderAction, error) {
-	promiseHandler := server.flowManager.SellerApprovalPending(ctx, req)
+	promiseHandler := server.flowManager.BuyerApprovalPending(ctx, req)
 	futureData := promiseHandler.Data()
 	if futureData == nil {
 		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")

@@ -53,7 +53,7 @@ func (paymentFailed paymentFailedStep) ProcessOrder(ctx context.Context, order e
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	paymentFailed.UpdateOrderStep(ctx, &order, itemsId, "CLOSED")
+	paymentFailed.UpdateOrderStep(ctx, &order, itemsId, "CLOSED", true)
 	return stockState.ActionLauncher(ctx, order, itemsId, nil)
 }
 

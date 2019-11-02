@@ -125,7 +125,7 @@ func (nextStep nextToStepActionLauncher) doUpdateOrderState(ctx context.Context,
 
 	order.Items[index].Progress.CurrentState.AcceptedAction.Type = actives.NextToStepAction.String()
 	order.Items[index].Progress.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
-	order.Items[index].Progress.CurrentState.AcceptedAction.Data = ""
+	order.Items[index].Progress.CurrentState.AcceptedAction.Data = nil
 	order.Items[index].Progress.CurrentState.AcceptedAction.Time = &order.Items[index].Progress.CurrentState.CreatedAt
 
 	order.Items[index].Progress.CurrentState.Actions = []entities.Action{order.Items[index].Progress.CurrentState.AcceptedAction}

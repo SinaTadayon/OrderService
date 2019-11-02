@@ -7,6 +7,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	listener_state "gitlab.faza.io/order-project/order-service/domain/states/listener"
+	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 )
 
 const (
@@ -37,5 +38,4 @@ func NewValueOf(base *listener_state.BaseListenerImpl, params ...interface{}) li
 
 func (buyerAction buyerActionListener) ActionListener(ctx context.Context, event events.IEvent, param interface{}) promise.IPromise {
 	panic("implementation required")
-	return
 }

@@ -43,6 +43,8 @@ func NewValueOf(base *steps.BaseStepImpl, params ...interface{}) steps.IStep {
 func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) promise.IPromise {
 	var RequestNewOrder pb.RequestNewOrder
 
+	logger.Audit("New Order Received . . .")
+
 	if err := ptypes.UnmarshalAny(request.Data, &RequestNewOrder); err != nil {
 		logger.Err("Could not unmarshal RequestNewOrder from anything field, error: %s, request: %v", err, request)
 		returnChannel := make(chan promise.FutureData, 1)
@@ -69,7 +71,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	newOrder := value.(entities.Order)
+	newOrder := value.(*entities.Order)
 	//newOrderEvent := actor_event.NewActorEvent(actors.CheckoutActor, checkout_action.NewOf(checkout_action.NewOrderAction),
 	//	newOrder, nil, nil, timestamp)
 	//
@@ -82,8 +84,8 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	//	return promise.NewPromise(returnChannel, 1, 1)
 	//}
 
-	newOrderProcessing.UpdateOrderStep(ctx, &newOrder, nil, "NEW", false)
-	order, err := global.Singletons.OrderRepository.Save(newOrder)
+	newOrderProcessing.UpdateOrderStep(ctx, newOrder, nil, "NEW", false)
+	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	if err != nil {
 		logger.Err("Save NewOrder Step Failed, error: %s, order: %v", err, order)
 		returnChannel := make(chan promise.FutureData, 1)
@@ -107,7 +109,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	if futureData == nil {
 		newOrderProcessing.UpdateOrderStep(ctx, order, nil, "CLOSED", true)
 		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReserved, false)
-		newOrderProcessing.persistOrder(ctx, order)
+		if err := newOrderProcessing.persistOrder(ctx, order); err != nil {}
 		logger.Err("StockService promise channel has been closed, order: %v", order)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
@@ -118,7 +120,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	if futureData.Ex != nil {
 		newOrderProcessing.UpdateOrderStep(ctx, order, nil, "CLOSED", true)
 		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReserved, false)
-		newOrderProcessing.persistOrder(ctx, order)
+		if err := newOrderProcessing.persistOrder(ctx, order); err != nil {}
 		logger.Err("Reserved stock from stockService failed, error: %s, order: %v", futureData.Ex.Error(), order)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
@@ -127,9 +129,14 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	}
 
 	newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReserved, true)
-	newOrderProcessing.persistOrder(ctx, order)
+	if err := newOrderProcessing.persistOrder(ctx, order); err != nil {
+		returnChannel := make(chan promise.FutureData, 1)
+		defer close(returnChannel)
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
 
-	return newOrderProcessing.Childes()[1].ProcessOrder(ctx, *order, nil, "PaymentRequest")
+	return newOrderProcessing.Childes()[1].ProcessOrder(ctx, *order, nil, "PaymentCallbackUrlRequest")
 	//return checkoutState.ActionListener(ctx, newOrderEvent, nil)
 }
 
@@ -137,11 +144,12 @@ func (newOrderProcessing newOrderProcessingStep) ProcessOrder(ctx context.Contex
 	panic("implementation required")
 }
 
-func (newOrderProcessing newOrderProcessingStep) persistOrder(ctx context.Context, order *entities.Order) {
+func (newOrderProcessing newOrderProcessingStep) persistOrder(ctx context.Context, order *entities.Order) error {
 	_ , err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", newOrderProcessing.Name(), order, err.Error())
 	}
+	return err
 }
 
 func (newOrderProcessing newOrderProcessingStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string, action string, result bool) {
@@ -166,7 +174,7 @@ func (newOrderProcessing newOrderProcessingStep) updateOrderItemsProgress(ctx co
 func (newOrderProcessing newOrderProcessingStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
 	actionName string, result bool) {
 
-	order.Items[index].Status = actionName
+	order.Items[index].Status = newOrderProcessing.Name()
 	order.Items[index].UpdatedAt = time.Now().UTC()
 
 	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {

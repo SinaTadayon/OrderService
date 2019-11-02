@@ -20,8 +20,8 @@ func NewConverter() IConverter {
 func (iconv iConverterImpl) Map(in interface{}, out interface{}) (interface{}, error) {
 
 	var ok bool
-	var newOrderDto *ordersrv.RequestNewOrder
-	newOrderDto ,ok = in.(*ordersrv.RequestNewOrder)
+	var newOrderDto ordersrv.RequestNewOrder
+	newOrderDto ,ok = in.(ordersrv.RequestNewOrder)
 	if ok == false {
 		return nil, errors.New("mapping from input type not supported")
 	}
@@ -31,7 +31,7 @@ func (iconv iConverterImpl) Map(in interface{}, out interface{}) (interface{}, e
 		return nil, errors.New("mapping to output type not supported")
 	}
 
-	return convert(newOrderDto)
+	return convert(&newOrderDto)
 }
 
 func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
@@ -40,6 +40,10 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 
 	if newOrderDto.Buyer == nil {
 		return nil, errors.New("buyer of RequestNewOrder invalid")
+	}
+
+	if newOrderDto.Items == nil || len(newOrderDto.Items) == 0 {
+		return nil, errors.New("items of RequestNewOrder empty")
 	}
 
 	order.BuyerInfo.FirstName = newOrderDto.Buyer.FirstName
@@ -85,10 +89,14 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	order.Amount.PaymentOption = newOrderDto.Amount.PaymentOption
 
 	if newOrderDto.Amount.Voucher != nil {
-		order.Amount.Voucher.Amount = newOrderDto.Amount.Voucher.Amount
-		order.Amount.Voucher.Code = newOrderDto.Amount.Voucher.Code
+		order.Amount.Voucher = &entities.Voucher{
+			Amount: newOrderDto.Amount.Voucher.Amount,
+			Code: newOrderDto.Amount.Voucher.Code,
+		}
 		// TODO implement voucher details
 	}
+
+	order.Items = make([]entities.Item, 0, len(newOrderDto.Items))
 
 	for _, item := range newOrderDto.Items {
 		if len(item.InventoryId) == 0 {

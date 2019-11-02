@@ -25,11 +25,6 @@ type Item struct {
 	Progress        Progress          `bson:"progress"`
 }
 
-// TODO will be complete
-type ExtraAttributes struct {
-
-}
-
 type ShipmentDetails struct {
 	SellerShipmentDetail       	ShipmentDetail `bson:"sellerShipmentDetail"`
 	BuyerReturnShipmentDetail 	ShipmentDetail `bson:"buyerReturnShipmentDetail"`

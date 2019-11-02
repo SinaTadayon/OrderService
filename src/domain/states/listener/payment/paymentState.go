@@ -150,9 +150,9 @@ func (paymentAction paymentActionListener) doUpdateOrderState(ctx context.Contex
 	order.Items[index].Progress.CurrentState.AcceptedAction.Base = actions.ActorAction.String()
 	// TODO implement stringfy paymentResult
 	if paymentResult != nil {
-		order.Items[index].Progress.CurrentState.AcceptedAction.Data = ""
+		order.Items[index].Progress.CurrentState.AcceptedAction.Data = nil
 	} else {
-		order.Items[index].Progress.CurrentState.AcceptedAction.Data = ""
+		order.Items[index].Progress.CurrentState.AcceptedAction.Data = nil
 	}
 	order.Items[index].Progress.CurrentState.AcceptedAction.Time = &order.Items[index].Progress.CurrentState.CreatedAt
 

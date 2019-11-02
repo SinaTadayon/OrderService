@@ -27,4 +27,6 @@ var Singletons struct {
 	StockService    stock_service.IStockService
 	PaymentService  payment_service.IPaymentService
 	NotifyService   notify_service.INotificationService
+	//FlowManager		domain.IFlowManager
+	//GRPCServer      grpc.Server
 }

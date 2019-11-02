@@ -129,7 +129,7 @@ func (notificationState notificationActionLauncher) doUpdateOrderState(ctx conte
 
 	order.Items[index].Progress.CurrentState.AcceptedAction.Type = actives.FinalizeAction.String()
 	order.Items[index].Progress.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
-	order.Items[index].Progress.CurrentState.AcceptedAction.Data = ""
+	order.Items[index].Progress.CurrentState.AcceptedAction.Data = nil
 	order.Items[index].Progress.CurrentState.AcceptedAction.Time = &order.Items[index].Progress.CurrentState.CreatedAt
 
 	order.Items[index].Progress.CurrentState.Actions = []entities.Action{order.Items[index].Progress.CurrentState.AcceptedAction}
