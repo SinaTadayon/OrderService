@@ -127,7 +127,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -181,7 +181,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -235,7 +235,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -296,7 +296,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -363,7 +363,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -429,7 +429,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -502,7 +502,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -596,7 +596,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -679,7 +679,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -782,7 +782,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -885,7 +885,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -960,7 +960,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -1056,7 +1056,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -1130,7 +1130,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -1211,7 +1211,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -1299,7 +1299,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -1382,7 +1382,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -1458,7 +1458,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -1542,7 +1542,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -1633,7 +1633,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -1744,7 +1744,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -1848,7 +1848,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -1945,7 +1945,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -2054,7 +2054,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -2156,7 +2156,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -2280,7 +2280,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",
@@ -2411,7 +2411,7 @@
 //	_, err := App.mongo.DeleteOne(MongoDB, Orders, bson.D{{"ordernumber", ppr.OrderNumber}})
 //	assert.Nil(t, err)
 //	statusHistory := StatusHistory{
-//		Status:    PaymentPending,
+//		Status:    OrderPayment,
 //		CreatedAt: time.Now().UTC(),
 //		Agent:     "system",
 //		Reason:    "",

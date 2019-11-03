@@ -18,6 +18,7 @@ const (
 	stepName string 	= "New_Order"
 	stepIndex int		= 0
 	StockReserved		= "StockReserved"
+	StockReleased		= "StockReleased"
 )
 
 type newOrderProcessingStep struct {
@@ -114,6 +115,9 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		go func() {
+			newOrderProcessing.Childes()[0].ProcessOrder(ctx, *order, nil, nil)
+		}()
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
@@ -125,14 +129,23 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
 		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		go func() {
+			newOrderProcessing.Childes()[0].ProcessOrder(ctx, *order, nil, nil)
+		}()
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
 	newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReserved, true)
 	if err := newOrderProcessing.persistOrder(ctx, order); err != nil {
+		newOrderProcessing.releasedStock(ctx, order)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
 		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+
+		go func() {
+			newOrderProcessing.Childes()[0].ProcessOrder(ctx, *order, nil, nil)
+		}()
+
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
@@ -142,6 +155,33 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 
 func (newOrderProcessing newOrderProcessingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	panic("implementation required")
+}
+func (newOrderProcessing newOrderProcessingStep) releasedStock(ctx context.Context, order *entities.Order) {
+	itemStocks := make(map[string]int, len(order.Items))
+	for i:= 0; i < len(order.Items); i++ {
+		if value, ok := itemStocks[order.Items[i].InventoryId]; ok {
+			itemStocks[order.Items[i].InventoryId] = value + 1
+		} else {
+			itemStocks[order.Items[i].InventoryId] = 1
+		}
+	}
+
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, StockReleased)
+	futureData := iPromise.Data()
+	if futureData == nil {
+		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, false)
+		logger.Err("StockService promise channel has been closed, step: %s, order: %v",  newOrderProcessing.Name(), order)
+		return
+	}
+
+	if futureData.Ex != nil {
+		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, false)
+		logger.Err("Reserved stock from stockService failed, step: %s, order: %v, error: %s", newOrderProcessing.Name(), order, futureData.Ex.Error())
+		return
+	}
+
+	newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, true)
+	logger.Audit("Reserved stock from stockService success, step: %s, order: %v", newOrderProcessing.Name(), order)
 }
 
 func (newOrderProcessing newOrderProcessingStep) persistOrder(ctx context.Context, order *entities.Order) error {

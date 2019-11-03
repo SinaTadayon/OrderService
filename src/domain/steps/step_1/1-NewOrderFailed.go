@@ -3,19 +3,19 @@ package new_order_failed_step
 import (
 	"context"
 	"gitlab.faza.io/go-framework/logger"
-	"gitlab.faza.io/order-project/order-service/domain/actions/actives"
-	finalize_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/finalize"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
-	launcher_state "gitlab.faza.io/order-project/order-service/domain/states/launcher"
 	"gitlab.faza.io/order-project/order-service/domain/steps"
+	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	message "gitlab.faza.io/protos/order"
+	"time"
 )
 
 const (
 	stepName string 	= "New_Order_Failed"
 	stepIndex int		= 1
+	NewOrderFailed		= "NewOrderFailed"
 )
 
 type newOrderProcessingFailedStep struct {
@@ -53,16 +53,77 @@ func (newOrderProcessingFailed newOrderProcessingFailedStep) ProcessOrder(ctx co
 	//}
 	//
 
-	finalizeState, ok := newOrderProcessingFailed.StatesMap()[0].(launcher_state.ILauncherState)
-	if ok != true || finalizeState.ActiveType() != actives.FinalizeAction {
-		logger.Err("finalize state doesn't exist in index 0 of statesMap, order: %v", order)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
-		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+	//finalizeState, ok := newOrderProcessingFailed.StatesMap()[0].(launcher_state.ILauncherState)
+	//if ok != true || finalizeState.ActiveType() != actives.FinalizeAction {
+	//	logger.Err("finalize state doesn't exist in index 0 of statesMap, order: %v", order)
+	//	returnChannel := make(chan promise.FutureData, 1)
+	//	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+	//	defer close(returnChannel)
+	//	return promise.NewPromise(returnChannel, 1, 1)
+	//}
+	//
+	//newOrderProcessingFailed.UpdateOrderStep(ctx, &order, itemsId, "CLOSED", true)
+	//return finalizeState.ActionLauncher(ctx, order, nil, finalize_action.OrderFailedFinalizeAction)
+
+	newOrderProcessingFailed.UpdateOrderStep(ctx, &order, itemsId, "Closed", false)
+	newOrderProcessingFailed.updateOrderItemsProgress(ctx, &order, itemsId, NewOrderFailed, true)
+	if err := newOrderProcessingFailed.persistOrder(ctx, &order); err != nil{}
+	returnChannel := make(chan promise.FutureData, 1)
+	defer close(returnChannel)
+	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code:promise.NotAccepted, Reason:"Order Payment Failed"}}
+	return promise.NewPromise(returnChannel, 1, 1)
+}
+
+func (newOrderProcessingFailed newOrderProcessingFailedStep) persistOrder(ctx context.Context, order *entities.Order) error {
+	_ , err := global.Singletons.OrderRepository.Save(*order)
+	if err != nil {
+		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", newOrderProcessingFailed.Name(), order, err.Error())
 	}
 
-	newOrderProcessingFailed.UpdateOrderStep(ctx, &order, itemsId, "CLOSED", true)
-	return finalizeState.ActionLauncher(ctx, order, nil, finalize_action.OrderFailedFinalizeAction)
+	return err
+}
+
+func (newOrderProcessingFailed newOrderProcessingFailedStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
+	action string, result bool) {
+
+	findFlag := false
+	if itemsId != nil && len(itemsId) > 0 {
+		for _, id := range itemsId {
+			findFlag = false
+			for i := 0; i < len(order.Items); i++ {
+				if order.Items[i].ItemId == id {
+					newOrderProcessingFailed.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+					findFlag = true
+				}
+			}
+
+			if findFlag == false {
+				logger.Err("%s received itemId %s not exist in order, orderId: %v", newOrderProcessingFailed.Name(), id, order.OrderId)
+			}
+		}
+	} else {
+		for i := 0; i < len(order.Items); i++ {
+			newOrderProcessingFailed.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+		}
+	}
+}
+
+func (newOrderProcessingFailed newOrderProcessingFailedStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
+	actionName string, result bool) {
+
+	order.Items[index].Status = newOrderProcessingFailed.Name()
+	order.Items[index].UpdatedAt = time.Now().UTC()
+
+	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {
+		order.Items[index].Progress.ActionHistory = make([]entities.Action, 0, 5)
+	}
+
+	action := entities.Action{
+		Name:      actionName,
+		Result:    result,
+		CreatedAt: order.Items[index].UpdatedAt,
+	}
+
+	order.Items[index].Progress.ActionHistory = append(order.Items[index].Progress.ActionHistory, action)
 }
 

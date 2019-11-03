@@ -17,9 +17,9 @@ const (
 	stepName string 	= "Payment_Pending"
 	stepIndex int		= 10
 	
-	PaymentCallbackUrlRequest		= "PaymentCallbackUrlRequest"
-	PaymentPending					= "PaymentPending"
-	StockReleased					= "StockReleased"
+	PaymentCallbackUrlRequest = "PaymentCallbackUrlRequest"
+	OrderPayment              = "OrderPayment"
+	StockReleased             = "StockReleased"
 )
 
 type paymentPendingStep struct {
@@ -142,22 +142,19 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 		returnChannel <- promise.FutureData{Data:paymentResponse, Ex:nil}
 		return promise.NewPromise(returnChannel, 1, 1)
 
-	} else if paymentAction == PaymentPending {
-		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", paymentPending.Name(), order.OrderId, PaymentPending)
+	} else if paymentAction == OrderPayment {
+		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", paymentPending.Name(), order.OrderId, OrderPayment)
 		if order.PaymentService[0].PaymentResult.Result == false {
 			logger.Audit("PaymentResult of order failed, order: %v", order)
-			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentPending, false)
+			paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, false)
 			paymentPending.UpdateOrderStep(ctx, &order, nil, "CLOSED", true)
 			paymentPending.releasedStock(ctx, &order)
 			if err := paymentPending.persistOrder(ctx, &order); err != nil {}
-			returnChannel := make(chan promise.FutureData, 1)
-			defer close(returnChannel)
-			returnChannel <- promise.FutureData{Data:nil, Ex:nil}
-			return promise.NewPromise(returnChannel, 1, 1)
+			return paymentPending.Childes()[0].ProcessOrder(ctx, order, nil, nil)
 		}
 
 		logger.Audit("PaymentResult of order success, order: %v", order)
-		paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentPending, true)
+		paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, true)
 		return paymentPending.Childes()[1].ProcessOrder(ctx, order, nil, nil)
 	}
 
@@ -218,6 +215,7 @@ func (paymentPending paymentPendingStep) updateOrderItemsProgress(ctx context.Co
 				if order.Items[i].ItemId == id {
 					paymentPending.doUpdateOrderItemsProgress(ctx, order, i, action, result)
 					findFlag = true
+					break
 				}
 			}
 

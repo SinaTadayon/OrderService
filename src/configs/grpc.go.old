@@ -95,7 +95,7 @@
 //	ppr.OrderNumber = generateOrderNumber()
 //	ppr.CreatedAt = time.Now().UTC()
 //	ppr.Status.CreatedAt = time.Now().UTC()
-//	ppr.Status.Current = PaymentPending
+//	ppr.Status.Current = OrderPayment
 //	ppr.Status.History = []StatusHistory{}
 //	// validate request & convert to PaymentPendingRequest
 //	if req.Amount != nil {

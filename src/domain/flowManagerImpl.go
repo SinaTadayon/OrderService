@@ -1148,5 +1148,5 @@ func (flowManager iFlowManagerImpl) PaymentGatewayResult(ctx context.Context, re
 		CreatedAt:   time.Now().UTC(),
 	}
 
-	return flowManager.indexStepsMap[10].ProcessOrder(ctx, *order, nil, "PaymentPending")
+	return flowManager.indexStepsMap[10].ProcessOrder(ctx, *order, nil, "OrderPayment")
 }
