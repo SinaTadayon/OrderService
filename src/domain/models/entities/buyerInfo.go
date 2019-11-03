@@ -1,8 +1,10 @@
 package entities
 
 type BuyerInfo struct {
+	BuyerId				string					`bson:"buyerId"`
 	FirstName  			string					`bson:"firstName"`
 	LastName   			string					`bson:"lastName"`
+	Phone   			string					`bson:"phone"`
 	Mobile     			string					`bson:"mobile"`
 	Email      			string					`bson:"email"`
 	NationalId 			string					`bson:"nationalId"`

@@ -12,6 +12,7 @@ service OrderService {
     rpc SellerFindAllItems(RequestSellerFindAllItems) returns (ResponseSellerFindAllItems);
     rpc SellerOrderAction(RequestSellerOrderAction) returns (ResponseSellerOrderAction);
     rpc BuyerOrderAction(RequestBuyerOrderAction) returns (ResponseBuyerOrderAction);
+//    rpc OperatorOrderAction(RequestOperatorOrderAction) returns (ResponseOperatorOrderAction);
     rpc BuyerFindAllOrders(RequestBuyerFindAllOrders) returns (ResponseBuyerFindAllOrders);
 
 }
@@ -59,15 +60,17 @@ message Item {
 }
 
 message Buyer {
-    string firstName = 1;
-    string lastName = 2;
-    string mobile = 3;
-    string email = 4;
-    string nationalId = 5;
-    string ip = 6;
-    string gender = 7;
-    FinanceInfo finance = 9;
-    Address shippingAddress = 10;
+    string buyerId = 1;
+    string firstName = 2;
+    string lastName = 3;
+    string phone = 4;
+    string mobile = 5;
+    string email = 6;
+    string nationalId = 7;
+    string ip = 8;
+    string gender = 9;
+    FinanceInfo finance = 10;
+    Address shippingAddress = 11;
 }
 
 message FinanceInfo {
@@ -80,21 +83,22 @@ message FinanceInfo {
 message Address {
     string address = 1;
     string phone = 2;
-    string country = 3;
-    string city = 4;
-    string province = 5;
-    string neighbourhood = 6;
-    string lat = 7;
-    string long = 8;
-    string zipCode = 9;
+    string mobile = 3;
+    string country = 4;
+    string city = 5;
+    string province = 6;
+    string neighbourhood = 7;
+    string lat = 8;
+    string long = 9;
+    string zipCode = 10;
 }
 
 message PriceInfo {
     uint64 unit = 1;
-    uint64 payable = 2;
-    uint64 discount = 3;
-    uint64 sellerCommission = 4;
-    string currency = 5;
+    uint64 payable = 3;
+    uint64 discount = 4;
+    float  sellerCommission = 5;
+    string currency = 6;
 }
 
 message ShippingSpec {
@@ -122,10 +126,41 @@ message RequestBuyerFindAllOrders {
 }
 
 message ResponseBuyerFindAllOrders {
-    string  orderId     = 1;
-    string  createdAt   = 2;
-    Amount  amount      = 3;
-    repeated Item Items = 4;
+    repeated BuyerAllOrders orders = 1;
+}
+
+message BuyerAllOrders {
+    string  buyerId     = 1;
+    string  orderId     = 2;
+    string  createdAt   = 3;
+    string  updatedAt   = 4;
+    string  status      = 5;
+    Amount  amount      = 6;
+    repeated BuyerOrderItems items = 7;
+}
+
+message BuyerOrderItems {
+    string inventoryId = 1;
+    string title = 2;
+    string brand = 3;
+    string categories = 4;
+    string guarantee = 5;
+    string image = 6;
+    bool returnable = 7;
+    string sellerId = 8;
+    int32 quantity = 9;
+    map<string, string> attributes = 10;
+    message Price {
+        uint64 unit = 1;
+        uint64 payable = 3;
+        uint64 discount = 4;
+        string currency = 5;
+    } Price price = 11;
+
+    message ShipmentSpec {
+        string carrierName = 1;
+        uint64 shippingAmount = 4;
+    } ShipmentSpec shipment = 12;
 }
 
 message ResponseSellerOrderAction {
@@ -134,10 +169,10 @@ message ResponseSellerOrderAction {
 
 message RequestBuyerOrderAction {
     string orderId      = 1;
-    repeated string itemId       = 2;
-    string actionType   = 4;
-    string action       = 5;
-    string reason       = 6;
+    repeated string itemsId       = 2;
+    string actionType   = 3;
+    string action       = 4;
+    string reason       = 5;
 }
 
 message ResponseBuyerOrderAction {
@@ -170,18 +205,28 @@ message RequestSellerFindAllItems {
 }
 
 message ResponseSellerFindAllItems {
-    string  orderId     = 1;
-    string  itemId      = 2;
-    string  inventoryId = 3;
-    string  title       = 4;
-    string  brand       = 5;
-    string  guarantee   = 6;
-    string  categories  = 7;
-    string  image       = 8;
-    string  returnable  = 9;
-    string  quantity    = 10;
-    string  createdAt   = 11;
-    map<string, string> attributes = 12;
-    string  status      = 13;
-    PriceInfo  price    = 14;
+    repeated SellerFindAllItems items = 1;
+}
+
+message SellerFindAllItems {
+    string orderId = 1;
+    string itemId = 2;
+    string inventoryId = 3;
+    string title = 4;
+    string brand = 5;
+    string guarantee = 6;
+    string categories = 7;
+    string image = 8;
+    bool returnable = 9;
+    int32 quantity = 10;
+    string createdAt = 11;
+    string updatedAt = 12;
+    map<string, string> attributes = 13;
+    string status = 14;
+    message Price {
+        uint64 unit = 1;
+        uint64 Total = 2;
+        float sellerCommission = 3;
+        string currency = 4;
+    } Price price = 15;
 }

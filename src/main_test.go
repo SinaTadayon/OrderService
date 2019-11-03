@@ -163,6 +163,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Code: "348",
 	}
 
+	order.Buyer.BuyerId = "123456"
 	order.Buyer.LastName = "Tadayon"
 	order.Buyer.FirstName = "Sina"
 	order.Buyer.Email = "Sina.Tadayon@baman.io"
@@ -484,4 +485,55 @@ func TestShipmentPending_Failed(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.True(t, result.Result)
+}
+
+func TestSellerFindAllItems(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure())
+	assert.Nil(t, err)
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
+	assert.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	order , err := global.Singletons.OrderRepository.Save(*newOrder)
+	assert.Nil(t, err, "save failed")
+
+	request := &pb.RequestSellerFindAllItems{
+		SellerId:             order.Items[0].SellerInfo.SellerId,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	result, err := OrderService.SellerFindAllItems(ctx, request)
+
+	assert.Nil(t, err)
+	assert.Equal(t, result.Items[0].Quantity, int32(5))
+}
+
+func TestBuyerFindAllOrders(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure())
+	assert.Nil(t, err)
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
+	assert.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	order , err := global.Singletons.OrderRepository.Save(*newOrder)
+	assert.Nil(t, err, "save failed")
+
+	request := &pb.RequestBuyerFindAllOrders{
+		BuyerId:             order.BuyerInfo.BuyerId,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	result, err := OrderService.BuyerFindAllOrders(ctx, request)
+
+	assert.Nil(t, err)
+	assert.Equal(t, len(result.Orders), 1)
+
 }

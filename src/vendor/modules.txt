@@ -6,7 +6,7 @@ github.com/Netflix/go-env
 github.com/Shopify/sarama
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
-# github.com/devfeel/mapper v0.0.0-20190905045745-405b6c90b771
+# github.com/devfeel/mapper v0.7.2
 github.com/devfeel/mapper
 # github.com/eapache/go-resiliency v1.2.0
 github.com/eapache/go-resiliency/breaker
@@ -58,9 +58,9 @@ github.com/xdg/stringprep
 gitlab.faza.io/go-framework/kafkaadapter
 # gitlab.faza.io/go-framework/logger v0.0.3
 gitlab.faza.io/go-framework/logger
-# gitlab.faza.io/go-framework/mongoadapter v0.0.7
+# gitlab.faza.io/go-framework/mongoadapter v0.0.8
 gitlab.faza.io/go-framework/mongoadapter
-# gitlab.faza.io/protos/order v0.0.10
+# gitlab.faza.io/protos/order v0.0.18
 gitlab.faza.io/protos/order
 # gitlab.faza.io/protos/payment-gateway v0.0.7
 gitlab.faza.io/protos/payment-gateway
@@ -109,7 +109,7 @@ golang.org/x/net/trace
 golang.org/x/sync/semaphore
 # golang.org/x/sys v0.0.0-20190422165155-953cdadca894
 golang.org/x/sys/unix
-# golang.org/x/text v0.3.0
+# golang.org/x/text v0.3.2
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi

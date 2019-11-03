@@ -19,20 +19,20 @@ import (
 )
 
 type MongoConfig struct {
-	Host string
-	Port int
-	Username string
-	Password string
-	ConnTimeout 	time.Duration
-	ReadTimeout 	time.Duration
-	WriteTimeout 	time.Duration
-	MaxConnIdleTime	time.Duration
-	MaxPoolSize		uint64
-	MinPoolSize		uint64
+	Host            string
+	Port            int
+	Username        string
+	Password        string
+	ConnTimeout     time.Duration
+	ReadTimeout     time.Duration
+	WriteTimeout    time.Duration
+	MaxConnIdleTime time.Duration
+	MaxPoolSize     uint64
+	MinPoolSize     uint64
 }
 
 type Mongo struct {
-	ID string
+	ID           string
 	conn         *mongo.Client
 	readTimeout  time.Duration
 	writeTimeout time.Duration
@@ -48,7 +48,6 @@ type TotalCount struct {
 var mongoOnceCollection map[string]*resync.Once
 var mongoInstanceCollection map[string]*Mongo
 
-
 // NewMongo returns an instance of Mongo with an established connection. It uses the Ping()
 // method to ensure the healthiness of the connection, in case Ping() returns error, the method
 // aborts and returns an error accordingly.
@@ -63,7 +62,7 @@ func NewMongo(Config *MongoConfig) (*Mongo, error) {
 	if Config.Username != "" && Config.Password != "" {
 		auth = fmt.Sprintf("%v:%v@", Config.Username, Config.Password)
 	}
-	var uri = Config.Host+":"+strconv.Itoa(Config.Port)
+	var uri = Config.Host + ":" + strconv.Itoa(Config.Port)
 	if mongoOnceCollection == nil {
 		mongoOnceCollection = make(map[string]*resync.Once)
 	}
@@ -106,7 +105,7 @@ func NewMongo(Config *MongoConfig) (*Mongo, error) {
 		client, err := mongo.Connect(ctx, clientOptions)
 
 		if err != nil {
-			mainErr = errors.New("failed to Connect() to mongo, got error: "+ err.Error())
+			mainErr = errors.New("failed to Connect() to mongo, got error: " + err.Error())
 			return
 		}
 
@@ -115,7 +114,7 @@ func NewMongo(Config *MongoConfig) (*Mongo, error) {
 		err = client.Ping(ctx2, nil)
 
 		if err != nil {
-			mainErr = errors.New("testing MongoDB connection with Ping() method failed, got error: "+ err.Error())
+			mainErr = errors.New("testing MongoDB connection with Ping() method failed, got error: " + err.Error())
 			return
 		}
 
@@ -127,8 +126,8 @@ func NewMongo(Config *MongoConfig) (*Mongo, error) {
 			Config.WriteTimeout = 5
 		}
 
-		mongoInstanceCollection[uri] = &Mongo {
-			ID:			uid.String(),
+		mongoInstanceCollection[uri] = &Mongo{
+			ID:           uid.String(),
 			readTimeout:  time.Duration(Config.ReadTimeout),
 			writeTimeout: time.Duration(Config.WriteTimeout),
 			conn:         client,
@@ -148,7 +147,7 @@ func NewMongo(Config *MongoConfig) (*Mongo, error) {
 // It also removes the created instance completely, and resets resync.Once object.
 // Be careful when using it
 func Destroy(host string, port int) {
-	var uri = host+":"+strconv.Itoa(port)
+	var uri = host + ":" + strconv.Itoa(port)
 	if _, ok := mongoInstanceCollection[uri]; ok {
 		_ = mongoInstanceCollection[uri].conn.Disconnect(context.Background())
 		delete(mongoInstanceCollection, uri)
@@ -195,7 +194,7 @@ func (m *Mongo) FindWhereIn(db, coll string, negate bool, vars ...[]string) (*mo
 	}
 	var subConditions bson.A
 	for _, v := range vars {
-		subConditions = append(subConditions,  bson.D{{v[0], bson.D{{operator, v[1:]}}}})
+		subConditions = append(subConditions, bson.D{{v[0], bson.D{{operator, v[1:]}}}})
 	}
 	var conditions = bson.D{{
 		"$or", subConditions,
@@ -219,25 +218,25 @@ func (m *Mongo) InsertMany(db, coll string, docs []interface{}, options ...*opti
 	return m.conn.Database(db).Collection(coll).InsertMany(ctx, docs, options...)
 }
 
-func (m *Mongo) UpdateOne(db, coll string, filter interface{}, data interface{}, options... *options.UpdateOptions) (*mongo.UpdateResult, error) {
+func (m *Mongo) UpdateOne(db, coll string, filter interface{}, data interface{}, options ...*options.UpdateOptions) (*mongo.UpdateResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), m.writeTimeout*time.Second)
 	defer cancel()
 	return m.conn.Database(db).Collection(coll).UpdateOne(ctx, filter, data, options...)
 }
 
-func (m *Mongo) UpdateMany(db, coll string, filter interface{}, data interface{}, options... *options.UpdateOptions) (*mongo.UpdateResult, error) {
+func (m *Mongo) UpdateMany(db, coll string, filter interface{}, data interface{}, options ...*options.UpdateOptions) (*mongo.UpdateResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), m.writeTimeout*time.Second)
 	defer cancel()
 	return m.conn.Database(db).Collection(coll).UpdateMany(ctx, filter, data, options...)
 }
 
-func (m *Mongo) DeleteOne(db, coll string, filter interface{}, options... *options.DeleteOptions) (*mongo.DeleteResult, error) {
+func (m *Mongo) DeleteOne(db, coll string, filter interface{}, options ...*options.DeleteOptions) (*mongo.DeleteResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), m.writeTimeout*time.Second)
 	defer cancel()
 	return m.conn.Database(db).Collection(coll).DeleteOne(ctx, filter, options...)
 }
 
-func (m *Mongo) DeleteMany(db, coll string, filter interface{}, options... *options.DeleteOptions) (*mongo.DeleteResult, error) {
+func (m *Mongo) DeleteMany(db, coll string, filter interface{}, options ...*options.DeleteOptions) (*mongo.DeleteResult, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), m.writeTimeout*time.Second)
 	defer cancel()
 	return m.conn.Database(db).Collection(coll).DeleteMany(ctx, filter, options...)
@@ -261,21 +260,31 @@ func (m *Mongo) ToSliceString(data bson.A) []string {
 	return result
 }
 
-func (m *Mongo) AddUniqueIndex(db, coll , indexKey string) (string, error) {
+func (m *Mongo) AddUniqueIndex(db, coll, indexKey string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), m.writeTimeout*time.Second)
 	defer cancel()
 	indexModel := mongo.IndexModel{
-		Keys: bsonx.Doc{{indexKey, bsonx.Int32(1)}},
+		Keys:    bsonx.Doc{{indexKey, bsonx.Int32(1)}},
 		Options: options.Index().SetUnique(true),
 	}
 	return m.conn.Database(db).Collection(coll).Indexes().CreateOne(ctx, indexModel)
 }
 
-func (m *Mongo) AddTextV3Index(db, coll , indexKey string) (string, error) {
+func (m *Mongo) AddUniqueIndexSparse(db, coll, indexKey string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), m.writeTimeout*time.Second)
 	defer cancel()
 	indexModel := mongo.IndexModel{
-		Keys: bsonx.Doc{{indexKey, bsonx.Int32(1)}},
+		Keys:    bsonx.Doc{{indexKey, bsonx.Int32(1)}},
+		Options: options.Index().SetUnique(true).SetSparse(true),
+	}
+	return m.conn.Database(db).Collection(coll).Indexes().CreateOne(ctx, indexModel)
+}
+
+func (m *Mongo) AddTextV3Index(db, coll, indexKey string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), m.writeTimeout*time.Second)
+	defer cancel()
+	indexModel := mongo.IndexModel{
+		Keys:    bsonx.Doc{{indexKey, bsonx.Int32(1)}},
 		Options: options.Index().SetTextVersion(3),
 	}
 	return m.conn.Database(db).Collection(coll).Indexes().CreateOne(ctx, indexModel)
@@ -312,12 +321,12 @@ func (m *Mongo) Search(db, coll string, filters map[string][]string, sorting map
 	if filters != nil && len(filters) > 0 {
 		for k, v := range filters {
 			if v[1] == "like" {
-				filteringRule[k] = bson.M{"$regex" : v[0]}
+				filteringRule[k] = bson.M{"$regex": v[0]}
 			} else if v[1] == "eq" {
 				filteringRule[k] = v[0]
 			}
 		}
-		filteringStmt = bson.M{"$match" : filteringRule}
+		filteringStmt = bson.M{"$match": filteringRule}
 		rules = append(rules, filteringStmt)
 	}
 
@@ -331,7 +340,7 @@ func (m *Mongo) Search(db, coll string, filters map[string][]string, sorting map
 		rules = append(rules, sortingStmt)
 	}
 
-	rules = append(rules, bson.M{"$skip" : skip})
+	rules = append(rules, bson.M{"$skip": skip})
 	// it is better to put the limit after a possible
 	// $sort stage in the pipeline. Mongo uses the limit
 	// for sorting, no matter even it comes after it in the
@@ -340,9 +349,7 @@ func (m *Mongo) Search(db, coll string, filters map[string][]string, sorting map
 	if limit == 0 {
 		limit = virtualLimit
 	}
-	rules = append(rules, bson.M{"$limit" : limit})
-
-
+	rules = append(rules, bson.M{"$limit": limit})
 
 	return m.conn.Database(db).Collection(coll).Aggregate(ctx, rules)
 }
@@ -361,18 +368,16 @@ func (m *Mongo) SearchCount(db, coll string, filters map[string][]string) (int64
 	if filters != nil && len(filters) > 0 {
 		for k, v := range filters {
 			if v[1] == "like" {
-				filteringRule[k] = bson.M{"$regex" : v[0]}
+				filteringRule[k] = bson.M{"$regex": v[0]}
 			} else if v[1] == "eq" {
 				filteringRule[k] = v[0]
 			}
 		}
-		filteringStmt = bson.M{"$match" : filteringRule}
+		filteringStmt = bson.M{"$match": filteringRule}
 		rules = append(rules, filteringStmt)
 	}
 
-
-	rules = append(rules, bson.M{"$count" : "totalCount"})
-
+	rules = append(rules, bson.M{"$count": "totalCount"})
 
 	res, err := m.conn.Database(db).Collection(coll).Aggregate(ctx, rules)
 	if err != nil {

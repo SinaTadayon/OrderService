@@ -1115,7 +1115,7 @@ func (flowManager iFlowManagerImpl) BuyerApprovalPending(ctx context.Context, re
 	//}
 
 	if req.ActionType == "Approved" {
-		return flowManager.indexStepsMap[32].ProcessOrder(ctx, *order, req.ItemId, req)
+		return flowManager.indexStepsMap[32].ProcessOrder(ctx, *order, req.ItemsId, req)
 	}
 
 	returnChannel := make(chan promise.FutureData, 1)

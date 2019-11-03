@@ -6,10 +6,12 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"gitlab.faza.io/order-project/order-service/domain"
+	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	pb "gitlab.faza.io/protos/order"
 	pg "gitlab.faza.io/protos/payment-gateway"
+	"go.mongodb.org/mongo-driver/bson"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"strconv"
@@ -183,8 +185,58 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 
 }
 
-func (server Server) SellerFindAllItems(context.Context, *pb.RequestSellerFindAllItems) (*pb.ResponseSellerFindAllItems, error) {
-	panic("must be implement")
+func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestSellerFindAllItems) (*pb.ResponseSellerFindAllItems, error) {
+
+	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
+		return bson.D{{"items.sellerInfo.sellerId", req.SellerId }}
+	})
+
+	if err != nil {
+		logger.Err("SellerFindAllItems failed, sellerId: %s, error: %s", req.SellerId, err.Error())
+		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	sellerItemMap := make(map[string]*pb.SellerFindAllItems, 16)
+
+	for _, order := range orders {
+		for _, orderItem := range order.Items {
+			if orderItem.SellerInfo.SellerId == req.SellerId {
+				if _, ok := sellerItemMap[orderItem.InventoryId]; !ok {
+					newResponseItem := &pb.SellerFindAllItems{
+						OrderId:     order.OrderId,
+						ItemId:      orderItem.ItemId,
+						InventoryId: orderItem.InventoryId,
+						Title:       orderItem.Title,
+						Brand:       orderItem.Brand,
+						Guarantee:   orderItem.Guarantee,
+						Categories:  orderItem.Categories,
+						Image:       orderItem.Image,
+						Returnable:  orderItem.Returnable,
+						Status:      orderItem.Status,
+						CreatedAt:   orderItem.CreatedAt.String(),
+						UpdatedAt:   orderItem.UpdatedAt.String(),
+						Quantity:    orderItem.Quantity,
+						Price: &pb.SellerFindAllItems_Price{
+							Unit:             orderItem.PriceInfo.Unit,
+							Total:            orderItem.PriceInfo.Payable,
+							SellerCommission: orderItem.PriceInfo.SellerCommission,
+							Currency:         orderItem.PriceInfo.Currency,
+						},
+					}
+					sellerItemMap[orderItem.InventoryId] = newResponseItem
+				}
+			}
+		}
+	}
+
+	var response = pb.ResponseSellerFindAllItems{}
+	response.Items = make([]*pb.SellerFindAllItems, 0, len(sellerItemMap))
+
+	for _ , item := range sellerItemMap {
+		response.Items = append(response.Items, item)
+	}
+
+	return &response, nil
 }
 
 func (server Server) BuyerOrderAction(ctx context.Context, req *pb.RequestBuyerOrderAction) (*pb.ResponseBuyerOrderAction, error) {
@@ -217,8 +269,81 @@ func (server Server) SellerOrderAction(ctx context.Context, req *pb.RequestSelle
 	return &pb.ResponseSellerOrderAction{Result: true}, nil
 }
 
-func (server Server) BuyerFindAllOrders(context.Context, *pb.RequestBuyerFindAllOrders) (*pb.ResponseBuyerFindAllOrders, error) {
-	panic("must be implement")
+func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestBuyerFindAllOrders) (*pb.ResponseBuyerFindAllOrders, error) {
+	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
+		return bson.D{{"buyerInfo.buyerId", req.BuyerId }}
+	})
+
+	if err != nil {
+		logger.Err("SellerFindAllItems failed, sellerId: %s, error: %s", req.BuyerId, err.Error())
+		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	var response  pb.ResponseBuyerFindAllOrders
+	responseOrders := make([]*pb.BuyerAllOrders, 0, len(orders))
+
+	for _, order := range orders {
+		responseOrder := &pb.BuyerAllOrders {
+			OrderId: order.OrderId,
+			CreatedAt: order.CreatedAt.String(),
+			UpdatedAt: order.UpdatedAt.String(),
+			Status: order.Status,
+			Amount: &pb.Amount{
+				Total: order.Amount.Total,
+				Payable: order.Amount.Payable,
+				Discount: order.Amount.Discount,
+				Currency: order.Amount.Currency,
+				ShipmentTotal: order.Amount.ShipmentTotal,
+				PaymentMethod: order.Amount.PaymentMethod,
+				PaymentOption: order.Amount.PaymentOption,
+				Voucher: &pb.Voucher{
+					Amount:               order.Amount.Voucher.Amount,
+					Code:                 order.Amount.Voucher.Code,
+				},
+			},
+			Items: make([]*pb.BuyerOrderItems, 0, len(order.Items)),
+		}
+
+		orderItemMap := make(map[string]*pb.BuyerOrderItems, 16)
+
+		for _, item := range order.Items {
+			if _, ok := orderItemMap[item.InventoryId]; !ok {
+				newResponseOrderItem := &pb.BuyerOrderItems{
+					InventoryId: item.InventoryId,
+					Title:       item.Title,
+					Brand:       item.Brand,
+					Categories:  item.Categories,
+					Guarantee:   item.Guarantee,
+					Image:       item.Image,
+					Returnable:  item.Returnable,
+					SellerId:    item.SellerInfo.SellerId,
+					Quantity:    1,
+					Attributes:  item.Attributes,
+					Price: &pb.BuyerOrderItems_Price{
+						Unit:     item.PriceInfo.Unit,
+						Payable:  item.PriceInfo.Payable,
+						Discount: item.PriceInfo.Discount,
+						Currency: item.PriceInfo.Currency,
+					},
+					Shipment: &pb.BuyerOrderItems_ShipmentSpec{
+						CarrierName:    item.ShipmentSpec.CarrierName,
+						ShippingAmount: item.ShipmentSpec.ShippingAmount,
+					},
+				}
+
+				orderItemMap[item.InventoryId] = newResponseOrderItem
+			}
+		}
+
+		for _ , orderItem := range orderItemMap {
+			responseOrder.Items = append(responseOrder.Items, orderItem)
+		}
+
+		responseOrders = append(responseOrders, responseOrder)
+	}
+
+	response.Orders = responseOrders
+	return &response, nil
 }
 
 func (server Server) convertNewOrderRequestToMessage(req *pb.RequestNewOrder) *pb.MessageRequest {

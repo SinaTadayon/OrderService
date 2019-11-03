@@ -14,6 +14,7 @@ type Item struct {
 	Image       string            `bson:"image"`
 	Returnable      bool              `bson:"returnable"`
 	Status          string            `bson:"status"`
+	Quantity		int32			  `bson:"quantity"`
 	Attributes      map[string]string `bson:"attributes"`
 	CreatedAt       time.Time         `bson:"createdAt"`
 	UpdatedAt       time.Time         `bson:"updatedAt"`
@@ -101,12 +102,11 @@ type SellerInfo struct {
 	Profile				*SellerProfile			`bson:"profile"`
 }
 
-// TODO remove Total
 type PriceInfo struct {
 	Unit             	uint64					`bson:"unit"`
 	Payable          	uint64					`bson:"payable"`
 	Discount         	uint64					`bson:"discount"`
-	SellerCommission 	uint64					`bson:"sellerCommission"`
+	SellerCommission 	float32					`bson:"sellerCommission"`
 	Currency		 	string					`bson:"currency"`
 }
 

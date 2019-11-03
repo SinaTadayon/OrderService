@@ -46,9 +46,11 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 		return nil, errors.New("items of RequestNewOrder empty")
 	}
 
+	order.BuyerInfo.BuyerId	  = newOrderDto.Buyer.BuyerId
 	order.BuyerInfo.FirstName = newOrderDto.Buyer.FirstName
 	order.BuyerInfo.LastName = newOrderDto.Buyer.LastName
 	order.BuyerInfo.Mobile = newOrderDto.Buyer.Mobile
+	order.BuyerInfo.Phone = newOrderDto.Buyer.Phone
 	order.BuyerInfo.Email = newOrderDto.Buyer.Email
 	order.BuyerInfo.NationalId = newOrderDto.Buyer.NationalId
 	order.BuyerInfo.Gender = newOrderDto.Buyer.Gender
@@ -68,6 +70,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	}
 
 	order.BuyerInfo.ShippingAddress.Address = newOrderDto.Buyer.ShippingAddress.Address
+	order.BuyerInfo.ShippingAddress.Mobile = newOrderDto.Buyer.ShippingAddress.Mobile
 	order.BuyerInfo.ShippingAddress.Phone = newOrderDto.Buyer.ShippingAddress.Phone
 	order.BuyerInfo.ShippingAddress.Country = newOrderDto.Buyer.ShippingAddress.Country
 	order.BuyerInfo.ShippingAddress.City = newOrderDto.Buyer.ShippingAddress.City
@@ -115,6 +118,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 			newItem.Guarantee = item.Guarantee
 			newItem.Categories = item.Categories
 			newItem.Image = item.Image
+			newItem.Quantity = item.Quantity
 			newItem.Returnable = item.Returnable
 			newItem.SellerInfo.SellerId = item.SellerId
 			newItem.Attributes = item.Attributes
