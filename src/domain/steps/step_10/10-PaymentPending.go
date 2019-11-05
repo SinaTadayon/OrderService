@@ -296,9 +296,9 @@ func (paymentPending paymentPendingStep) doUpdateOrderItemsProgress(ctx context.
 //
 //	// Validate amount
 //	errPaymentCallbackUrlRequestAmount := validation.ValidateStruct(&ppr.Amount,
-//		validation.Field(&ppr.Amount.Total, validation.Required),
-//		validation.Field(&ppr.Amount.Discount, validation.Required),
-//		validation.Field(&ppr.Amount.Payable, validation.Required),
+//		validation.Field(&ppr.Amount.total, validation.Required),
+//		validation.Field(&ppr.Amount.Special, validation.Required),
+//		validation.Field(&ppr.Amount.Original, validation.Required),
 //	)
 //	if errPaymentCallbackUrlRequestAmount != nil {
 //		errValidation = append(errValidation, errPaymentCallbackUrlRequestAmount.Error())
@@ -311,39 +311,39 @@ func (paymentPending paymentPendingStep) doUpdateOrderItemsProgress(ctx context.
 //				validation.Field(&ppr.Items[i].Sku, validation.Required),
 //				validation.Field(&ppr.Items[i].Quantity, validation.Required),
 //				validation.Field(&ppr.Items[i].Title, validation.Required),
-//				validation.Field(&ppr.Items[i].Categories, validation.Required),
+//				validation.Field(&ppr.Items[i].Category, validation.Required),
 //				validation.Field(&ppr.Items[i].Brand, validation.Required),
 //			)
 //			if errPaymentCallbackUrlRequestItems != nil {
 //				errValidation = append(errValidation, errPaymentCallbackUrlRequestItems.Error())
 //			}
 //
-//			errPaymentCallbackUrlRequestItemsSeller := validation.ValidateStruct(&ppr.Items[i].Seller,
-//				validation.Field(&ppr.Items[i].Seller.Title, validation.Required),
-//				validation.Field(&ppr.Items[i].Seller.FirstName, validation.Required),
-//				validation.Field(&ppr.Items[i].Seller.LastName, validation.Required),
-//				validation.Field(&ppr.Items[i].Seller.Mobile, validation.Required),
-//				validation.Field(&ppr.Items[i].Seller.Email, validation.Required),
+//			errPaymentCallbackUrlRequestItemsSeller := validation.ValidateStruct(&ppr.Items[i].SellerInfo,
+//				validation.Field(&ppr.Items[i].SellerInfo.Title, validation.Required),
+//				validation.Field(&ppr.Items[i].SellerInfo.FirstName, validation.Required),
+//				validation.Field(&ppr.Items[i].SellerInfo.LastName, validation.Required),
+//				validation.Field(&ppr.Items[i].SellerInfo.Mobile, validation.Required),
+//				validation.Field(&ppr.Items[i].SellerInfo.Email, validation.Required),
 //			)
 //			if errPaymentCallbackUrlRequestItemsSeller != nil {
 //				errValidation = append(errValidation, errPaymentCallbackUrlRequestItemsSeller.Error())
 //			}
 //
-//			errPaymentCallbackUrlRequestItemsSellerFinance := validation.ValidateStruct(&ppr.Items[i].Seller.Finance,
-//				validation.Field(&ppr.Items[i].Seller.Finance.Iban, validation.Required),
+//			errPaymentCallbackUrlRequestItemsSellerFinance := validation.ValidateStruct(&ppr.Items[i].SellerInfo.Finance,
+//				validation.Field(&ppr.Items[i].SellerInfo.Finance.Iban, validation.Required),
 //			)
 //			if errPaymentCallbackUrlRequestItemsSellerFinance != nil {
 //				errValidation = append(errValidation, errPaymentCallbackUrlRequestItemsSellerFinance.Error())
 //			}
 //
-//			errPaymentCallbackUrlRequestItemsSellerAddress := validation.ValidateStruct(&ppr.Items[i].Seller.Address,
-//				validation.Field(&ppr.Items[i].Seller.Address.Title, validation.Required),
-//				validation.Field(&ppr.Items[i].Seller.Address.Address, validation.Required),
-//				validation.Field(&ppr.Items[i].Seller.Address.Phone, validation.Required),
-//				validation.Field(&ppr.Items[i].Seller.Address.Country, validation.Required),
-//				validation.Field(&ppr.Items[i].Seller.Address.State, validation.Required),
-//				validation.Field(&ppr.Items[i].Seller.Address.City, validation.Required),
-//				validation.Field(&ppr.Items[i].Seller.Address.ZipCode, validation.Required),
+//			errPaymentCallbackUrlRequestItemsSellerAddress := validation.ValidateStruct(&ppr.Items[i].SellerInfo.Address,
+//				validation.Field(&ppr.Items[i].SellerInfo.Address.Title, validation.Required),
+//				validation.Field(&ppr.Items[i].SellerInfo.Address.Address, validation.Required),
+//				validation.Field(&ppr.Items[i].SellerInfo.Address.Phone, validation.Required),
+//				validation.Field(&ppr.Items[i].SellerInfo.Address.Country, validation.Required),
+//				validation.Field(&ppr.Items[i].SellerInfo.Address.State, validation.Required),
+//				validation.Field(&ppr.Items[i].SellerInfo.Address.City, validation.Required),
+//				validation.Field(&ppr.Items[i].SellerInfo.Address.ZipCode, validation.Required),
 //			)
 //			if errPaymentCallbackUrlRequestItemsSellerAddress != nil {
 //				errValidation = append(errValidation, errPaymentCallbackUrlRequestItemsSellerAddress.Error())
@@ -351,9 +351,9 @@ func (paymentPending paymentPendingStep) doUpdateOrderItemsProgress(ctx context.
 //
 //			errPaymentCallbackUrlRequestItemsPrice := validation.ValidateStruct(&ppr.Items[i].Price,
 //				validation.Field(&ppr.Items[i].Price.Unit, validation.Required),
-//				validation.Field(&ppr.Items[i].Price.Total, validation.Required),
-//				validation.Field(&ppr.Items[i].Price.Payable, validation.Required),
-//				validation.Field(&ppr.Items[i].Price.Discount, validation.Required),
+//				validation.Field(&ppr.Items[i].Price.total, validation.Required),
+//				validation.Field(&ppr.Items[i].Price.Original, validation.Required),
+//				validation.Field(&ppr.Items[i].Price.Special, validation.Required),
 //				validation.Field(&ppr.Items[i].Price.SellerCommission, validation.Required),
 //			)
 //			if errPaymentCallbackUrlRequestItemsPrice != nil {

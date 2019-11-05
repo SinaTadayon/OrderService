@@ -152,8 +152,8 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	}
 
 	order.Amount.Total = 600000
-	order.Amount.Payable = 550000
-	order.Amount.Discount = 50000
+	order.Amount.Original = 550000
+	order.Amount.Special = 50000
 	order.Amount.Currency = "RR"
 	order.Amount.PaymentMethod = "IPG"
 	order.Amount.PaymentOption = "AAP"
@@ -196,9 +196,9 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 
 	item.InventoryId = "11111-22222"
 	item.Brand = "Asus"
-	item.Categories = "Electronic/laptop"
+	item.Category = "Electronic/laptop"
 	item.Title = "Asus G503 i7, 256SSD, 32G Ram"
-	item.Guarantee = "ضمانت سلامت کالا"
+	item.Guaranty = "ضمانت سلامت کالا"
 	item.Image = "http://baman.io/image/asus.png"
 	item.Returnable = true
 	item.Quantity = 5
@@ -211,8 +211,9 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item.Attributes["Color"] = "blue"
 	item.Attributes["Materials"] = "stone"
 
-	item.Price.Discount = 200000
-	item.Price.Payable = 20000000
+	item.Price.Special = 200000
+	item.Price.Total = 22000000
+	item.Price.Original = 20000000
 	item.Price.SellerCommission = 10
 	item.Price.Unit = 100000
 	item.Price.Currency = "RR"
@@ -225,7 +226,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item.Shipment.CarrierName = "Post"
 	item.Shipment.CarrierProduct = "Post Express"
 	item.Shipment.CarrierType = "standard"
-	item.Shipment.ShippingAmount = 100000
+	item.Shipment.ShippingCost = 100000
 	item.Shipment.VoucherAmount = 0
 	item.Shipment.Currency = "RR"
 
@@ -238,11 +239,11 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		SellerId: "678912",
 	}
 
-	item1.InventoryId = "11111-33333"
+	item1.InventoryId = "1item.Price.total = 220000001111-33333"
 	item1.Brand = "Lenovo"
-	item1.Categories = "Electronic/laptop"
+	item1.Category = "Electronic/laptop"
 	item1.Title = "Lenove G503 i7, 256SSD, 32G Ram"
-	item1.Guarantee = "ضمانت سلامت کالا"
+	item1.Guaranty = "ضمانت سلامت کالا"
 	item1.Image = "http://baman.io/image/asus.png"
 	item1.Returnable = true
 	item1.Quantity = 5
@@ -255,8 +256,9 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item1.Attributes["Color"] = "blue"
 	item1.Attributes["Materials"] = "stone"
 
-	item1.Price.Discount = 250000
-	item1.Price.Payable = 200000
+	item1.Price.Special = 250000
+	item.Price.Total = 2500000
+	item1.Price.Original = 200000
 	item1.Price.SellerCommission = 10
 	item1.Price.Unit = 200000
 	item1.Price.Currency = "RR"
@@ -269,7 +271,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item1.Shipment.CarrierName = "Post"
 	item1.Shipment.CarrierProduct = "Post Express"
 	item1.Shipment.CarrierType = "standard"
-	item1.Shipment.ShippingAmount = 100000
+	item1.Shipment.ShippingCost = 100000
 	item1.Shipment.VoucherAmount = 0
 	item1.Shipment.Currency = "RR"
 
@@ -284,27 +286,28 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 //	assert.Nil(t, err)
 //}
 
-func TestNewOrderRequest(t *testing.T) {
-	//ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
-	ctx, _ := context.WithCancel(context.Background())
-	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
-		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure())
-	assert.Nil(t, err)
-
-	requestNewOrder := createRequestNewOrder()
-
-	OrderService := pb.NewOrderServiceClient(grpcConn)
-	resOrder, err := OrderService.NewOrder(ctx, requestNewOrder)
-
-	assert.Nil(t, err)
-	assert.NotEmpty(t, resOrder.CallbackUrl, "CallbackUrl is empty")
-}
+//func TestNewOrderRequest(t *testing.T) {
+//	//ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+//	ctx, _ := context.WithCancel(context.Background())
+//	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
+//		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+//	assert.Nil(t, err)
+//	defer grpcConn.Close()
+//
+//	requestNewOrder := createRequestNewOrder()
+//	OrderService := pb.NewOrderServiceClient(grpcConn)
+//	resOrder, err := OrderService.NewOrder(ctx, requestNewOrder)
+//
+//	assert.Nil(t, err)
+//	assert.NotEmpty(t, resOrder.CallbackUrl, "CallbackUrl is empty")
+//}
 
 func TestPaymentGateway(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
-		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure())
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
 	assert.Nil(t, err, "DialContext failed")
+	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
@@ -322,6 +325,8 @@ func TestPaymentGateway(t *testing.T) {
 
 	order , err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
+
+	defer removeCollection()
 
 	request :=  pg.PaygateHookRequest {
 		OrderID: order.OrderId,
@@ -344,8 +349,9 @@ func TestPaymentGateway(t *testing.T) {
 func TestSellerApprovalPending_Success(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
-		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure())
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
 	assert.Nil(t, err)
+	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
@@ -360,6 +366,8 @@ func TestSellerApprovalPending_Success(t *testing.T) {
 	}
 	_ , err = global.Singletons.OrderRepository.Save(*order)
 	assert.Nil(t, err, "save failed")
+
+	defer removeCollection()
 
 	request := pb.RequestSellerOrderAction {
 		OrderId: order.OrderId,
@@ -379,8 +387,9 @@ func TestSellerApprovalPending_Success(t *testing.T) {
 func TestSellerApprovalPending_Failed(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
-		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure())
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
 	assert.Nil(t, err)
+	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
@@ -395,6 +404,8 @@ func TestSellerApprovalPending_Failed(t *testing.T) {
 	}
 	_ , err = global.Singletons.OrderRepository.Save(*order)
 	assert.Nil(t, err, "save failed")
+
+	defer removeCollection()
 
 	request := pb.RequestSellerOrderAction {
 		OrderId: order.OrderId,
@@ -416,8 +427,9 @@ func TestSellerApprovalPending_Failed(t *testing.T) {
 func TestShipmentPending_Success(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
-		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure())
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
 	assert.Nil(t, err)
+	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
@@ -433,6 +445,7 @@ func TestShipmentPending_Success(t *testing.T) {
 	_ , err = global.Singletons.OrderRepository.Save(*order)
 	assert.Nil(t, err, "save failed")
 
+	defer removeCollection()
 	request := pb.RequestSellerOrderAction {
 		OrderId: order.OrderId,
 		SellerId: order.Items[0].SellerInfo.SellerId,
@@ -453,8 +466,9 @@ func TestShipmentPending_Success(t *testing.T) {
 func TestShipmentPending_Failed(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
-		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure())
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
 	assert.Nil(t, err)
+	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
@@ -469,6 +483,8 @@ func TestShipmentPending_Failed(t *testing.T) {
 	}
 	_ , err = global.Singletons.OrderRepository.Save(*order)
 	assert.Nil(t, err, "save failed")
+
+	defer removeCollection()
 
 	request := pb.RequestSellerOrderAction {
 		OrderId: order.OrderId,
@@ -490,8 +506,9 @@ func TestShipmentPending_Failed(t *testing.T) {
 func TestSellerFindAllItems(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
-		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure())
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
 	assert.Nil(t, err)
+	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
@@ -501,9 +518,11 @@ func TestSellerFindAllItems(t *testing.T) {
 	order , err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
-	request := &pb.RequestSellerFindAllItems{
-		SellerId:             order.Items[0].SellerInfo.SellerId,
+	request := &pb.RequestIdentifier{
+		Id:             order.Items[0].SellerInfo.SellerId,
 	}
+
+	defer removeCollection()
 
 	OrderService := pb.NewOrderServiceClient(grpcConn)
 	result, err := OrderService.SellerFindAllItems(ctx, request)
@@ -515,9 +534,10 @@ func TestSellerFindAllItems(t *testing.T) {
 func TestBuyerFindAllOrders(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
-		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure())
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
 	assert.Nil(t, err)
 
+	defer grpcConn.Close()
 	requestNewOrder := createRequestNewOrder()
 	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
 	assert.Nil(t, err, "Converter failed")
@@ -526,8 +546,10 @@ func TestBuyerFindAllOrders(t *testing.T) {
 	order , err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
-	request := &pb.RequestBuyerFindAllOrders{
-		BuyerId:             order.BuyerInfo.BuyerId,
+	defer removeCollection()
+
+	request := &pb.RequestIdentifier{
+		Id:             order.BuyerInfo.BuyerId,
 	}
 
 	OrderService := pb.NewOrderServiceClient(grpcConn)
@@ -536,4 +558,8 @@ func TestBuyerFindAllOrders(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, len(result.Orders), 1)
 
+}
+
+func removeCollection() {
+	//if err := global.Singletons.OrderRepository.RemoveAll(); err != nil {}
 }

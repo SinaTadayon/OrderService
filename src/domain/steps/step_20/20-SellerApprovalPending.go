@@ -91,6 +91,13 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 			}
 			return sellerApprovalPending.Childes()[0].ProcessOrder(ctx, order, itemsId, nil)
 		} else if req.Action == "failed" {
+			if req.Data == nil {
+				returnChannel := make(chan promise.FutureData, 1)
+				defer close(returnChannel)
+				returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.BadRequest, Reason:"Reason Data Required"}}
+				return promise.NewPromise(returnChannel, 1, 1)
+			}
+
 			actionData := req.Data.(*message.RequestSellerOrderAction_Failed)
 			if ok != true {
 				logger.Err("request data not a message.RequestSellerOrderAction_Failed type , order: %v", order)

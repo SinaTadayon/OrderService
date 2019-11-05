@@ -99,8 +99,8 @@
 //	ppr.Status.History = []StatusHistory{}
 //	// validate request & convert to PaymentPendingRequest
 //	if req.Amount != nil {
-//		ppr.Amount.Discount = float64(req.Amount.Discount)
-//		ppr.Amount.Payable = float64(req.Amount.Payable)
+//		ppr.Amount.Special = float64(req.Amount.Special)
+//		ppr.Amount.Original = float64(req.Amount.Original)
 //		ppr.Amount.Total = float64(req.Amount.Total)
 //	}
 //	if req.Buyer != nil {
@@ -130,39 +130,39 @@
 //			i.Quantity = item.Quantity
 //			i.Sku = item.Sku
 //			i.Title = item.Title
-//			i.Categories = item.Categories
+//			i.Category = item.Category
 //			i.Brand = item.Brand
-//			i.Guarantee = item.Guarantee
+//			i.Guaranty = item.Guaranty
 //			if item.Price != nil {
 //				i.Price.Total = float64(item.Price.Total)
-//				i.Price.Payable = float64(item.Price.Payable)
-//				i.Price.Discount = float64(item.Price.Discount)
+//				i.Price.Original = float64(item.Price.Original)
+//				i.Price.Special = float64(item.Price.Special)
 //				i.Price.SellerCommission = float64(item.Price.SellerCommission)
 //				i.Price.Unit = float64(item.Price.Unit)
 //			}
-//			if item.Seller != nil {
-//				i.Seller.Title = item.Seller.Title
-//				i.Seller.NationalId = item.Seller.NationalId
-//				i.Seller.Mobile = item.Seller.Mobile
-//				i.Seller.Email = item.Seller.Email
-//				i.Seller.FirstName = item.Seller.FirstName
-//				i.Seller.LastName = item.Seller.LastName
-//				i.Seller.CompanyName = item.Seller.CompanyName
-//				i.Seller.EconomicCode = item.Seller.EconomicCode
-//				i.Seller.RegistrationName = item.Seller.RegistrationName
-//				if item.Seller.Address != nil {
-//					i.Seller.Address.Address = item.Seller.Address.Address
-//					i.Seller.Address.Lan = item.Seller.Address.Lan
-//					i.Seller.Address.Lat = item.Seller.Address.Lat
-//					i.Seller.Address.Country = item.Seller.Address.Country
-//					i.Seller.Address.City = item.Seller.Address.City
-//					i.Seller.Address.ZipCode = item.Seller.Address.ZipCode
-//					i.Seller.Address.Title = item.Seller.Address.Title
-//					i.Seller.Address.Phone = item.Seller.Address.Phone
-//					i.Seller.Address.State = item.Seller.Address.State
+//			if item.SellerInfo != nil {
+//				i.SellerInfo.Title = item.SellerInfo.Title
+//				i.SellerInfo.NationalId = item.SellerInfo.NationalId
+//				i.SellerInfo.Mobile = item.SellerInfo.Mobile
+//				i.SellerInfo.Email = item.SellerInfo.Email
+//				i.SellerInfo.FirstName = item.SellerInfo.FirstName
+//				i.SellerInfo.LastName = item.SellerInfo.LastName
+//				i.SellerInfo.CompanyName = item.SellerInfo.CompanyName
+//				i.SellerInfo.EconomicCode = item.SellerInfo.EconomicCode
+//				i.SellerInfo.RegistrationName = item.SellerInfo.RegistrationName
+//				if item.SellerInfo.Address != nil {
+//					i.SellerInfo.Address.Address = item.SellerInfo.Address.Address
+//					i.SellerInfo.Address.Lan = item.SellerInfo.Address.Lan
+//					i.SellerInfo.Address.Lat = item.SellerInfo.Address.Lat
+//					i.SellerInfo.Address.Country = item.SellerInfo.Address.Country
+//					i.SellerInfo.Address.City = item.SellerInfo.Address.City
+//					i.SellerInfo.Address.ZipCode = item.SellerInfo.Address.ZipCode
+//					i.SellerInfo.Address.Title = item.SellerInfo.Address.Title
+//					i.SellerInfo.Address.Phone = item.SellerInfo.Address.Phone
+//					i.SellerInfo.Address.State = item.SellerInfo.Address.State
 //				}
-//				if item.Seller.Finance != nil {
-//					i.Seller.Finance.Iban = item.Seller.Finance.Iban
+//				if item.SellerInfo.Finance != nil {
+//					i.SellerInfo.Finance.Iban = item.SellerInfo.Finance.Iban
 //				}
 //			}
 //			if item.Shipment != nil {

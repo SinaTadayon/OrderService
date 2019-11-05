@@ -47,8 +47,8 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	}
 
 	order.Amount.Total = 600000
-	order.Amount.Payable = 550000
-	order.Amount.Discount = 50000
+	order.Amount.Original = 550000
+	order.Amount.Special = 50000
 	order.Amount.Currency = "RR"
 	order.Amount.PaymentMethod = "IPG"
 	order.Amount.PaymentOption = "AAP"
@@ -90,9 +90,9 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 
 	item.InventoryId = "11111-22222"
 	item.Brand = "Asus"
-	item.Categories = "Electronic/laptop"
+	item.Category = "Electronic/laptop"
 	item.Title = "Asus G503 i7, 256SSD, 32G Ram"
-	item.Guarantee = "ضمانت سلامت کالا"
+	item.Guaranty = "ضمانت سلامت کالا"
 	item.Image = "http://baman.io/image/asus.png"
 	item.Returnable = true
 	item.Quantity = 5
@@ -105,8 +105,9 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item.Attributes["Color"] = "blue"
 	item.Attributes["Materials"] = "stone"
 
-	item.Price.Discount = 200000
-	item.Price.Payable = 20000000
+	item.Price.Special = 200000
+	item.Price.Total = 20000000
+	item.Price.Original = 1800000
 	item.Price.SellerCommission = 10
 	item.Price.Unit = 100000
 	item.Price.Currency = "RR"
@@ -119,7 +120,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item.Shipment.CarrierName = "Post"
 	item.Shipment.CarrierProduct = "Post Express"
 	item.Shipment.CarrierType = "standard"
-	item.Shipment.ShippingAmount = 100000
+	item.Shipment.ShippingCost = 100000
 	item.Shipment.VoucherAmount = 0
 	item.Shipment.Currency = "RR"
 
@@ -134,9 +135,9 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 
 	item1.InventoryId = "11111-33333"
 	item1.Brand = "Lenovo"
-	item1.Categories = "Electronic/laptop"
+	item1.Category = "Electronic/laptop"
 	item1.Title = "Lenove G503 i7, 256SSD, 32G Ram"
-	item1.Guarantee = "ضمانت سلامت کالا"
+	item1.Guaranty = "ضمانت سلامت کالا"
 	item1.Image = "http://baman.io/image/asus.png"
 	item1.Returnable = true
 	item1.Quantity = 5
@@ -149,8 +150,9 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item1.Attributes["Color"] = "blue"
 	item1.Attributes["Materials"] = "stone"
 
-	item1.Price.Discount = 250000
-	item1.Price.Payable = 200000
+	item1.Price.Special = 250000
+	item1.Price.Total = 1750000
+	item1.Price.Original = 1500000
 	item1.Price.SellerCommission = 10
 	item1.Price.Unit = 200000
 	item1.Price.Currency = "RR"
@@ -163,7 +165,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item1.Shipment.CarrierName = "Post"
 	item1.Shipment.CarrierProduct = "Post Express"
 	item1.Shipment.CarrierType = "standard"
-	item1.Shipment.ShippingAmount = 100000
+	item1.Shipment.ShippingCost = 100000
 	item1.Shipment.VoucherAmount = 0
 	item1.Shipment.Currency = "RR"
 
@@ -254,6 +256,7 @@ func TestNewOrder(t *testing.T) {
 
 	requestNewOrder := createRequestNewOrder()
 
+	defer grpcConnNewOrder.Close()
 	OrderService := pb.NewOrderServiceClient(grpcConnNewOrder)
 	resOrder, err := OrderService.NewOrder(ctx, requestNewOrder)
 

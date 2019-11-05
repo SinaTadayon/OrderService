@@ -8,19 +8,19 @@ type Item struct {
 	ItemId      string            `bson:"itemId"`
 	InventoryId string            `bson:"inventoryId"`
 	Title       string            `bson:"title"`
-	Brand       string            `bson:"brand"`
-	Guarantee   string            `bson:"guarantee"`
-	Categories  string            `bson:"categories"`
-	Image       string            `bson:"image"`
+	Brand           string            `bson:"brand"`
+	Guaranty        string            `bson:"guaranty"`
+	Category        string            `bson:"category"`
+	Image           string            `bson:"image"`
 	Returnable      bool              `bson:"returnable"`
 	Status          string            `bson:"status"`
-	Quantity		int32			  `bson:"quantity"`
+	Quantity        int32             `bson:"quantity"`
 	Attributes      map[string]string `bson:"attributes"`
 	CreatedAt       time.Time         `bson:"createdAt"`
 	UpdatedAt       time.Time         `bson:"updatedAt"`
 	DeletedAt       *time.Time        `bson:"deletedAt"`
 	SellerInfo      SellerInfo        `bson:"sellerInfo"`
-	PriceInfo       PriceInfo         `bson:"priceInfo"`
+	Price           Price             `bson:"price"`
 	ShipmentSpec    ShipmentSpec      `bson:"shipmentSpec"`
 	ShipmentDetails ShipmentDetails   `bson:"shipmentDetails"`
 	Progress        Progress          `bson:"progress"`
@@ -102,25 +102,26 @@ type SellerInfo struct {
 	Profile				*SellerProfile			`bson:"profile"`
 }
 
-type PriceInfo struct {
-	Unit             	uint64					`bson:"unit"`
-	Payable          	uint64					`bson:"payable"`
-	Discount         	uint64					`bson:"discount"`
-	SellerCommission 	float32					`bson:"sellerCommission"`
-	Currency		 	string					`bson:"currency"`
+type Price struct {
+	Unit             uint64  `bson:"unit"`
+	Total            uint64  `bson:"total"`
+	Original         uint64  `bson:"original"`
+	Special          uint64  `bson:"special"`
+	SellerCommission float32 `bson:"sellerCommission"`
+	Currency         string  `bson:"currency"`
 }
 
 // Time unit hours
 type ShipmentSpec struct {
-	CarrierName			string					`bson:"carrierName"`
-	CarrierProduct 		string					`bson:"carrierProduct"`
-	CarrierType			string					`bson:"carrierType"`
-	ShippingAmount		uint64					`bson:"shippingAmount"`
-	VoucherAmount		uint64					`bson:"voucherAmount"`
-	Currency			string					`bson:"currency"`
-	ReactionTime   		int32					`bson:"reactionTime"`
-	ShippingTime   		int32					`bson:"shippingTime"`
-	ReturnTime     		int32					`bson:"returnTime"`
-	Details 			string					`bson:"Details"`
+	CarrierName    string `bson:"carrierName"`
+	CarrierProduct string `bson:"carrierProduct"`
+	CarrierType    string `bson:"carrierType"`
+	ShippingCost   uint64 `bson:"shippingCost"`
+	VoucherAmount  uint64 `bson:"voucherAmount"`
+	Currency       string `bson:"currency"`
+	ReactionTime   int32  `bson:"reactionTime"`
+	ShippingTime   int32  `bson:"shippingTime"`
+	ReturnTime     int32  `bson:"returnTime"`
+	Details        string `bson:"Details"`
 }
 

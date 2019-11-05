@@ -27,8 +27,8 @@
 //	}
 //
 //	order.Amount.Total = float32(req.Amount.Total)
-//	order.Amount.Payable = float32(req.Amount.Payable)
-//	order.Amount.Discount = float32(req.Amount.Discount)
+//	order.Amount.Original = float32(req.Amount.Original)
+//	order.Amount.Special = float32(req.Amount.Special)
 //
 //	order.Buyer.LastName = req.Buyer.LastName
 //	order.Buyer.FirstName = req.Buyer.FirstName
@@ -51,20 +51,20 @@
 //	i := pb.Item{
 //		Price:    &pb.ItemPrice{},
 //		Shipment: &pb.ItemShipment{},
-//		Seller: &pb.ItemSeller{
+//		SellerInfo: &pb.ItemSeller{
 //			Address: &pb.ItemSellerAddress{},
 //			Finance: &pb.ItemSellerFinance{},
 //		},
 //	}
 //	i.Sku = req.Items[0].Sku
 //	i.Brand = req.Items[0].Brand
-//	i.Categories = req.Items[0].Categories
+//	i.Category = req.Items[0].Category
 //	i.Title = req.Items[0].Title
-//	i.Guarantee = req.Items[0].Guarantee
+//	i.Guaranty = req.Items[0].Guaranty
 //	i.Quantity = req.Items[0].Quantity
 //
-//	i.Price.Discount = float32(req.Items[0].Price.Discount)
-//	i.Price.Payable = float32(req.Items[0].Price.Payable)
+//	i.Price.Special = float32(req.Items[0].Price.Special)
+//	i.Price.Original = float32(req.Items[0].Price.Original)
 //	i.Price.Total = float32(req.Items[0].Price.Total)
 //	i.Price.SellerCommission = float32(req.Items[0].Price.SellerCommission)
 //	i.Price.Unit = float32(req.Items[0].Price.Unit)
@@ -75,26 +75,26 @@
 //	i.Shipment.ReactionTime = req.Items[0].Shipment.ReactionTime
 //	i.Shipment.ProviderName = req.Items[0].Shipment.ProviderName
 //
-//	i.Seller.Title = req.Items[0].Seller.Title
-//	i.Seller.NationalId = req.Items[0].Seller.NationalId
-//	i.Seller.Mobile = req.Items[0].Seller.Mobile
-//	i.Seller.FirstName = req.Items[0].Seller.FirstName
-//	i.Seller.LastName = req.Items[0].Seller.LastName
-//	i.Seller.Email = req.Items[0].Seller.Email
-//	i.Seller.RegistrationName = req.Items[0].Seller.RegistrationName
-//	i.Seller.CompanyName = req.Items[0].Seller.CompanyName
+//	i.SellerInfo.Title = req.Items[0].SellerInfo.Title
+//	i.SellerInfo.NationalId = req.Items[0].SellerInfo.NationalId
+//	i.SellerInfo.Mobile = req.Items[0].SellerInfo.Mobile
+//	i.SellerInfo.FirstName = req.Items[0].SellerInfo.FirstName
+//	i.SellerInfo.LastName = req.Items[0].SellerInfo.LastName
+//	i.SellerInfo.Email = req.Items[0].SellerInfo.Email
+//	i.SellerInfo.RegistrationName = req.Items[0].SellerInfo.RegistrationName
+//	i.SellerInfo.CompanyName = req.Items[0].SellerInfo.CompanyName
 //
-//	i.Seller.Address.Address = req.Items[0].Seller.Address.Address
-//	i.Seller.Address.Lan = req.Items[0].Seller.Address.Lan
-//	i.Seller.Address.Lat = req.Items[0].Seller.Address.Lat
-//	i.Seller.Address.Country = req.Items[0].Seller.Address.Country
-//	i.Seller.Address.City = req.Items[0].Seller.Address.City
-//	i.Seller.Address.ZipCode = req.Items[0].Seller.Address.ZipCode
-//	i.Seller.Address.Phone = req.Items[0].Seller.Address.Phone
-//	i.Seller.Address.State = req.Items[0].Seller.Address.State
-//	i.Seller.Address.Title = req.Items[0].Seller.Address.Title
+//	i.SellerInfo.Address.Address = req.Items[0].SellerInfo.Address.Address
+//	i.SellerInfo.Address.Lan = req.Items[0].SellerInfo.Address.Lan
+//	i.SellerInfo.Address.Lat = req.Items[0].SellerInfo.Address.Lat
+//	i.SellerInfo.Address.Country = req.Items[0].SellerInfo.Address.Country
+//	i.SellerInfo.Address.City = req.Items[0].SellerInfo.Address.City
+//	i.SellerInfo.Address.ZipCode = req.Items[0].SellerInfo.Address.ZipCode
+//	i.SellerInfo.Address.Phone = req.Items[0].SellerInfo.Address.Phone
+//	i.SellerInfo.Address.State = req.Items[0].SellerInfo.Address.State
+//	i.SellerInfo.Address.Title = req.Items[0].SellerInfo.Address.Title
 //
-//	i.Seller.Finance.Iban = req.Items[0].Seller.Finance.Iban
+//	i.SellerInfo.Finance.Iban = req.Items[0].SellerInfo.Finance.Iban
 //
 //	order.Items = append(order.Items, &i)
 //	return order

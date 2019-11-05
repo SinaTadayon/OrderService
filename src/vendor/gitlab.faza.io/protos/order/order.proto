@@ -6,14 +6,14 @@ import "message.proto";
 import "google/protobuf/any.proto";
 
 service OrderService {
-    rpc OrderRequestsHandler(MessageRequest) returns (MessageResponse);
+    rpc OrderRequestsHandler (MessageRequest) returns (MessageResponse);
 
-    rpc NewOrder(RequestNewOrder) returns (ResponseNewOrder);
-    rpc SellerFindAllItems(RequestSellerFindAllItems) returns (ResponseSellerFindAllItems);
-    rpc SellerOrderAction(RequestSellerOrderAction) returns (ResponseSellerOrderAction);
-    rpc BuyerOrderAction(RequestBuyerOrderAction) returns (ResponseBuyerOrderAction);
-//    rpc OperatorOrderAction(RequestOperatorOrderAction) returns (ResponseOperatorOrderAction);
-    rpc BuyerFindAllOrders(RequestBuyerFindAllOrders) returns (ResponseBuyerFindAllOrders);
+    rpc NewOrder (RequestNewOrder) returns (ResponseNewOrder);
+    rpc SellerFindAllItems (RequestIdentifier) returns (ResponseSellerFindAllItems);
+    rpc SellerOrderAction (RequestSellerOrderAction) returns (ResponseSellerOrderAction);
+    rpc BuyerOrderAction (RequestBuyerOrderAction) returns (ResponseBuyerOrderAction);
+    //    rpc OperatorOrderAction(RequestOperatorOrderAction) returns (ResponseOperatorOrderAction);
+    rpc BuyerFindAllOrders (RequestIdentifier) returns (ResponseBuyerFindAllOrders);
 
 }
 
@@ -29,8 +29,8 @@ message RequestNewOrder {
 
 message Amount {
     uint64  total           = 1;
-    uint64  payable         = 2;
-    uint64  discount        = 3;
+    uint64  original        = 2;
+    uint64  special         = 3;
     uint64  shipmentTotal   = 4;
     string  currency        = 5;
     string  paymentMethod   = 6;
@@ -48,8 +48,8 @@ message Item {
     string inventoryId = 1;
     string title = 2;
     string brand = 3;
-    string categories = 4;
-    string guarantee = 5;
+    string category = 4;
+    string guaranty = 5;
     string image = 6;
     bool returnable = 7;
     string sellerId = 8;
@@ -95,8 +95,9 @@ message Address {
 
 message PriceInfo {
     uint64 unit = 1;
-    uint64 payable = 3;
-    uint64 discount = 4;
+    uint64 total = 2;
+    uint64 original = 3;
+    uint64 special = 4;
     float  sellerCommission = 5;
     string currency = 6;
 }
@@ -105,7 +106,7 @@ message ShippingSpec {
     string carrierName = 1;
     string carrierProduct = 2;
     string carrierType = 3;
-    uint64 shippingAmount = 4;
+    uint64 shippingCost = 4;
     uint64 voucherAmount = 5;
     string currency = 6;
     int32 reactionTime = 7;
@@ -121,8 +122,8 @@ message Event {
     google.protobuf.Any data = 4;
 }
 
-message RequestBuyerFindAllOrders {
-    string buyerId  = 1;
+message RequestIdentifier {
+    string id  = 1;
 }
 
 message ResponseBuyerFindAllOrders {
@@ -143,8 +144,8 @@ message BuyerOrderItems {
     string inventoryId = 1;
     string title = 2;
     string brand = 3;
-    string categories = 4;
-    string guarantee = 5;
+    string category = 4;
+    string guaranty = 5;
     string image = 6;
     bool returnable = 7;
     string sellerId = 8;
@@ -152,14 +153,15 @@ message BuyerOrderItems {
     map<string, string> attributes = 10;
     message Price {
         uint64 unit = 1;
-        uint64 payable = 3;
-        uint64 discount = 4;
+        uint64 total = 2;
+        uint64 original = 3;
+        uint64 special = 4;
         string currency = 5;
     } Price price = 11;
 
     message ShipmentSpec {
         string carrierName = 1;
-        uint64 shippingAmount = 4;
+        uint64 shippingCost = 4;
     } ShipmentSpec shipment = 12;
 }
 
@@ -168,11 +170,12 @@ message ResponseSellerOrderAction {
 }
 
 message RequestBuyerOrderAction {
-    string orderId      = 1;
-    repeated string itemsId       = 2;
-    string actionType   = 3;
-    string action       = 4;
-    string reason       = 5;
+    string buyerId      = 1;
+    string orderId      = 2;
+    repeated string itemsId       = 3;
+    string actionType   = 4;
+    string action       = 5;
+    string reason       = 6;
 }
 
 message ResponseBuyerOrderAction {
@@ -200,10 +203,6 @@ message RequestSellerOrderActionFailed {
     string reason   = 1;
 }
 
-message RequestSellerFindAllItems {
-    string sellerId = 1;
-}
-
 message ResponseSellerFindAllItems {
     repeated SellerFindAllItems items = 1;
 }
@@ -214,8 +213,8 @@ message SellerFindAllItems {
     string inventoryId = 3;
     string title = 4;
     string brand = 5;
-    string guarantee = 6;
-    string categories = 7;
+    string guaranty = 6;
+    string category = 7;
     string image = 8;
     bool returnable = 9;
     int32 quantity = 10;

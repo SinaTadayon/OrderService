@@ -29,25 +29,25 @@ package payment_pending_step
 //	// buyer finance
 //	pr.Buyer.Finance.Iban = "IR165411211001514313143545"
 //	// amount
-//	pr.Amount.Total = 200000
-//	pr.Amount.Discount = 40000
-//	pr.Amount.Payable = 160000
+//	pr.Amount.total = 200000
+//	pr.Amount.Special = 40000
+//	pr.Amount.Original = 160000
 //	// items
 //	pr.Items = append(pr.Items, Item{
 //		Sku:        "aaa000",
 //		Quantity:   10,
 //		Brand:      "Asus",
-//		Categories: "Electronic/laptop",
+//		Category: "Electronic/laptop",
 //		Title:      "Asus G503 i7, 256SSD, 32G Ram",
-//		Guarantee:   "ضمانت سلامت کالا",
+//		Guaranty:   "ضمانت سلامت کالا",
 //		Price: ItemPrice{
 //			Unit:             20000,
-//			Total:            200000,
-//			Payable:          160000,
-//			Discount:         40000,
+//			total:            200000,
+//			Original:          160000,
+//			Special:         40000,
 //			SellerCommission: 10000,
 //		},
-//		Seller: ItemSeller{
+//		SellerInfo: ItemSeller{
 //			CompanyName:      "digi",
 //			RegistrationName: "Digikala",
 //			LastName:         "hamid",
@@ -83,18 +83,18 @@ package payment_pending_step
 //	pr.Items = append(pr.Items, Item{
 //		Sku:        "aaa111",
 //		Brand:      "Asus",
-//		Categories: "Electronic/laptop",
+//		Category: "Electronic/laptop",
 //		Title:      "Asus G503 i7, 256SSD, 32G Ram",
 //		Quantity:   1,
-//		Guarantee:   "صلامت کالا",
+//		Guaranty:   "صلامت کالا",
 //		Price: ItemPrice{
-//			Total:            300000,
-//			Payable:          160000,
-//			Discount:         140000,
+//			total:            300000,
+//			Original:          160000,
+//			Special:         140000,
 //			Unit:             300000,
 //			SellerCommission: 20000,
 //		},
-//		Seller: ItemSeller{
+//		SellerInfo: ItemSeller{
 //			CompanyName:      "digi",
 //			Title:            "Digikala",
 //			EconomicCode:     "13211",

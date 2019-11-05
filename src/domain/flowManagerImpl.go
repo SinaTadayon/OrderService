@@ -134,7 +134,7 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	flowManager.createStep93(baseStep93)
 
 	//////////////////////////////////////////////////////////////////
-	// Pay To Seller
+	// Pay To SellerInfo
 	// create empty step90 which is required for step92
 	step90 := pay_to_seller_step.New(emptyStep, emptyStep, emptyState...)
 	baseStep90 := step90.(steps.IBaseStep)

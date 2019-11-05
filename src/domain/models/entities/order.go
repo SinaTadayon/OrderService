@@ -47,9 +47,9 @@ type PaymentService struct {
 
 // TODO get configs of pay to market from siavash
 type SystemPayment struct {
-	PayToBuyerInfo  []PayToBuyerInfo		`bson:"payToBuyerInfo"`
-	PayToSellerInfo []PayToSellerInfo		`bson:"payToSellerInfo"`
-	PayToMarket 	[]PayToMarket			`bson:"payToMarket"`
+	PayToBuyer  []PayToBuyerInfo		`bson:"payToBuyer"`
+	PayToSeller []PayToSellerInfo		`bson:"payToSeller"`
+	PayToMarket []PayToMarket			`bson:"payToMarket"`
 }
 
 type PayToBuyerInfo struct {
@@ -71,14 +71,14 @@ type PayToMarket struct {
 }
 
 type Amount struct {
-	Total    			uint64				`bson:"total"`
-	Payable  			uint64				`bson:"payable"`
-	Discount 			uint64				`bson:"discount"`
-	ShipmentTotal		uint64				`bson:"shipmentTotal"`
-	Currency 			string				`bson:"currency"`
-	PaymentMethod		string				`bson:"paymentMethod"`
-	PaymentOption		string				`bson:"paymentOption"`
-	Voucher 			*Voucher			`bson:"voucher"`
+	Total         uint64   `bson:"total"`
+	Original      uint64   `bson:"original"`
+	Special       uint64   `bson:"special"`
+	ShipmentTotal uint64   `bson:"shipmentTotal"`
+	Currency      string   `bson:"currency"`
+	PaymentMethod string   `bson:"paymentMethod"`
+	PaymentOption string   `bson:"paymentOption"`
+	Voucher       *Voucher `bson:"voucher"`
 }
 
 type Voucher struct {

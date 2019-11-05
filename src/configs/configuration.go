@@ -69,7 +69,7 @@ func LoadConfig(path string) (*Cfg, error) {
 			}
 		} else {
 			//err := godotenv.Load(path)
-			err := godotenv.Load("../.env")
+			err := godotenv.Load("./.env")
 			if err != nil {
 				logger.Err("Error loading .env file")
 			}

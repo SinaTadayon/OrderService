@@ -10,13 +10,13 @@ import "fmt"
 //409 - Conflict - Anything which causes conflicts on the server, the most famous one, a not unique email error, a duplicate entity...
 
 const (
-	BadRequest			= 400
-	ForBidden			= 403
-	NotFound			= 404
-	NotAccepted			= 406
-	Conflict			= 409
-	ValidationError 	= 422
-	InternalError		= 500
+	BadRequest      = 400
+	Forbidden       = 403
+	NotFound        = 404
+	NotAccepted     = 406
+	Conflict        = 409
+	ValidationError = 422
+	InternalError   = 500
 )
 
 

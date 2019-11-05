@@ -83,6 +83,12 @@ func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, ord
 			return promise.NewPromise(returnChannel, 1, 1)
 		}
 
+		if req.Data == nil {
+			returnChannel := make(chan promise.FutureData, 1)
+			defer close(returnChannel)
+			returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.BadRequest, Reason:"Reason Data Required"}}
+			return promise.NewPromise(returnChannel, 1, 1)
+		}
 
 		if req.Action == "success" {
 			actionData, ok := req.Data.(*message.RequestSellerOrderAction_Success)
@@ -179,6 +185,8 @@ func (shipmentPending shipmentPendingStep) updateOrderItemsProgress(ctx context.
 							ShippingMethod: req.Success.ShipmentMethod,
 						}
 						break
+					} else {
+						shipmentPending.doUpdateOrderItemsProgress(ctx, order, i, action, result, reason, isSetExpireTime)
 					}
 				}
 			}

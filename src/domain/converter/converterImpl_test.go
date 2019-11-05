@@ -14,7 +14,7 @@ func TestOrderConverter(t *testing.T) {
 	assert.NoError(t, err, "mapping order request to order failed")
 	order , ok := out.(*entities.Order)
 	assert.True(t, ok, "mapping order request to order failed")
-	assert.NotEmpty(t, order.Amount.Total)
+	assert.NotEmpty(t, order.Amount.total)
 }
 
 
@@ -73,7 +73,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item.Brand = "Asus"
 	item.Categories = "Electronic/laptop"
 	item.Title = "Asus G503 i7, 256SSD, 32G Ram"
-	item.Guarantee = "ضمانت سلامت کالا"
+	item.Guaranty = "ضمانت سلامت کالا"
 	item.Image = "http://baman.io/image/asus.png"
 	item.Returnable = true
 

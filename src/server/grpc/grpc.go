@@ -27,6 +27,11 @@ import (
 	"google.golang.org/grpc"
 )
 
+const (
+	// ISO8601 standard time format
+	ISO8601 = "2006-01-02T15:04:05-0700"
+)
+
 type Server struct{
 	pb.UnimplementedOrderServiceServer
 	pg.UnimplementedBankResultHookServer
@@ -185,14 +190,14 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 
 }
 
-func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestSellerFindAllItems) (*pb.ResponseSellerFindAllItems, error) {
+func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseSellerFindAllItems, error) {
 
 	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
-		return bson.D{{"items.sellerInfo.sellerId", req.SellerId }}
+		return bson.D{{"items.sellerInfo.sellerId", req.Id }}
 	})
 
 	if err != nil {
-		logger.Err("SellerFindAllItems failed, sellerId: %s, error: %s", req.SellerId, err.Error())
+		logger.Err("SellerFindAllItems failed, sellerId: %s, error: %s", req.Id, err.Error())
 		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
 	}
 
@@ -200,7 +205,7 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestSell
 
 	for _, order := range orders {
 		for _, orderItem := range order.Items {
-			if orderItem.SellerInfo.SellerId == req.SellerId {
+			if orderItem.SellerInfo.SellerId == req.Id {
 				if _, ok := sellerItemMap[orderItem.InventoryId]; !ok {
 					newResponseItem := &pb.SellerFindAllItems{
 						OrderId:     order.OrderId,
@@ -208,19 +213,20 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestSell
 						InventoryId: orderItem.InventoryId,
 						Title:       orderItem.Title,
 						Brand:       orderItem.Brand,
-						Guarantee:   orderItem.Guarantee,
-						Categories:  orderItem.Categories,
+						Guaranty:   orderItem.Guaranty,
+						Category:  orderItem.Category,
 						Image:       orderItem.Image,
 						Returnable:  orderItem.Returnable,
 						Status:      orderItem.Status,
-						CreatedAt:   orderItem.CreatedAt.String(),
-						UpdatedAt:   orderItem.UpdatedAt.String(),
+						CreatedAt:   orderItem.CreatedAt.Format(ISO8601),
+						UpdatedAt:   orderItem.UpdatedAt.Format(ISO8601),
 						Quantity:    orderItem.Quantity,
+						Attributes:  orderItem.Attributes,
 						Price: &pb.SellerFindAllItems_Price{
-							Unit:             orderItem.PriceInfo.Unit,
-							Total:            orderItem.PriceInfo.Payable,
-							SellerCommission: orderItem.PriceInfo.SellerCommission,
-							Currency:         orderItem.PriceInfo.Currency,
+							Unit:             orderItem.Price.Unit,
+							Total:            orderItem.Price.Original,
+							SellerCommission: orderItem.Price.SellerCommission,
+							Currency:         orderItem.Price.Currency,
 						},
 					}
 					sellerItemMap[orderItem.InventoryId] = newResponseItem
@@ -269,13 +275,13 @@ func (server Server) SellerOrderAction(ctx context.Context, req *pb.RequestSelle
 	return &pb.ResponseSellerOrderAction{Result: true}, nil
 }
 
-func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestBuyerFindAllOrders) (*pb.ResponseBuyerFindAllOrders, error) {
+func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseBuyerFindAllOrders, error) {
 	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
-		return bson.D{{"buyerInfo.buyerId", req.BuyerId }}
+		return bson.D{{"buyerInfo.buyerId", req.Id }}
 	})
 
 	if err != nil {
-		logger.Err("SellerFindAllItems failed, sellerId: %s, error: %s", req.BuyerId, err.Error())
+		logger.Err("SellerFindAllItems failed, buyerId: %s, error: %s", req.Id, err.Error())
 		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
 	}
 
@@ -285,13 +291,13 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestBuye
 	for _, order := range orders {
 		responseOrder := &pb.BuyerAllOrders {
 			OrderId: order.OrderId,
-			CreatedAt: order.CreatedAt.String(),
-			UpdatedAt: order.UpdatedAt.String(),
+			CreatedAt: order.CreatedAt.Format(ISO8601),
+			UpdatedAt: order.UpdatedAt.Format(ISO8601),
 			Status: order.Status,
 			Amount: &pb.Amount{
 				Total: order.Amount.Total,
-				Payable: order.Amount.Payable,
-				Discount: order.Amount.Discount,
+				Original: order.Amount.Original,
+				Special: order.Amount.Special,
 				Currency: order.Amount.Currency,
 				ShipmentTotal: order.Amount.ShipmentTotal,
 				PaymentMethod: order.Amount.PaymentMethod,
@@ -312,22 +318,23 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestBuye
 					InventoryId: item.InventoryId,
 					Title:       item.Title,
 					Brand:       item.Brand,
-					Categories:  item.Categories,
-					Guarantee:   item.Guarantee,
+					Category:  item.Category,
+					Guaranty:   item.Guaranty,
 					Image:       item.Image,
 					Returnable:  item.Returnable,
 					SellerId:    item.SellerInfo.SellerId,
-					Quantity:    1,
+					Quantity:    item.Quantity,
 					Attributes:  item.Attributes,
 					Price: &pb.BuyerOrderItems_Price{
-						Unit:     item.PriceInfo.Unit,
-						Payable:  item.PriceInfo.Payable,
-						Discount: item.PriceInfo.Discount,
-						Currency: item.PriceInfo.Currency,
+						Unit:     item.Price.Unit,
+						Total: 	  item.Price.Total,
+						Original:  item.Price.Original,
+						Special: item.Price.Special,
+						Currency: item.Price.Currency,
 					},
 					Shipment: &pb.BuyerOrderItems_ShipmentSpec{
 						CarrierName:    item.ShipmentSpec.CarrierName,
-						ShippingAmount: item.ShipmentSpec.ShippingAmount,
+						ShippingCost: item.ShipmentSpec.ShippingCost,
 					},
 				}
 
@@ -406,9 +413,9 @@ func (server Server) Start() {
 //	ppr.Status.History = []StatusHistory{}
 //	// validate request & convert to PaymentPendingRequest
 //	if req.Amount != nil {
-//		ppr.Amount.Discount = float64(req.Amount.Discount)
-//		ppr.Amount.Payable = float64(req.Amount.Payable)
-//		ppr.Amount.Total = float64(req.Amount.Total)
+//		ppr.Amount.Special = float64(req.Amount.Special)
+//		ppr.Amount.Original = float64(req.Amount.Original)
+//		ppr.Amount.total = float64(req.Amount.total)
 //	}
 //	if req.Buyer != nil {
 //		ppr.Buyer.LastName = req.Buyer.LastName
@@ -437,39 +444,39 @@ func (server Server) Start() {
 //			i.Quantity = item.Quantity
 //			i.Sku = item.Sku
 //			i.Title = item.Title
-//			i.Categories = item.Categories
+//			i.Category = item.Category
 //			i.Brand = item.Brand
-//			i.Guarantee = item.Guarantee
+//			i.Guaranty = item.Guaranty
 //			if item.Price != nil {
-//				i.Price.Total = float64(item.Price.Total)
-//				i.Price.Payable = float64(item.Price.Payable)
-//				i.Price.Discount = float64(item.Price.Discount)
+//				i.Price.total = float64(item.Price.total)
+//				i.Price.Original = float64(item.Price.Original)
+//				i.Price.Special = float64(item.Price.Special)
 //				i.Price.SellerCommission = float64(item.Price.SellerCommission)
 //				i.Price.Unit = float64(item.Price.Unit)
 //			}
-//			if item.Seller != nil {
-//				i.Seller.Title = item.Seller.Title
-//				i.Seller.NationalId = item.Seller.NationalId
-//				i.Seller.Mobile = item.Seller.Mobile
-//				i.Seller.Email = item.Seller.Email
-//				i.Seller.FirstName = item.Seller.FirstName
-//				i.Seller.LastName = item.Seller.LastName
-//				i.Seller.CompanyName = item.Seller.CompanyName
-//				i.Seller.EconomicCode = item.Seller.EconomicCode
-//				i.Seller.RegistrationName = item.Seller.RegistrationName
-//				if item.Seller.Address != nil {
-//					i.Seller.Address.Address = item.Seller.Address.Address
-//					i.Seller.Address.Lan = item.Seller.Address.Lan
-//					i.Seller.Address.Lat = item.Seller.Address.Lat
-//					i.Seller.Address.Country = item.Seller.Address.Country
-//					i.Seller.Address.City = item.Seller.Address.City
-//					i.Seller.Address.ZipCode = item.Seller.Address.ZipCode
-//					i.Seller.Address.Title = item.Seller.Address.Title
-//					i.Seller.Address.Phone = item.Seller.Address.Phone
-//					i.Seller.Address.State = item.Seller.Address.State
+//			if item.SellerInfo != nil {
+//				i.SellerInfo.Title = item.SellerInfo.Title
+//				i.SellerInfo.NationalId = item.SellerInfo.NationalId
+//				i.SellerInfo.Mobile = item.SellerInfo.Mobile
+//				i.SellerInfo.Email = item.SellerInfo.Email
+//				i.SellerInfo.FirstName = item.SellerInfo.FirstName
+//				i.SellerInfo.LastName = item.SellerInfo.LastName
+//				i.SellerInfo.CompanyName = item.SellerInfo.CompanyName
+//				i.SellerInfo.EconomicCode = item.SellerInfo.EconomicCode
+//				i.SellerInfo.RegistrationName = item.SellerInfo.RegistrationName
+//				if item.SellerInfo.Address != nil {
+//					i.SellerInfo.Address.Address = item.SellerInfo.Address.Address
+//					i.SellerInfo.Address.Lan = item.SellerInfo.Address.Lan
+//					i.SellerInfo.Address.Lat = item.SellerInfo.Address.Lat
+//					i.SellerInfo.Address.Country = item.SellerInfo.Address.Country
+//					i.SellerInfo.Address.City = item.SellerInfo.Address.City
+//					i.SellerInfo.Address.ZipCode = item.SellerInfo.Address.ZipCode
+//					i.SellerInfo.Address.Title = item.SellerInfo.Address.Title
+//					i.SellerInfo.Address.Phone = item.SellerInfo.Address.Phone
+//					i.SellerInfo.Address.State = item.SellerInfo.Address.State
 //				}
-//				if item.Seller.Finance != nil {
-//					i.Seller.Finance.Iban = item.Seller.Finance.Iban
+//				if item.SellerInfo.Finance != nil {
+//					i.SellerInfo.Finance.Iban = item.SellerInfo.Finance.Iban
 //				}
 //			}
 //			if item.Shipment != nil {

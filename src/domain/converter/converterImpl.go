@@ -84,8 +84,8 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	}
 
 	order.Amount.Total = newOrderDto.Amount.Total
-	order.Amount.Payable = newOrderDto.Amount.Payable
-	order.Amount.Discount = newOrderDto.Amount.Discount
+	order.Amount.Original = newOrderDto.Amount.Original
+	order.Amount.Special = newOrderDto.Amount.Special
 	order.Amount.ShipmentTotal = newOrderDto.Amount.ShipmentTotal
 	order.Amount.Currency = newOrderDto.Amount.Currency
 	order.Amount.PaymentMethod = newOrderDto.Amount.PaymentMethod
@@ -115,8 +115,8 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 			newItem.InventoryId	= item.InventoryId
 			newItem.Title = item.Title
 			newItem.Brand = item.Brand
-			newItem.Guarantee = item.Guarantee
-			newItem.Categories = item.Categories
+			newItem.Guaranty = item.Guaranty
+			newItem.Category = item.Category
 			newItem.Image = item.Image
 			newItem.Quantity = item.Quantity
 			newItem.Returnable = item.Returnable
@@ -127,11 +127,12 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 				return nil, errors.New("item price of RequestNewOrder invalid")
 			}
 
-			newItem.PriceInfo.Unit = item.Price.Unit
-			newItem.PriceInfo.Payable = item.Price.Payable
-			newItem.PriceInfo.Discount = item.Price.Discount
-			newItem.PriceInfo.SellerCommission = item.Price.SellerCommission
-			newItem.PriceInfo.Currency = item.Price.Currency
+			newItem.Price.Unit = item.Price.Unit
+			newItem.Price.Total = item.Price.Total
+			newItem.Price.Original = item.Price.Original
+			newItem.Price.Special = item.Price.Special
+			newItem.Price.SellerCommission = item.Price.SellerCommission
+			newItem.Price.Currency = item.Price.Currency
 
 			if item.Shipment == nil {
 				return nil, errors.New("item shipment of RequestNewOrder invalid")
@@ -140,7 +141,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 			newItem.ShipmentSpec.CarrierName = item.Shipment.CarrierName
 			newItem.ShipmentSpec.CarrierProduct = item.Shipment.CarrierProduct
 			newItem.ShipmentSpec.CarrierType = item.Shipment.CarrierType
-			newItem.ShipmentSpec.ShippingAmount = item.Shipment.ShippingAmount
+			newItem.ShipmentSpec.ShippingCost = item.Shipment.ShippingCost
 			newItem.ShipmentSpec.VoucherAmount = item.Shipment.VoucherAmount
 			newItem.ShipmentSpec.Currency = item.Shipment.Currency
 			newItem.ShipmentSpec.ReactionTime = item.Shipment.ReactionTime
