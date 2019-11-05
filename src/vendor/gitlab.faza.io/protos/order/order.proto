@@ -11,10 +11,109 @@ service OrderService {
     rpc NewOrder (RequestNewOrder) returns (ResponseNewOrder);
     rpc SellerFindAllItems (RequestIdentifier) returns (ResponseSellerFindAllItems);
     rpc SellerOrderAction (RequestSellerOrderAction) returns (ResponseSellerOrderAction);
+    rpc SellerReportOrders(RequestSellerReportOrders) returns (stream ResponseDownloadFile);
+
     rpc BuyerOrderAction (RequestBuyerOrderAction) returns (ResponseBuyerOrderAction);
-    //    rpc OperatorOrderAction(RequestOperatorOrderAction) returns (ResponseOperatorOrderAction);
     rpc BuyerFindAllOrders (RequestIdentifier) returns (ResponseBuyerFindAllOrders);
 
+    // back office
+    rpc BackOfficeOrdersListView(RequestBackOfficeOrdersList) returns(ResponseBackOfficeOrdersList);
+    rpc BackOfficeOrderDetailView(RequestIdentifier) returns(ResponseOrderDetailView);
+    rpc BackOfficeReportOrderItems(RequestBackOfficeReportOrderItems) returns(stream ResponseDownloadFile);
+    rpc BackOfficeOrderAction(RequestBackOfficeOrderAction) returns (ResponseBackOfficeOrderAction);
+
+}
+
+message RequestBackOfficeOrderAction {
+    string itemId = 1;
+    string actionType = 2;
+    string action = 3;
+    string description = 4;
+}
+
+message ResponseBackOfficeOrderAction {
+    bool result  = 1;
+}
+
+message RequestSellerReportOrders {
+    int64 startDateTime = 1;
+    string Status = 2;
+}
+
+message ResponseDownloadFile {
+    bytes data = 1;
+}
+
+message RequestBackOfficeReportOrderItems {
+    uint64 startDateTime = 1;
+    uint64 endDataTime = 2;
+}
+
+message ResponseOrderDetailView {
+    string orderId = 1;
+    string createdAt = 2;
+    string ip = 3;
+    PaymentInfo payment = 4;
+    BillingInfo billing = 5;
+    ShippingInfo shippingInfo = 6;
+    repeated ItemInfo items = 7;
+}
+
+message ItemInfo {
+    string itemId = 1;
+    string sellerI = 2;
+    string inventoryId = 3;
+    string status = 4;
+    string updatedAt = 5;
+    repeated string actions = 6;
+}
+
+message ShippingInfo {
+    string fullName = 1;
+    string country = 2;
+    string city = 3;
+    string province = 4;
+    string neighborhood = 5;
+    string address = 6;
+    string postalCode = 7;
+}
+
+message BillingInfo {
+    string buyerId = 1;
+    string fullName = 2;
+    string phone = 3;
+    string mobile = 4;
+    string nationalId = 5;
+}
+
+message PaymentInfo {
+    string paymentMethod = 1;
+    string paymentOption = 2;
+    bool   result        = 3;
+}
+
+message RequestBackOfficeOrdersList {
+    uint32 page = 1;
+    uint32 perPage = 2;
+    string fieldSort = 3;
+}
+
+message ResponseBackOfficeOrdersList {
+    repeated BackOfficeOrdersList orders = 1;
+}
+
+message BackOfficeOrdersList {
+    string orderId = 1;
+    string purchasedOn = 2;
+    int32  basketSize = 3;
+    string billTo = 4;
+    string shipTo = 5;
+    int64  totalAmount = 6;
+    int64  paidAmount = 7;
+    bool   voucher = 8;
+    string status = 9;
+    string lastUpdated = 10;
+    repeated string actions = 11;
 }
 
 message ResponseNewOrder {
@@ -212,20 +311,18 @@ message SellerFindAllItems {
     string itemId = 2;
     string inventoryId = 3;
     string title = 4;
-    string brand = 5;
-    string guaranty = 6;
-    string category = 7;
-    string image = 8;
-    bool returnable = 9;
-    int32 quantity = 10;
-    string createdAt = 11;
-    string updatedAt = 12;
-    map<string, string> attributes = 13;
-    string status = 14;
+    string image = 5;
+    bool returnable = 6;
+    int32 quantity = 7;
+    string createdAt = 8;
+    string updatedAt = 9;
+    map<string, string> attributes = 10;
+    string status = 11;
     message Price {
         uint64 unit = 1;
         uint64 Total = 2;
         float sellerCommission = 3;
         string currency = 4;
-    } Price price = 15;
+    } Price price = 12;
+    Address DeliveryAddress = 13;
 }

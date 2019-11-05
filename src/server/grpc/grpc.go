@@ -2,6 +2,7 @@ package grpc_server
 
 import (
 	"context"
+	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
@@ -212,9 +213,6 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 						ItemId:      orderItem.ItemId,
 						InventoryId: orderItem.InventoryId,
 						Title:       orderItem.Title,
-						Brand:       orderItem.Brand,
-						Guaranty:   orderItem.Guaranty,
-						Category:  orderItem.Category,
 						Image:       orderItem.Image,
 						Returnable:  orderItem.Returnable,
 						Status:      orderItem.Status,
@@ -227,6 +225,18 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 							Total:            orderItem.Price.Original,
 							SellerCommission: orderItem.Price.SellerCommission,
 							Currency:         orderItem.Price.Currency,
+						},
+						DeliveryAddress: &pb.Address{
+							Address:              order.BuyerInfo.ShippingAddress.Address,
+							Phone:                order.BuyerInfo.ShippingAddress.Phone,
+							Mobile:               order.BuyerInfo.ShippingAddress.Mobile,
+							Country:              order.BuyerInfo.ShippingAddress.Country,
+							City:                 order.BuyerInfo.ShippingAddress.City,
+							Province:             order.BuyerInfo.ShippingAddress.Province,
+							Neighbourhood:        order.BuyerInfo.ShippingAddress.Neighbourhood,
+							Lat:                  fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[1]),
+							Long:                 fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[0]),
+							ZipCode:              order.BuyerInfo.ShippingAddress.ZipCode,
 						},
 					}
 					sellerItemMap[orderItem.InventoryId] = newResponseItem
@@ -373,6 +383,28 @@ func (server Server) convertNewOrderRequestToMessage(req *pb.RequestNewOrder) *p
 
 	return &request
 }
+
+func (server Server) BackOfficeOrdersListView(ctx context.Context, req *pb.RequestBackOfficeOrdersList) (*pb.ResponseBackOfficeOrdersList, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BackOfficeOrdersListView not implemented")
+}
+
+func (server Server) BackOfficeOrderDetailView(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseOrderDetailView, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BackOfficeOrderDetailView not implemented")
+}
+
+func (server Server) BackOfficeOrderAction(ctx context.Context, req *pb.RequestBackOfficeOrderAction) (*pb.ResponseBackOfficeOrderAction, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BackOfficeOrderAction not implemented")
+}
+
+func (server Server) SellerReportOrders(req *pb.RequestSellerReportOrders, srv pb.OrderService_SellerReportOrdersServer) error {
+	return status.Errorf(codes.Unimplemented, "method SellerReportOrders not implemented")
+}
+
+func (server Server) BackOfficeReportOrderItems(req *pb.RequestBackOfficeReportOrderItems, srv pb.OrderService_BackOfficeReportOrderItemsServer) error {
+	return status.Errorf(codes.Unimplemented, "method BackOfficeReportOrderItems not implemented")
+}
+
+
 
 func (server Server) Start() {
 	//addGrpcStateRule()

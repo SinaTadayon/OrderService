@@ -12,7 +12,7 @@ require (
 	gitlab.faza.io/go-framework/kafkaadapter v0.0.1
 	gitlab.faza.io/go-framework/logger v0.0.3
 	gitlab.faza.io/go-framework/mongoadapter v0.0.8
-	gitlab.faza.io/protos/order v0.0.26
+	gitlab.faza.io/protos/order v0.0.27
 	gitlab.faza.io/protos/payment-gateway v0.0.7
 	go.mongodb.org/mongo-driver v1.1.2
 	google.golang.org/grpc v1.24.0
