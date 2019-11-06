@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package stockProto;
+
+service Stock {
+    // add stock to available stocks
+    rpc StockAllocate (StockRequest) returns (StockResponse) {}
+
+    // reserve stock from available stock
+    rpc StockReserve (StockRequest) returns (StockResponse) {}
+
+    // remove stock from available stocks
+    rpc StockRemove (StockRequest) returns (StockResponse) {}
+
+    // settle a stock, removes stock from reserved stock
+    rpc StockSettle (StockRequest) returns (StockResponse) {}
+
+    // returns amount of available stock, if quantity is provided
+    rpc StockGet (GetRequest) returns (StockResponse) {}
+}
+
+message StockRequest {
+    int32 Quantity = 1;
+    string InventoryId = 2;
+}
+
+message StockResponse {
+    int32 Available = 1;
+    int32 Reserved = 2;
+}
+
+message GetRequest {
+    string InventoryId = 1;
+}

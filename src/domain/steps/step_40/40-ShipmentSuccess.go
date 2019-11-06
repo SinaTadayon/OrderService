@@ -16,6 +16,7 @@ const (
 	stepName string 	= "Shipment_Success"
 	stepIndex int		= 40
 	ShipmentSuccess		= "ShipmentSuccess"
+	StockSettlement		= "StockSettlement"
 )
 
 type shipmentSuccessStep struct {
@@ -46,6 +47,27 @@ func (shipmentSuccess shipmentSuccessStep) ProcessMessage(ctx context.Context, r
 // TODO scheduler must be call this step
 func (shipmentSuccess shipmentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	shipmentSuccess.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
+
+	var itemStocks map[string]int
+	itemStocks = make(map[string]int, len(order.Items))
+	for i:= 0; i < len(order.Items); i++ {
+		if _, ok := itemStocks[order.Items[i].InventoryId]; !ok {
+			itemStocks[order.Items[i].InventoryId] = int(order.Items[i].Quantity)
+		}
+	}
+
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, StockSettlement)
+	futureData := iPromise.Data()
+	if futureData == nil {
+		shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, StockSettlement, false, steps.ClosedStatus)
+		if err := shipmentSuccess.persistOrder(ctx, &order); err != nil {}
+		logger.Err("StockService promise channel has been closed, order: %s", order.OrderId)
+	} else if futureData.Ex != nil {
+		shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, StockSettlement, false, steps.ClosedStatus)
+		if err := shipmentSuccess.persistOrder(ctx, &order); err != nil {}
+		logger.Err("Settlement stock from stockService failed, error: %s, orderId: %s", futureData.Ex.Error(), order.OrderId)
+	}
+
 	shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, ShipmentSuccess, true, steps.InProgressStatus)
 	if err := shipmentSuccess.persistOrder(ctx, &order); err != nil {
 		returnChannel := make(chan promise.FutureData, 1)

@@ -16,6 +16,7 @@ const (
 	stepName string 	= "Shipment_Rejected_By_Seller"
 	stepIndex int		= 21
 	RejectedBySeller	= "RejectedBySeller"
+	StockSettlement		= "StockSettlement"
 )
 
 type shipmentRejectedBySellerStep struct {
@@ -47,6 +48,26 @@ func (shipmentRejectedBySeller shipmentRejectedBySellerStep) ProcessOrder(ctx co
 		shipmentRejectedBySeller.UpdateAllOrderStatus(ctx, &order, itemsId, steps.ClosedStatus, true)
 	} else {
 		shipmentRejectedBySeller.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, true)
+	}
+
+	var itemStocks map[string]int
+	itemStocks = make(map[string]int, len(order.Items))
+	for i:= 0; i < len(order.Items); i++ {
+		if _, ok := itemStocks[order.Items[i].InventoryId]; !ok {
+			itemStocks[order.Items[i].InventoryId] = int(order.Items[i].Quantity)
+		}
+	}
+
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, StockSettlement)
+	futureData := iPromise.Data()
+	if futureData == nil {
+		shipmentRejectedBySeller.updateOrderItemsProgress(ctx, &order, itemsId, StockSettlement, false, steps.ClosedStatus)
+		if err := shipmentRejectedBySeller.persistOrder(ctx, &order); err != nil {}
+		logger.Err("StockService promise channel has been closed, order: %s", order.OrderId)
+	} else if futureData.Ex != nil {
+		shipmentRejectedBySeller.updateOrderItemsProgress(ctx, &order, itemsId, StockSettlement, false, steps.ClosedStatus)
+		if err := shipmentRejectedBySeller.persistOrder(ctx, &order); err != nil {}
+		logger.Err("Settlement stock from stockService failed, error: %s, orderId: %s", futureData.Ex.Error(), order.OrderId)
 	}
 
 	shipmentRejectedBySeller.updateOrderItemsProgress(ctx, &order, itemsId, RejectedBySeller, true, steps.ClosedStatus)

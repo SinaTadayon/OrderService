@@ -98,10 +98,8 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	var itemStocks map[string]int
 	itemStocks = make(map[string]int, len(order.Items))
 	for i:= 0; i < len(order.Items); i++ {
-		if value, ok := itemStocks[order.Items[i].InventoryId]; ok {
-			itemStocks[order.Items[i].InventoryId] = value + 1
-		} else {
-			itemStocks[order.Items[i].InventoryId] = 1
+		if _, ok := itemStocks[order.Items[i].InventoryId]; !ok {
+			itemStocks[order.Items[i].InventoryId] = int(order.Items[i].Quantity)
 		}
 	}
 
