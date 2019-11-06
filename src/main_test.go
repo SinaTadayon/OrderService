@@ -9,12 +9,12 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/converter"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	order_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/order"
+	"gitlab.faza.io/order-project/order-service/domain/steps"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	grpc_server "gitlab.faza.io/order-project/order-service/server/grpc"
-	pg "gitlab.faza.io/protos/payment-gateway"
 	"google.golang.org/grpc"
 	"os"
 	"strconv"
@@ -23,6 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	pb "gitlab.faza.io/protos/order"
+	pg "gitlab.faza.io/protos/payment-gateway"
 )
 
 
@@ -279,6 +280,103 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	return order
 }
 
+func updateOrderStatus(order *entities.Order, itemsId []string, orderStatus string, isUpdateOnlyOrderStatus bool, stepName string, stepIndex int) {
+
+	if isUpdateOnlyOrderStatus == true {
+		order.UpdatedAt = time.Now().UTC()
+		order.Status = orderStatus
+	} else {
+		order.UpdatedAt = time.Now().UTC()
+		order.Status = orderStatus
+		findFlag := true
+		if itemsId != nil && len(itemsId) > 0 {
+			for _, id := range itemsId {
+				findFlag = false
+				for i := 0; i < len(order.Items); i++ {
+					if order.Items[i].ItemId == id {
+						doUpdateOrderStep(order, i, stepName, stepIndex)
+						findFlag = true
+						break
+					}
+				}
+				if !findFlag {
+					logger.Err("%s received itemId %s not exist in order, orderId: %v", stepName, id, order.OrderId)
+				}
+			}
+		} else {
+			for i := 0; i < len(order.Items); i++ {
+				doUpdateOrderStep(order, i, stepName, stepIndex)
+			}
+		}
+	}
+}
+
+func doUpdateOrderStep(order *entities.Order, index int, stepName string, stepIndex int) {
+	order.Items[index].Progress.CreatedAt = time.Now().UTC()
+	order.Items[index].Progress.CurrentStepName = stepName
+	order.Items[index].Progress.CurrentStepIndex = stepIndex
+
+	stepHistory := entities.StepHistory{
+		Name: stepName,
+		Index: stepIndex,
+		CreatedAt: order.Items[index].Progress.CreatedAt,
+		//ActionHistory: make([]entities.Action, 0, 1),
+	}
+
+	if order.Items[index].Progress.StepsHistory == nil || len(order.Items[index].Progress.StepsHistory) == 0 {
+		order.Items[index].Progress.StepsHistory = make([]entities.StepHistory, 0, 5)
+	}
+
+	order.Items[index].Progress.StepsHistory = append(order.Items[index].Progress.StepsHistory, stepHistory)
+}
+
+func updateOrderItemsProgress(order *entities.Order, itemsId []string, action string, result bool, itemStatus string) {
+
+	findFlag := false
+	if itemsId != nil && len(itemsId) > 0 {
+		for _, id := range itemsId {
+			findFlag = false
+			for i := 0; i < len(order.Items); i++ {
+				if order.Items[i].ItemId == id {
+					doUpdateOrderItemsProgress(order, i, action, result, itemStatus)
+					findFlag = true
+				}
+			}
+
+			if !findFlag {
+				logger.Err("received itemId %s not exist in order, orderId: %v", id, order.OrderId)
+			}
+		}
+	} else {
+		for i := 0; i < len(order.Items); i++ {
+			doUpdateOrderItemsProgress(order, i, action, result, itemStatus)
+		}
+	}
+}
+
+func doUpdateOrderItemsProgress(order *entities.Order, index int,
+	actionName string, result bool, itemStatus string) {
+
+	order.Items[index].Status = itemStatus
+	order.Items[index].UpdatedAt = time.Now().UTC()
+
+	length := len(order.Items[index].Progress.StepsHistory) - 1
+
+	if order.Items[index].Progress.StepsHistory[length].ActionHistory == nil || len(order.Items[index].Progress.StepsHistory[length].ActionHistory) == 0 {
+		order.Items[index].Progress.StepsHistory[length].ActionHistory = make([]entities.Action, 0, 5)
+	}
+
+	action := entities.Action{
+		Name:      actionName,
+		Result:    result,
+		CreatedAt: order.Items[index].UpdatedAt,
+	}
+
+	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
+}
+
+
+
 //func TestLoadConfig_AssertTrue(t *testing.T) {
 //	err := os.Setenv("APP_ENV", "dev")
 //	assert.Nil(t, err)
@@ -323,6 +421,7 @@ func TestPaymentGateway(t *testing.T) {
 		},
 	}}
 
+	updateOrderStatus(newOrder, nil, steps.NewStatus, false, "0.New_Order", 0)
 	order , err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -346,6 +445,95 @@ func TestPaymentGateway(t *testing.T) {
 	assert.True(t, response.Ok, "payment result false")
 }
 
+func TestOperatorShipmentPending_Success(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	assert.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
+	assert.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	updateOrderStatus(newOrder, nil, steps.InProgressStatus, false, "32.Shipment_Delivered", 32)
+
+	order , err := global.Singletons.OrderRepository.Save(*newOrder)
+	assert.Nil(t, err, "save failed")
+
+	for i:=0 ; i < len(order.Items); i++ {
+		order.Items[i].Status = "32.Shipment_Delivered"
+	}
+	_ , err = global.Singletons.OrderRepository.Save(*order)
+	assert.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	request := pb.RequestBackOfficeOrderAction {
+		ItemId: order.Items[0].ItemId,
+		ActionType: "shipmentDelivered",
+		Action: "success",
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	result, err := OrderService.BackOfficeOrderAction(ctx, &request)
+
+	assert.Nil(t, err)
+
+	lastOrder, err := global.Singletons.OrderRepository.FindById(order.OrderId)
+	assert.Nil(t, err, "failed")
+
+	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].Index, 90)
+	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].ActionHistory[0].Name , "DELIVERED")
+
+	assert.True(t, result.Result)
+}
+
+func TestOperatorShipmentPending_Failed(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	assert.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
+	assert.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "32.Shipment_Delivered", 32)
+
+	order , err := global.Singletons.OrderRepository.Save(*newOrder)
+	assert.Nil(t, err, "save failed")
+
+	for i:=0 ; i < len(order.Items); i++ {
+		order.Items[i].Status = "32.Shipment_Delivered"
+	}
+	_ , err = global.Singletons.OrderRepository.Save(*order)
+	assert.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	request := pb.RequestBackOfficeOrderAction {
+		ItemId: order.Items[0].ItemId,
+		ActionType: "shipmentDelivered",
+		Action: "cancel",
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	result, err := OrderService.BackOfficeOrderAction(ctx, &request)
+
+	assert.Nil(t, err)
+
+	lastOrder, err := global.Singletons.OrderRepository.FindById(order.OrderId)
+	assert.Nil(t, err, "failed")
+
+	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].Index, 80)
+	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].ActionHistory[0].Name , "CANCELED")
+	assert.True(t, result.Result)
+}
+
 func TestSellerApprovalPending_Success(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
@@ -357,6 +545,10 @@ func TestSellerApprovalPending_Success(t *testing.T) {
 	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
 	assert.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
+
+	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "20.Seller_Approval_Pending", 20)
+	_ , err = global.Singletons.OrderRepository.Save(*newOrder)
+	assert.Nil(t, err, "save failed")
 
 	order , err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
@@ -381,6 +573,12 @@ func TestSellerApprovalPending_Success(t *testing.T) {
 	result, err := OrderService.SellerOrderAction(ctx, &request)
 
 	assert.Nil(t, err)
+	lastOrder, err := global.Singletons.OrderRepository.FindById(order.OrderId)
+	assert.Nil(t, err, "failed")
+
+	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].Index, 30)
+	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].ActionHistory[0].Name , "SellerShipmentPending")
+
 	assert.True(t, result.Result)
 }
 
@@ -398,6 +596,11 @@ func TestSellerApprovalPending_Failed(t *testing.T) {
 
 	order , err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
+
+	updateOrderStatus(order, nil, "IN_PROGRESS", false, "20.Seller_Approval_Pending", 20)
+	_ , err = global.Singletons.OrderRepository.Save(*order)
+	assert.Nil(t, err, "save failed")
+
 
 	for i:=0 ; i < len(order.Items); i++ {
 		order.Items[i].Status = "20.Seller_Approval_Pending"
@@ -421,6 +624,12 @@ func TestSellerApprovalPending_Failed(t *testing.T) {
 	result, err := OrderService.SellerOrderAction(ctx, &request)
 
 	assert.Nil(t, err)
+
+	lastOrder, err := global.Singletons.OrderRepository.FindById(order.OrderId)
+	assert.Nil(t, err, "failed")
+
+	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].Index, 80)
+	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].ActionHistory[0].Name , "CANCELED")
 	assert.True(t, result.Result)
 }
 
@@ -436,6 +645,7 @@ func TestShipmentPending_Success(t *testing.T) {
 	assert.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
+	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
 	order , err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -460,6 +670,13 @@ func TestShipmentPending_Success(t *testing.T) {
 	result, err := OrderService.SellerOrderAction(ctx, &request)
 
 	assert.Nil(t, err)
+
+	lastOrder, err := global.Singletons.OrderRepository.FindById(order.OrderId)
+	assert.Nil(t, err, "failed")
+
+	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].Index, 32)
+	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].ActionHistory[0].Name , "ShipmentDeliveredPending")
+
 	assert.True(t, result.Result)
 }
 
@@ -475,6 +692,7 @@ func TestShipmentPending_Failed(t *testing.T) {
 	assert.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
+	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
 	order , err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -500,6 +718,11 @@ func TestShipmentPending_Failed(t *testing.T) {
 	result, err := OrderService.SellerOrderAction(ctx, &request)
 
 	assert.Nil(t, err)
+
+	lastOrder, err := global.Singletons.OrderRepository.FindById(order.OrderId)
+	assert.Nil(t, err, "failed")
+	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].Index, 80)
+	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].ActionHistory[0].Name , "CANCELED")
 	assert.True(t, result.Result)
 }
 
@@ -515,6 +738,8 @@ func TestSellerFindAllItems(t *testing.T) {
 	assert.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
+	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+	updateOrderItemsProgress(newOrder, nil, "Shipped", true, steps.InProgressStatus)
 	order , err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -543,6 +768,8 @@ func TestBuyerFindAllOrders(t *testing.T) {
 	assert.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
+	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+	updateOrderItemsProgress(newOrder, nil, "Shipped", true, steps.InProgressStatus)
 	order , err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 

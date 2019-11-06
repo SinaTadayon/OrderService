@@ -85,7 +85,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	//	return promise.NewPromise(returnChannel, 1, 1)
 	//}
 
-	newOrderProcessing.UpdateOrderStep(ctx, newOrder, nil, "NEW", false)
+	newOrderProcessing.UpdateAllOrderStatus(ctx, newOrder, nil, steps.NewStatus, false)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	if err != nil {
 		logger.Err("Save NewOrder Step Failed, error: %s, order: %v", err, order)
@@ -108,8 +108,8 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, StockReserved)
 	futureData := iPromise.Data()
 	if futureData == nil {
-		newOrderProcessing.UpdateOrderStep(ctx, order, nil, "CLOSED", true)
-		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReserved, false)
+		newOrderProcessing.UpdateAllOrderStatus(ctx, order, nil, steps.ClosedStatus, true)
+		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReserved, false, steps.ClosedStatus)
 		if err := newOrderProcessing.persistOrder(ctx, order); err != nil {}
 		logger.Err("StockService promise channel has been closed, order: %v", order)
 		returnChannel := make(chan promise.FutureData, 1)
@@ -122,8 +122,8 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	}
 
 	if futureData.Ex != nil {
-		newOrderProcessing.UpdateOrderStep(ctx, order, nil, "CLOSED", true)
-		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReserved, false)
+		newOrderProcessing.UpdateAllOrderStatus(ctx, order, nil, steps.ClosedStatus, true)
+		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReserved, false, steps.ClosedStatus)
 		if err := newOrderProcessing.persistOrder(ctx, order); err != nil {}
 		logger.Err("Reserved stock from stockService failed, error: %s, order: %v", futureData.Ex.Error(), order)
 		returnChannel := make(chan promise.FutureData, 1)
@@ -135,7 +135,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReserved, true)
+	newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReserved, true, steps.NewStatus)
 	if err := newOrderProcessing.persistOrder(ctx, order); err != nil {
 		newOrderProcessing.releasedStock(ctx, order)
 		returnChannel := make(chan promise.FutureData, 1)
@@ -169,18 +169,18 @@ func (newOrderProcessing newOrderProcessingStep) releasedStock(ctx context.Conte
 	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, StockReleased)
 	futureData := iPromise.Data()
 	if futureData == nil {
-		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, false)
+		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, steps.ClosedStatus)
 		logger.Err("StockService promise channel has been closed, step: %s, order: %v",  newOrderProcessing.Name(), order)
 		return
 	}
 
 	if futureData.Ex != nil {
-		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, false)
+		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, steps.ClosedStatus)
 		logger.Err("Reserved stock from stockService failed, step: %s, order: %v, error: %s", newOrderProcessing.Name(), order, futureData.Ex.Error())
 		return
 	}
 
-	newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, true)
+	newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, true, steps.ClosedStatus)
 	logger.Audit("Reserved stock from stockService success, step: %s, order: %v", newOrderProcessing.Name(), order)
 }
 
@@ -192,7 +192,7 @@ func (newOrderProcessing newOrderProcessingStep) persistOrder(ctx context.Contex
 	return err
 }
 
-func (newOrderProcessing newOrderProcessingStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string, action string, result bool) {
+func (newOrderProcessing newOrderProcessingStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string, action string, result bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -200,7 +200,7 @@ func (newOrderProcessing newOrderProcessingStep) updateOrderItemsProgress(ctx co
 			findFlag = false
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == id {
-					newOrderProcessing.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+					newOrderProcessing.doUpdateOrderItemsProgress(ctx, order, i, action, result, itemStatus)
 					findFlag = true
 				}
 			}
@@ -211,19 +211,21 @@ func (newOrderProcessing newOrderProcessingStep) updateOrderItemsProgress(ctx co
 		}
 	} else {
 		for i := 0; i < len(order.Items); i++ {
-			newOrderProcessing.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+			newOrderProcessing.doUpdateOrderItemsProgress(ctx, order, i, action, result, itemStatus)
 		}
 	}
 }
 
 func (newOrderProcessing newOrderProcessingStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
-	actionName string, result bool) {
+	actionName string, result bool, itemStatus string) {
 
-	order.Items[index].Status = newOrderProcessing.Name()
+	order.Items[index].Status = itemStatus
 	order.Items[index].UpdatedAt = time.Now().UTC()
 
-	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {
-		order.Items[index].Progress.ActionHistory = make([]entities.Action, 0, 5)
+	length := len(order.Items[index].Progress.StepsHistory) - 1
+
+	if order.Items[index].Progress.StepsHistory[length].ActionHistory == nil || len(order.Items[index].Progress.StepsHistory[length].ActionHistory) == 0 {
+		order.Items[index].Progress.StepsHistory[length].ActionHistory = make([]entities.Action, 0, 5)
 	}
 
 	action := entities.Action{
@@ -232,6 +234,6 @@ func (newOrderProcessing newOrderProcessingStep) doUpdateOrderItemsProgress(ctx 
 		CreatedAt: order.Items[index].UpdatedAt,
 	}
 
-	order.Items[index].Progress.ActionHistory = append(order.Items[index].Progress.ActionHistory, action)
+	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 }
 

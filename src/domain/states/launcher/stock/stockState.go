@@ -12,7 +12,6 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states/launcher"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
-	"time"
 )
 
 const (
@@ -205,42 +204,42 @@ func (stockState stockActionLauncher) doSettlementAction(ctx context.Context, or
 // TODO add reason
 func (stockState stockActionLauncher) persistOrderState(ctx context.Context, order *entities.Order,
 	action actions.IEnumAction, result bool) {
-	order.UpdatedAt = time.Now().UTC()
-	for i := 0; i < len(order.Items); i++ {
-		order.Items[i].Progress.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
-		order.Items[i].Progress.CurrentName = ctx.Value(global.CtxStepName).(string)
-		order.Items[i].Progress.CurrentIndex = ctx.Value(global.CtxStepIndex).(int)
-		order.Items[i].Progress.CurrentState.Name = stockState.Name()
-		order.Items[i].Progress.CurrentState.Index = stockState.Index()
-		order.Items[i].Progress.CurrentState.Type = stockState.Actions().ActionType().Name()
-		order.Items[i].Progress.CurrentState.CreatedAt = time.Now().UTC()
-		order.Items[i].Progress.CurrentState.Result = result
-		order.Items[i].Progress.CurrentState.Reason = ""
-
-		order.Items[i].Progress.CurrentState.AcceptedAction.Name = action.Name()
-		order.Items[i].Progress.CurrentState.AcceptedAction.Type = actives.StockAction.String()
-		order.Items[i].Progress.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
-		order.Items[i].Progress.CurrentState.AcceptedAction.Data = nil
-		order.Items[i].Progress.CurrentState.AcceptedAction.Time = &order.UpdatedAt
-
-		order.Items[i].Progress.CurrentState.Actions = []entities.Action{order.Items[i].Progress.CurrentState.AcceptedAction}
-
-		stateHistory := entities.StateHistory {
-			Name: order.Items[i].Progress.CurrentState.Name,
-			Index: order.Items[i].Progress.CurrentState.Index,
-			Type: order.Items[i].Progress.CurrentState.Type,
-			Action: order.Items[i].Progress.CurrentState.AcceptedAction,
-			Result: order.Items[i].Progress.CurrentState.Result,
-			Reason: order.Items[i].Progress.CurrentState.Reason,
-			CreatedAt:order.Items[i].Progress.CurrentState.CreatedAt,
-		}
-
-		order.Items[i].Progress.StepsHistory[len(order.Items[i].Progress.StepsHistory)].StatesHistory =
-			append(order.Items[i].Progress.StepsHistory[len(order.Items[i].Progress.StepsHistory)].StatesHistory, stateHistory)
-	}
-
-	orderChecked, err := global.Singletons.OrderRepository.Save(*order)
-	if err != nil {
-		logger.Err("Save Stock State Failed, error: %s, order: %v", err, orderChecked)
-	}
+	//order.UpdatedAt = time.Now().UTC()
+	//for i := 0; i < len(order.Items); i++ {
+	//	order.Items[i].Progress.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
+	//	order.Items[i].Progress.CurrentStepName = ctx.Value(global.CtxStepName).(string)
+	//	order.Items[i].Progress.CurrentStepIndex = ctx.Value(global.CtxStepIndex).(int)
+	//	order.Items[i].Progress.CurrentState.Name = stockState.Name()
+	//	order.Items[i].Progress.CurrentState.Index = stockState.Index()
+	//	order.Items[i].Progress.CurrentState.Type = stockState.Actions().ActionType().Name()
+	//	order.Items[i].Progress.CurrentState.CreatedAt = time.Now().UTC()
+	//	order.Items[i].Progress.CurrentState.Result = result
+	//	order.Items[i].Progress.CurrentState.Reason = ""
+	//
+	//	order.Items[i].Progress.CurrentState.AcceptedAction.Name = action.Name()
+	//	order.Items[i].Progress.CurrentState.AcceptedAction.Type = actives.StockAction.String()
+	//	order.Items[i].Progress.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
+	//	order.Items[i].Progress.CurrentState.AcceptedAction.Data = nil
+	//	order.Items[i].Progress.CurrentState.AcceptedAction.Time = &order.UpdatedAt
+	//
+	//	order.Items[i].Progress.CurrentState.Actions = []entities.Action{order.Items[i].Progress.CurrentState.AcceptedAction}
+	//
+	//	stateHistory := entities.StateHistory {
+	//		Name: order.Items[i].Progress.CurrentState.Name,
+	//		Index: order.Items[i].Progress.CurrentState.Index,
+	//		Type: order.Items[i].Progress.CurrentState.Type,
+	//		Action: order.Items[i].Progress.CurrentState.AcceptedAction,
+	//		Result: order.Items[i].Progress.CurrentState.Result,
+	//		Reason: order.Items[i].Progress.CurrentState.Reason,
+	//		CreatedAt:order.Items[i].Progress.CurrentState.CreatedAt,
+	//	}
+	//
+	//	order.Items[i].Progress.StepsHistory[len(order.Items[i].Progress.StepsHistory)].StatesHistory =
+	//		append(order.Items[i].Progress.StepsHistory[len(order.Items[i].Progress.StepsHistory)].StatesHistory, stateHistory)
+	//}
+	//
+	//orderChecked, err := global.Singletons.OrderRepository.Save(*order)
+	//if err != nil {
+	//	logger.Err("Save Stock State Failed, error: %s, order: %v", err, orderChecked)
+	//}
 }

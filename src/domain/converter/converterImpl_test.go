@@ -14,7 +14,7 @@ func TestOrderConverter(t *testing.T) {
 	assert.NoError(t, err, "mapping order request to order failed")
 	order , ok := out.(*entities.Order)
 	assert.True(t, ok, "mapping order request to order failed")
-	assert.NotEmpty(t, order.Amount.total)
+	assert.NotEmpty(t, order.Amount.Total)
 }
 
 
@@ -28,8 +28,8 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	}
 
 	order.Amount.Total = 600000
-	order.Amount.Payable = 550000
-	order.Amount.Discount = 50000
+	order.Amount.Original = 550000
+	order.Amount.Special = 50000
 	order.Amount.Currency = "RR"
 	order.Amount.PaymentMethod = "IPG"
 	order.Amount.PaymentOption = "AAP"
@@ -71,14 +71,14 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 
 	item.InventoryId = "453564554435345"
 	item.Brand = "Asus"
-	item.Categories = "Electronic/laptop"
+	item.Category = "Electronic/laptop"
 	item.Title = "Asus G503 i7, 256SSD, 32G Ram"
 	item.Guaranty = "ضمانت سلامت کالا"
 	item.Image = "http://baman.io/image/asus.png"
 	item.Returnable = true
 
-	item.Price.Discount = 200000
-	item.Price.Payable = 20000000
+	item.Price.Special = 200000
+	item.Price.Original = 20000000
 	item.Price.SellerCommission = 10
 	item.Price.Unit = 100000
 	item.Price.Currency = "RR"
@@ -100,7 +100,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item.Shipment.CarrierName = "Post"
 	item.Shipment.CarrierProduct = "Post Express"
 	item.Shipment.CarrierType = "standard"
-	item.Shipment.ShippingAmount = 100000
+	item.Shipment.ShippingCost = 100000
 	item.Shipment.VoucherAmount = 0
 	item.Shipment.Currency = "RR"
 

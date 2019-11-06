@@ -7,6 +7,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	order_payment_action_state "gitlab.faza.io/order-project/order-service/domain/states/launcher/orderpayment"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
+	"go.mongodb.org/mongo-driver/bson"
 	"time"
 
 	//"errors"
@@ -203,6 +204,7 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 
 	// Change route to support seller shipped reject route to shipment to
 	flowManager.indexStepsMap[30].Childes()[1] = flowManager.indexStepsMap[21]
+	flowManager.indexStepsMap[43].Childes()[1] = flowManager.indexStepsMap[80]
 	return nil
 }
 
@@ -1149,4 +1151,52 @@ func (flowManager iFlowManagerImpl) PaymentGatewayResult(ctx context.Context, re
 	}
 
 	return flowManager.indexStepsMap[10].ProcessOrder(ctx, *order, nil, "OrderPayment")
+}
+
+func (flowManager iFlowManagerImpl) OperatorActionPending(ctx context.Context, req *message.RequestBackOfficeOrderAction) promise.IPromise {
+	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
+		return bson.D{{"items.itemId", req.ItemId}}
+	})
+
+	if err != nil {
+		logger.Err("MessageHandler() => request itemId not found, OrderRepository.FindById failed, itemId: %s, error: %s",
+			req.ItemId, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "ItemId Not Found"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	if len(orders) == 0 {
+		logger.Err("MessageHandler() => request itemId not found, itemId: %s", req.ItemId)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "ItemId Not Found"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	if len(orders) > 1 {
+		logger.Err("MessageHandler() => request itemId found in multiple order, itemId: %s, error: %s",
+			req.ItemId, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	itemsId := make([]string, 0, 1)
+	for i:= 0; i < len(orders[0].Items); i++ {
+		if orders[0].Items[i].ItemId == req.ItemId {
+			itemsId = append(itemsId,orders[0].Items[i].ItemId)
+		}
+	}
+
+	if req.ActionType == "shipmentDelivered" {
+		return flowManager.indexStepsMap[43].ProcessOrder(ctx, *orders[0], itemsId, req)
+	}
+
+	returnChannel := make(chan promise.FutureData, 1)
+	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.NotFound, Reason:"ActionType Not Found"}}
+	defer close(returnChannel)
+	return promise.NewPromise(returnChannel, 1, 1)
 }

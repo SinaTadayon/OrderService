@@ -117,14 +117,14 @@ func (base BaseStepImpl) String() string {
 	return strconv.Itoa(base.index) + "." + base.name
 }
 
-func (base BaseStepImpl) UpdateOrderStep(ctx context.Context, order *entities.Order, itemsId []string, status string, isUpdateStatus bool) {
+func (base BaseStepImpl) UpdateAllOrderStatus(ctx context.Context, order *entities.Order, itemsId []string, orderStatus string, isUpdateOnlyOrderStatus bool) {
 
-	if isUpdateStatus == true {
+	if isUpdateOnlyOrderStatus == true {
 		order.UpdatedAt = time.Now().UTC()
-		order.Status = status
+		order.Status = orderStatus
 	} else {
 		order.UpdatedAt = time.Now().UTC()
-		order.Status = status
+		order.Status = orderStatus
 		findFlag := true
 		if itemsId != nil && len(itemsId) > 0 {
 			for _, id := range itemsId {
@@ -150,14 +150,14 @@ func (base BaseStepImpl) UpdateOrderStep(ctx context.Context, order *entities.Or
 
 func (base BaseStepImpl) doUpdateOrderStep(ctx context.Context, order *entities.Order, index int) {
 	order.Items[index].Progress.CreatedAt = time.Now().UTC()
-	order.Items[index].Progress.CurrentName = base.Name()
-	order.Items[index].Progress.CurrentIndex = base.Index()
+	order.Items[index].Progress.CurrentStepName = base.Name()
+	order.Items[index].Progress.CurrentStepIndex = base.Index()
 
 	stepHistory := entities.StepHistory{
 		Name: base.Name(),
 		Index: base.Index(),
 		CreatedAt: order.Items[index].Progress.CreatedAt,
-		StatesHistory: make([]entities.StateHistory, 0, len(base.States())),
+		//ActionHistory: make([]entities.Action, 0, 1),
 	}
 
 	if order.Items[index].Progress.StepsHistory == nil || len(order.Items[index].Progress.StepsHistory) == 0 {

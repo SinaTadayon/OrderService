@@ -53,19 +53,21 @@ message ResponseOrderDetailView {
     string orderId = 1;
     string createdAt = 2;
     string ip = 3;
-    PaymentInfo payment = 4;
-    BillingInfo billing = 5;
-    ShippingInfo shippingInfo = 6;
-    repeated ItemInfo items = 7;
+    string status = 4;
+    PaymentInfo payment = 5;
+    BillingInfo billing = 6;
+    ShippingInfo shippingInfo = 7;
+    repeated ItemInfo items = 8;
 }
 
 message ItemInfo {
     string itemId = 1;
-    string sellerI = 2;
+    string sellerId = 2;
     string inventoryId = 3;
-    string status = 4;
-    string updatedAt = 5;
-    repeated string actions = 6;
+    string itemStatus = 5;
+    string stepStatus = 6;
+    string updatedAt = 7;
+    repeated string actions = 8;
 }
 
 message ShippingInfo {
@@ -234,7 +236,7 @@ message BuyerAllOrders {
     string  orderId     = 2;
     string  createdAt   = 3;
     string  updatedAt   = 4;
-    string  status      = 5;
+    string  orderStatus = 5;
     Amount  amount      = 6;
     repeated BuyerOrderItems items = 7;
 }
@@ -249,19 +251,21 @@ message BuyerOrderItems {
     bool returnable = 7;
     string sellerId = 8;
     int32 quantity = 9;
-    map<string, string> attributes = 10;
+    string itemStatus = 10;
+    string stepStatus = 11;
+    map<string, string> attributes = 12;
     message Price {
         uint64 unit = 1;
         uint64 total = 2;
         uint64 original = 3;
         uint64 special = 4;
         string currency = 5;
-    } Price price = 11;
+    } Price price = 13;
 
     message ShipmentSpec {
         string carrierName = 1;
-        uint64 shippingCost = 4;
-    } ShipmentSpec shipment = 12;
+        uint64 shippingCost = 2;
+    } ShipmentSpec shipment = 14;
 }
 
 message ResponseSellerOrderAction {
@@ -280,7 +284,6 @@ message RequestBuyerOrderAction {
 message ResponseBuyerOrderAction {
     bool result = 1;
 }
-
 
 message RequestSellerOrderAction {
     string orderId      = 1;
@@ -317,7 +320,7 @@ message SellerFindAllItems {
     string createdAt = 8;
     string updatedAt = 9;
     map<string, string> attributes = 10;
-    string status = 11;
+    Status status = 11;
     message Price {
         uint64 unit = 1;
         uint64 Total = 2;
@@ -325,4 +328,10 @@ message SellerFindAllItems {
         string currency = 4;
     } Price price = 12;
     Address DeliveryAddress = 13;
+}
+
+message Status {
+    string orderStatus = 1;
+    string itemStatus  = 2;
+    string stepStatus  = 3;
 }

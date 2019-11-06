@@ -41,10 +41,9 @@ type ShipmentDetail struct {
 }
 
 type Progress struct {
-	CurrentName   		string				`bson:"currentName"`
-	CurrentIndex		int					`bson:"currentIndex"`
-	CurrentState		State				`bson:"currentState"`
-	ActionHistory		[]Action			`bson:"actionHistory"`
+	CurrentStepName  	string `bson:"currentStepName"`
+	CurrentStepIndex 	int    `bson:"currentStepIndex"`
+	//CurrentState		State				`bson:"currentState"`
 	CreatedAt 			time.Time			`bson:"createdAt"`
 	StepsHistory   		[]StepHistory		`bson:"stepsHistory"`
 }
@@ -53,7 +52,8 @@ type StepHistory struct {
 	Name    			string				`bson:"name"`
 	Index				int					`bson:"index"`
 	CreatedAt 			time.Time			`bson:"createdAt"`
-	StatesHistory		[]StateHistory		`bson:"statesHistory"`
+	ActionHistory		[]Action			`bson:"actionHistory"`
+	//StatesHistory		[]StateHistory		`bson:"statesHistory"`
 }
 
 type StateHistory struct {

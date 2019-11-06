@@ -8,6 +8,12 @@ import (
 	message "gitlab.faza.io/protos/order"
 )
 
+const (
+	NewStatus		 = "NEW"
+	InProgressStatus = "IN_PROGRESS"
+	ClosedStatus	 = "CLOSED"
+)
+
 type IStep interface {
 	Name() 		string
 	Index()		int

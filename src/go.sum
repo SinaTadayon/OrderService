@@ -99,8 +99,8 @@ gitlab.faza.io/go-framework/logger v0.0.3 h1:jF4Dsh/4n1qlP94wa/XIKZRoul3UEcBngvW
 gitlab.faza.io/go-framework/logger v0.0.3/go.mod h1:Zt8cJHkwzai1oLBQWx2botrLA64z/M3PneYQ1DZZTgc=
 gitlab.faza.io/go-framework/mongoadapter v0.0.8 h1:hWhm7lgKbfAWOQvghVjdvdqOVPk+g+JdDJYRjjXyeac=
 gitlab.faza.io/go-framework/mongoadapter v0.0.8/go.mod h1:cd15CIUT4zvQxlMuG4Mp6d9RyEcyiK5f9HqRy20X/FI=
-gitlab.faza.io/protos/order v0.0.27 h1:gRGVA7H8/tWtd4/YI+1QDJtb1vEvoLzHcAEnPFRxC+A=
-gitlab.faza.io/protos/order v0.0.27/go.mod h1:mdK2jO7EiUBmd7x86Vp2g/cJ3W63G+q49vo+z7ABS1w=
+gitlab.faza.io/protos/order v0.0.31 h1:YM22SV5iqQJu7tXxUsJmuyIdbHoYsRI/MuazbzimI08=
+gitlab.faza.io/protos/order v0.0.31/go.mod h1:mdK2jO7EiUBmd7x86Vp2g/cJ3W63G+q49vo+z7ABS1w=
 gitlab.faza.io/protos/payment-gateway v0.0.7 h1:w8t9EqmS0Ed1473L26B+a8zLJngNQJgJcs35V+MD9QM=
 gitlab.faza.io/protos/payment-gateway v0.0.7/go.mod h1:UERc408Li0bb4ynMXnvJ6PySsgbOws1GvIQzJ5MJkzE=
 go.mongodb.org/mongo-driver v1.1.2 h1:jxcFYjlkl8xaERsgLo+RNquI0epW6zuy/ZRQs6jnrFA=

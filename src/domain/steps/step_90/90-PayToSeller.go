@@ -15,7 +15,7 @@ import (
 const (
 	stepName string 	= "Pay_To_Seller"
 	stepIndex int		= 90
-	PayToSeller			= "PayToSeller"
+	Delivered			= "DELIVERED"
 )
 
 type payToSellerStep struct {
@@ -44,12 +44,12 @@ func (payToSeller payToSellerStep) ProcessMessage(ctx context.Context, request *
 
 func (payToSeller payToSellerStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	if len(order.Items) == len(itemsId) {
-		payToSeller.UpdateOrderStep(ctx, &order, itemsId, "Closed", false)
+		payToSeller.UpdateAllOrderStatus(ctx, &order, itemsId, steps.ClosedStatus, false)
 	} else {
-		payToSeller.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
+		payToSeller.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
 	}
 
-	payToSeller.updateOrderItemsProgress(ctx, &order, itemsId, PayToSeller, true)
+	payToSeller.updateOrderItemsProgress(ctx, &order, itemsId, Delivered, true, steps.ClosedStatus)
 	if err := payToSeller.persistOrder(ctx, &order); err != nil {
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
@@ -71,7 +71,7 @@ func (payToSeller payToSellerStep) persistOrder(ctx context.Context, order *enti
 }
 
 func (payToSeller payToSellerStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
-	action string, result bool) {
+	action string, result bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -79,7 +79,7 @@ func (payToSeller payToSellerStep) updateOrderItemsProgress(ctx context.Context,
 			findFlag = false
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == id {
-					payToSeller.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+					payToSeller.doUpdateOrderItemsProgress(ctx, order, i, action, result, itemStatus)
 					findFlag = true
 					break
 				}
@@ -91,19 +91,21 @@ func (payToSeller payToSellerStep) updateOrderItemsProgress(ctx context.Context,
 		}
 	} else {
 		for i := 0; i < len(order.Items); i++ {
-			payToSeller.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+			payToSeller.doUpdateOrderItemsProgress(ctx, order, i, action, result, itemStatus)
 		}
 	}
 }
 
 func (payToSeller payToSellerStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
-	actionName string, result bool) {
+	actionName string, result bool, itemStatus string) {
 
-	order.Items[index].Status = payToSeller.Name()
+	order.Items[index].Status = itemStatus
 	order.Items[index].UpdatedAt = time.Now().UTC()
 
-	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {
-		order.Items[index].Progress.ActionHistory = make([]entities.Action, 0, 5)
+	length := len(order.Items[index].Progress.StepsHistory) - 1
+
+	if order.Items[index].Progress.StepsHistory[length].ActionHistory == nil || len(order.Items[index].Progress.StepsHistory[length].ActionHistory) == 0 {
+		order.Items[index].Progress.StepsHistory[length].ActionHistory = make([]entities.Action, 0, 5)
 	}
 
 	action := entities.Action{
@@ -112,7 +114,7 @@ func (payToSeller payToSellerStep) doUpdateOrderItemsProgress(ctx context.Contex
 		CreatedAt: order.Items[index].UpdatedAt,
 	}
 
-	order.Items[index].Progress.ActionHistory = append(order.Items[index].Progress.ActionHistory, action)
+	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 }
 
 

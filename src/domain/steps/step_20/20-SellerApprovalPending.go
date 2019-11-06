@@ -47,8 +47,8 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 
 	if param == nil {
 		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", sellerApprovalPending.Name(), order.OrderId, ApprovalPending)
-		sellerApprovalPending.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
-		sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, ApprovalPending, true, "", true)
+		sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
+		sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, ApprovalPending, true, "", true, steps.InProgressStatus)
 		if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {}
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
@@ -59,9 +59,9 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 		req, ok := param.(*message.RequestSellerOrderAction)
 		if ok != true {
 			//if len(order.Items) == len(itemsId) {
-			//	sellerApprovalPending.UpdateOrderStep(ctx, &order, nil, "CLOSED", false)
+			//	sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, nil, "CLOSED", false)
 			//} else {
-			//	sellerApprovalPending.UpdateOrderStep(ctx, &order, nil, "InProgress", false)
+			//	sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, nil, "InProgress", false)
 			//}
 			//sellerApprovalPending.persistOrder(ctx, &order)
 
@@ -81,8 +81,8 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 		}
 
 		if req.Action == "success" {
-			sellerApprovalPending.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
-			sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, Approved, true, "", false)
+			sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, true)
+			sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, Approved, true, "", false, steps.InProgressStatus)
 			if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 				returnChannel := make(chan promise.FutureData, 1)
 				defer close(returnChannel)
@@ -106,8 +106,12 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 				return promise.NewPromise(returnChannel, 1, 1)
 			}
-			sellerApprovalPending.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
-			sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, Approved, false, actionData.Failed.Reason, false)
+			if len(order.Items) == len(itemsId) {
+				sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.ClosedStatus, true)
+			} else {
+				sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, true)
+			}
+			sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, Approved, false, actionData.Failed.Reason, false, steps.ClosedStatus)
 			if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 				returnChannel := make(chan promise.FutureData, 1)
 				defer close(returnChannel)
@@ -157,7 +161,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) persistOrder(ctx context.
 }
 
 func (sellerApprovalPending sellerApprovalPendingStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order,
-	itemsId []string, action string, result bool, reason string, isSetExpireTime bool) {
+	itemsId []string, action string, result bool, reason string, isSetExpireTime bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -165,8 +169,9 @@ func (sellerApprovalPending sellerApprovalPendingStep) updateOrderItemsProgress(
 			findFlag = false
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == id {
-					sellerApprovalPending.doUpdateOrderItemsProgress(ctx, order, i, action, result, reason, isSetExpireTime)
+					sellerApprovalPending.doUpdateOrderItemsProgress(ctx, order, i, action, result, reason, isSetExpireTime, itemStatus)
 					findFlag = true
+					break
 				}
 			}
 			if findFlag == false {
@@ -175,20 +180,22 @@ func (sellerApprovalPending sellerApprovalPendingStep) updateOrderItemsProgress(
 		}
 	} else {
 		for i := 0; i < len(order.Items); i++ {
-			sellerApprovalPending.doUpdateOrderItemsProgress(ctx, order, i, action, result, reason, isSetExpireTime)
+			sellerApprovalPending.doUpdateOrderItemsProgress(ctx, order, i, action, result, reason, isSetExpireTime, itemStatus)
 		}
 	}
 }
 
 // TODO set time from redis config
 func (sellerApprovalPending sellerApprovalPendingStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
-	actionName string, result bool, reason string, isSetExpireTime bool) {
+	actionName string, result bool, reason string, isSetExpireTime bool, itemStatus string) {
 
-	order.Items[index].Status = sellerApprovalPending.Name()
+	order.Items[index].Status = itemStatus
 	order.Items[index].UpdatedAt = time.Now().UTC()
 
-	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {
-		order.Items[index].Progress.ActionHistory = make([]entities.Action, 0, 5)
+	length := len(order.Items[index].Progress.StepsHistory) - 1
+
+	if order.Items[index].Progress.StepsHistory[length].ActionHistory == nil || len(order.Items[index].Progress.StepsHistory[length].ActionHistory) == 0 {
+		order.Items[index].Progress.StepsHistory[length].ActionHistory = make([]entities.Action, 0, 5)
 	}
 
 	var action entities.Action
@@ -216,7 +223,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) doUpdateOrderItemsProgres
 		}
 	}
 
-	order.Items[index].Progress.ActionHistory = append(order.Items[index].Progress.ActionHistory, action)
+	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 }
 
 

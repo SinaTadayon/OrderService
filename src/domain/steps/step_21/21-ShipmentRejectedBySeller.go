@@ -43,8 +43,13 @@ func (shipmentRejectedBySeller shipmentRejectedBySellerStep) ProcessMessage(ctx 
 }
 
 func (shipmentRejectedBySeller shipmentRejectedBySellerStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
-	shipmentRejectedBySeller.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
-	shipmentRejectedBySeller.updateOrderItemsProgress(ctx, &order, itemsId, RejectedBySeller, true)
+	if len(order.Items) == len(itemsId) {
+		shipmentRejectedBySeller.UpdateAllOrderStatus(ctx, &order, itemsId, steps.ClosedStatus, true)
+	} else {
+		shipmentRejectedBySeller.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, true)
+	}
+
+	shipmentRejectedBySeller.updateOrderItemsProgress(ctx, &order, itemsId, RejectedBySeller, true, steps.ClosedStatus)
 	if err := shipmentRejectedBySeller.persistOrder(ctx, &order); err != nil {
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
@@ -64,7 +69,7 @@ func (shipmentRejectedBySeller shipmentRejectedBySellerStep) persistOrder(ctx co
 }
 
 func (shipmentRejectedBySeller shipmentRejectedBySellerStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
-	action string, result bool) {
+	action string, result bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -72,8 +77,9 @@ func (shipmentRejectedBySeller shipmentRejectedBySellerStep) updateOrderItemsPro
 			findFlag = false
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == id {
-					shipmentRejectedBySeller.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+					shipmentRejectedBySeller.doUpdateOrderItemsProgress(ctx, order, i, action, result, itemStatus)
 					findFlag = true
+					break
 				}
 			}
 
@@ -83,19 +89,21 @@ func (shipmentRejectedBySeller shipmentRejectedBySellerStep) updateOrderItemsPro
 		}
 	} else {
 		for i := 0; i < len(order.Items); i++ {
-			shipmentRejectedBySeller.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+			shipmentRejectedBySeller.doUpdateOrderItemsProgress(ctx, order, i, action, result, itemStatus)
 		}
 	}
 }
 
 func (shipmentRejectedBySeller shipmentRejectedBySellerStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
-	actionName string, result bool) {
+	actionName string, result bool, itemStatus string) {
 
-	order.Items[index].Status = shipmentRejectedBySeller.Name()
+	order.Items[index].Status = itemStatus
 	order.Items[index].UpdatedAt = time.Now().UTC()
 
-	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {
-		order.Items[index].Progress.ActionHistory = make([]entities.Action, 0, 5)
+	length := len(order.Items[index].Progress.StepsHistory) - 1
+
+	if order.Items[index].Progress.StepsHistory[length].ActionHistory == nil || len(order.Items[index].Progress.StepsHistory[length].ActionHistory) == 0 {
+		order.Items[index].Progress.StepsHistory[length].ActionHistory = make([]entities.Action, 0, 5)
 	}
 
 	action := entities.Action{
@@ -104,7 +112,8 @@ func (shipmentRejectedBySeller shipmentRejectedBySellerStep) doUpdateOrderItemsP
 		CreatedAt: order.Items[index].UpdatedAt,
 	}
 
-	order.Items[index].Progress.ActionHistory = append(order.Items[index].Progress.ActionHistory, action)
+	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
+
 }
 
 

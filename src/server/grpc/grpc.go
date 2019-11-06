@@ -215,7 +215,11 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 						Title:       orderItem.Title,
 						Image:       orderItem.Image,
 						Returnable:  orderItem.Returnable,
-						Status:      orderItem.Status,
+						Status:      &pb.Status{
+							OrderStatus: order.Status,
+							ItemStatus:  orderItem.Status,
+							StepStatus:  "",
+						},
 						CreatedAt:   orderItem.CreatedAt.Format(ISO8601),
 						UpdatedAt:   orderItem.UpdatedAt.Format(ISO8601),
 						Quantity:    orderItem.Quantity,
@@ -239,6 +243,9 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 							ZipCode:              order.BuyerInfo.ShippingAddress.ZipCode,
 						},
 					}
+					lastStep := orderItem.Progress.StepsHistory[len(orderItem.Progress.StepsHistory)-1]
+					lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
+					newResponseItem.Status.StepStatus = lastAction.Name
 					sellerItemMap[orderItem.InventoryId] = newResponseItem
 				}
 			}
@@ -303,7 +310,7 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 			OrderId: order.OrderId,
 			CreatedAt: order.CreatedAt.Format(ISO8601),
 			UpdatedAt: order.UpdatedAt.Format(ISO8601),
-			Status: order.Status,
+			OrderStatus: order.Status,
 			Amount: &pb.Amount{
 				Total: order.Amount.Total,
 				Original: order.Amount.Original,
@@ -335,6 +342,7 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 					SellerId:    item.SellerInfo.SellerId,
 					Quantity:    item.Quantity,
 					Attributes:  item.Attributes,
+					ItemStatus: item.Status,
 					Price: &pb.BuyerOrderItems_Price{
 						Unit:     item.Price.Unit,
 						Total: 	  item.Price.Total,
@@ -348,6 +356,9 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 					},
 				}
 
+				lastStep := item.Progress.StepsHistory[len(item.Progress.StepsHistory)-1]
+				lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
+				newResponseOrderItem.StepStatus = lastAction.Name
 				orderItemMap[item.InventoryId] = newResponseOrderItem
 			}
 		}
@@ -393,7 +404,19 @@ func (server Server) BackOfficeOrderDetailView(ctx context.Context, req *pb.Requ
 }
 
 func (server Server) BackOfficeOrderAction(ctx context.Context, req *pb.RequestBackOfficeOrderAction) (*pb.ResponseBackOfficeOrderAction, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method BackOfficeOrderAction not implemented")
+	promiseHandler := server.flowManager.OperatorActionPending(ctx, req)
+	futureData := promiseHandler.Data()
+	if futureData == nil {
+		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	if futureData.Ex != nil {
+		futureErr := futureData.Ex.(promise.FutureError)
+		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+	}
+
+	return &pb.ResponseBackOfficeOrderAction{Result: true}, nil
+
 }
 
 func (server Server) SellerReportOrders(req *pb.RequestSellerReportOrders, srv pb.OrderService_SellerReportOrdersServer) error {
@@ -403,8 +426,6 @@ func (server Server) SellerReportOrders(req *pb.RequestSellerReportOrders, srv p
 func (server Server) BackOfficeReportOrderItems(req *pb.RequestBackOfficeReportOrderItems, srv pb.OrderService_BackOfficeReportOrderItemsServer) error {
 	return status.Errorf(codes.Unimplemented, "method BackOfficeReportOrderItems not implemented")
 }
-
-
 
 func (server Server) Start() {
 	//addGrpcStateRule()

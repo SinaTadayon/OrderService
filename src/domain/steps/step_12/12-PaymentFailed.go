@@ -55,11 +55,11 @@ func (paymentFailed paymentFailedStep) ProcessOrder(ctx context.Context, order e
 	//	return promise.NewPromise(returnChannel, 1, 1)
 	//}
 	//
-	//paymentFailed.UpdateOrderStep(ctx, &order, itemsId, "CLOSED", true)
+	//paymentFailed.UpdateAllOrderStatus(ctx, &order, itemsId, "CLOSED", true)
 	//return stockState.ActionLauncher(ctx, order, itemsId, nil)
 
-	paymentFailed.UpdateOrderStep(ctx, &order, itemsId, "Closed", false)
-	paymentFailed.updateOrderItemsProgress(ctx, &order, itemsId, PaymentFailed, true)
+	paymentFailed.UpdateAllOrderStatus(ctx, &order, itemsId, steps.ClosedStatus, false)
+	paymentFailed.updateOrderItemsProgress(ctx, &order, itemsId, PaymentFailed, true, steps.ClosedStatus)
 	if err := paymentFailed.persistOrder(ctx, &order); err != nil{}
 	returnChannel := make(chan promise.FutureData, 1)
 	defer close(returnChannel)
@@ -77,7 +77,7 @@ func (paymentFailed paymentFailedStep) persistOrder(ctx context.Context, order *
 }
 
 func (paymentFailed paymentFailedStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
-	action string, result bool) {
+	action string, result bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -85,7 +85,7 @@ func (paymentFailed paymentFailedStep) updateOrderItemsProgress(ctx context.Cont
 			findFlag = false
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == id {
-					paymentFailed.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+					paymentFailed.doUpdateOrderItemsProgress(ctx, order, i, action, result, itemStatus)
 					findFlag = true
 					break
 				}
@@ -97,19 +97,21 @@ func (paymentFailed paymentFailedStep) updateOrderItemsProgress(ctx context.Cont
 		}
 	} else {
 		for i := 0; i < len(order.Items); i++ {
-			paymentFailed.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+			paymentFailed.doUpdateOrderItemsProgress(ctx, order, i, action, result, itemStatus)
 		}
 	}
 }
 
 func (paymentFailed paymentFailedStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
-	actionName string, result bool) {
+	actionName string, result bool, itemStatus string) {
 
-	order.Items[index].Status = paymentFailed.Name()
+	order.Items[index].Status = itemStatus
 	order.Items[index].UpdatedAt = time.Now().UTC()
 
-	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {
-		order.Items[index].Progress.ActionHistory = make([]entities.Action, 0, 5)
+	length := len(order.Items[index].Progress.StepsHistory) - 1
+
+	if order.Items[index].Progress.StepsHistory[length].ActionHistory == nil || len(order.Items[index].Progress.StepsHistory[length].ActionHistory) == 0 {
+		order.Items[index].Progress.StepsHistory[length].ActionHistory = make([]entities.Action, 0, 5)
 	}
 
 	action := entities.Action{
@@ -118,7 +120,7 @@ func (paymentFailed paymentFailedStep) doUpdateOrderItemsProgress(ctx context.Co
 		CreatedAt: order.Items[index].UpdatedAt,
 	}
 
-	order.Items[index].Progress.ActionHistory = append(order.Items[index].Progress.ActionHistory, action)
+	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 }
 
 

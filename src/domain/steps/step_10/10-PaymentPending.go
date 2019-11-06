@@ -62,7 +62,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 
 	if paymentAction == PaymentCallbackUrlRequest {
 		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", paymentPending.Name(), order.OrderId, PaymentCallbackUrlRequest)
-		paymentPending.UpdateOrderStep(ctx, &order, itemsId, "NEW", false)
+		paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.NewStatus, false)
 		//return orderPaymentState.ActionLauncher(ctx, order, nil, nil)
 
 		paymentRequest := payment_service.PaymentRequest{
@@ -92,8 +92,8 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 				CreatedAt:   time.Now().UTC(),
 			}
 
-			paymentPending.UpdateOrderStep(ctx, &order, nil, "CLOSED", true)
-			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, false)
+			paymentPending.UpdateAllOrderStatus(ctx, &order, nil, steps.ClosedStatus, true)
+			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, false, steps.ClosedStatus)
 			paymentPending.releasedStock(ctx, &order)
 			if err := paymentPending.persistOrder(ctx, &order); err != nil {}
 
@@ -111,8 +111,8 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 				CreatedAt:   time.Now().UTC(),
 			}
 
-			paymentPending.UpdateOrderStep(ctx, &order, nil, "CLOSED", true)
-			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, false)
+			paymentPending.UpdateAllOrderStatus(ctx, &order, nil, steps.ClosedStatus, true)
+			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, false, steps.ClosedStatus)
 			paymentPending.releasedStock(ctx, &order)
 			if err := paymentPending.persistOrder(ctx, &order); err != nil {}
 			logger.Err("PaymentService.OrderPayment in orderPaymentState failed, order: %v, error", order, futureData.Ex.Error())
@@ -134,7 +134,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			CreatedAt:   time.Now().UTC(),
 		}
 
-		paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, true)
+		paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, true, steps.NewStatus)
 		if err := paymentPending.persistOrder(ctx, &order); err != nil {}
 
 		returnChannel := make(chan promise.FutureData, 1)
@@ -146,15 +146,16 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", paymentPending.Name(), order.OrderId, OrderPayment)
 		if order.PaymentService[0].PaymentResult.Result == false {
 			logger.Audit("PaymentResult of order failed, order: %v", order)
-			paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, false)
-			paymentPending.UpdateOrderStep(ctx, &order, nil, "CLOSED", true)
+			paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, false, steps.ClosedStatus)
+			paymentPending.UpdateAllOrderStatus(ctx, &order, nil, steps.ClosedStatus, true)
 			paymentPending.releasedStock(ctx, &order)
 			if err := paymentPending.persistOrder(ctx, &order); err != nil {}
 			return paymentPending.Childes()[0].ProcessOrder(ctx, order, nil, nil)
 		}
 
 		logger.Audit("PaymentResult of order success, order: %v", order)
-		paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, true)
+		paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, true)
+		paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, true, steps.InProgressStatus)
 		return paymentPending.Childes()[1].ProcessOrder(ctx, order, nil, nil)
 	}
 
@@ -181,18 +182,18 @@ func (paymentPending paymentPendingStep) releasedStock(ctx context.Context, orde
 	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, StockReleased)
 	futureData := iPromise.Data()
 	if futureData == nil {
-		paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, false)
+		paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, steps.ClosedStatus)
 		logger.Err("StockService promise channel has been closed, step: %s, order: %v",  paymentPending.Name(), order)
 		return
 	}
 
 	if futureData.Ex != nil {
-		paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, false)
+		paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, steps.ClosedStatus)
 		logger.Err("Reserved stock from stockService failed, step: %s, order: %v, error: %s", paymentPending.Name(), order, futureData.Ex.Error())
 		return
 	}
 
-	paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, true)
+	paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, true, steps.ClosedStatus)
 	logger.Audit("Reserved stock from stockService success, step: %s, order: %v", paymentPending.Name(), order)
 }
 
@@ -205,7 +206,7 @@ func (paymentPending paymentPendingStep) persistOrder(ctx context.Context, order
 	return err
 }
 
-func (paymentPending paymentPendingStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string, action string, result bool) {
+func (paymentPending paymentPendingStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string, action string, result bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -213,7 +214,7 @@ func (paymentPending paymentPendingStep) updateOrderItemsProgress(ctx context.Co
 			findFlag = false
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == id {
-					paymentPending.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+					paymentPending.doUpdateOrderItemsProgress(ctx, order, i, action, result, itemStatus)
 					findFlag = true
 					break
 				}
@@ -225,19 +226,21 @@ func (paymentPending paymentPendingStep) updateOrderItemsProgress(ctx context.Co
 		}
 	} else {
 		for i := 0; i < len(order.Items); i++ {
-			paymentPending.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+			paymentPending.doUpdateOrderItemsProgress(ctx, order, i, action, result, itemStatus)
 		}
 	}
 }
 
 func (paymentPending paymentPendingStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
-	actionName string, result bool) {
+	actionName string, result bool, itemStatus string) {
 
-	order.Items[index].Status = paymentPending.Name()
+	order.Items[index].Status = itemStatus
 	order.Items[index].UpdatedAt = time.Now().UTC()
 
-	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {
-		order.Items[index].Progress.ActionHistory = make([]entities.Action, 0, 5)
+	length := len(order.Items[index].Progress.StepsHistory) - 1
+
+	if order.Items[index].Progress.StepsHistory[length].ActionHistory == nil || len(order.Items[index].Progress.StepsHistory[length].ActionHistory) == 0 {
+		order.Items[index].Progress.StepsHistory[length].ActionHistory = make([]entities.Action, 0, 5)
 	}
 
 	action := entities.Action{
@@ -246,7 +249,7 @@ func (paymentPending paymentPendingStep) doUpdateOrderItemsProgress(ctx context.
 		CreatedAt: order.Items[index].UpdatedAt,
 	}
 
-	order.Items[index].Progress.ActionHistory = append(order.Items[index].Progress.ActionHistory, action)
+	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 }
 
 

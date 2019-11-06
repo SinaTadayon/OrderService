@@ -45,8 +45,8 @@ func (shipmentSuccess shipmentSuccessStep) ProcessMessage(ctx context.Context, r
 
 // TODO scheduler must be call this step
 func (shipmentSuccess shipmentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
-	shipmentSuccess.UpdateOrderStep(ctx, &order, itemsId, "InProgress", false)
-	shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, ShipmentSuccess, true)
+	shipmentSuccess.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
+	shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, ShipmentSuccess, true, steps.InProgressStatus)
 	if err := shipmentSuccess.persistOrder(ctx, &order); err != nil {
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
@@ -65,7 +65,7 @@ func (shipmentSuccess shipmentSuccessStep) persistOrder(ctx context.Context, ord
 }
 
 func (shipmentSuccess shipmentSuccessStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
-	action string, result bool) {
+	action string, result bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -73,7 +73,7 @@ func (shipmentSuccess shipmentSuccessStep) updateOrderItemsProgress(ctx context.
 			findFlag = false
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == id {
-					shipmentSuccess.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+					shipmentSuccess.doUpdateOrderItemsProgress(ctx, order, i, action, result, itemStatus)
 					findFlag = true
 					break
 				}
@@ -84,19 +84,21 @@ func (shipmentSuccess shipmentSuccessStep) updateOrderItemsProgress(ctx context.
 		}
 	} else {
 		for i := 0; i < len(order.Items); i++ {
-			shipmentSuccess.doUpdateOrderItemsProgress(ctx, order, i, action, result)
+			shipmentSuccess.doUpdateOrderItemsProgress(ctx, order, i, action, result, itemStatus)
 		}
 	}
 }
 
 func (shipmentSuccess shipmentSuccessStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
-	actionName string, result bool) {
+	actionName string, result bool, itemStatus string) {
 
-	order.Items[index].Status = shipmentSuccess.Name()
+	order.Items[index].Status = itemStatus
 	order.Items[index].UpdatedAt = time.Now().UTC()
 
-	if order.Items[index].Progress.ActionHistory == nil || len(order.Items[index].Progress.ActionHistory) == 0 {
-		order.Items[index].Progress.ActionHistory = make([]entities.Action, 0, 5)
+	length := len(order.Items[index].Progress.StepsHistory) - 1
+
+	if order.Items[index].Progress.StepsHistory[length].ActionHistory == nil || len(order.Items[index].Progress.StepsHistory[length].ActionHistory) == 0 {
+		order.Items[index].Progress.StepsHistory[length].ActionHistory = make([]entities.Action, 0, 5)
 	}
 
 	action := entities.Action{
@@ -105,7 +107,8 @@ func (shipmentSuccess shipmentSuccessStep) doUpdateOrderItemsProgress(ctx contex
 		CreatedAt: order.Items[index].UpdatedAt,
 	}
 
-	order.Items[index].Progress.ActionHistory = append(order.Items[index].Progress.ActionHistory, action)
+	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
+
 }
 
 
