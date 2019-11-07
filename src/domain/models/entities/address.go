@@ -1,6 +1,8 @@
 package entities
 
 type AddressInfo struct {
+	FirstName			string					`bson:"firstName"`
+	LastName			string					`bson:"lastName"`
 	Address 			string					`bson:"address"`
 	Phone   			string					`bson:"phone"`
 	Mobile   			string					`bson:"mobile"`

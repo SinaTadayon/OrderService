@@ -99,8 +99,8 @@
 //	ppr.Status.History = []StatusHistory{}
 //	// validate request & convert to PaymentPendingRequest
 //	if req.Amount != nil {
-//		ppr.Amount.Special = float64(req.Amount.Special)
-//		ppr.Amount.Original = float64(req.Amount.Original)
+//		ppr.Amount.Discount = float64(req.Amount.Discount)
+//		ppr.Amount.Subtotal = float64(req.Amount.Subtotal)
 //		ppr.Amount.Total = float64(req.Amount.Total)
 //	}
 //	if req.Buyer != nil {
@@ -135,8 +135,8 @@
 //			i.Guaranty = item.Guaranty
 //			if item.Price != nil {
 //				i.Price.Total = float64(item.Price.Total)
-//				i.Price.Original = float64(item.Price.Original)
-//				i.Price.Special = float64(item.Price.Special)
+//				i.Price.Subtotal = float64(item.Price.Subtotal)
+//				i.Price.Discount = float64(item.Price.Discount)
 //				i.Price.SellerCommission = float64(item.Price.SellerCommission)
 //				i.Price.Unit = float64(item.Price.Unit)
 //			}

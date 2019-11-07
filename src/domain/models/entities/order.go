@@ -72,8 +72,8 @@ type PayToMarket struct {
 
 type Amount struct {
 	Total         uint64   `bson:"total"`
-	Original      uint64   `bson:"original"`
-	Special       uint64   `bson:"special"`
+	Subtotal      uint64   `bson:"subtotal"`
+	Discount      uint64   `bson:"discount"`
 	ShipmentTotal uint64   `bson:"shipmentTotal"`
 	Currency      string   `bson:"currency"`
 	PaymentMethod string   `bson:"paymentMethod"`

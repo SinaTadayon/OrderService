@@ -16,6 +16,7 @@ import (
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	grpc_server "gitlab.faza.io/order-project/order-service/server/grpc"
 	"google.golang.org/grpc"
+	"io"
 	"os"
 	"strconv"
 	"testing"
@@ -141,8 +142,6 @@ func init() {
 	go App.grpcServer.Start()
 }
 
-
-
 func createRequestNewOrder() *pb.RequestNewOrder {
 	order := &pb.RequestNewOrder{
 		Amount: &pb.Amount{},
@@ -153,8 +152,8 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	}
 
 	order.Amount.Total = 600000
-	order.Amount.Original = 550000
-	order.Amount.Special = 50000
+	order.Amount.Subtotal = 550000
+	order.Amount.Discount = 50000
 	order.Amount.Currency = "RR"
 	order.Amount.PaymentMethod = "IPG"
 	order.Amount.PaymentOption = "AAP"
@@ -374,7 +373,6 @@ func doUpdateOrderItemsProgress(order *entities.Order, index int,
 
 	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 }
-
 
 
 //func TestLoadConfig_AssertTrue(t *testing.T) {
@@ -787,6 +785,202 @@ func TestBuyerFindAllOrders(t *testing.T) {
 
 }
 
+func TestBackOfficeOrdersListView(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	assert.Nil(t, err)
+
+	defer grpcConn.Close()
+	requestNewOrder := createRequestNewOrder()
+	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
+	assert.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+	updateOrderItemsProgress(newOrder, nil, "Shipped", true, steps.InProgressStatus)
+	_ , err = global.Singletons.OrderRepository.Save(*newOrder)
+	assert.Nil(t, err, "save failed")
+
+	time.Sleep(1 * time.Second)
+
+	requestNewOrder2 := createRequestNewOrder()
+	value2, err2 := global.Singletons.Converter.Map(*requestNewOrder2, entities.Order{})
+	assert.Nil(t, err2, "Converter failed")
+	newOrder2 := value2.(*entities.Order)
+
+	updateOrderStatus(newOrder2, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+	updateOrderItemsProgress(newOrder2, nil, "Shipped", true, steps.InProgressStatus)
+	_ , err = global.Singletons.OrderRepository.Save(*newOrder2)
+	assert.Nil(t, err2, "save failed")
+
+	time.Sleep(1 * time.Second)
+
+	requestNewOrder1 := createRequestNewOrder()
+	value1, err1 := global.Singletons.Converter.Map(*requestNewOrder1, entities.Order{})
+	assert.Nil(t, err1, "Converter failed")
+	newOrder1 := value1.(*entities.Order)
+
+	updateOrderStatus(newOrder1, nil, "IN_PROGRESS", false, "20.Seller_Approval_Pending", 20)
+	updateOrderItemsProgress(newOrder1, nil, "Approved", true, steps.InProgressStatus)
+	_ , err = global.Singletons.OrderRepository.Save(*newOrder1)
+	assert.Nil(t, err1, "save failed")
+
+	time.Sleep(1 * time.Second)
+
+	requestNewOrder3 := createRequestNewOrder()
+	value3, err3 := global.Singletons.Converter.Map(*requestNewOrder3, entities.Order{})
+	assert.Nil(t, err3, "Converter failed")
+	newOrder3 := value3.(*entities.Order)
+
+	updateOrderStatus(newOrder3, nil, "IN_PROGRESS", false, "20.Seller_Approval_Pending", 20)
+	updateOrderItemsProgress(newOrder3, nil, "Approved", true, steps.InProgressStatus)
+	_ , err = global.Singletons.OrderRepository.Save(*newOrder3)
+	assert.Nil(t, err3, "save failed")
+
+	defer removeCollection()
+
+	request := &pb.RequestBackOfficeOrdersList{
+		Page:      1,
+		PerPage:   3,
+		Sort:      "createdAt",
+		Direction: -1,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	result, err := OrderService.BackOfficeOrdersListView(ctx, request)
+
+	assert.Nil(t, err)
+	assert.Equal(t, len(result.Orders), 3)
+}
+
+func TestBackOfficeOrderDetailView(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	assert.Nil(t, err)
+
+	defer grpcConn.Close()
+	requestNewOrder := createRequestNewOrder()
+	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
+	assert.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+	updateOrderItemsProgress(newOrder, nil, "Shipped", true, steps.InProgressStatus)
+	newOrder , err = global.Singletons.OrderRepository.Save(*newOrder)
+	assert.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	request := &pb.RequestIdentifier{
+		Id: newOrder.OrderId,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	result, err := OrderService.BackOfficeOrderDetailView(ctx, request)
+
+	assert.Nil(t, err)
+	assert.Equal(t, result.OrderId, newOrder.OrderId)
+}
+
+func TestSellerReportOrders(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	assert.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
+	assert.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+	updateOrderItemsProgress(newOrder, nil, "Shipped", true, steps.InProgressStatus)
+	order , err := global.Singletons.OrderRepository.Save(*newOrder)
+	assert.Nil(t, err, "save failed")
+	defer removeCollection()
+
+	request := &pb.RequestSellerReportOrders{
+		StartDateTime:        order.CreatedAt.Unix() - 10,
+		SellerId: 			  order.Items[0].SellerInfo.SellerId,
+		Status: 			  order.Items[0].Status,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	downloadStream, err :=  OrderService.SellerReportOrders(ctx, request)
+	assert.Nil(t, err)
+	defer downloadStream.CloseSend()
+
+	f, err := os.Create("/tmp/SellerReportOrder.csv")
+	assert.Nil(t, err)
+	defer f.Close()
+	defer os.Remove("/tmp/" + "SellerReportOrder.csv")
+
+	for {
+		res, err := downloadStream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			break
+		}
+		_, err = f.Write(res.Data)
+		assert.Nil(t, err)
+	}
+
+	assert.Nil(t, err)
+}
+
+func TestBackOfficeReportOrderItems(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	assert.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
+	assert.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+	updateOrderItemsProgress(newOrder, nil, "Shipped", true, steps.InProgressStatus)
+	order ,err := global.Singletons.OrderRepository.Save(*newOrder)
+	assert.Nil(t, err, "save failed")
+	defer removeCollection()
+
+	request := &pb.RequestBackOfficeReportOrderItems{
+		StartDateTime:        uint64(order.CreatedAt.Unix() - 10),
+		EndDataTime:          uint64(order.CreatedAt.Unix() + 10),
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	downloadStream, err :=  OrderService.BackOfficeReportOrderItems(ctx, request)
+	assert.Nil(t, err)
+	defer downloadStream.CloseSend()
+
+	f, err := os.Create("/tmp/BackOfficeReportOrderItems.csv")
+	assert.Nil(t, err)
+	defer f.Close()
+	defer os.Remove("/tmp/" + "BackOfficeReportOrderItems.csv")
+
+	for {
+		res, err := downloadStream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			break
+		}
+		_, err = f.Write(res.Data)
+		assert.Nil(t, err)
+	}
+
+	assert.Nil(t, err)
+}
+
 func removeCollection() {
-	//if err := global.Singletons.OrderRepository.RemoveAll(); err != nil {}
+	if err := global.Singletons.OrderRepository.RemoveAll(); err != nil {}
 }

@@ -20,7 +20,7 @@ type SellerExportOrders struct {
 	ProductId			string
 	InventoryId			string
 	PaidPrice			uint64
-	CommissionAmount	uint64
+	Commission			float32
 	Category			string
 	Status 				string
 	CreatedAt			string

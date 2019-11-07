@@ -107,6 +107,7 @@ type Price struct {
 	Total            uint64  `bson:"total"`
 	Original         uint64  `bson:"original"`
 	Special          uint64  `bson:"special"`
+	Discount         uint64  `bson:"discount"`
 	SellerCommission float32 `bson:"sellerCommission"`
 	Currency         string  `bson:"currency"`
 }

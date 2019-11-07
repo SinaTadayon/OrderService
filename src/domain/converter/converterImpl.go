@@ -69,6 +69,8 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 		return nil, errors.New("buyer.shippingAddress of RequestNewOrder invalid")
 	}
 
+	order.BuyerInfo.ShippingAddress.FirstName = newOrderDto.Buyer.ShippingAddress.FirstName
+	order.BuyerInfo.ShippingAddress.LastName = newOrderDto.Buyer.ShippingAddress.LastName
 	order.BuyerInfo.ShippingAddress.Address = newOrderDto.Buyer.ShippingAddress.Address
 	order.BuyerInfo.ShippingAddress.Mobile = newOrderDto.Buyer.ShippingAddress.Mobile
 	order.BuyerInfo.ShippingAddress.Phone = newOrderDto.Buyer.ShippingAddress.Phone
@@ -84,8 +86,8 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	}
 
 	order.Amount.Total = newOrderDto.Amount.Total
-	order.Amount.Original = newOrderDto.Amount.Original
-	order.Amount.Special = newOrderDto.Amount.Special
+	order.Amount.Subtotal = newOrderDto.Amount.Subtotal
+	order.Amount.Discount = newOrderDto.Amount.Discount
 	order.Amount.ShipmentTotal = newOrderDto.Amount.ShipmentTotal
 	order.Amount.Currency = newOrderDto.Amount.Currency
 	order.Amount.PaymentMethod = newOrderDto.Amount.PaymentMethod
@@ -129,6 +131,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 
 			newItem.Price.Unit = item.Price.Unit
 			newItem.Price.Total = item.Price.Total
+			newItem.Price.Discount = item.Price.Discount
 			newItem.Price.Original = item.Price.Original
 			newItem.Price.Special = item.Price.Special
 			newItem.Price.SellerCommission = item.Price.SellerCommission

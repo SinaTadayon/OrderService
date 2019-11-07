@@ -313,8 +313,8 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 			OrderStatus: order.Status,
 			Amount: &pb.Amount{
 				Total: order.Amount.Total,
-				Original: order.Amount.Original,
-				Special: order.Amount.Special,
+				Subtotal: order.Amount.Subtotal,
+				Discount: order.Amount.Discount,
 				Currency: order.Amount.Currency,
 				ShipmentTotal: order.Amount.ShipmentTotal,
 				PaymentMethod: order.Amount.PaymentMethod,
@@ -396,11 +396,33 @@ func (server Server) convertNewOrderRequestToMessage(req *pb.RequestNewOrder) *p
 }
 
 func (server Server) BackOfficeOrdersListView(ctx context.Context, req *pb.RequestBackOfficeOrdersList) (*pb.ResponseBackOfficeOrdersList, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method BackOfficeOrdersListView not implemented")
+	promiseHandler := server.flowManager.BackOfficeOrdersListView(ctx, req)
+	futureData := promiseHandler.Data()
+	if futureData == nil {
+		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	if futureData.Ex != nil {
+		futureErr := futureData.Ex.(promise.FutureError)
+		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+	}
+
+	return futureData.Data.(*pb.ResponseBackOfficeOrdersList), nil
 }
 
 func (server Server) BackOfficeOrderDetailView(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseOrderDetailView, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method BackOfficeOrderDetailView not implemented")
+	promiseHandler := server.flowManager.BackOfficeOrderDetailView(ctx, req)
+	futureData := promiseHandler.Data()
+	if futureData == nil {
+		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	if futureData.Ex != nil {
+		futureErr := futureData.Ex.(promise.FutureError)
+		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+	}
+
+	return futureData.Data.(*pb.ResponseOrderDetailView), nil
 }
 
 func (server Server) BackOfficeOrderAction(ctx context.Context, req *pb.RequestBackOfficeOrderAction) (*pb.ResponseBackOfficeOrderAction, error) {
@@ -420,11 +442,33 @@ func (server Server) BackOfficeOrderAction(ctx context.Context, req *pb.RequestB
 }
 
 func (server Server) SellerReportOrders(req *pb.RequestSellerReportOrders, srv pb.OrderService_SellerReportOrdersServer) error {
-	return status.Errorf(codes.Unimplemented, "method SellerReportOrders not implemented")
+	promiseHandler := server.flowManager.SellerReportOrders(req, srv)
+	futureData := promiseHandler.Data()
+	if futureData == nil {
+		return status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	if futureData.Ex != nil {
+		futureErr := futureData.Ex.(promise.FutureError)
+		return status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+	}
+
+	return nil
 }
 
 func (server Server) BackOfficeReportOrderItems(req *pb.RequestBackOfficeReportOrderItems, srv pb.OrderService_BackOfficeReportOrderItemsServer) error {
-	return status.Errorf(codes.Unimplemented, "method BackOfficeReportOrderItems not implemented")
+	promiseHandler := server.flowManager.BackOfficeReportOrderItems(req, srv)
+	futureData := promiseHandler.Data()
+	if futureData == nil {
+		return status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	if futureData.Ex != nil {
+		futureErr := futureData.Ex.(promise.FutureError)
+		return status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+	}
+
+	return nil
 }
 
 func (server Server) Start() {
@@ -466,8 +510,8 @@ func (server Server) Start() {
 //	ppr.Status.History = []StatusHistory{}
 //	// validate request & convert to PaymentPendingRequest
 //	if req.Amount != nil {
-//		ppr.Amount.Special = float64(req.Amount.Special)
-//		ppr.Amount.Original = float64(req.Amount.Original)
+//		ppr.Amount.Discount = float64(req.Amount.Discount)
+//		ppr.Amount.Subtotal = float64(req.Amount.Subtotal)
 //		ppr.Amount.total = float64(req.Amount.total)
 //	}
 //	if req.Buyer != nil {
@@ -502,8 +546,8 @@ func (server Server) Start() {
 //			i.Guaranty = item.Guaranty
 //			if item.Price != nil {
 //				i.Price.total = float64(item.Price.total)
-//				i.Price.Original = float64(item.Price.Original)
-//				i.Price.Special = float64(item.Price.Special)
+//				i.Price.Subtotal = float64(item.Price.Subtotal)
+//				i.Price.Discount = float64(item.Price.Discount)
 //				i.Price.SellerCommission = float64(item.Price.SellerCommission)
 //				i.Price.Unit = float64(item.Price.Unit)
 //			}

@@ -30,8 +30,8 @@ package payment_pending_step
 //	pr.Buyer.Finance.Iban = "IR165411211001514313143545"
 //	// amount
 //	pr.Amount.total = 200000
-//	pr.Amount.Special = 40000
-//	pr.Amount.Original = 160000
+//	pr.Amount.Discount = 40000
+//	pr.Amount.Subtotal = 160000
 //	// items
 //	pr.Items = append(pr.Items, Item{
 //		Sku:        "aaa000",
@@ -43,8 +43,8 @@ package payment_pending_step
 //		Price: ItemPrice{
 //			Unit:             20000,
 //			total:            200000,
-//			Original:          160000,
-//			Special:         40000,
+//			Subtotal:          160000,
+//			Discount:         40000,
 //			SellerCommission: 10000,
 //		},
 //		SellerInfo: ItemSeller{
@@ -89,8 +89,8 @@ package payment_pending_step
 //		Guaranty:   "صلامت کالا",
 //		Price: ItemPrice{
 //			total:            300000,
-//			Original:          160000,
-//			Special:         140000,
+//			Subtotal:          160000,
+//			Discount:         140000,
 //			Unit:             300000,
 //			SellerCommission: 20000,
 //		},

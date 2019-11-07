@@ -13,4 +13,9 @@ type IFlowManager interface {
 	BuyerApprovalPending(ctx context.Context, req *message.RequestBuyerOrderAction) promise.IPromise
 	PaymentGatewayResult(ctx context.Context, req *pg.PaygateHookRequest) promise.IPromise
 	OperatorActionPending(ctx context.Context, req *message.RequestBackOfficeOrderAction) promise.IPromise
+
+	BackOfficeOrdersListView(ctx context.Context, req *message.RequestBackOfficeOrdersList) promise.IPromise
+	BackOfficeOrderDetailView(ctx context.Context, req *message.RequestIdentifier) promise.IPromise
+	SellerReportOrders(req *message.RequestSellerReportOrders, srv message.OrderService_SellerReportOrdersServer) promise.IPromise
+	BackOfficeReportOrderItems(req *message.RequestBackOfficeReportOrderItems, srv message.OrderService_BackOfficeReportOrderItemsServer) promise.IPromise
 }

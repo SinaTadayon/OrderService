@@ -300,8 +300,8 @@ func (paymentPending paymentPendingStep) doUpdateOrderItemsProgress(ctx context.
 //	// Validate amount
 //	errPaymentCallbackUrlRequestAmount := validation.ValidateStruct(&ppr.Amount,
 //		validation.Field(&ppr.Amount.total, validation.Required),
-//		validation.Field(&ppr.Amount.Special, validation.Required),
-//		validation.Field(&ppr.Amount.Original, validation.Required),
+//		validation.Field(&ppr.Amount.Discount, validation.Required),
+//		validation.Field(&ppr.Amount.Subtotal, validation.Required),
 //	)
 //	if errPaymentCallbackUrlRequestAmount != nil {
 //		errValidation = append(errValidation, errPaymentCallbackUrlRequestAmount.Error())
@@ -355,8 +355,8 @@ func (paymentPending paymentPendingStep) doUpdateOrderItemsProgress(ctx context.
 //			errPaymentCallbackUrlRequestItemsPrice := validation.ValidateStruct(&ppr.Items[i].Price,
 //				validation.Field(&ppr.Items[i].Price.Unit, validation.Required),
 //				validation.Field(&ppr.Items[i].Price.total, validation.Required),
-//				validation.Field(&ppr.Items[i].Price.Original, validation.Required),
-//				validation.Field(&ppr.Items[i].Price.Special, validation.Required),
+//				validation.Field(&ppr.Items[i].Price.Subtotal, validation.Required),
+//				validation.Field(&ppr.Items[i].Price.Discount, validation.Required),
 //				validation.Field(&ppr.Items[i].Price.SellerCommission, validation.Required),
 //			)
 //			if errPaymentCallbackUrlRequestItemsPrice != nil {

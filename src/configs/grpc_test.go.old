@@ -27,8 +27,8 @@
 //	}
 //
 //	order.Amount.Total = float32(req.Amount.Total)
-//	order.Amount.Original = float32(req.Amount.Original)
-//	order.Amount.Special = float32(req.Amount.Special)
+//	order.Amount.Subtotal = float32(req.Amount.Subtotal)
+//	order.Amount.Discount = float32(req.Amount.Discount)
 //
 //	order.Buyer.LastName = req.Buyer.LastName
 //	order.Buyer.FirstName = req.Buyer.FirstName
@@ -63,8 +63,8 @@
 //	i.Guaranty = req.Items[0].Guaranty
 //	i.Quantity = req.Items[0].Quantity
 //
-//	i.Price.Special = float32(req.Items[0].Price.Special)
-//	i.Price.Original = float32(req.Items[0].Price.Original)
+//	i.Price.Discount = float32(req.Items[0].Price.Discount)
+//	i.Price.Subtotal = float32(req.Items[0].Price.Subtotal)
 //	i.Price.Total = float32(req.Items[0].Price.Total)
 //	i.Price.SellerCommission = float32(req.Items[0].Price.SellerCommission)
 //	i.Price.Unit = float32(req.Items[0].Price.Unit)

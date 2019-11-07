@@ -2,12 +2,16 @@ package domain
 
 import (
 	"context"
+	"encoding/csv"
+	"fmt"
 	"gitlab.faza.io/go-framework/logger"
 	order_payment_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/orderpayment"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	order_payment_action_state "gitlab.faza.io/order-project/order-service/domain/states/launcher/orderpayment"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"go.mongodb.org/mongo-driver/bson"
+	"io"
+	"os"
 	"time"
 
 	//"errors"
@@ -1097,7 +1101,6 @@ func (flowManager iFlowManagerImpl) SellerApprovalPending(ctx context.Context, r
 	return promise.NewPromise(returnChannel, 1, 1)
 }
 
-
 func (flowManager iFlowManagerImpl) BuyerApprovalPending(ctx context.Context, req *message.RequestBuyerOrderAction) promise.IPromise {
 	order, err := global.Singletons.OrderRepository.FindById(req.OrderId)
 	if err != nil {
@@ -1125,7 +1128,6 @@ func (flowManager iFlowManagerImpl) BuyerApprovalPending(ctx context.Context, re
 	defer close(returnChannel)
 	return promise.NewPromise(returnChannel, 1, 1)
 }
-
 
 func (flowManager iFlowManagerImpl) PaymentGatewayResult(ctx context.Context, req *pg.PaygateHookRequest) promise.IPromise {
 	order, err := global.Singletons.OrderRepository.FindById(req.OrderID)
@@ -1162,7 +1164,7 @@ func (flowManager iFlowManagerImpl) OperatorActionPending(ctx context.Context, r
 		logger.Err("MessageHandler() => request itemId not found, OrderRepository.FindById failed, itemId: %s, error: %s",
 			req.ItemId, err)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "ItemId Not Found"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
@@ -1197,6 +1199,432 @@ func (flowManager iFlowManagerImpl) OperatorActionPending(ctx context.Context, r
 
 	returnChannel := make(chan promise.FutureData, 1)
 	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.NotFound, Reason:"ActionType Not Found"}}
+	defer close(returnChannel)
+	return promise.NewPromise(returnChannel, 1, 1)
+}
+
+func (flowManager iFlowManagerImpl) BackOfficeOrdersListView(ctx context.Context, req *message.RequestBackOfficeOrdersList) promise.IPromise {
+	orders ,total ,err := global.Singletons.OrderRepository.FindAllWithPageAndSort(int64(req.Page), int64(req.PerPage), req.Sort, int(req.Direction))
+
+	if err != nil {
+		logger.Err("BackOfficeOrdersListView() => FindAllWithPageAndSort failed")
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	response := message.ResponseBackOfficeOrdersList{
+		Total:  total,
+		Orders: make([]*message.BackOfficeOrdersList, 0, len(orders)),
+	}
+	
+	for _, order := range orders {
+		backOfficeOrder := &message.BackOfficeOrdersList{
+			OrderId:     order.OrderId,
+			PurchasedOn: order.CreatedAt.Unix(),
+			BasketSize:  0,
+			BillTo:      order.BuyerInfo.FirstName + order.BuyerInfo.LastName,
+			ShipTo:      order.BuyerInfo.ShippingAddress.FirstName + order.BuyerInfo.ShippingAddress.LastName,
+			TotalAmount: int64(order.Amount.Total),
+			Status:      order.Status,
+			LastUpdated: order.UpdatedAt.Unix(),
+			Actions:     []string{"success", "cancel"},
+		}
+
+		itemsInventory := make(map[string]int, len(order.Items))
+		for i:= 0; i < len(order.Items); i++ {
+			if _, ok := itemsInventory[order.Items[i].InventoryId]; !ok {
+				backOfficeOrder.BasketSize += order.Items[i].Quantity   
+			}
+		}
+		
+		if order.Amount.Voucher != nil {
+			backOfficeOrder.PaidAmount =  int64(order.Amount.Total - order.Amount.Voucher.Amount)
+			backOfficeOrder.Voucher = true
+		} else {
+			backOfficeOrder.Voucher = false
+			backOfficeOrder.PaidAmount =  0
+		}
+
+		response.Orders = append(response.Orders, backOfficeOrder)
+	}
+
+	returnChannel := make(chan promise.FutureData, 1)
+	returnChannel <- promise.FutureData{Data:&response, Ex:nil}
+	defer close(returnChannel)
+	return promise.NewPromise(returnChannel, 1, 1)
+}
+
+func (flowManager iFlowManagerImpl) BackOfficeOrderDetailView(ctx context.Context, req *message.RequestIdentifier) promise.IPromise {
+	order, err := global.Singletons.OrderRepository.FindById(req.Id)
+	if err != nil {
+		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
+			req.Id, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.NotFound, Reason:"OrderId Not Found"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+	
+	response := &message.ResponseOrderDetailView{
+		OrderId:      order.OrderId,
+		CreatedAt:    order.CreatedAt.Unix(),
+		Ip:           order.BuyerInfo.IP,
+		Status:       order.Status,
+		Payment:      &message.PaymentInfo{
+			PaymentMethod:        order.Amount.PaymentMethod,
+			PaymentOption:        order.Amount.PaymentOption,
+		},
+		Billing:      &message.BillingInfo{
+			BuyerId:    order.BuyerInfo.BuyerId,
+			FullName:   order.BuyerInfo.FirstName + order.BuyerInfo.LastName,
+			Phone:      order.BuyerInfo.Phone,
+			Mobile:     order.BuyerInfo.Mobile,
+			NationalId: order.BuyerInfo.NationalId,
+		},
+		ShippingInfo: &message.ShippingInfo{
+			FullName:     order.BuyerInfo.ShippingAddress.FirstName + order.BuyerInfo.ShippingAddress.LastName,
+			Country:      order.BuyerInfo.ShippingAddress.Country,
+			City:         order.BuyerInfo.ShippingAddress.City,
+			Province:     order.BuyerInfo.ShippingAddress.Province,
+			Neighborhood: order.BuyerInfo.ShippingAddress.Neighbourhood,
+			Address:      order.BuyerInfo.ShippingAddress.Address,
+			ZipCode:      order.BuyerInfo.ShippingAddress.ZipCode,
+		},
+		Items: 		  make([]*message.ItemInfo, 0, len(order.Items)),
+	}
+
+	for _, item := range order.Items {
+		itemInfo := &message.ItemInfo{
+			ItemId:               item.ItemId,
+			SellerId:             item.SellerInfo.SellerId,
+			InventoryId:          item.InventoryId,
+			Quantity:             item.Quantity,
+			ItemStatus:           item.Status,
+			UpdatedAt:            item.UpdatedAt.Unix(),
+			Actions:     		  []string{"success", "cancel"},
+		}
+
+		lastStep := item.Progress.StepsHistory[len(item.Progress.StepsHistory)-1]
+		lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
+		itemInfo.StepStatus = lastAction.Name
+
+		response.Items = append(response.Items, itemInfo)
+	}
+
+	if order.PaymentService != nil && len(order.PaymentService) == 1 {
+		if order.PaymentService[0].PaymentResult != nil {
+			response.Payment.Result =  order.PaymentService[0].PaymentResponse.Result		
+		} else {
+			response.Payment.Result =  false
+		}
+	}
+
+	returnChannel := make(chan promise.FutureData, 1)
+	returnChannel <- promise.FutureData{Data:response, Ex:nil}
+	defer close(returnChannel)
+	return promise.NewPromise(returnChannel, 1, 1)
+}
+
+func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSellerReportOrders, srv message.OrderService_SellerReportOrdersServer) promise.IPromise {
+	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
+		return bson.D{{"createdAt",
+			bson.D{{"$gte", time.Unix(int64(req.StartDateTime), 0).UTC()}}},
+			{"items.status", req.Status }, {"items.sellerInfo.sellerId", req.SellerId }}})
+
+	if err != nil {
+		logger.Err("SellerReportOrders() => OrderRepository.FindByFilter failed, startDateTime: %v, status: %s, error: %s",
+			req.StartDateTime, req.Status, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	if orders == nil || len(orders) == 0  {
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: nil}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	reports := make([]*entities.SellerExportOrders, 0, len(orders))
+
+	for _, order :=range orders {
+		for _, item := range order.Items {
+			itemReport := &entities.SellerExportOrders{
+				OrderId:     order.OrderId,
+				ItemId:      item.ItemId,
+				ProductId:   item.InventoryId[0:7],
+				InventoryId: item.InventoryId,
+				PaidPrice:   item.Price.Total,
+				Commission:  item.Price.SellerCommission,
+				Category:    item.Category,
+				Status:      item.Status,
+				CreatedAt:   item.CreatedAt.String(),
+				UpdatedAt:   item.UpdatedAt.String(),
+			}
+			reports = append(reports, itemReport)
+		}
+	}
+
+	csvReports := make([][]string, 0, len(reports))
+	csvHeadLines := []string{
+		"OrderId", "ItemId", "ProductId", "InventoryId",
+		"PaidPrice", "Commission", "Category", "Status", "CreatedAt", "UpdatedAt",
+	}
+
+	csvReports = append(csvReports, csvHeadLines)
+	for _, itemReport := range reports {
+		csvRecord := []string {
+			itemReport.OrderId,
+			itemReport.ItemId,
+			itemReport.ProductId,
+			itemReport.InventoryId,
+			fmt.Sprint(itemReport.PaidPrice),
+			fmt.Sprint(itemReport.Commission),
+			itemReport.Category,
+			itemReport.Status,
+			itemReport.CreatedAt,
+			itemReport.UpdatedAt,
+		}
+		csvReports = append(csvReports, csvRecord)
+	}
+
+	reportTime := time.Unix(int64(req.StartDateTime), 0)
+	fileName := fmt.Sprintf("SellerReportOrders-%s.csv", fmt.Sprintf("%d", reportTime.UnixNano()))
+	f, err := os.Create("/tmp/" + fileName)
+	if err != nil {
+		logger.Err("SellerReportOrders() => create file %s failed, startDateTime: %v, status: %s, error: %s",
+			fileName, req.StartDateTime, req.Status, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code:promise.InternalError, Reason: "Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	w := csv.NewWriter(f)
+	// calls Flush internally
+	if err := w.WriteAll(csvReports); err != nil {
+		logger.Err("SellerReportOrders() => write csv to file failed, startDateTime: %v, : status: %s, error: %s",
+			req.StartDateTime, req.Status, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	if err := f.Close(); err != nil {
+		logger.Err("SellerReportOrders() => file close failed, filename: %s, error: %s", fileName, err)
+	}
+
+	file, err := os.Open("/tmp/" + fileName)
+	if err != nil {
+		logger.Err("SellerReportOrders() => write csv to file failed, startDateTime: %v, : status: %s, error: %s",
+			req.StartDateTime, req.Status, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	var fileErr, grpcErr error
+	var b [4096 * 1000]byte
+	for {
+		n, err := file.Read(b[:])
+		if err != nil {
+			if err != io.EOF {
+				fileErr = err
+			}
+			break
+		}
+		err = srv.Send(&message.ResponseDownloadFile{
+			Data: b[:n],
+		})
+		if err != nil {
+			grpcErr = err
+		}
+	}
+
+	if err := file.Close(); err != nil {
+		logger.Err("SellerReportOrders() => file close failed, filename: %s, error: %s", fileName, err)
+	}
+
+	if err := os.Remove("/tmp/" + fileName); err != nil {
+		logger.Err("SellerReportOrders() => remove file failed, filename: %s, error: %s", fileName, err)
+	}
+
+	if fileErr != nil {
+		logger.Err("SellerReportOrders() => read csv from file failed, filename: %s, error: %s", fileName, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	if grpcErr != nil {
+		logger.Err("SellerReportOrders() => send cvs file failed, filename: %s, error: %s", fileName, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	returnChannel := make(chan promise.FutureData, 1)
+	returnChannel <- promise.FutureData{Data: nil, Ex: nil}
+	defer close(returnChannel)
+	return promise.NewPromise(returnChannel, 1, 1)
+}
+
+func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.RequestBackOfficeReportOrderItems, srv message.OrderService_BackOfficeReportOrderItemsServer) promise.IPromise {
+	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
+		return bson.D{{"createdAt",
+			bson.D{{"$gte", time.Unix(int64(req.StartDateTime), 0).UTC()},
+						 {"$lte", time.Unix(int64(req.EndDataTime), 0).UTC()}}}}})
+
+	if err != nil {
+		logger.Err("BackOfficeReportOrderItems() => request itemId not found, OrderRepository.FindById failed, startDateTime: %v, endDateTime: %v, error: %s",
+			req.StartDateTime, req.EndDataTime, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	if orders == nil || len(orders) == 0  {
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: nil}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	reports := make([]*entities.BackOfficeExportItems, 0, len(orders))
+	
+	for _, order :=range orders {
+		for _, item := range order.Items {
+			itemReport := &entities.BackOfficeExportItems{
+				ItemId:      item.ItemId,
+				InventoryId: item.InventoryId,
+				ProductId:   item.InventoryId[0:7],
+				BuyerId:     order.BuyerInfo.BuyerId,
+				BuyerPhone:  order.BuyerInfo.Phone,
+				SellerId:    item.SellerInfo.SellerId,
+				SellerName:  "",
+				Price:       item.Price.Total,
+				Status:      item.Status,
+				CreatedAt:   item.CreatedAt.String(),
+				UpdatedAt:   item.UpdatedAt.String(),
+			}
+			reports = append(reports, itemReport)
+		}
+	}
+
+	csvReports := make([][]string, 0, len(reports))
+	csvHeadLines := []string{
+		"ItemId", "InventoryId", "ProductId", "BuyerId", "BuyerPhone", "SellerId",
+		"SellerName", "Price", "Status", "CreatedAt", "UpdatedAt",
+	}
+
+	csvReports = append(csvReports, csvHeadLines)
+	for _, itemReport := range reports {
+		csvRecord := []string {
+			itemReport.ItemId,
+			itemReport.InventoryId,
+			itemReport.ProductId,
+			itemReport.BuyerId,
+			itemReport.BuyerPhone,
+			itemReport.SellerId,
+			itemReport.SellerName,
+			fmt.Sprint(itemReport.Price),
+			itemReport.Status,
+			itemReport.CreatedAt,
+			itemReport.UpdatedAt,
+		}
+		csvReports = append(csvReports, csvRecord)
+	}
+
+	reportTime := time.Unix(int64(req.StartDateTime), 0)
+	fileName := fmt.Sprintf("BackOfficeReport-%s.csv", fmt.Sprintf("%d", reportTime.UnixNano()))
+	f, err := os.Create("/tmp/" + fileName)
+	if err != nil {
+		logger.Err("BackOfficeReportOrderItems() => create file %s failed, startDateTime: %v, endDateTime: %v, error: %s",
+			fileName, req.StartDateTime, req.EndDataTime, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code:promise.InternalError, Reason: "Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	w := csv.NewWriter(f)
+	 // calls Flush internally
+	if err := w.WriteAll(csvReports); err != nil {
+		logger.Err("BackOfficeReportOrderItems() => write csv to file failed, startDateTime: %v, endDateTime: %v, error: %s",
+			req.StartDateTime, req.EndDataTime, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	if err := f.Close(); err != nil {
+		logger.Err("BackOfficeReportOrderItems() => file close failed, filename: %s, error: %s", fileName, err)
+	}
+
+	file, err := os.Open("/tmp/" + fileName)
+	if err != nil {
+		logger.Err("BackOfficeReportOrderItems() => read csv from file failed, startDateTime: %v, endDateTime: %v, error: %s",
+			req.StartDateTime, req.EndDataTime, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	var fileErr, grpcErr error
+	var b [4096 * 1000]byte
+	for {
+		n, err := file.Read(b[:])
+		if err != nil {
+			if err != io.EOF {
+				fileErr = err
+			}
+			break
+		}
+		err = srv.Send(&message.ResponseDownloadFile{
+			Data: b[:n],
+		})
+		if err != nil {
+			grpcErr = err
+		}
+	}
+
+	if err := file.Close(); err != nil {
+		logger.Err("BackOfficeReportOrderItems() => file close failed, filename: %s, error: %s", file.Name(), err)
+	}
+
+	if err := os.Remove("/tmp/" + fileName); err != nil {
+		logger.Err("BackOfficeReportOrderItems() => remove file failed, filename: %s, error: %s", fileName, err)
+	}
+
+	if fileErr != nil {
+		logger.Err("BackOfficeReportOrderItems() => read csv from file failed, filename: %s, error: %s", fileName, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	if grpcErr != nil {
+		logger.Err("BackOfficeReportOrderItems() => send cvs file failed, filename: %s, error: %s", fileName, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	returnChannel := make(chan promise.FutureData, 1)
+	returnChannel <- promise.FutureData{Data: nil, Ex: nil}
 	defer close(returnChannel)
 	return promise.NewPromise(returnChannel, 1, 1)
 }

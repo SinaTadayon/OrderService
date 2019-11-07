@@ -36,8 +36,9 @@ message ResponseBackOfficeOrderAction {
 }
 
 message RequestSellerReportOrders {
-    int64 startDateTime = 1;
-    string Status = 2;
+    string sellerId = 1;
+    int64 startDateTime = 2;
+    string Status = 3;
 }
 
 message ResponseDownloadFile {
@@ -51,7 +52,7 @@ message RequestBackOfficeReportOrderItems {
 
 message ResponseOrderDetailView {
     string orderId = 1;
-    string createdAt = 2;
+    int64 createdAt = 2;
     string ip = 3;
     string status = 4;
     PaymentInfo payment = 5;
@@ -64,9 +65,10 @@ message ItemInfo {
     string itemId = 1;
     string sellerId = 2;
     string inventoryId = 3;
+    int32  quantity   = 4;
     string itemStatus = 5;
     string stepStatus = 6;
-    string updatedAt = 7;
+    int64 updatedAt = 7;
     repeated string actions = 8;
 }
 
@@ -77,7 +79,7 @@ message ShippingInfo {
     string province = 4;
     string neighborhood = 5;
     string address = 6;
-    string postalCode = 7;
+    string zipCode = 7;
 }
 
 message BillingInfo {
@@ -97,16 +99,18 @@ message PaymentInfo {
 message RequestBackOfficeOrdersList {
     uint32 page = 1;
     uint32 perPage = 2;
-    string fieldSort = 3;
+    string sort = 3;
+    int32  direction = 4;
 }
 
 message ResponseBackOfficeOrdersList {
-    repeated BackOfficeOrdersList orders = 1;
+    int64   total = 1;
+    repeated BackOfficeOrdersList orders = 2;
 }
 
 message BackOfficeOrdersList {
     string orderId = 1;
-    string purchasedOn = 2;
+    int64  purchasedOn = 2;
     int32  basketSize = 3;
     string billTo = 4;
     string shipTo = 5;
@@ -114,7 +118,7 @@ message BackOfficeOrdersList {
     int64  paidAmount = 7;
     bool   voucher = 8;
     string status = 9;
-    string lastUpdated = 10;
+    int64  lastUpdated = 10;
     repeated string actions = 11;
 }
 
@@ -130,13 +134,13 @@ message RequestNewOrder {
 
 message Amount {
     uint64  total           = 1;
-    uint64  original        = 2;
-    uint64  special         = 3;
-    uint64  shipmentTotal   = 4;
-    string  currency        = 5;
-    string  paymentMethod   = 6;
-    string  paymentOption   = 7;
-    Voucher voucher         = 8;
+    uint64  subtotal        = 2;
+    uint64  discount        = 3;
+    uint64  shipmentTotal   = 6;
+    string  currency        = 7;
+    string  paymentMethod   = 8;
+    string  paymentOption   = 9;
+    Voucher voucher         = 10;
 }
 
 message Voucher {
@@ -182,16 +186,18 @@ message FinanceInfo {
 }
 
 message Address {
-    string address = 1;
-    string phone = 2;
-    string mobile = 3;
-    string country = 4;
-    string city = 5;
-    string province = 6;
-    string neighbourhood = 7;
-    string lat = 8;
-    string long = 9;
-    string zipCode = 10;
+    string firstName = 1;
+    string lastName = 2;
+    string address = 3;
+    string phone = 4;
+    string mobile = 5;
+    string country = 6;
+    string city = 7;
+    string province = 8;
+    string neighbourhood = 9;
+    string lat = 10;
+    string long = 11;
+    string zipCode = 12;
 }
 
 message PriceInfo {
@@ -199,8 +205,9 @@ message PriceInfo {
     uint64 total = 2;
     uint64 original = 3;
     uint64 special = 4;
-    float  sellerCommission = 5;
-    string currency = 6;
+    uint64 discount = 5;
+    float  sellerCommission = 6;
+    string currency = 7;
 }
 
 message ShippingSpec {

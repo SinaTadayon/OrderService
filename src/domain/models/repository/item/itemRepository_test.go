@@ -172,8 +172,8 @@ func createOrder() entities.Order {
 		BuyerInfo: buyerInfo,
 		Amount: entities.Amount {
 			Total:         75400000,
-			Original:      73000000,
-			Special:       15600000,
+			Subtotal:      73000000,
+			Discount:      15600000,
 			Currency:      "RR",
 			ShipmentTotal: 5700000,
 			PaymentMethod: "IPG",
