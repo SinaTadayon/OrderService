@@ -170,16 +170,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 }
 
 func (paymentPending paymentPendingStep) releasedStock(ctx context.Context, order *entities.Order) {
-	itemStocks := make(map[string]int, len(order.Items))
-	for i:= 0; i < len(order.Items); i++ {
-		if value, ok := itemStocks[order.Items[i].InventoryId]; ok {
-			itemStocks[order.Items[i].InventoryId] = value + 1
-		} else {
-			itemStocks[order.Items[i].InventoryId] = 1
-		}
-	}
-
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, StockReleased)
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, StockReleased)
 	futureData := iPromise.Data()
 	if futureData == nil {
 		paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, steps.ClosedStatus)

@@ -50,15 +50,7 @@ func (shipmentRejectedBySeller shipmentRejectedBySellerStep) ProcessOrder(ctx co
 		shipmentRejectedBySeller.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, true)
 	}
 
-	var itemStocks map[string]int
-	itemStocks = make(map[string]int, len(order.Items))
-	for i:= 0; i < len(order.Items); i++ {
-		if _, ok := itemStocks[order.Items[i].InventoryId]; !ok {
-			itemStocks[order.Items[i].InventoryId] = int(order.Items[i].Quantity)
-		}
-	}
-
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, StockSettlement)
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, StockSettlement)
 	futureData := iPromise.Data()
 	if futureData == nil {
 		shipmentRejectedBySeller.updateOrderItemsProgress(ctx, &order, itemsId, StockSettlement, false, steps.ClosedStatus)

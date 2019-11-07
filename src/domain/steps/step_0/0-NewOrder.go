@@ -95,15 +95,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	var itemStocks map[string]int
-	itemStocks = make(map[string]int, len(order.Items))
-	for i:= 0; i < len(order.Items); i++ {
-		if _, ok := itemStocks[order.Items[i].InventoryId]; !ok {
-			itemStocks[order.Items[i].InventoryId] = int(order.Items[i].Quantity)
-		}
-	}
-
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, StockReserved)
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, StockReserved)
 	futureData := iPromise.Data()
 	if futureData == nil {
 		newOrderProcessing.UpdateAllOrderStatus(ctx, order, nil, steps.ClosedStatus, true)
@@ -155,16 +147,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessOrder(ctx context.Contex
 	panic("implementation required")
 }
 func (newOrderProcessing newOrderProcessingStep) releasedStock(ctx context.Context, order *entities.Order) {
-	itemStocks := make(map[string]int, len(order.Items))
-	for i:= 0; i < len(order.Items); i++ {
-		if value, ok := itemStocks[order.Items[i].InventoryId]; ok {
-			itemStocks[order.Items[i].InventoryId] = value + 1
-		} else {
-			itemStocks[order.Items[i].InventoryId] = 1
-		}
-	}
-
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, StockReleased)
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, StockReleased)
 	futureData := iPromise.Data()
 	if futureData == nil {
 		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, steps.ClosedStatus)

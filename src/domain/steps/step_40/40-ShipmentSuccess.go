@@ -48,15 +48,7 @@ func (shipmentSuccess shipmentSuccessStep) ProcessMessage(ctx context.Context, r
 func (shipmentSuccess shipmentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	shipmentSuccess.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
 
-	var itemStocks map[string]int
-	itemStocks = make(map[string]int, len(order.Items))
-	for i:= 0; i < len(order.Items); i++ {
-		if _, ok := itemStocks[order.Items[i].InventoryId]; !ok {
-			itemStocks[order.Items[i].InventoryId] = int(order.Items[i].Quantity)
-		}
-	}
-
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, itemStocks, StockSettlement)
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, StockSettlement)
 	futureData := iPromise.Data()
 	if futureData == nil {
 		shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, StockSettlement, false, steps.ClosedStatus)

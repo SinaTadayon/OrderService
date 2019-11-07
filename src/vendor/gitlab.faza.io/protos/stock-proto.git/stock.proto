@@ -9,8 +9,8 @@ service Stock {
     // reserve stock from available stock
     rpc StockReserve (StockRequest) returns (StockResponse) {}
 
-    // remove stock from available stocks
-    rpc StockRemove (StockRequest) returns (StockResponse) {}
+    // reserve stock from available stock
+    rpc StockRelease (StockRequest) returns (StockResponse) {}
 
     // settle a stock, removes stock from reserved stock
     rpc StockSettle (StockRequest) returns (StockResponse) {}

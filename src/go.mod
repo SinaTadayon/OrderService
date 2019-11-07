@@ -14,7 +14,7 @@ require (
 	gitlab.faza.io/go-framework/mongoadapter v0.0.8
 	gitlab.faza.io/protos/order v0.0.39
 	gitlab.faza.io/protos/payment-gateway v0.0.7
-	gitlab.faza.io/protos/stock-proto.git v0.0.1
+	gitlab.faza.io/protos/stock-proto.git v0.0.3
 	go.mongodb.org/mongo-driver v1.1.2
 	google.golang.org/grpc v1.24.0
 )
