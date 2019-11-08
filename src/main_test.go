@@ -239,7 +239,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		SellerId: "678912",
 	}
 
-	item1.InventoryId = "1item.Price.total = 220000001111-33333"
+	item1.InventoryId = "1111-33333"
 	item1.Brand = "Lenovo"
 	item1.Category = "Electronic/laptop"
 	item1.Title = "Lenove G503 i7, 256SSD, 32G Ram"
@@ -382,21 +382,22 @@ func doUpdateOrderItemsProgress(order *entities.Order, index int,
 //	assert.Nil(t, err)
 //}
 
-//func TestNewOrderRequest(t *testing.T) {
-//	//ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
-//	ctx, _ := context.WithCancel(context.Background())
-//	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
-//		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
-//	assert.Nil(t, err)
-//	defer grpcConn.Close()
-//
-//	requestNewOrder := createRequestNewOrder()
-//	OrderService := pb.NewOrderServiceClient(grpcConn)
-//	resOrder, err := OrderService.NewOrder(ctx, requestNewOrder)
-//
-//	assert.Nil(t, err)
-//	assert.NotEmpty(t, resOrder.CallbackUrl, "CallbackUrl is empty")
-//}
+func TestNewOrderRequest(t *testing.T) {
+	//ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	assert.Nil(t, err)
+	defer grpcConn.Close()
+	defer removeCollection()
+
+	requestNewOrder := createRequestNewOrder()
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	resOrder, err := OrderService.NewOrder(ctx, requestNewOrder)
+
+	assert.Nil(t, err)
+	assert.NotEmpty(t, resOrder.CallbackUrl, "CallbackUrl is empty")
+}
 
 func TestPaymentGateway(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
@@ -456,13 +457,13 @@ func TestOperatorShipmentPending_Success(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, steps.InProgressStatus, false, "32.Shipment_Delivered", 32)
-
+	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, steps.InProgressStatus)
 	order , err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
-	for i:=0 ; i < len(order.Items); i++ {
-		order.Items[i].Status = "32.Shipment_Delivered"
-	}
+	//for i:=0 ; i < len(order.Items); i++ {
+	//	order.Items[i].Status = "32.Shipment_Delivered"
+	//}
 	_ , err = global.Singletons.OrderRepository.Save(*order)
 	assert.Nil(t, err, "save failed")
 
@@ -501,13 +502,13 @@ func TestOperatorShipmentPending_Failed(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "32.Shipment_Delivered", 32)
-
+	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, steps.InProgressStatus)
 	order , err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
-	for i:=0 ; i < len(order.Items); i++ {
-		order.Items[i].Status = "32.Shipment_Delivered"
-	}
+	//for i:=0 ; i < len(order.Items); i++ {
+	//	order.Items[i].Status = "32.Shipment_Delivered"
+	//}
 	_ , err = global.Singletons.OrderRepository.Save(*order)
 	assert.Nil(t, err, "save failed")
 
@@ -545,15 +546,13 @@ func TestSellerApprovalPending_Success(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "20.Seller_Approval_Pending", 20)
-	_ , err = global.Singletons.OrderRepository.Save(*newOrder)
-	assert.Nil(t, err, "save failed")
-
+	updateOrderItemsProgress(newOrder, nil, "ApprovalPending", true, steps.InProgressStatus)
 	order , err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
-	for i:=0 ; i < len(order.Items); i++ {
-		order.Items[i].Status = "20.Seller_Approval_Pending"
-	}
+	//for i:=0 ; i < len(order.Items); i++ {
+	//	order.Items[i].Status = "20.Seller_Approval_Pending"
+	//}
 	_ , err = global.Singletons.OrderRepository.Save(*order)
 	assert.Nil(t, err, "save failed")
 
@@ -596,13 +595,14 @@ func TestSellerApprovalPending_Failed(t *testing.T) {
 	assert.Nil(t, err, "save failed")
 
 	updateOrderStatus(order, nil, "IN_PROGRESS", false, "20.Seller_Approval_Pending", 20)
+	updateOrderItemsProgress(order, nil, "ApprovalPending", true, steps.InProgressStatus)
 	_ , err = global.Singletons.OrderRepository.Save(*order)
 	assert.Nil(t, err, "save failed")
 
 
-	for i:=0 ; i < len(order.Items); i++ {
-		order.Items[i].Status = "20.Seller_Approval_Pending"
-	}
+	//for i:=0 ; i < len(order.Items); i++ {
+	//	order.Items[i].Status = "20.Seller_Approval_Pending"
+	//}
 	_ , err = global.Singletons.OrderRepository.Save(*order)
 	assert.Nil(t, err, "save failed")
 

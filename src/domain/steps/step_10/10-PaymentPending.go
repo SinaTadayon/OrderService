@@ -115,7 +115,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, false, steps.ClosedStatus)
 			paymentPending.releasedStock(ctx, &order)
 			if err := paymentPending.persistOrder(ctx, &order); err != nil {}
-			logger.Err("PaymentService.OrderPayment in orderPaymentState failed, order: %v, error", order, futureData.Ex.Error())
+			logger.Err("PaymentService.OrderPayment in orderPaymentState failed, order: %v, error: %s", order, futureData.Ex.Error())
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
 			returnChannel <- promise.FutureData{Data:nil, Ex:futureData.Ex}

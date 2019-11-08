@@ -1,383 +1,19 @@
-package order_repository
+package stock_service
 
 import (
+	"context"
 	"github.com/stretchr/testify/assert"
 	"gitlab.faza.io/go-framework/logger"
-	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
-	"go.mongodb.org/mongo-driver/bson"
+	stockProto "gitlab.faza.io/protos/stock-proto.git"
 	"os"
 	"testing"
 	"time"
 )
 
 var config *configs.Cfg
-var orderRepository IOrderRepository
-
-func init() {
-	var err error
-	var path string
-	if os.Getenv("APP_ENV") == "dev" {
-		path = "../../../../testdata/.env"
-	} else {
-		path = ""
-	}
-
-	config, err = configs.LoadConfig(path)
-	if err != nil {
-		logger.Err(err.Error())
-		panic("configs.LoadConfig failed, " + err.Error())
-	}
-
-	// store in mongo
-	mongoConf := &mongoadapter.MongoConfig{
-		Host:     config.Mongo.Host,
-		Port:     config.Mongo.Port,
-		Username: config.Mongo.User,
-		//Password:     App.Cfg.Mongo.Pass,
-		ConnTimeout:  time.Duration(config.Mongo.ConnectionTimeout),
-		ReadTimeout:  time.Duration(config.Mongo.ReadTimeout),
-		WriteTimeout: time.Duration(config.Mongo.WriteTimeout),
-		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime),
-		MaxPoolSize: uint64(config.Mongo.MaxPoolSize),
-		MinPoolSize: uint64(config.Mongo.MinPoolSize),
-	}
-
-	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
-	if err != nil {
-		logger.Err("NewOrderRepository Mongo: %v", err.Error())
-		panic("mongo adapter creation failed, " + err.Error())
-	}
-
-	orderRepository, err = NewOrderRepository(mongoDriver)
-	if err != nil {
-		panic("create order repository failed")
-	}
-}
-
-func TestSaveOrderRepository(t *testing.T) {
-
-	//defer removeCollection()
-	order := createOrder()
-	//res, _ := json.Marshal(order)
-	//logger.Audit("order model: %s",res)
-	order1, err := orderRepository.Save(order)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
-}
-
-func TestUpdateOrderRepository(t *testing.T) {
-
-	defer removeCollection()
-	order := createOrder()
-	order1, err := orderRepository.Save(order)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
-
-	order1.BuyerInfo.FirstName = "Siamak"
-	order1.BuyerInfo.LastName = "Marjoeee"
-
-	order2, err := orderRepository.Save(*order1)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.Equal(t, "Siamak", order2.BuyerInfo.FirstName)
-	assert.Equal(t, "Marjoeee", order2.BuyerInfo.LastName)
-}
-
-func TestUpdateOrderRepository_Failed(t *testing.T) {
-
-	defer removeCollection()
-	order := createOrder()
-	timeTmp := time.Now().UTC()
-	order.DeletedAt = &timeTmp
-	order1, err := orderRepository.Save(order)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
-
-	order1.BuyerInfo.FirstName = "Siamak"
-	_, err = orderRepository.Save(*order1)
-	assert.Error(t, err)
-	assert.Equal(t, err, errorUpdateFailed)
-}
-
-func TestInsertOrderRepository_Success(t *testing.T) {
-	//defer removeCollection()
-	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
-}
-
-func TestInsertOrderRepository_Failed(t *testing.T) {
-	defer removeCollection()
-	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
-	_, err1 := orderRepository.Insert(*order1)
-	assert.NotNil(t, err1)
-}
-
-func TestFindAllOrderRepository(t *testing.T) {
-	defer removeCollection()
-	var err error
-	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-
-	orders, err := orderRepository.FindAll()
-	assert.Nil(t, err)
-	assert.Equal(t, len(orders), 3)
-}
-
-func TestFindAllWithSortOrderRepository(t *testing.T) {
-	defer removeCollection()
-	var err error
-	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	order.BuyerInfo.FirstName = "AAAA"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-
-	orders, err := orderRepository.FindAllWithSort("buyerInfo.firstName", 1)
-	assert.Nil(t, err)
-	assert.Equal(t, orders[0].BuyerInfo.FirstName, "AAAA")
-}
-
-func TestFindAllWithPageAndPerPageRepository_success(t *testing.T) {
-	defer removeCollection()
-	var err error
-	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	orders, _, err := orderRepository.FindAllWithPage(2,2)
-	assert.Nil(t, err)
-	assert.Equal(t, len(orders), 1)
-}
-
-func TestFindAllWithPageAndPerPageRepository_failed(t *testing.T) {
-	defer removeCollection()
-	var err error
-	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	_, _, err = orderRepository.FindAllWithPage(1002,2000)
-	assert.NotNil(t, err)
-	assert.Equal(t, err, errorPageNotAvailable)
-}
-
-func TestFindAllWithPageAndPerPageAndSortRepository_success(t *testing.T) {
-	defer removeCollection()
-	var err error
-	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	order.BuyerInfo.FirstName = "AAAA"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-
-	orders, _, err := orderRepository.FindAllWithPageAndSort(1,2, "buyerInfo.firstName", 1)
-	assert.Nil(t, err)
-	assert.Equal(t, len(orders), 2)
-	assert.Equal(t,orders[0].BuyerInfo.FirstName, "AAAA")
-}
-
-func TestFindByIdRepository(t *testing.T) {
-	defer removeCollection()
-	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err)
-	_, err1 := orderRepository.FindById(order1.OrderId)
-	assert.Nil(t, err1)
-}
-
-func TestExistsByIdRepository(t *testing.T) {
-	defer removeCollection()
-	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err)
-	res, err1 := orderRepository.ExistsById(order1.OrderId)
-	assert.Nil(t, err1)
-	assert.Equal(t, res, true)
-}
-
-func TestCountRepository(t *testing.T) {
-	defer removeCollection()
-	var err error
-	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-
-	total, err := orderRepository.Count()
-	assert.Nil(t, err)
-	assert.Equal(t, total, int64(2))
-}
-
-func TestDeleteOrderRepository(t *testing.T) {
-	defer removeCollection()
-	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order1, err1 := orderRepository.Delete(*order1)
-	assert.Nil(t, err1)
-	assert.NotNil(t, order1.DeletedAt)
-}
-
-func TestDeleteAllRepository(t *testing.T) {
-	defer removeCollection()
-	var order entities.Order
-	order = createOrder()
-	_, err := orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	err = orderRepository.DeleteAll()
-	assert.Nil(t, err)
-}
-
-func TestRemoveOrderRepository(t *testing.T) {
-	defer removeCollection()
-	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err)
-	err = orderRepository.Remove(*order1)
-	assert.Nil(t, err)
-}
-
-func TestFindByFilterRepository(t *testing.T) {
-	defer removeCollection()
-	var err error
-	order := createOrder()
-	order.BuyerInfo.FirstName = "Reza"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	order.BuyerInfo.FirstName = "Hosein"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-
-	orders, err := orderRepository.FindByFilter(func() interface{} {
-		return bson.D{{"buyerInfo.firstName", "Reza"},{"deletedAt", nil}}
-	})
-
-	assert.Nil(t, err)
-	assert.Equal(t, orders[0].BuyerInfo.FirstName, "Reza")
-}
-
-func TestFindByFilterWithSortOrderRepository(t *testing.T) {
-	defer removeCollection()
-	var err error
-	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	order.BuyerInfo.FirstName = "AAAA"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-
-	orders, err := orderRepository.FindByFilterWithSort(func() (interface{}, string, int) {
-		return bson.D{{"buyerInfo.firstName", "AAAA"},{"deletedAt", nil}}, "buyerInfo.firstName", 1
-	})
-	assert.Nil(t, err)
-	assert.Equal(t, orders[0].BuyerInfo.FirstName, "AAAA")
-}
-
-func TestFindByFilterWithPageAndPerPageRepository_success(t *testing.T) {
-	defer removeCollection()
-	var err error
-	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	orders, _, err := orderRepository.FindByFilterWithPage(func() interface{} {
-		return bson.D{{},{"deletedAt", nil}}
-	}, 2,2)
-	assert.Nil(t, err)
-	assert.Equal(t, len(orders), 1)
-}
-
-func TestFindByFilterWithPageAndPerPageRepository_failed(t *testing.T) {
-	defer removeCollection()
-	var err error
-	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	_, _, err = orderRepository.FindByFilterWithPage(func() interface{} {
-		return bson.D{{},{"deletedAt", nil}}
-	}, 20002,2000)
-	assert.NotNil(t, err)
-	assert.Equal(t, err, errorPageNotAvailable)
-}
-
-func TestFindByFilterWithPageAndPerPageAndSortRepository_success(t *testing.T) {
-	defer removeCollection()
-	var err error
-	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order = createOrder()
-	order.BuyerInfo.FirstName = "AAAA"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-
-	orders, _, err := orderRepository.FindByFilterWithPageAndSort(func() (interface{}, string, int) {
-		return bson.D{{},{"deletedAt", nil}}, "buyerInfo.firstName", 1},1,2)
-	assert.Nil(t, err)
-	assert.Equal(t, len(orders), 2)
-	assert.Equal(t,orders[0].BuyerInfo.FirstName, "AAAA")
-}
-
-func removeCollection() {
-	orderRepository.RemoveAll()
-}
+var stock iStockServiceImpl
 
 func createOrder() entities.Order {
 	//currentTime := time.Now().UTC()
@@ -489,6 +125,7 @@ func createOrder() entities.Order {
 				Category:    "Electronic",
 				Image:       "",
 				Returnable:  false,
+				Quantity: 5,
 				DeletedAt:   nil,
 				Attributes:	 map[string]string {
 					"Quantity":  "0",
@@ -624,6 +261,7 @@ func createOrder() entities.Order {
 				Category:    "Electronic",
 				Image:       "",
 				Returnable:  true,
+				Quantity: 5,
 				DeletedAt:   nil,
 				Attributes:	 map[string]string {
 					"Quantity":  "0",
@@ -757,4 +395,48 @@ func createOrder() entities.Order {
 	}
 
 	return newOrder
+}
+
+func init() {
+	var err error
+	var path string
+	if os.Getenv("APP_ENV") == "dev" {
+		path = "../../../testdata/.env"
+	} else {
+		path = ""
+	}
+
+	config, err = configs.LoadConfig(path)
+	if err != nil {
+		logger.Err(err.Error())
+		panic("configs.LoadConfig failed")
+	}
+
+	stock = iStockServiceImpl{nil, nil,
+		config.StockService.Address, config.StockService.Port}
+
+	if err := stock.connectToStockService(); err != nil {
+		logger.Err(err.Error())
+		panic("stockService.connectToStockService() failed")
+	}
+}
+
+func TestStockService_ReservedSuccess(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+
+	order := createOrder()
+
+	request := stockProto.StockRequest{
+		Quantity:    5,
+		InventoryId: order.Items[0].InventoryId,
+	}
+	_, err := stock.stockService.StockAllocate(ctx, &request)
+	assert.Nil(t, err)
+
+	promise := stock.BatchStockActions(ctx, order, "StockReserved")
+	futuredata := promise.Data()
+
+	assert.Nil(t, futuredata.Ex)
+	assert.Nil(t, futuredata.Data)
+
 }

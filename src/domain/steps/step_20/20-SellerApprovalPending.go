@@ -135,14 +135,16 @@ func (sellerApprovalPending sellerApprovalPendingStep) validateAction(ctx contex
 	if itemsId != nil && len(itemsId) > 0 {
 		for _, id := range itemsId {
 			for i := 0; i < len(order.Items); i++ {
-				if order.Items[i].ItemId == id && order.Items[i].Status != sellerApprovalPending.Name() {
+				length := len(order.Items[i].Progress.StepsHistory)-1
+				if order.Items[i].ItemId == id && order.Items[i].Progress.StepsHistory[length].Name != sellerApprovalPending.Name() {
 						return false
 				}
 			}
 		}
 	} else {
 		for i := 0; i < len(order.Items); i++ {
-			if order.Items[i].Status != sellerApprovalPending.Name() {
+			length := len(order.Items[i].Progress.StepsHistory) - 1
+			if order.Items[i].Progress.StepsHistory[length].Name != sellerApprovalPending.Name() {
 				return false
 			}
 		}

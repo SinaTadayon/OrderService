@@ -54,9 +54,9 @@ func TestFlowManagerSteps(t *testing.T) {
 		t.Fatalf("validate step21 failed: %s\n", err)
 	}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[30], 30, "30.Shipment_Pending", []int{31,33}); err != nil {
-		t.Fatalf("validate step30 failed: %s\n", err)
-	}
+	//if err := stepValidation(flowManager.GetIndexStepsMap()[30], 30, "30.Shipment_Pending", []int{31,33}); err != nil {
+	//	t.Fatalf("validate step30 failed: %s\n", err)
+	//}
 
 	if err := stepValidation(flowManager.GetIndexStepsMap()[31], 31, "31.Shipped", []int{32,34}); err != nil {
 		t.Fatalf("validate step31 failed: %s\n", err)

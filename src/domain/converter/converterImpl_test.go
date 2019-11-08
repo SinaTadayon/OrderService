@@ -28,8 +28,8 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	}
 
 	order.Amount.Total = 600000
-	order.Amount.Original = 550000
-	order.Amount.Special = 50000
+	order.Amount.Subtotal = 550000
+	order.Amount.Discount = 50000
 	order.Amount.Currency = "RR"
 	order.Amount.PaymentMethod = "IPG"
 	order.Amount.PaymentOption = "AAP"

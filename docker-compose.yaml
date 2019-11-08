@@ -1,6 +1,6 @@
 version: '3.7'
 services:
-  payment_pending:
+  order-service:
     image: ${TAG}
     restart: always
     ports:
@@ -11,65 +11,65 @@ services:
     environment:
       - PORT=${PORT}
       - APP_ENV=dev
-      - PAYMENT_KAFKA_CONSUMER_TOPIC=payment-pending
-      - PAYMENT_KAFKA_CONSUMER_GROUP=payment-pending
+#      - PAYMENT_KAFKA_CONSUMER_TOPIC=payment-pending
+#      - PAYMENT_KAFKA_CONSUMER_GROUP=payment-pending
     env_file:
       - ./src/.env
 
-  payment_success:
-    image: ${TAG}
-    restart: always
-    ports:
-      - 40001:40000
-    security_opt:
-      - seccomp:unconfined
-    environment:
-      - APP_ENV=dev
-      - PAYMENT_KAFKA_CONSUMER_TOPIC=payment-success
-      - PAYMENT_KAFKA_CONSUMER_GROUP=payment-success
-    env_file:
-      - ./src/.env
-
-  seller_approval_pending:
-    image: ${TAG}
-    restart: always
-    ports:
-      - 40002:40000
-    security_opt:
-      - seccomp:unconfined
-    environment:
-      - APP_ENV=dev
-      - PAYMENT_KAFKA_CONSUMER_TOPIC=seller-approval-pending
-      - PAYMENT_KAFKA_CONSUMER_GROUP=seller-approval-pending
-    env_file:
-      - ./src/.env
-
-  zoo1:
-    image: registry.faza.io/zookeeper:latest
-    hostname: zoo1
-    ports:
-      - "2181:2181"
-    environment:
-      ZOO_MY_ID: 1
-      ZOO_PORT: 2181
-      ZOO_SERVERS: server.1=zoo1:2888:3888
-
-  kafka1:
-    restart: always
-    image: registry.faza.io/kafka:latest
-    hostname: kafka1
-    ports:
-      - "9092:9092"
-    environment:
-      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_EXTERNAL://${DOCKERIP:-127.0.0.1}:9092,LISTENER_DOCKER_INTERNAL://kafka1:19092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
-      KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181"
-      KAFKA_BROKER_ID: 1
-      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+#  payment_success:
+#    image: ${TAG}
+#    restart: always
+#    ports:
+#      - 40001:40000
+#    security_opt:
+#      - seccomp:unconfined
+#    environment:
+#      - APP_ENV=dev
+#      - PAYMENT_KAFKA_CONSUMER_TOPIC=payment-success
+#      - PAYMENT_KAFKA_CONSUMER_GROUP=payment-success
+#    env_file:
+#      - ./src/.env
+#
+#  seller_approval_pending:
+#    image: ${TAG}
+#    restart: always
+#    ports:
+#      - 40002:40000
+#    security_opt:
+#      - seccomp:unconfined
+#    environment:
+#      - APP_ENV=dev
+#      - PAYMENT_KAFKA_CONSUMER_TOPIC=seller-approval-pending
+#      - PAYMENT_KAFKA_CONSUMER_GROUP=seller-approval-pending
+#    env_file:
+#      - ./src/.env
+#
+#  zoo1:
+#    image: registry.faza.io/zookeeper:latest
+#    hostname: zoo1
+#    ports:
+#      - "2181:2181"
+#    environment:
+#      ZOO_MY_ID: 1
+#      ZOO_PORT: 2181
+#      ZOO_SERVERS: server.1=zoo1:2888:3888
+#
+#  kafka1:
+#    restart: always
+#    image: registry.faza.io/kafka:latest
+#    hostname: kafka1
+#    ports:
+#      - "9092:9092"
+#    environment:
+#      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_EXTERNAL://${DOCKERIP:-127.0.0.1}:9092,LISTENER_DOCKER_INTERNAL://kafka1:19092
+#      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
+#      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+#      KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181"
+#      KAFKA_BROKER_ID: 1
+#      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+#      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+#    volumes:
+#      - /var/run/docker.sock:/var/run/docker.sock
 
   mongo:
     image: registry.faza.io/mongo:4.0.10
@@ -79,3 +79,17 @@ services:
     image: registry.faza.io/mongo-express:0.49
     ports:
       - 8081:8081
+  redis:
+    image: registry.faza.io/redis:5.0
+    ports:
+      - 2079:6379
+
+  stockservice:
+#    image: registry.faza.io/stockservice:0.1
+    image: stockservice
+    ports:
+      - 9098:9098
+  paymentservice:
+    image: registry.faza.io/payment-service
+    ports:
+      - 3010:3010

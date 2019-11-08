@@ -1302,13 +1302,31 @@ func (flowManager iFlowManagerImpl) BackOfficeOrderDetailView(ctx context.Contex
 			InventoryId:          item.InventoryId,
 			Quantity:             item.Quantity,
 			ItemStatus:           item.Status,
+			Price:				  &message.PriceInfo{
+				Unit:             item.Price.Unit,
+				Total:            item.Price.Total,
+				Original:         item.Price.Original,
+				Special:          item.Price.Special,
+				Discount:         item.Price.Discount,
+				SellerCommission: item.Price.SellerCommission,
+				Currency:         item.Price.Currency,
+			},
 			UpdatedAt:            item.UpdatedAt.Unix(),
 			Actions:     		  []string{"success", "cancel"},
 		}
 
 		lastStep := item.Progress.StepsHistory[len(item.Progress.StepsHistory)-1]
-		lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
-		itemInfo.StepStatus = lastAction.Name
+
+		if lastStep.ActionHistory != nil {
+			lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
+			itemInfo.StepStatus = lastAction.Name
+		} else {
+			itemInfo.StepStatus = "none"
+			logger.Audit("BackOfficeOrderDetailView() => Action History is nil, orderId: %s, itemId: %s", order.OrderId, item.ItemId)
+		}
+
+		//lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
+		//itemInfo.StepStatus = lastAction.Name
 
 		response.Items = append(response.Items, itemInfo)
 	}
@@ -1353,19 +1371,21 @@ func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSelle
 
 	for _, order :=range orders {
 		for _, item := range order.Items {
-			itemReport := &entities.SellerExportOrders{
-				OrderId:     order.OrderId,
-				ItemId:      item.ItemId,
-				ProductId:   item.InventoryId[0:7],
-				InventoryId: item.InventoryId,
-				PaidPrice:   item.Price.Total,
-				Commission:  item.Price.SellerCommission,
-				Category:    item.Category,
-				Status:      item.Status,
-				CreatedAt:   item.CreatedAt.String(),
-				UpdatedAt:   item.UpdatedAt.String(),
+			if item.Status == req.Status {
+				itemReport := &entities.SellerExportOrders{
+					OrderId:     order.OrderId,
+					ItemId:      item.ItemId,
+					ProductId:   item.InventoryId[0:8],
+					InventoryId: item.InventoryId,
+					PaidPrice:   item.Price.Total,
+					Commission:  item.Price.SellerCommission,
+					Category:    item.Category,
+					Status:      item.Status,
+					CreatedAt:   item.CreatedAt.String(),
+					UpdatedAt:   item.UpdatedAt.String(),
+				}
+				reports = append(reports, itemReport)
 			}
-			reports = append(reports, itemReport)
 		}
 	}
 
@@ -1506,7 +1526,7 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 			itemReport := &entities.BackOfficeExportItems{
 				ItemId:      item.ItemId,
 				InventoryId: item.InventoryId,
-				ProductId:   item.InventoryId[0:7],
+				ProductId:   item.InventoryId[0:8],
 				BuyerId:     order.BuyerInfo.BuyerId,
 				BuyerPhone:  order.BuyerInfo.Phone,
 				SellerId:    item.SellerInfo.SellerId,

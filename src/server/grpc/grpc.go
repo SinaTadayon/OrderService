@@ -218,7 +218,7 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 						Status:      &pb.Status{
 							OrderStatus: order.Status,
 							ItemStatus:  orderItem.Status,
-							StepStatus:  "",
+							StepStatus:  "none",
 						},
 						CreatedAt:   orderItem.CreatedAt.Format(ISO8601),
 						UpdatedAt:   orderItem.UpdatedAt.Format(ISO8601),
@@ -244,8 +244,14 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 						},
 					}
 					lastStep := orderItem.Progress.StepsHistory[len(orderItem.Progress.StepsHistory)-1]
-					lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
-					newResponseItem.Status.StepStatus = lastAction.Name
+					if lastStep.ActionHistory != nil {
+						lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
+						newResponseItem.Status.StepStatus = lastAction.Name
+					} else {
+						newResponseItem.Status.StepStatus = "none"
+						logger.Audit("SellerFindAllItems() => Action History is nil, orderId: %s, itemId: %s", order.OrderId, orderItem.ItemId)
+					}
+
 					sellerItemMap[orderItem.InventoryId] = newResponseItem
 				}
 			}
@@ -357,8 +363,14 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 				}
 
 				lastStep := item.Progress.StepsHistory[len(item.Progress.StepsHistory)-1]
-				lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
-				newResponseOrderItem.StepStatus = lastAction.Name
+
+				if lastStep.ActionHistory != nil {
+					lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
+					newResponseOrderItem.StepStatus = lastAction.Name
+				} else {
+					newResponseOrderItem.StepStatus = "none"
+					logger.Audit("BuyerFindAllOrders() => Action History is nil, orderId: %s, itemId: %s", order.OrderId, item.ItemId)
+				}
 				orderItemMap[item.InventoryId] = newResponseOrderItem
 			}
 		}
