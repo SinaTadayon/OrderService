@@ -7,8 +7,8 @@ stages:
   - build
   - cleanup_build
   - test
-  - cleanup_test
   - push_image
+  - deploy
 
 1-build:
   stage: build
@@ -31,21 +31,16 @@ stages:
 3-test:
   stage: test
   script:
-    - make test
+    - export $(cat ./testdata/.env | xargs) && make test
   tags:
     - go-service
-
-4-cleanup_test:
-  stage: cleanup_test
-  tags:
-    - go-service
-  script:
+  after_script:
     - make compose-down
     - docker system prune -f
     - docker rmi `docker images -qa` || true
     - docker volume rm `docker volume ls -q` || true
 
-5-push_image:
+4-push_image:
   stage: push_image
   tags:
     - go-service
@@ -56,5 +51,24 @@ stages:
   dependencies:
     - 3-test
   only:
-    - staging
-    - master
+    refs:
+      - staging
+      - master
+      - prelive
+
+5-deploy:
+  stage: deploy
+  tags:
+    - go-service
+  script:
+    - ssh root@staging-swarm-manager1.faza.io "cd /root/faza-stack/apps/ && TAG=$CI_COMMIT_REF_NAME bash deploy-stg.sh 2> /dev/null";
+      sleep 5;
+
+  when: on_success
+  dependencies:
+    - 4-push_image
+  only:
+    refs:
+      - staging
+      - master
+      - prelive
