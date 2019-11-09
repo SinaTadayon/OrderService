@@ -15,6 +15,7 @@ import (
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	grpc_server "gitlab.faza.io/order-project/order-service/server/grpc"
+	stockProto "gitlab.faza.io/protos/stock-proto.git"
 	"google.golang.org/grpc"
 	"io"
 	"os"
@@ -134,11 +135,20 @@ func init() {
 	App.grpcServer = grpc_server.NewServer(App.Config.GRPCServer.Address, uint16(App.Config.GRPCServer.Port), App.flowManager)
 
 	global.Singletons.Converter = converter.NewConverter()
-	global.Singletons.StockService = stock_service.NewStockService(App.Config.StockService.Address, App.Config.StockService.Port)
-	global.Singletons.PaymentService = payment_service.NewPaymentService(App.Config.PaymentGatewayService.Address,
-		App.Config.PaymentGatewayService.Port)
-	global.Singletons.NotifyService = notify_service.NewNotificationService()
 
+	if App.Config.StockService.MockEnabled {
+		global.Singletons.StockService = stock_service.NewStockServiceMock()
+	} else {
+		global.Singletons.StockService = stock_service.NewStockService(App.Config.StockService.Address, App.Config.StockService.Port)
+	}
+
+	if App.Config.PaymentGatewayService.MockEnabled {
+		global.Singletons.PaymentService = payment_service.NewPaymentServiceMock()
+	} else {
+		global.Singletons.PaymentService = payment_service.NewPaymentService(App.Config.PaymentGatewayService.Address,App.Config.PaymentGatewayService.Port)
+	}
+
+	global.Singletons.NotifyService = notify_service.NewNotificationService()
 	go App.grpcServer.Start()
 }
 
@@ -154,9 +164,9 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order.Amount.Total = 600000
 	order.Amount.Subtotal = 550000
 	order.Amount.Discount = 50000
-	order.Amount.Currency = "RR"
+	order.Amount.Currency = "IRR"
 	order.Amount.PaymentMethod = "IPG"
-	order.Amount.PaymentOption = "AAP"
+	order.Amount.PaymentOption = "asanpardakht"
 	order.Amount.ShipmentTotal = 700000
 	order.Amount.Voucher = &pb.Voucher{
 		Amount: 40000,
@@ -216,7 +226,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item.Price.Original = 20000000
 	item.Price.SellerCommission = 10
 	item.Price.Unit = 100000
-	item.Price.Currency = "RR"
+	item.Price.Currency = "IRR"
 
 	//Standard, Express, Economy or Sameday.
 	item.Shipment.Details = "پست پیشتاز و تیپاکس برای شهرستان ها و پیک برای تهران به صورت رایگان می باشد"
@@ -228,7 +238,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item.Shipment.CarrierType = "standard"
 	item.Shipment.ShippingCost = 100000
 	item.Shipment.VoucherAmount = 0
-	item.Shipment.Currency = "RR"
+	item.Shipment.Currency = "IRR"
 
 	order.Items = append(order.Items, &item)
 
@@ -261,7 +271,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item1.Price.Original = 200000
 	item1.Price.SellerCommission = 10
 	item1.Price.Unit = 200000
-	item1.Price.Currency = "RR"
+	item1.Price.Currency = "IRR"
 
 	//Standard, Express, Economy or Sameday.
 	item1.Shipment.Details = "پست پیشتاز و تیپاکس برای شهرستان ها و پیک برای تهران به صورت رایگان می باشد"
@@ -273,7 +283,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item1.Shipment.CarrierType = "standard"
 	item1.Shipment.ShippingCost = 100000
 	item1.Shipment.VoucherAmount = 0
-	item1.Shipment.Currency = "RR"
+	item1.Shipment.Currency = "IRR"
 
 	order.Items = append(order.Items, &item1)
 	return order
@@ -382,6 +392,66 @@ func doUpdateOrderItemsProgress(order *entities.Order, index int,
 //	assert.Nil(t, err)
 //}
 
+func addStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) error {
+	if err := global.Singletons.StockService.ConnectToStockService(); err != nil {
+		return err
+	}
+
+	request := stockProto.StockRequest{
+		Quantity:    requestNewOrder.Items[0].Quantity + 100,
+		InventoryId: requestNewOrder.Items[0].InventoryId,
+	}
+
+	if _, err := global.Singletons.StockService.GetStockClient().StockAllocate(ctx, &request); err != nil {
+		return err
+	} else {
+		logger.Audit("Add Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+	}
+
+	request = stockProto.StockRequest{
+		Quantity:    requestNewOrder.Items[1].Quantity + 100,
+		InventoryId: requestNewOrder.Items[1].InventoryId,
+	}
+
+	if _, err := global.Singletons.StockService.GetStockClient().StockAllocate(ctx, &request); err != nil {
+		return err
+	} else {
+		logger.Audit("Add Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+	}
+
+	return nil
+}
+
+func reservedStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) error {
+	if err := global.Singletons.StockService.ConnectToStockService(); err != nil {
+		return err
+	}
+
+	request := stockProto.StockRequest{
+		Quantity:    requestNewOrder.Items[0].Quantity,
+		InventoryId: requestNewOrder.Items[0].InventoryId,
+	}
+
+	if _, err := global.Singletons.StockService.GetStockClient().StockReserve(ctx, &request); err != nil {
+		return err
+	} else {
+		logger.Audit("Reserved Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+	}
+
+	request = stockProto.StockRequest{
+		Quantity:    requestNewOrder.Items[1].Quantity,
+		InventoryId: requestNewOrder.Items[1].InventoryId,
+	}
+
+	if _, err := global.Singletons.StockService.GetStockClient().StockReserve(ctx, &request); err != nil {
+		return err
+	} else {
+		logger.Audit("Reserved Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+	}
+
+	return nil
+}
+
 func TestNewOrderRequest(t *testing.T) {
 	//ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
 	ctx, _ := context.WithCancel(context.Background())
@@ -392,6 +462,9 @@ func TestNewOrderRequest(t *testing.T) {
 	defer removeCollection()
 
 	requestNewOrder := createRequestNewOrder()
+	err = addStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
 	OrderService := pb.NewOrderServiceClient(grpcConn)
 	resOrder, err := OrderService.NewOrder(ctx, requestNewOrder)
 
@@ -407,6 +480,12 @@ func TestPaymentGateway(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
+	err = addStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
+	err = reservedStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
 	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
 	assert.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
@@ -414,7 +493,7 @@ func TestPaymentGateway(t *testing.T) {
 	newOrder.PaymentService = []entities.PaymentService{{
 		PaymentRequest: &entities.PaymentRequest{
 			Amount:    newOrder.Amount.Total,
-			Currency:  "RR",
+			Currency:  "IRR",
 			Gateway:   "APP",
 			CreatedAt: time.Now().UTC(),
 		},
@@ -452,6 +531,12 @@ func TestOperatorShipmentPending_Success(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
+	err = addStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
+	err = reservedStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
 	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
 	assert.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
@@ -497,6 +582,11 @@ func TestOperatorShipmentPending_Failed(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
+	err = addStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+	err = reservedStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
 	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
 	assert.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
@@ -541,6 +631,13 @@ func TestSellerApprovalPending_Success(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
+
+	err = addStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
+	err = reservedStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
 	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
 	assert.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
@@ -587,6 +684,12 @@ func TestSellerApprovalPending_Failed(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
+	err = addStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
+	err = reservedStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
 	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
 	assert.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
@@ -639,17 +742,24 @@ func TestShipmentPending_Success(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
+	err = addStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
+	err = reservedStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
 	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
 	assert.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, steps.InProgressStatus)
 	order , err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
-	for i:=0 ; i < len(order.Items); i++ {
-		order.Items[i].Status = "30.Shipment_Pending"
-	}
+	//for i:=0 ; i < len(order.Items); i++ {
+	//	order.Items[i].Status = "30.Shipment_Pending"
+	//}
 	_ , err = global.Singletons.OrderRepository.Save(*order)
 	assert.Nil(t, err, "save failed")
 
@@ -686,17 +796,24 @@ func TestShipmentPending_Failed(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
+	err = addStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
+	err = reservedStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
 	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
 	assert.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, steps.InProgressStatus)
 	order , err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
-	for i:=0 ; i < len(order.Items); i++ {
-		order.Items[i].Status = "30.Shipment_Pending"
-	}
+	//for i:=0 ; i < len(order.Items); i++ {
+	//	order.Items[i].Status = "30.Shipment_Pending"
+	//}
 	_ , err = global.Singletons.OrderRepository.Save(*order)
 	assert.Nil(t, err, "save failed")
 
@@ -802,7 +919,7 @@ func TestBackOfficeOrdersListView(t *testing.T) {
 	_ , err = global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	requestNewOrder2 := createRequestNewOrder()
 	value2, err2 := global.Singletons.Converter.Map(*requestNewOrder2, entities.Order{})
@@ -814,7 +931,7 @@ func TestBackOfficeOrdersListView(t *testing.T) {
 	_ , err = global.Singletons.OrderRepository.Save(*newOrder2)
 	assert.Nil(t, err2, "save failed")
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	requestNewOrder1 := createRequestNewOrder()
 	value1, err1 := global.Singletons.Converter.Map(*requestNewOrder1, entities.Order{})
@@ -826,7 +943,7 @@ func TestBackOfficeOrdersListView(t *testing.T) {
 	_ , err = global.Singletons.OrderRepository.Save(*newOrder1)
 	assert.Nil(t, err1, "save failed")
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 
 	requestNewOrder3 := createRequestNewOrder()
 	value3, err3 := global.Singletons.Converter.Map(*requestNewOrder3, entities.Order{})

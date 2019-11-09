@@ -10,7 +10,7 @@ test:
 ifndef PORT
 	$(error PORT is not set)
 endif
-	cd ./src && go clean -testcache && export PORT=$(PORT) && export APP_ENV=dev && go test -v ./... && cd ..
+	cd ./src && go clean -testcache && export PORT=$(PORT) && export APP_ENV=dev && go test -mod vendor -v ./... && cd ..
 
 compose-down:
 ifndef PORT

@@ -384,7 +384,7 @@ func createOrder() entities.Order {
 
 	paymentRequest := entities.PaymentRequest {
 		Amount:	     	75400000,
-		Currency:		"RR",
+		Currency:		"IRR",
 		Gateway: 		"AAP",
 		CreatedAt:   	time.Now().UTC(),
 	}
@@ -469,7 +469,7 @@ func createOrder() entities.Order {
 			Total:         75400000,
 			Subtotal:      73000000,
 			Discount:      15600000,
-			Currency:      "RR",
+			Currency:      "IRR",
 			ShipmentTotal: 5700000,
 			PaymentMethod: "IPG",
 			PaymentOption: "APP",
@@ -537,7 +537,7 @@ func createOrder() entities.Order {
 					Original:         7340000,
 					Special:          1000000,
 					SellerCommission: 5334444,
-					Currency:         "RR",
+					Currency:         "IRR",
 				},
 				ShipmentSpec: entities.ShipmentSpec {
 					CarrierName:    "Post",
@@ -545,7 +545,7 @@ func createOrder() entities.Order {
 					CarrierType:    "Standard",
 					ShippingCost:   1249348,
 					VoucherAmount:  3242344,
-					Currency:       "RR",
+					Currency:       "IRR",
 					ReactionTime:   2,
 					ShippingTime:   8,
 					ReturnTime:     24,
@@ -672,7 +672,7 @@ func createOrder() entities.Order {
 					Original:         7340000,
 					Special:          1000000,
 					SellerCommission: 5334444,
-					Currency:         "RR",
+					Currency:         "IRR",
 				},
 				ShipmentSpec: entities.ShipmentSpec{
 					CarrierName:    "Post",
@@ -680,7 +680,7 @@ func createOrder() entities.Order {
 					CarrierType:    "Standard",
 					ShippingCost:   1249348,
 					VoucherAmount:  3242344,
-					Currency:       "RR",
+					Currency:       "IRR",
 					ReactionTime:   2,
 					ShippingTime:   8,
 					ReturnTime:     24,

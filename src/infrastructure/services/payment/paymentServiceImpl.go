@@ -22,7 +22,7 @@ func NewPaymentService(address string, port int) IPaymentService {
 	return &iPaymentServiceImpl{nil, nil, address, port}
 }
 
-func (payment iPaymentServiceImpl) connectToStockService() error {
+func (payment *iPaymentServiceImpl) ConnectToStockService() error {
 	if payment.grpcConnection == nil || payment.grpcConnection.GetState() != connectivity.Ready {
 		var err error
 		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
@@ -41,7 +41,7 @@ func (payment iPaymentServiceImpl) connectToStockService() error {
 // TODO checking return error of payment
 func (payment iPaymentServiceImpl) OrderPayment(ctx context.Context, request PaymentRequest) promise.IPromise {
 
-	if err := payment.connectToStockService(); err != nil {
+	if err := payment.ConnectToStockService(); err != nil {
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
 		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{
@@ -60,7 +60,8 @@ func (payment iPaymentServiceImpl) OrderPayment(ctx context.Context, request Pay
 
 	response, err := payment.paymentService.GenerateRedirectURL(ctx1, gatewayRequest)
 	if err != nil {
-		logger.Err("request to payment gateway grpc failed, request: %v, error: %s", request, err)
+		logger.Err("request to payment gateway grpc failed, orderId: %s, amount: %d, gateway: %s, currency: %s, error: %s",
+			request.OrderId, request.Amount, request.Gateway, request.Currency, err)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
 		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}

@@ -97,7 +97,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			paymentPending.releasedStock(ctx, &order)
 			if err := paymentPending.persistOrder(ctx, &order); err != nil {}
 
-			logger.Err("PaymentService promise channel has been closed, order: %v", order)
+			logger.Err("PaymentService promise channel has been closed, orderId: %s", order.OrderId)
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
 			returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
@@ -115,7 +115,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, false, steps.ClosedStatus)
 			paymentPending.releasedStock(ctx, &order)
 			if err := paymentPending.persistOrder(ctx, &order); err != nil {}
-			logger.Err("PaymentService.OrderPayment in orderPaymentState failed, order: %v, error: %s", order, futureData.Ex.Error())
+			logger.Err("PaymentService.OrderPayment in orderPaymentState failed, orderId: %s, error: %s", order.OrderId, futureData.Ex.Error())
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
 			returnChannel <- promise.FutureData{Data:nil, Ex:futureData.Ex}
@@ -145,7 +145,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 	} else if paymentAction == OrderPayment {
 		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", paymentPending.Name(), order.OrderId, OrderPayment)
 		if order.PaymentService[0].PaymentResult.Result == false {
-			logger.Audit("PaymentResult of order failed, order: %v", order)
+			logger.Audit("PaymentResult of order failed, orderId: %s", order.OrderId)
 			paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, false, steps.ClosedStatus)
 			paymentPending.UpdateAllOrderStatus(ctx, &order, nil, steps.ClosedStatus, true)
 			paymentPending.releasedStock(ctx, &order)
@@ -153,13 +153,13 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			return paymentPending.Childes()[0].ProcessOrder(ctx, order, nil, nil)
 		}
 
-		logger.Audit("PaymentResult of order success, order: %v", order)
+		logger.Audit("PaymentResult of order success, order: %s", order.OrderId)
 		paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, true)
 		paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, true, steps.InProgressStatus)
 		return paymentPending.Childes()[1].ProcessOrder(ctx, order, nil, nil)
 	}
 
-	logger.Err("%s step received invalid action, order: %v, action: %s", paymentPending.Name(), order, paymentAction)
+	logger.Err("%s step received invalid action, orderId: %s, action: %s", paymentPending.Name(), order.OrderId, paymentAction)
 	returnChannel := make(chan promise.FutureData, 1)
 	defer close(returnChannel)
 	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
@@ -170,28 +170,28 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 }
 
 func (paymentPending paymentPendingStep) releasedStock(ctx context.Context, order *entities.Order) {
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, StockReleased)
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, nil, StockReleased)
 	futureData := iPromise.Data()
 	if futureData == nil {
 		paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, steps.ClosedStatus)
-		logger.Err("StockService promise channel has been closed, step: %s, order: %v",  paymentPending.Name(), order)
+		logger.Err("StockService promise channel has been closed, step: %s, orderId: %s",  paymentPending.Name(), order.OrderId)
 		return
 	}
 
 	if futureData.Ex != nil {
 		paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, steps.ClosedStatus)
-		logger.Err("Reserved stock from stockService failed, step: %s, order: %v, error: %s", paymentPending.Name(), order, futureData.Ex.Error())
+		logger.Err("Reserved stock from stockService failed, step: %s, orderId: %s, error: %s", paymentPending.Name(), order.OrderId, futureData.Ex.Error())
 		return
 	}
 
 	paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, true, steps.ClosedStatus)
-	logger.Audit("Reserved stock from stockService success, step: %s, order: %v", paymentPending.Name(), order)
+	logger.Audit("Reserved stock from stockService success, step: %s, orderId: %s", paymentPending.Name(), order.OrderId)
 }
 
 func (paymentPending paymentPendingStep) persistOrder(ctx context.Context, order *entities.Order) error {
 	_ , err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
-		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", paymentPending.Name(), order, err.Error())
+		logger.Err("OrderRepository.Save in %s step failed, orderId: %s, error: %s", paymentPending.Name(), order.OrderId, err.Error())
 	}
 
 	return err
@@ -212,7 +212,7 @@ func (paymentPending paymentPendingStep) updateOrderItemsProgress(ctx context.Co
 			}
 
 			if !findFlag {
-				logger.Err("%s received itemId %s not exist in order, orderId: %v", paymentPending.Name(), id, order.OrderId)
+				logger.Err("%s received itemId %s not exist in order, orderId: %s", paymentPending.Name(), id, order.OrderId)
 			}
 		}
 	} else {

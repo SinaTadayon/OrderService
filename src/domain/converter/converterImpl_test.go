@@ -10,7 +10,7 @@ import (
 func TestOrderConverter(t *testing.T) {
 	converter := NewConverter()
 	RequestNewOrder := createRequestNewOrder()
-	out, err := converter.Map(RequestNewOrder, entities.Order{})
+	out, err := converter.Map(*RequestNewOrder, entities.Order{})
 	assert.NoError(t, err, "mapping order request to order failed")
 	order , ok := out.(*entities.Order)
 	assert.True(t, ok, "mapping order request to order failed")
@@ -30,7 +30,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order.Amount.Total = 600000
 	order.Amount.Subtotal = 550000
 	order.Amount.Discount = 50000
-	order.Amount.Currency = "RR"
+	order.Amount.Currency = "IRR"
 	order.Amount.PaymentMethod = "IPG"
 	order.Amount.PaymentOption = "AAP"
 	order.Amount.ShipmentTotal = 700000
@@ -74,6 +74,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item.Category = "Electronic/laptop"
 	item.Title = "Asus G503 i7, 256SSD, 32G Ram"
 	item.Guaranty = "ضمانت سلامت کالا"
+	item.Quantity = 5
 	item.Image = "http://baman.io/image/asus.png"
 	item.Returnable = true
 
@@ -81,7 +82,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item.Price.Original = 20000000
 	item.Price.SellerCommission = 10
 	item.Price.Unit = 100000
-	item.Price.Currency = "RR"
+	item.Price.Currency = "IRR"
 
 	
 	item.Attributes["Quantity"] = "10"
@@ -102,7 +103,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item.Shipment.CarrierType = "standard"
 	item.Shipment.ShippingCost = 100000
 	item.Shipment.VoucherAmount = 0
-	item.Shipment.Currency = "RR"
+	item.Shipment.Currency = "IRR"
 
 	item.SellerId = "345346343"
 	order.Items = append(order.Items, &item)

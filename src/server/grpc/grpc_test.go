@@ -1,26 +1,13 @@
 package grpc_server
 
 import (
-	"context"
 	message "gitlab.faza.io/protos/order"
 	pb "gitlab.faza.io/protos/order"
-	"strconv"
-
-	"github.com/stretchr/testify/assert"
-	//"log"
-	"testing"
-
-	//"errors"
-	//"net"
-	//"net/http"
-	"time"
 
 	//"github.com/rs/xid"
 
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/configs"
-
-	"google.golang.org/grpc"
 )
 
 var config *configs.Cfg
@@ -49,7 +36,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order.Amount.Total = 600000
 	order.Amount.Subtotal = 550000
 	order.Amount.Discount = 50000
-	order.Amount.Currency = "RR"
+	order.Amount.Currency = "IRR"
 	order.Amount.PaymentMethod = "IPG"
 	order.Amount.PaymentOption = "AAP"
 	order.Amount.ShipmentTotal = 700000
@@ -110,7 +97,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item.Price.Original = 1800000
 	item.Price.SellerCommission = 10
 	item.Price.Unit = 100000
-	item.Price.Currency = "RR"
+	item.Price.Currency = "IRR"
 
 	//Standard, Express, Economy or Sameday.
 	item.Shipment.Details = "پست پیشتاز و تیپاکس برای شهرستان ها و پیک برای تهران به صورت رایگان می باشد"
@@ -122,7 +109,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item.Shipment.CarrierType = "standard"
 	item.Shipment.ShippingCost = 100000
 	item.Shipment.VoucherAmount = 0
-	item.Shipment.Currency = "RR"
+	item.Shipment.Currency = "IRR"
 
 	order.Items = append(order.Items, &item)
 
@@ -155,7 +142,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item1.Price.Original = 1500000
 	item1.Price.SellerCommission = 10
 	item1.Price.Unit = 200000
-	item1.Price.Currency = "RR"
+	item1.Price.Currency = "IRR"
 
 	//Standard, Express, Economy or Sameday.
 	item1.Shipment.Details = "پست پیشتاز و تیپاکس برای شهرستان ها و پیک برای تهران به صورت رایگان می باشد"
@@ -167,7 +154,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item1.Shipment.CarrierType = "standard"
 	item1.Shipment.ShippingCost = 100000
 	item1.Shipment.VoucherAmount = 0
-	item1.Shipment.Currency = "RR"
+	item1.Shipment.Currency = "IRR"
 
 	order.Items = append(order.Items, &item1)
 	return order
@@ -247,19 +234,19 @@ func createMetaDataRequest() *message.RequestMetadata {
 //	assert.NotNil(t, resOrder)
 //}
 
-func TestNewOrder(t *testing.T) {
-
-	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
-	grpcConnNewOrder, err := grpc.DialContext(ctx, config.GRPCServer.Address + ":" +
-		strconv.Itoa(int(config.GRPCServer.Port)), grpc.WithInsecure())
-	assert.Nil(t, err)
-
-	requestNewOrder := createRequestNewOrder()
-
-	defer grpcConnNewOrder.Close()
-	OrderService := pb.NewOrderServiceClient(grpcConnNewOrder)
-	resOrder, err := OrderService.NewOrder(ctx, requestNewOrder)
-
-	assert.Nil(t, err)
-	assert.NotEmpty(t, resOrder.CallbackUrl, "CallbackUrl is empty")
-}
+//func TestNewOrder(t *testing.T) {
+//
+//	ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+//	grpcConnNewOrder, err := grpc.DialContext(ctx, config.GRPCServer.Address + ":" +
+//		strconv.Itoa(int(config.GRPCServer.Port)), grpc.WithInsecure())
+//	assert.Nil(t, err)
+//
+//	requestNewOrder := createRequestNewOrder()
+//
+//	defer grpcConnNewOrder.Close()
+//	OrderService := pb.NewOrderServiceClient(grpcConnNewOrder)
+//	resOrder, err := OrderService.NewOrder(ctx, requestNewOrder)
+//
+//	assert.Nil(t, err)
+//	assert.NotEmpty(t, resOrder.CallbackUrl, "CallbackUrl is empty")
+//}

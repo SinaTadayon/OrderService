@@ -44,6 +44,8 @@ func (payToBuyer payToBuyerStep) ProcessMessage(ctx context.Context, request *me
 
 func (payToBuyer payToBuyerStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 
+	logger.Audit("Pay to Buyer step, orderId: %s", order.OrderId)
+
 	if len(order.Items) == len(itemsId) {
 		payToBuyer.UpdateAllOrderStatus(ctx, &order, itemsId, steps.ClosedStatus, false)
 	} else {

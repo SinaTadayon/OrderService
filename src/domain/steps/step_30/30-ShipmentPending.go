@@ -17,6 +17,7 @@ const (
 	stepIndex int		= 30
 	Shipped				= "Shipped"
 	SellerShipmentPending = "SellerShipmentPending"
+	StockReleased		= "StockReleased"
 )
 
 type shipmentPendingStep struct {
@@ -114,6 +115,20 @@ func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, ord
 			actionData, ok := req.Data.(*message.RequestSellerOrderAction_Failed)
 			if ok != true {
 				logger.Err("request data not a message.RequestSellerOrderAction_Failed type , order: %v", order)
+				returnChannel := make(chan promise.FutureData, 1)
+				defer close(returnChannel)
+				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+				return promise.NewPromise(returnChannel, 1, 1)
+			}
+
+			iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, itemsId, StockReleased)
+			futureData := iPromise.Data()
+			if futureData == nil {
+				if err := shipmentPending.persistOrder(ctx, &order); err != nil {}
+				logger.Err("StockService promise channel has been closed, order: %s", order.OrderId)
+			} else if futureData.Ex != nil {
+				if err := shipmentPending.persistOrder(ctx, &order); err != nil {}
+				logger.Err("released stock from stockService failed, error: %s, orderId: %s", futureData.Ex.Error(), order.OrderId)
 				returnChannel := make(chan promise.FutureData, 1)
 				defer close(returnChannel)
 				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}

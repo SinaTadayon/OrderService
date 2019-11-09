@@ -16,7 +16,8 @@ const (
 	stepName string 	= "Seller_Approval_Pending"
 	stepIndex int		= 20
 	Approved			= "Approved"
-	ApprovalPending = "ApprovalPending"
+	ApprovalPending 	= "ApprovalPending"
+	StockReleased		= "StockReleased"
 )
 
 type sellerApprovalPendingStep struct {
@@ -106,6 +107,21 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 				return promise.NewPromise(returnChannel, 1, 1)
 			}
+
+			iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, itemsId, StockReleased)
+			futureData := iPromise.Data()
+			if futureData == nil {
+				if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {}
+				logger.Err("StockService promise channel has been closed, order: %s", order.OrderId)
+			} else if futureData.Ex != nil {
+				if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {}
+				logger.Err("released stock from stockService failed, error: %s, orderId: %s", futureData.Ex.Error(), order.OrderId)
+				returnChannel := make(chan promise.FutureData, 1)
+				defer close(returnChannel)
+				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+				return promise.NewPromise(returnChannel, 1, 1)
+			}
+
 			if len(order.Items) == len(itemsId) {
 				sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.ClosedStatus, true)
 			} else {

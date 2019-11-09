@@ -21,13 +21,15 @@ type Cfg struct {
 	}
 
 	PaymentGatewayService struct {
-		Address string `env:"PAYMENT_GATEWAY_ADDRESS"`
-		Port   	int `env:"PAYMENT_GATEWAY_PORT"`
+		Address 	string `env:"PAYMENT_GATEWAY_ADDRESS"`
+		Port   		int `env:"PAYMENT_GATEWAY_PORT"`
+		MockEnabled	bool `env:"PAYMENT_SERVICE_MOCK_ENABLED"`
 	}
 
 	StockService struct {
-		Address string `env:"STOCK_SERVICE_ADDRESS"`
-		Port   	int `env:"STOCK_SERVICE_PORT"`
+		Address 	string `env:"STOCK_SERVICE_ADDRESS"`
+		Port   		int `env:"STOCK_SERVICE_PORT"`
+		MockEnabled	bool `env:"STOCK_SERVICE_MOCK_ENABLED"`
 	}
 
 	Kafka struct {

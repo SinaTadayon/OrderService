@@ -13,14 +13,14 @@ import (
 )
 
 var config *configs.Cfg
-var stock iStockServiceImpl
+var stock *iStockServiceImpl
 
 func createOrder() entities.Order {
 	//currentTime := time.Now().UTC()
 
 	paymentRequest := entities.PaymentRequest {
 		Amount:	     	75400000,
-		Currency:		"RR",
+		Currency:		"IRR",
 		Gateway: 		"AAP",
 		CreatedAt:   	time.Now().UTC(),
 	}
@@ -77,7 +77,7 @@ func createOrder() entities.Order {
 	}
 
 	newOrder := entities.Order{
-		OrderId: "",
+		OrderId: "123456789",
 		PaymentService: []entities.PaymentService{{
 			PaymentRequest:  &paymentRequest,
 			PaymentResponse: &paymentResponse,
@@ -105,7 +105,7 @@ func createOrder() entities.Order {
 			Total:         75400000,
 			Subtotal:      73000000,
 			Discount:      15600000,
-			Currency:      "RR",
+			Currency:      "IRR",
 			ShipmentTotal: 5700000,
 			PaymentMethod: "IPG",
 			PaymentOption: "APP",
@@ -117,7 +117,7 @@ func createOrder() entities.Order {
 		},
 		Items: []entities.Item{
 			{
-				ItemId:      "",
+				ItemId:      "123456789123",
 				InventoryId: "1111111111",
 				Title:       "Mobile",
 				Brand:       "Nokia",
@@ -174,7 +174,7 @@ func createOrder() entities.Order {
 					Original:         7340000,
 					Special:          1000000,
 					SellerCommission: 5334444,
-					Currency:         "RR",
+					Currency:         "IRR",
 				},
 				ShipmentSpec: entities.ShipmentSpec {
 					CarrierName:    "Post",
@@ -182,7 +182,7 @@ func createOrder() entities.Order {
 					CarrierType:    "Standard",
 					ShippingCost:   1249348,
 					VoucherAmount:  3242344,
-					Currency:       "RR",
+					Currency:       "IRR",
 					ReactionTime:   2,
 					ShippingTime:   8,
 					ReturnTime:     24,
@@ -253,7 +253,7 @@ func createOrder() entities.Order {
 				},
 			},
 			{
-				ItemId:      "",
+				ItemId:      "123456789567",
 				InventoryId: "2222222222",
 				Title:       "Laptop",
 				Brand:       "Lenovo",
@@ -310,7 +310,7 @@ func createOrder() entities.Order {
 					Original:         7340000,
 					Special:          1000000,
 					SellerCommission: 5334444,
-					Currency:         "RR",
+					Currency:         "IRR",
 				},
 				ShipmentSpec: entities.ShipmentSpec{
 					CarrierName:    "Post",
@@ -318,7 +318,7 @@ func createOrder() entities.Order {
 					CarrierType:    "Standard",
 					ShippingCost:   1249348,
 					VoucherAmount:  3242344,
-					Currency:       "RR",
+					Currency:       "IRR",
 					ReactionTime:   2,
 					ShippingTime:   8,
 					ReturnTime:     24,
@@ -412,17 +412,19 @@ func init() {
 		panic("configs.LoadConfig failed")
 	}
 
-	stock = iStockServiceImpl{nil, nil,
+	stock = &iStockServiceImpl{nil, nil,
 		config.StockService.Address, config.StockService.Port}
-
-	if err := stock.connectToStockService(); err != nil {
-		logger.Err(err.Error())
-		panic("stockService.connectToStockService() failed")
-	}
 }
 
 func TestStockService_ReservedSuccess(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
+
+	if err := stock.ConnectToStockService(); err != nil {
+		logger.Err(err.Error())
+		panic("stockService.ConnectToStockService() failed")
+	}
+
+	defer stock.CloseConnection()
 
 	order := createOrder()
 
@@ -433,10 +435,90 @@ func TestStockService_ReservedSuccess(t *testing.T) {
 	_, err := stock.stockService.StockAllocate(ctx, &request)
 	assert.Nil(t, err)
 
-	promise := stock.BatchStockActions(ctx, order, "StockReserved")
-	futuredata := promise.Data()
+	itemsId := []string{order.Items[0].ItemId}
+	promise := stock.BatchStockActions(ctx, order, itemsId,"StockReserved")
+	futureData := promise.Data()
+	assert.Nil(t, futureData.Ex)
 
-	assert.Nil(t, futuredata.Ex)
-	assert.Nil(t, futuredata.Data)
+	response , err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId:order.Items[0].InventoryId})
+	assert.Nil(t, err)
+	logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
+	assert.Equal(t, response.Available, int32(0))
+	assert.Equal(t, response.Reserved, int32(5))
+	_, err = stock.stockService.StockRelease(ctx, &request)
+	assert.Nil(t, err)
+}
 
+func TestStockService_SettlementSuccess(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+
+	if err := stock.ConnectToStockService(); err != nil {
+		logger.Err(err.Error())
+		panic("stockService.ConnectToStockService() failed")
+	}
+
+	defer func() {
+		if err := stock.grpcConnection.Close(); err != nil {}
+	}()
+
+	order := createOrder()
+
+	request := stockProto.StockRequest{
+		Quantity:    5,
+		InventoryId: order.Items[0].InventoryId,
+	}
+	_, err := stock.stockService.StockAllocate(ctx, &request)
+	assert.Nil(t, err)
+
+	itemsId := []string{order.Items[0].ItemId}
+	promise := stock.BatchStockActions(ctx, order, itemsId,"StockReserved")
+	futureData := promise.Data()
+	assert.Nil(t, futureData.Ex)
+
+	promise = stock.BatchStockActions(ctx, order, itemsId,"StockSettlement")
+	futureData = promise.Data()
+	assert.Nil(t, futureData.Ex)
+
+	response , err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId:order.Items[0].InventoryId})
+	assert.Nil(t, err)
+	logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
+	assert.Equal(t, response.Available, int32(0))
+	assert.Equal(t, response.Reserved, int32(0))
+}
+
+func TestStockService_ReleaseSuccess(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+
+	if err := stock.ConnectToStockService(); err != nil {
+		logger.Err(err.Error())
+		panic("stockService.ConnectToStockService() failed")
+	}
+
+	defer func() {
+		if err := stock.grpcConnection.Close(); err != nil {}
+	}()
+
+	order := createOrder()
+
+	request := stockProto.StockRequest{
+		Quantity:    5,
+		InventoryId: order.Items[0].InventoryId,
+	}
+	_, err := stock.stockService.StockAllocate(ctx, &request)
+	assert.Nil(t, err)
+
+	itemsId := []string{order.Items[0].ItemId}
+	promise := stock.BatchStockActions(ctx, order, itemsId,"StockReserved")
+	futureData := promise.Data()
+	assert.Nil(t, futureData.Ex)
+
+	promise = stock.BatchStockActions(ctx, order, itemsId,"StockReleased")
+	futureData = promise.Data()
+	assert.Nil(t, futureData.Ex)
+
+	response , err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId:order.Items[0].InventoryId})
+	assert.Nil(t, err)
+	logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
+	assert.Equal(t, response.Available, int32(5))
+	assert.Equal(t, response.Reserved, int32(0))
 }

@@ -95,7 +95,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, StockReserved)
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, nil, StockReserved)
 	futureData := iPromise.Data()
 	if futureData == nil {
 		newOrderProcessing.UpdateAllOrderStatus(ctx, order, nil, steps.ClosedStatus, true)
@@ -147,22 +147,22 @@ func (newOrderProcessing newOrderProcessingStep) ProcessOrder(ctx context.Contex
 	panic("implementation required")
 }
 func (newOrderProcessing newOrderProcessingStep) releasedStock(ctx context.Context, order *entities.Order) {
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, StockReleased)
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, nil, StockReleased)
 	futureData := iPromise.Data()
 	if futureData == nil {
 		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, steps.ClosedStatus)
-		logger.Err("StockService promise channel has been closed, step: %s, order: %v",  newOrderProcessing.Name(), order)
+		logger.Err("StockService promise channel has been closed, step: %s, orderId: %s",  newOrderProcessing.Name(), order.OrderId)
 		return
 	}
 
 	if futureData.Ex != nil {
 		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, steps.ClosedStatus)
-		logger.Err("Reserved stock from stockService failed, step: %s, order: %v, error: %s", newOrderProcessing.Name(), order, futureData.Ex.Error())
+		logger.Err("Reserved stock from stockService failed, step: %s, order: %s, error: %s", newOrderProcessing.Name(), order.OrderId, futureData.Ex.Error())
 		return
 	}
 
 	newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, true, steps.ClosedStatus)
-	logger.Audit("Reserved stock from stockService success, step: %s, order: %v", newOrderProcessing.Name(), order)
+	logger.Audit("Reserved stock from stockService success, step: %s, order: %s", newOrderProcessing.Name(), order.OrderId)
 }
 
 func (newOrderProcessing newOrderProcessingStep) persistOrder(ctx context.Context, order *entities.Order) error {

@@ -46,9 +46,11 @@ func (shipmentSuccess shipmentSuccessStep) ProcessMessage(ctx context.Context, r
 
 // TODO scheduler must be call this step
 func (shipmentSuccess shipmentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+
+	logger.Audit("shipmentSuccess step, orderId: %s", order.OrderId)
 	shipmentSuccess.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
 
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, StockSettlement)
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, itemsId, StockSettlement)
 	futureData := iPromise.Data()
 	if futureData == nil {
 		shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, StockSettlement, false, steps.ClosedStatus)

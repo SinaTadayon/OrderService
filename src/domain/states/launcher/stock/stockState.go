@@ -93,7 +93,7 @@ func (stockState stockActionLauncher) doReservedAction(ctx context.Context, orde
 		}
 	}
 
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, stock_action.ReservedAction.Name())
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, itemsId, stock_action.ReservedAction.Name())
 	futureData := iPromise.Data()
 	if futureData == nil {
 		stockState.persistOrderState(ctx, order, stock_action.ReservedAction, false)
@@ -167,7 +167,7 @@ func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, orde
 		}
 	}
 
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, stock_action.ReleasedAction.Name())
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, itemsId, stock_action.ReleasedAction.Name())
 	futureData := iPromise.Data()
 	if futureData == nil {
 		stockState.persistOrderState(ctx, order, stock_action.ReleasedAction, false)

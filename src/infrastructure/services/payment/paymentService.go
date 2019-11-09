@@ -6,7 +6,7 @@ import (
 )
 
 type IPaymentService interface {
-	OrderPayment(context context.Context,request PaymentRequest) promise.IPromise
+	OrderPayment(ctx context.Context, request PaymentRequest) promise.IPromise
 
 }
 
