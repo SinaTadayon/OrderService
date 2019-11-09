@@ -16,6 +16,7 @@ services:
     env_file:
       - ./src/.env
     depends_on:
+      - mongo
       - stockservice
       - paymentservice
 
