@@ -58,7 +58,7 @@ func main() {
 func init() {
 	var err error
 	if os.Getenv("APP_ENV") == "dev" {
-		App.Config, err = configs.LoadConfig("./testdata/.env")
+		App.Config, err = configs.LoadConfig("./.env")
 	} else {
 		App.Config, err = configs.LoadConfig("")
 	}

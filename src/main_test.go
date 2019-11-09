@@ -149,7 +149,7 @@ func init() {
 	}
 
 	global.Singletons.NotifyService = notify_service.NewNotificationService()
-	go App.grpcServer.Start()
+	//go App.grpcServer.Start()
 }
 
 func createRequestNewOrder() *pb.RequestNewOrder {
