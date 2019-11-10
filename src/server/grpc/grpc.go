@@ -330,6 +330,18 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 					Code:                 order.Amount.Voucher.Code,
 				},
 			},
+			ShippingAddress: &pb.Address{
+				Address:              order.BuyerInfo.ShippingAddress.Address,
+				Phone:                order.BuyerInfo.ShippingAddress.Phone,
+				Mobile:               order.BuyerInfo.ShippingAddress.Mobile,
+				Country:              order.BuyerInfo.ShippingAddress.Country,
+				City:                 order.BuyerInfo.ShippingAddress.City,
+				Province:             order.BuyerInfo.ShippingAddress.Province,
+				Neighbourhood:        order.BuyerInfo.ShippingAddress.Neighbourhood,
+				Lat:                  fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[1]),
+				Long:                 fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[0]),
+				ZipCode:              order.BuyerInfo.ShippingAddress.ZipCode,
+			},
 			Items: make([]*pb.BuyerOrderItems, 0, len(order.Items)),
 		}
 

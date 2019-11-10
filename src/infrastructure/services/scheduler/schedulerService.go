@@ -1,5 +1,14 @@
 package scheduler_service
 
-type ISchedulerService interface {
+import (
+	"context"
+)
 
+type ISchedulerService interface {
+	Scheduler(ctx context.Context, data []ScheduleModel) error
+}
+
+type ScheduleModel struct {
+	step 	string
+	action  string
 }

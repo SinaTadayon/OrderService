@@ -9,8 +9,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/repository/order"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
-	"gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
-	"gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
+	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
+	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	grpc_server "gitlab.faza.io/order-project/order-service/server/grpc"
 	"os"
 	"time"
@@ -104,10 +104,30 @@ func init() {
 	 App.grpcServer = grpc_server.NewServer(App.Config.GRPCServer.Address, uint16(App.Config.GRPCServer.Port), App.flowManager)
 
 	global.Singletons.Converter = converter.NewConverter()
-	global.Singletons.StockService = stock_service.NewStockService(App.Config.StockService.Address, App.Config.StockService.Port)
-	global.Singletons.PaymentService = payment_service.NewPaymentService(App.Config.PaymentGatewayService.Address,
-		App.Config.PaymentGatewayService.Port)
+
+	//global.Singletons.StockService = stock_service.NewStockService(App.Config.StockService.Address, App.Config.StockService.Port)
+	//global.Singletons.PaymentService = payment_service.NewPaymentService(App.Config.PaymentGatewayService.Address,
+	//	App.Config.PaymentGatewayService.Port)
+
+	if App.Config.StockService.MockEnabled {
+		global.Singletons.StockService = stock_service.NewStockServiceMock()
+	} else {
+		global.Singletons.StockService = stock_service.NewStockService(App.Config.StockService.Address, App.Config.StockService.Port)
+	}
+
+	if App.Config.PaymentGatewayService.MockEnabled {
+		global.Singletons.PaymentService = payment_service.NewPaymentServiceMock()
+	} else {
+		global.Singletons.PaymentService = payment_service.NewPaymentService(App.Config.PaymentGatewayService.Address,App.Config.PaymentGatewayService.Port)
+	}
+
+
 	global.Singletons.NotifyService = notify_service.NewNotificationService()
+
+
+
+
+
 	//brokers = strings.Split(App.config.Kafka.Brokers, ",")
 	//if App.config.App.Port == "" {
 	//	logger.Err("grpc PORT env not defined")

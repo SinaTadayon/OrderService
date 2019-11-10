@@ -252,7 +252,8 @@ message BuyerAllOrders {
     string  updatedAt   = 4;
     string  orderStatus = 5;
     Amount  amount      = 6;
-    repeated BuyerOrderItems items = 7;
+    Address shippingAddress = 7;
+    repeated BuyerOrderItems items = 8;
 }
 
 message BuyerOrderItems {

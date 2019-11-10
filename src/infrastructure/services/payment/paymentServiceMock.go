@@ -14,7 +14,7 @@ func NewPaymentServiceMock() IPaymentService {
 
 func (payment iPaymentServiceMock) OrderPayment(ctx context.Context, request PaymentRequest) promise.IPromise {
 	paymentResponse := PaymentResponse {
-		CallbackUrl: "http://assanpardakht.com/",
+		CallbackUrl: "http://staging.faza.io/callback-success",
 		InvoiceId: 43464645465345,
 		PaymentId: "12345667788",
 	}

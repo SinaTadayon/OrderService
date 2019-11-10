@@ -15,7 +15,6 @@ import (
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	grpc_server "gitlab.faza.io/order-project/order-service/server/grpc"
-	stockProto "gitlab.faza.io/protos/stock-proto.git"
 	"google.golang.org/grpc"
 	"io"
 	"os"
@@ -149,7 +148,8 @@ func init() {
 	}
 
 	global.Singletons.NotifyService = notify_service.NewNotificationService()
-	//go App.grpcServer.Start()
+
+	go App.grpcServer.Start()
 }
 
 func createRequestNewOrder() *pb.RequestNewOrder {
@@ -393,61 +393,61 @@ func doUpdateOrderItemsProgress(order *entities.Order, index int,
 //}
 
 func addStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) error {
-	if err := global.Singletons.StockService.ConnectToStockService(); err != nil {
-		return err
-	}
+	//if err := global.Singletons.StockService.ConnectToStockService(); err != nil {
+	//	return err
+	//}
 
-	request := stockProto.StockRequest{
-		Quantity:    requestNewOrder.Items[0].Quantity + 100,
-		InventoryId: requestNewOrder.Items[0].InventoryId,
-	}
+	//request := stockProto.StockRequest{
+	//	Quantity:    requestNewOrder.Items[0].Quantity + 100,
+	//	InventoryId: requestNewOrder.Items[0].InventoryId,
+	//}
 
-	if _, err := global.Singletons.StockService.GetStockClient().StockAllocate(ctx, &request); err != nil {
-		return err
-	} else {
-		logger.Audit("Add Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
-	}
+	//if _, err := global.Singletons.StockService.GetStockClient().StockAllocate(ctx, &request); err != nil {
+	//	return err
+	//} else {
+	//	logger.Audit("Add Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+	//}
 
-	request = stockProto.StockRequest{
-		Quantity:    requestNewOrder.Items[1].Quantity + 100,
-		InventoryId: requestNewOrder.Items[1].InventoryId,
-	}
+	//request = stockProto.StockRequest{
+	//	Quantity:    requestNewOrder.Items[1].Quantity + 100,
+	//	InventoryId: requestNewOrder.Items[1].InventoryId,
+	//}
 
-	if _, err := global.Singletons.StockService.GetStockClient().StockAllocate(ctx, &request); err != nil {
-		return err
-	} else {
-		logger.Audit("Add Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
-	}
+	//if _, err := global.Singletons.StockService.GetStockClient().StockAllocate(ctx, &request); err != nil {
+	//	return err
+	//} else {
+	//	logger.Audit("Add Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+	//}
 
 	return nil
 }
 
 func reservedStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) error {
-	if err := global.Singletons.StockService.ConnectToStockService(); err != nil {
-		return err
-	}
-
-	request := stockProto.StockRequest{
-		Quantity:    requestNewOrder.Items[0].Quantity,
-		InventoryId: requestNewOrder.Items[0].InventoryId,
-	}
-
-	if _, err := global.Singletons.StockService.GetStockClient().StockReserve(ctx, &request); err != nil {
-		return err
-	} else {
-		logger.Audit("Reserved Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
-	}
-
-	request = stockProto.StockRequest{
-		Quantity:    requestNewOrder.Items[1].Quantity,
-		InventoryId: requestNewOrder.Items[1].InventoryId,
-	}
-
-	if _, err := global.Singletons.StockService.GetStockClient().StockReserve(ctx, &request); err != nil {
-		return err
-	} else {
-		logger.Audit("Reserved Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
-	}
+	//if err := global.Singletons.StockService.ConnectToStockService(); err != nil {
+	//	return err
+	//}
+	//
+	//request := stockProto.StockRequest{
+	//	Quantity:    requestNewOrder.Items[0].Quantity,
+	//	InventoryId: requestNewOrder.Items[0].InventoryId,
+	//}
+	//
+	//if _, err := global.Singletons.StockService.GetStockClient().StockReserve(ctx, &request); err != nil {
+	//	return err
+	//} else {
+	//	logger.Audit("Reserved Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+	//}
+	//
+	//request = stockProto.StockRequest{
+	//	Quantity:    requestNewOrder.Items[1].Quantity,
+	//	InventoryId: requestNewOrder.Items[1].InventoryId,
+	//}
+	//
+	//if _, err := global.Singletons.StockService.GetStockClient().StockReserve(ctx, &request); err != nil {
+	//	return err
+	//} else {
+	//	logger.Audit("Reserved Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+	//}
 
 	return nil
 }
