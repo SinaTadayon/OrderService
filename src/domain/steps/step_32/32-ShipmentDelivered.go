@@ -15,7 +15,8 @@ import (
 const (
 	stepName string 	= "Shipment_Delivered"
 	stepIndex int		= 32
-	ShipmentDeliveredPending			= "ShipmentDeliveredPending"
+	ShipmentDeliveredPending		= "ShipmentDeliveredPending"
+	AutoApprovedShipmentDelivered	= "AutoApprovedShipmentDelivered"
 )
 
 type shipmentDeliveredStep struct {
@@ -44,7 +45,8 @@ func (shipmentDelivered shipmentDeliveredStep) ProcessMessage(ctx context.Contex
 
 func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 
-	//if param == nil {
+	if param == nil {
+		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", shipmentDelivered.Name(), order.OrderId, ShipmentDeliveredPending)
 		shipmentDelivered.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
 		shipmentDelivered.updateOrderItemsProgress(ctx, &order, itemsId, ShipmentDeliveredPending, true, "", true, steps.InProgressStatus)
 		if err:= shipmentDelivered.persistOrder(ctx, &order); err != nil {
@@ -57,7 +59,27 @@ func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context,
 		defer close(returnChannel)
 		returnChannel <- promise.FutureData{Data: nil, Ex: nil}
 		return promise.NewPromise(returnChannel, 1, 1)
-	//}
+	} else if param == "actionApproved" {
+		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", shipmentDelivered.Name(), order.OrderId, AutoApprovedShipmentDelivered)
+		shipmentDelivered.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
+		shipmentDelivered.updateOrderItemsProgress(ctx, &order, itemsId, AutoApprovedShipmentDelivered, true, "", true, steps.InProgressStatus)
+		if err:= shipmentDelivered.persistOrder(ctx, &order); err != nil {
+			returnChannel := make(chan promise.FutureData, 1)
+			defer close(returnChannel)
+			returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+			return promise.NewPromise(returnChannel, 1, 1)
+		}
+
+		return shipmentDelivered.Childes()[2].ProcessOrder(ctx, order, itemsId, nil)
+	}
+
+	logger.Audit("invalid action, Order Received in %s step, orderId: %s, Action: %s", shipmentDelivered.Name(), order.OrderId, param)
+	returnChannel := make(chan promise.FutureData, 1)
+	defer close(returnChannel)
+	returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+	return promise.NewPromise(returnChannel, 1, 1)
+
+
 	//} else {
 	//	req, ok := param.(message.RequestSellerOrderAction)
 	//	if ok != true {

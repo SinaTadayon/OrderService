@@ -59,18 +59,43 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", sellerApprovalPending.Name(), order.OrderId, Approved)
 		req, ok := param.(*message.RequestSellerOrderAction)
 		if ok != true {
-			//if len(order.Items) == len(itemsId) {
-			//	sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, nil, "CLOSED", false)
-			//} else {
-			//	sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, nil, "InProgress", false)
-			//}
-			//sellerApprovalPending.persistOrder(ctx, &order)
+			if param == "actionExpired" {
+				iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, itemsId, StockReleased)
+				futureData := iPromise.Data()
+				if futureData == nil {
+					if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {}
+					logger.Err("StockService promise channel has been closed, order: %s", order.OrderId)
+				} else if futureData.Ex != nil {
+					if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {}
+					logger.Err("released stock from stockService failed, error: %s, orderId: %s", futureData.Ex.Error(), order.OrderId)
+					returnChannel := make(chan promise.FutureData, 1)
+					defer close(returnChannel)
+					returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+					return promise.NewPromise(returnChannel, 1, 1)
+				}
 
-			logger.Err("param not a message.RequestSellerOrderAction type , order: %v", order)
-			returnChannel := make(chan promise.FutureData, 1)
-			defer close(returnChannel)
-			returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-			return promise.NewPromise(returnChannel, 1, 1)
+				if len(order.Items) == len(itemsId) {
+					sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.ClosedStatus, true)
+				} else {
+					sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, true)
+				}
+
+				sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, Approved, false, "Action Expired", false, steps.ClosedStatus)
+				if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
+					returnChannel := make(chan promise.FutureData, 1)
+					defer close(returnChannel)
+					returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+					return promise.NewPromise(returnChannel, 1, 1)
+				}
+				return sellerApprovalPending.Childes()[1].ProcessOrder(ctx, order, itemsId, nil)
+
+			} else {
+				logger.Err("param not a message.RequestSellerOrderAction type , order: %v", order)
+				returnChannel := make(chan promise.FutureData, 1)
+				defer close(returnChannel)
+				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+				return promise.NewPromise(returnChannel, 1, 1)
+			}
 		}
 
 		if !sellerApprovalPending.validateAction(ctx, &order, itemsId) {

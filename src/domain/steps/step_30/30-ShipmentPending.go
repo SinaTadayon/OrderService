@@ -62,18 +62,43 @@ func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, ord
 	} else {
 		req, ok := param.(*message.RequestSellerOrderAction)
 		if ok != true {
-			//if len(order.Items) == len(itemsId) {
-			//	shipped.UpdateAllOrderStatus(ctx, &order, nil, "CLOSED", false)
-			//} else {
-			//	shipped.UpdateAllOrderStatus(ctx, &order, nil, "InProgress", false)
-			//}
-			//shipped.persistOrder(ctx, &order)
+			if param == "actionExpired" {
+				iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, itemsId, StockReleased)
+				futureData := iPromise.Data()
+				if futureData == nil {
+					if err := shipmentPending.persistOrder(ctx, &order); err != nil {}
+					logger.Err("StockService promise channel has been closed, order: %s", order.OrderId)
+				} else if futureData.Ex != nil {
+					if err := shipmentPending.persistOrder(ctx, &order); err != nil {}
+					logger.Err("released stock from stockService failed, error: %s, orderId: %s", futureData.Ex.Error(), order.OrderId)
+					returnChannel := make(chan promise.FutureData, 1)
+					defer close(returnChannel)
+					returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+					return promise.NewPromise(returnChannel, 1, 1)
+				}
 
-			logger.Err("param not a message.RequestSellerOrderAction type , order: %v", order)
-			returnChannel := make(chan promise.FutureData, 1)
-			defer close(returnChannel)
-			returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-			return promise.NewPromise(returnChannel, 1, 1)
+				if len(order.Items) == len(itemsId) {
+					shipmentPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.ClosedStatus, false)
+				} else {
+					shipmentPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
+				}
+
+				shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, Shipped, false, "Action Expired", nil, false, steps.ClosedStatus)
+				if err := shipmentPending.persistOrder(ctx, &order); err != nil {
+					returnChannel := make(chan promise.FutureData, 1)
+					defer close(returnChannel)
+					returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+					return promise.NewPromise(returnChannel, 1, 1)
+				}
+
+				return shipmentPending.Childes()[1].ProcessOrder(ctx, order, itemsId, nil)
+			} else {
+				logger.Err("param not a message.RequestSellerOrderAction type , order: %v", order)
+				returnChannel := make(chan promise.FutureData, 1)
+				defer close(returnChannel)
+				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+				return promise.NewPromise(returnChannel, 1, 1)
+			}
 		}
 
 		if !shipmentPending.validateAction(ctx, &order, itemsId) {

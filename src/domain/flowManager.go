@@ -3,6 +3,7 @@ package domain
 import (
 	"context"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	scheduler_service "gitlab.faza.io/order-project/order-service/infrastructure/services/scheduler"
 	message "gitlab.faza.io/protos/order"
 	pg "gitlab.faza.io/protos/payment-gateway"
 )
@@ -18,4 +19,5 @@ type IFlowManager interface {
 	BackOfficeOrderDetailView(ctx context.Context, req *message.RequestIdentifier) promise.IPromise
 	SellerReportOrders(req *message.RequestSellerReportOrders, srv message.OrderService_SellerReportOrdersServer) promise.IPromise
 	BackOfficeReportOrderItems(req *message.RequestBackOfficeReportOrderItems, srv message.OrderService_BackOfficeReportOrderItemsServer) promise.IPromise
+	SchedulerEvents(event scheduler_service.SchedulerEvent)
 }

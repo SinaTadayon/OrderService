@@ -9,6 +9,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	order_payment_action_state "gitlab.faza.io/order-project/order-service/domain/states/launcher/orderpayment"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
+	scheduler_service "gitlab.faza.io/order-project/order-service/infrastructure/services/scheduler"
 	"go.mongodb.org/mongo-driver/bson"
 	"io"
 	"os"
@@ -1647,4 +1648,33 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 	returnChannel <- promise.FutureData{Data: nil, Ex: nil}
 	defer close(returnChannel)
 	return promise.NewPromise(returnChannel, 1, 1)
+}
+
+func (flowManager iFlowManagerImpl) SchedulerEvents(event scheduler_service.SchedulerEvent) {
+	order, err := global.Singletons.OrderRepository.FindById(event.OrderId)
+	if err != nil {
+		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, schedulerEvent: %v, error: %s",
+			event, err)
+		return
+	}
+
+	itemsId := make([]string, 0, len(order.Items))
+	for i:= 0; i < len(event.ItemsId); i++ {
+		if order.Items[i].ItemId == event.ItemsId[i] && order.Items[i].SellerInfo.SellerId == event.SellerId {
+			itemsId = append(itemsId,order.Items[i].ItemId)
+		}
+	}
+
+	ctx, _ := context.WithCancel(context.Background())
+
+	if event.ActionName == "ApprovalPending" {
+		flowManager.indexStepsMap[20].ProcessOrder(ctx, *order, itemsId, "actionExpired")
+
+	} else if event.ActionName == "SellerShipmentPending" {
+		flowManager.indexStepsMap[30].ProcessOrder(ctx, *order, itemsId, "actionExpired")
+
+	} else if event.ActionName == "ShipmentDeliveredPending" {
+		flowManager.indexStepsMap[32].ProcessOrder(ctx, *order, itemsId, "actionApproved")
+	}
+
 }
