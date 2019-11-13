@@ -47,9 +47,9 @@ func (shipmentRejectedBySeller shipmentRejectedBySellerStep) ProcessOrder(ctx co
 	logger.Audit("shipmentRejectedBySeller step, orderId: %s", order.OrderId)
 
 	if len(order.Items) == len(itemsId) {
-		shipmentRejectedBySeller.UpdateAllOrderStatus(ctx, &order, itemsId, steps.ClosedStatus, true)
+		shipmentRejectedBySeller.UpdateAllOrderStatus(ctx, &order, itemsId, steps.ClosedStatus, false)
 	} else {
-		shipmentRejectedBySeller.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, true)
+		shipmentRejectedBySeller.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
 	}
 
 	shipmentRejectedBySeller.updateOrderItemsProgress(ctx, &order, itemsId, RejectedBySeller, true, steps.ClosedStatus)

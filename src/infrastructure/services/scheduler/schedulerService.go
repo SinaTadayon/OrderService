@@ -9,14 +9,6 @@ type ISchedulerService interface {
 }
 
 type ScheduleModel struct {
-	step 	string
-	action  string
-}
-
-type SchedulerEvent struct {
-	OrderId 	string
-	SellerId	string
-	ItemsId		[]string
-	StepIndex	int
-	ActionName	string
+	Step 	string
+	Action  string
 }

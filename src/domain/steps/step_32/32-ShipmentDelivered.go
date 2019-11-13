@@ -16,7 +16,7 @@ const (
 	stepName string 	= "Shipment_Delivered"
 	stepIndex int		= 32
 	ShipmentDeliveredPending		= "ShipmentDeliveredPending"
-	AutoApprovedShipmentDelivered	= "AutoApprovedShipmentDelivered"
+	AutoApprovedShipmentDelivered	= "AutoApproved"
 )
 
 type shipmentDeliveredStep struct {

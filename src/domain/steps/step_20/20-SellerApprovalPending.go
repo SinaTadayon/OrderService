@@ -18,6 +18,7 @@ const (
 	Approved			= "Approved"
 	ApprovalPending 	= "ApprovalPending"
 	StockReleased		= "StockReleased"
+	AutoReject			= "AutoReject"
 )
 
 type sellerApprovalPendingStep struct {
@@ -80,7 +81,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 					sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, true)
 				}
 
-				sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, Approved, false, "Action Expired", false, steps.ClosedStatus)
+				sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, AutoReject, false, "Action Expired", false, steps.ClosedStatus)
 				if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 					returnChannel := make(chan promise.FutureData, 1)
 					defer close(returnChannel)
@@ -247,6 +248,14 @@ func (sellerApprovalPending sellerApprovalPendingStep) doUpdateOrderItemsProgres
 			time.Duration(24) +
 			time.Minute * time.Duration(0) +
 			time.Second * time.Duration(0))
+
+		//expiredTime := order.Items[index].UpdatedAt.Add(time.Hour *
+		//	time.Duration(0) +
+		//	time.Minute * time.Duration(0) +
+		//	time.Second * time.Duration(40))
+		//
+		logger.Audit("doUpdateOrderItemsProgress() => order.Items %s, updatedAt: %s, expiredTime: %s",
+			order.Items[index].ItemId, order.Items[index].UpdatedAt, expiredTime)
 
 		action = entities.Action{
 			Name:      actionName,

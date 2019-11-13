@@ -20,13 +20,14 @@ const (
 )
 
 var Singletons struct {
-	Kafka           *kafkaadapter.Kafka
-	OrderRepository order_repository.IOrderRepository
-	ItemRepository  item_repository.IItemRepository
-	Converter       converter.IConverter
-	StockService    stock_service.IStockService
-	PaymentService  payment_service.IPaymentService
-	NotifyService   notify_service.INotificationService
+	Kafka           	*kafkaadapter.Kafka
+	OrderRepository 	order_repository.IOrderRepository
+	ItemRepository  	item_repository.IItemRepository
+	Converter       	converter.IConverter
+	StockService    	stock_service.IStockService
+	PaymentService  	payment_service.IPaymentService
+	NotifyService   	notify_service.INotificationService
+	//SchedulerService	scheduler_service.ISchedulerService
 	//FlowManager		domain.IFlowManager
 	//GRPCServer      grpc.Server
 }

@@ -6,6 +6,7 @@ import (
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/domain"
+	"gitlab.faza.io/order-project/order-service/domain/events"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"time"
@@ -23,73 +24,109 @@ type fetchItemData struct {
 	SellerId		string
 	StepName		string
 	StepIndex		int
-	actionHistory	[]fetchActionHistory
+	ActionHistory	[]fetchActionHistory
 }
 
 type fetchActionHistory struct {
 	ActionName		string
-	expiredTime		time.Time
-	createdAt		time.Time
+	ExpiredTime		time.Time
+	CreatedAt		time.Time
 }
 
 type iSchedulerServiceImpl struct {
 	mongoAdapter  *mongoadapter.Mongo
 	flowManager   domain.IFlowManager
-	data  		  []ScheduleModel
 }
 
 func NewScheduler(mongoAdapter  *mongoadapter.Mongo, flowManager domain.IFlowManager) ISchedulerService {
-	return &iSchedulerServiceImpl{mongoAdapter:mongoAdapter,data:nil}
+	return &iSchedulerServiceImpl{mongoAdapter:mongoAdapter, flowManager:flowManager}
 }
 
 func (scheduler *iSchedulerServiceImpl) Scheduler(ctx context.Context, schedulerData []ScheduleModel) error {
 
-	if schedulerData == nil {
+	if schedulerData == nil || len(schedulerData) == 0 {
 		return errors.New("schedulerData is nil")
 	}
 
-	scheduler.data = schedulerData
-	go scheduler.doSchedule(ctx)
-
+	go scheduler.doSchedule(ctx, schedulerData)
 	return nil
 }
 
-func (scheduler *iSchedulerServiceImpl) doSchedule(ctx context.Context) {
+func (scheduler *iSchedulerServiceImpl) doSchedule(ctx context.Context, schedulerData []ScheduleModel) {
 
 	schCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	for _, data := range schedulerData {
+		go scheduler.scheduleProcess(schCtx, data)
+	}
+	//for {
+	select {
+	case <-ctx.Done(): return
+		//default:
+	}
+	//}
+}
+
+func (scheduler *iSchedulerServiceImpl) scheduleProcess(ctx context.Context, model ScheduleModel) {
+
+	heartbeat := scheduler.worker(ctx, time.Duration(1 * time.Minute), time.Duration(1 * time.Hour), model)
+	const timeout = 5*time.Minute
+
 	for {
 		select {
-			case <-ctx.Done():
+		case <-ctx.Done(): return
+		case _, ok :=  <- heartbeat:
+			if ok == false {
+				logger.Audit("heartbeat of worker scheduler closed, step: %s, action: %s ", model.Step, model.Action)
+				//heartbeat = scheduler.worker(ctx, time.Duration(1 * time.Second), time.Duration(10 * time.Second), model)
 				return
-		default:
-		}
+			}
 
-		for _, data := range scheduler.data {
-			go scheduler.scheduleProcess(schCtx, data)
+			logger.Audit("heartbeat pulse")
+
+		case <- time.After(timeout):
+			logger.Audit("worker goroutine is not healthy!, step: %s, action: %s ", model.Step, model.Action)
+			return
 		}
 	}
 }
 
-func (scheduler *iSchedulerServiceImpl) scheduleProcess(ctx context.Context, model ScheduleModel) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <- time.After(10 * time.Second):
-			scheduler.doProcess(ctx, model)
-		default:
+func (scheduler *iSchedulerServiceImpl) worker(ctx context.Context, pulseInterval time.Duration,
+	scheduleInterval time.Duration, data ScheduleModel) <-chan interface{} {
+
+	var heartbeat = make(chan interface{}, 1)
+	go func() {
+		defer close(heartbeat)
+		pulse := time.Tick(pulseInterval)
+		schedule := time.Tick(scheduleInterval)
+		sendPulse := func() {
+			select {
+			case heartbeat <-struct{}{}:
+			default:
+			}
 		}
-	}
+
+		for {
+			select {
+			case <-ctx.Done(): return
+			case <-pulse: sendPulse()
+			case <-schedule: scheduler.doProcess(ctx, data)
+			}
+		}
+	}()
+	return heartbeat
 }
 
 // TODO Refactor
 func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data ScheduleModel) {
+	logger.Audit("doProcess called . . .")
+	time.Sleep(5 * time.Second)
 	pipeline := []bson.M{
-		bson.M{ "$match": bson.M{"items.deletedAt": nil, "items.progress.currentStepName": data.step }},
+		bson.M{ "$match": bson.M{"items.deletedAt": nil, "items.progress.currentStepName": data.Step }},
 		bson.M{ "$unwind": "$items"},
 		bson.M{ "$unwind": bson.M{"path": "$items.progress.stepsHistory", "preserveNullAndEmptyArrays": false}},
-		bson.M{ "$match": bson.M{"items.progress.stepsHistory.name": data.step }},
+		bson.M{ "$match": bson.M{"items.progress.stepsHistory.name": data.Step }},
 		bson.M{ "$project": bson.M{
 				"_id": 0,
 				"orderId": 1,
@@ -101,7 +138,7 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 				bson.M{"$filter":
 					bson.M{"input": "$items.progress.stepsHistory.actionHistory",
 							"as": "action",
-							"cond": bson.M{"$eq": bson.A{"$$action.name", data.action}},
+							"cond": bson.M{"$eq": bson.A{"$$action.name", data.Action}},
 						},
 					},
 				},
@@ -116,9 +153,9 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 				bson.M{"$map":
 					bson.M{"input": "$actionHistory",
 						"as": "action",
-						"in": bson.M{"actionName": "$$ah.name",
-							"expiredTime": "$$ah.data.expiredTime",
-							"createdAt":   "$$ah.createdAt"},
+						"in": bson.M{"actionName": "$$action.name",
+							"expiredTime": "$$action.data.expiredTime",
+							"createdAt":   "$$action.createdAt"},
 					},
 				},
 			}},
@@ -127,12 +164,18 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 	cursor, err := scheduler.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
 	if err != nil {
 		logger.Err("scheduler.mongoAdapter.Aggregate failed, step: %s, action: %s,  error: %s",
-			data.step, data.action, err)
+			data.Step, data.Action, err)
 		return
 	}
 
 	defer closeCursor(ctx, cursor)
-	var expiredOrderMap = make(map[string]map[string]*SchedulerEvent, 64)
+
+	select {
+	case <-ctx.Done(): return
+	default:
+	}
+
+	var expiredOrderMap = make(map[string]map[string]*events.SchedulerEvent, 64)
 
 	// iterate through all documents
 	for cursor.Next(ctx) {
@@ -140,7 +183,7 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 		// decode the document
 		if err := cursor.Decode(&fetchData); err != nil {
 			logger.Err("scheduler.mongoAdapter.Aggregate failed, step: %s, action: %s,  error: %s",
-				data.step, data.action, err)
+				data.Step, data.Action, err)
 			return
 		}
 
@@ -149,12 +192,12 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 				 if schedulerEvent, isFindSeller := sellerMap[fetchData.SellerId]; isFindSeller {
 				 	schedulerEvent.ItemsId = append(schedulerEvent.ItemsId, fetchData.ItemId)
 				 } else {
-				 	newEvent := &SchedulerEvent {
+				 	newEvent := &events.SchedulerEvent {
 						OrderId:    fetchData.OrderId,
 						SellerId:   fetchData.SellerId,
 						ItemsId:    nil,
 						StepIndex:  fetchData.StepIndex,
-						ActionName: fetchData.actionHistory[0].ActionName,
+						ActionName: fetchData.ActionHistory[0].ActionName,
 					}
 
 				 	newEvent.ItemsId = make([]string,0, 16)
@@ -162,18 +205,18 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 				 	expiredOrderMap[fetchData.OrderId][fetchData.SellerId] = newEvent
 				 }
 			} else {
-				newEvent := &SchedulerEvent {
+				newEvent := &events.SchedulerEvent {
 					OrderId:    fetchData.OrderId,
 					SellerId:   fetchData.SellerId,
 					ItemsId:    nil,
 					StepIndex:  fetchData.StepIndex,
-					ActionName: fetchData.actionHistory[0].ActionName,
+					ActionName: fetchData.ActionHistory[0].ActionName,
 				}
 
 				newEvent.ItemsId = make([]string,0, 16)
 				newEvent.ItemsId = append(newEvent.ItemsId, fetchData.ItemId)
 
-				expiredOrderMap[fetchData.OrderId] = make(map[string]*SchedulerEvent, 16)
+				expiredOrderMap[fetchData.OrderId] = make(map[string]*events.SchedulerEvent, 16)
 				expiredOrderMap[fetchData.OrderId][fetchData.SellerId] = newEvent
 			}
 		}
@@ -187,11 +230,11 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 }
 
 func (scheduler *iSchedulerServiceImpl) checkExpiredTime(fetchData *fetchItemData) bool {
-	if fetchData.actionHistory[0].expiredTime.Before(time.Now()) {
+	if fetchData.ActionHistory[0].ExpiredTime.Before(time.Now().UTC()) {
 		logger.Audit("action expired, " +
-			"orderId: %s, itemId: %s, stepName: %s, stepIndex: %s, actionName: %s, expiredTime: %s ",
-			fetchData.OrderId, fetchData.ItemId, fetchData.StepIndex, fetchData.StepName,
-			fetchData.actionHistory[0].ActionName, fetchData.actionHistory[0].expiredTime)
+			"orderId: %s, itemId: %s, stepName: %s, stepIndex: %d, actionName: %s, expiredTime: %s ",
+			fetchData.OrderId, fetchData.ItemId, fetchData.StepName, fetchData.StepIndex,
+			fetchData.ActionHistory[0].ActionName, fetchData.ActionHistory[0].ExpiredTime)
 		return true
 	}
 

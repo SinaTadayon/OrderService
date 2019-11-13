@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/configs"
@@ -10,6 +11,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
+	scheduler_service "gitlab.faza.io/order-project/order-service/infrastructure/services/scheduler"
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	grpc_server "gitlab.faza.io/order-project/order-service/server/grpc"
 	"os"
@@ -19,9 +21,10 @@ import (
 )
 
 var App struct {
-	Config          *configs.Cfg
-	flowManager     domain.IFlowManager
-	grpcServer      grpc_server.Server
+	Config          	*configs.Cfg
+	flowManager     	domain.IFlowManager
+	grpcServer      	grpc_server.Server
+	schedulerService	scheduler_service.ISchedulerService
 }
 var brokers []string
 
@@ -37,6 +40,28 @@ const (
 func main() {
 
 	if App.Config.App.ServiceMode == "server" {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		scheduleDataList := []scheduler_service.ScheduleModel{
+			{
+				Step: "20.Seller_Approval_Pending",
+				Action: "ApprovalPending",
+			},
+			{
+				Step: "30.Shipment_Pending",
+				Action: "SellerShipmentPending",
+			},
+			{
+				Step: "32.Shipment_Delivered",
+				Action: "ShipmentDeliveredPending",
+			},
+		}
+
+		if err := App.schedulerService.Scheduler(ctx, scheduleDataList); err != nil {
+			logger.Err("SchedulerService.Scheduler failed, error: %s", err)
+			return
+		}
 		App.grpcServer.Start()
 	}
 
@@ -83,7 +108,7 @@ func init() {
 
 	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
 	if err != nil {
-		logger.Err("NewOrderRepository Mongo: %v", err.Error())
+		logger.Err("mongoadapter.NewMongo Mongo: %v", err.Error())
 		panic("mongo adapter creation failed, " + err.Error())
 	}
 
@@ -99,7 +124,6 @@ func init() {
 		logger.Err("flowManager creation failed, %s ", err.Error())
 		panic("flowManager creation failed, " + err.Error())
 	}
-
 
 	 App.grpcServer = grpc_server.NewServer(App.Config.GRPCServer.Address, uint16(App.Config.GRPCServer.Port), App.flowManager)
 
@@ -123,7 +147,7 @@ func init() {
 
 
 	global.Singletons.NotifyService = notify_service.NewNotificationService()
-
+	App.schedulerService = scheduler_service.NewScheduler(mongoDriver, App.flowManager)
 
 
 

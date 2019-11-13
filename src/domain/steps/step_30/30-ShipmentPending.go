@@ -18,6 +18,7 @@ const (
 	Shipped				= "Shipped"
 	SellerShipmentPending = "SellerShipmentPending"
 	StockReleased		= "StockReleased"
+	AutoReject			= "AutoReject"
 )
 
 type shipmentPendingStep struct {
@@ -83,7 +84,7 @@ func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, ord
 					shipmentPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
 				}
 
-				shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, Shipped, false, "Action Expired", nil, false, steps.ClosedStatus)
+				shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, AutoReject, false, "Action Expired", nil, false, steps.ClosedStatus)
 				if err := shipmentPending.persistOrder(ctx, &order); err != nil {
 					returnChannel := make(chan promise.FutureData, 1)
 					defer close(returnChannel)
