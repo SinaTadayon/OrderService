@@ -20,6 +20,11 @@ type Cfg struct {
 		Port   	int `env:"ORDER_SERVER_PORT"`
 	}
 
+	UserService struct {
+		Address string 	`env:"USER_SERVICE_ADDRESS"`
+		Port   	int 	`env:"USER_SERVICE_PORT"`
+	}
+
 	PaymentGatewayService struct {
 		Address 	string `env:"PAYMENT_GATEWAY_ADDRESS"`
 		Port   		int `env:"PAYMENT_GATEWAY_PORT"`

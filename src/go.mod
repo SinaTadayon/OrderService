@@ -15,6 +15,7 @@ require (
 	gitlab.faza.io/protos/order v0.0.41
 	gitlab.faza.io/protos/payment-gateway v0.0.7
 	gitlab.faza.io/protos/stock-proto.git v0.0.3
+	gitlab.faza.io/services/user-app-client v0.0.17
 	go.mongodb.org/mongo-driver v1.1.2
 	google.golang.org/grpc v1.24.0
 )

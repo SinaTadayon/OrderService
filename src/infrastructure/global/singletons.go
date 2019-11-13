@@ -8,6 +8,7 @@ import (
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	"gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	"gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
+	user_service "gitlab.faza.io/order-project/order-service/infrastructure/services/user"
 )
 
 type CtxKey int
@@ -27,6 +28,7 @@ var Singletons struct {
 	StockService    	stock_service.IStockService
 	PaymentService  	payment_service.IPaymentService
 	NotifyService   	notify_service.INotificationService
+	UserService 		user_service.IUserService
 	//SchedulerService	scheduler_service.ISchedulerService
 	//FlowManager		domain.IFlowManager
 	//GRPCServer      grpc.Server

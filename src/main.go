@@ -13,6 +13,7 @@ import (
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	scheduler_service "gitlab.faza.io/order-project/order-service/infrastructure/services/scheduler"
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
+	user_service "gitlab.faza.io/order-project/order-service/infrastructure/services/user"
 	grpc_server "gitlab.faza.io/order-project/order-service/server/grpc"
 	"os"
 	"time"
@@ -145,19 +146,16 @@ func init() {
 		global.Singletons.PaymentService = payment_service.NewPaymentService(App.Config.PaymentGatewayService.Address,App.Config.PaymentGatewayService.Port)
 	}
 
-
 	global.Singletons.NotifyService = notify_service.NewNotificationService()
+	global.Singletons.UserService = user_service.NewUserService(App.Config.UserService.Address, App.Config.UserService.Port)
+
 	App.schedulerService = scheduler_service.NewScheduler(mongoDriver, App.flowManager)
-
-
-
 
 	//brokers = strings.Split(App.config.Kafka.Brokers, ",")
 	//if App.config.App.Port == "" {
 	//	logger.Err("grpc PORT env not defined")
 	//	//return errors.New("grpc PORT env not defined")
 	//}
-
 
 	//// store in mongo
 	//mongoConf := &mongoadapter.MongoConfig{
