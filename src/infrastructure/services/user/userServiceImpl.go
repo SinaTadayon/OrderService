@@ -13,7 +13,7 @@ import (
 
 const (
 	// ISO8601 standard time format
-	ISO8601 = "2006-01-02T15:04:05-0700"
+	layout = "2006-01-02 15:04:05 +0000 MST"
 )
 
 
@@ -27,13 +27,12 @@ func NewUserService(serverAddress string, serverPort int) IUserService {
 	return &iUserServiceImpl{serverAddress: serverAddress, serverPort: serverPort}
 }
 
-// TODO refactor falt-tlorant
+// TODO refactor fault-tolerant
 func (userService *iUserServiceImpl) getUserService(ctx context.Context) error {
 
 	if userService.client != nil {
 		return nil
 	}
-
 
 	var err error
 	config := &userclient.Config{
@@ -41,12 +40,12 @@ func (userService *iUserServiceImpl) getUserService(ctx context.Context) error {
 		Port:    userService.serverPort,
 		Timeout: 5 * time.Second,
 	}
-	userService.client, err = userclient.NewClient(context.Background(), config, grpc.WithInsecure(), grpc.WithBlock())
+	userService.client, err = userclient.NewClient(ctx, config, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		logger.Err("userclient.NewClient failed, %s", err)
 		return err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), config.Timeout)
+	ctx, cancel := context.WithTimeout(ctx, config.Timeout)
 	defer cancel()
 	_, err = userService.client.Connect(ctx)
 	if err != nil {
@@ -82,7 +81,7 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	sellerProfile := entities.SellerProfile{
+	sellerProfile := &entities.SellerProfile{
 		SellerId:       userProfile.Data.UserId,
 	}
 
@@ -94,13 +93,22 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 			LandPhone:                userProfile.Data.Seller.GeneralInfo.LandPhone,
 			MobilePhone:              userProfile.Data.Seller.GeneralInfo.MobilePhone,
 			Website:                  userProfile.Data.Seller.GeneralInfo.Website,
-			Province:                 userProfile.Data.Seller.GeneralInfo.Province.Name,
-			City:                     userProfile.Data.Seller.GeneralInfo.City.Name,
-			Neighborhood:             userProfile.Data.Seller.GeneralInfo.Neighborhood.Name,
 			PostalAddress:            userProfile.Data.Seller.GeneralInfo.PostalAddress,
 			PostalCode:               userProfile.Data.Seller.GeneralInfo.PostalCode,
 			IsVATObliged:             userProfile.Data.Seller.GeneralInfo.IsVATObliged,
 			VATCertificationImageURL: userProfile.Data.Seller.GeneralInfo.VATCertificationImageURL,
+		}
+
+		if userProfile.Data.Seller.GeneralInfo.Province != nil {
+			sellerProfile.GeneralInfo.Province = userProfile.Data.Seller.GeneralInfo.Province.Name
+		}
+
+		if userProfile.Data.Seller.GeneralInfo.City != nil {
+			sellerProfile.GeneralInfo.City = userProfile.Data.Seller.GeneralInfo.City.Name
+		}
+
+		if userProfile.Data.Seller.GeneralInfo.Neighborhood != nil {
+			sellerProfile.GeneralInfo.Neighborhood = userProfile.Data.Seller.GeneralInfo.Neighborhood.Name
 		}
 	}
 
@@ -125,12 +133,25 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 
 	if userProfile.Data.Seller.ReturnInfo != nil {
 		sellerProfile.ReturnInfo =     &entities.ReturnInfo{
-			Country:       userProfile.Data.Seller.ReturnInfo.Country.Name,
-			Province:      userProfile.Data.Seller.ReturnInfo.Province.Name,
-			City:          userProfile.Data.Seller.ReturnInfo.City.Name,
-			Neighborhood:  userProfile.Data.Seller.ReturnInfo.Neighborhood.Name,
+
 			PostalAddress: userProfile.Data.Seller.ReturnInfo.PostalAddress,
 			PostalCode:    userProfile.Data.Seller.ReturnInfo.PostalCode,
+		}
+
+		if userProfile.Data.Seller.ReturnInfo.Country != nil {
+			sellerProfile.ReturnInfo.Country = userProfile.Data.Seller.ReturnInfo.Country.Name
+		}
+
+		if userProfile.Data.Seller.ReturnInfo.Province != nil {
+			sellerProfile.ReturnInfo.Province = userProfile.Data.Seller.ReturnInfo.Province.Name
+		}
+
+		if userProfile.Data.Seller.ReturnInfo.City != nil {
+			sellerProfile.ReturnInfo.City = userProfile.Data.Seller.ReturnInfo.City.Name
+		}
+
+		if userProfile.Data.Seller.ReturnInfo.Neighborhood != nil {
+			sellerProfile.ReturnInfo.Neighborhood = userProfile.Data.Seller.ReturnInfo.Neighborhood.Name
 		}
 	}
 
@@ -170,14 +191,14 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 		}
 	}
 
-	timestamp, err := time.Parse(ISO8601,userProfile.Data.CreatedAt)
+	timestamp, err := time.Parse(layout,userProfile.Data.CreatedAt)
 	if err != nil {
 		logger.Err("GetSellerProfile() => createdAt time parse failed, sellerId: %s, error: %s", sellerId, err)
 		timestamp = time.Now()
 	}
 
 	sellerProfile.CreatedAt = timestamp
-	timestamp, err = time.Parse(ISO8601,userProfile.Data.UpdatedAt)
+	timestamp, err = time.Parse(layout,userProfile.Data.UpdatedAt)
 	if err != nil {
 		logger.Err("GetSellerProfile() => updatedAt time parse failed, sellerId: %s, error: %s", sellerId, err)
 		timestamp = time.Now()
@@ -186,6 +207,6 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 
 	returnChannel := make(chan promise.FutureData, 1)
 	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data:promise.FutureData{Data:sellerProfile} , Ex:nil}
+	returnChannel <- promise.FutureData{Data:sellerProfile ,Ex:nil}
 	return promise.NewPromise(returnChannel, 1, 1)
 }
