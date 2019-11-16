@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	stepName string 	= "Shipped"
-	stepIndex int		= 31
+	stepName  string = "Shipped"
+	stepIndex int    = 31
 )
 
 type shippedStep struct {
@@ -45,13 +45,11 @@ func (shipped shippedStep) ProcessOrder(ctx context.Context, order entities.Orde
 }
 
 func (shipped shippedStep) persistOrder(ctx context.Context, order *entities.Order) {
-	_ , err := global.Singletons.OrderRepository.Save(*order)
+	_, err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", shipped.Name(), order, err.Error())
 	}
 }
-
-
 
 //
 //import (

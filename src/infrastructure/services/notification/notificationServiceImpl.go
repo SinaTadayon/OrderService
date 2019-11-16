@@ -7,18 +7,17 @@ import (
 )
 
 type iNotificationServiceImpl struct {
-
 }
 
 func NewNotificationService() INotificationService {
 	return &iNotificationServiceImpl{}
 }
 
-func(notification iNotificationServiceImpl) NotifyBySMS(ctx context.Context, request SMSRequest) promise.IPromise {
+func (notification iNotificationServiceImpl) NotifyBySMS(ctx context.Context, request SMSRequest) promise.IPromise {
 	//notification_client.SendSms(ctx, request.Phone, request.Body)
 	panic("must be implemented")
 }
 
-func(notification iNotificationServiceImpl) NotifyByMail(ctx context.Context, request EmailRequest) promise.IPromise {
+func (notification iNotificationServiceImpl) NotifyByMail(ctx context.Context, request EmailRequest) promise.IPromise {
 	panic("must be implemented")
 }

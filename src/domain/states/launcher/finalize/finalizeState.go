@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	stateName string = "Finalize_Action_State"
-	activeType = actives.FinalizeAction
+	stateName  string = "Finalize_Action_State"
+	activeType        = actives.FinalizeAction
 )
 
 type finalizeActionLauncher struct {
@@ -41,7 +41,6 @@ func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) la
 	panic("implementation required")
 }
 
-
 // TODO must be dynamic
 // TODO check actions and improve handling actions
 func (finalizeState finalizeActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
@@ -51,19 +50,19 @@ func (finalizeState finalizeActionLauncher) ActionLauncher(ctx context.Context, 
 	for _, action := range finalizeState.Actions().(actives.IActiveAction).ActionEnums() {
 		if action == finalize_action.OrderFailedFinalizeAction {
 			finalizeState.persistOrderState(ctx, &order, itemsId, action, true, "")
-			returnChannel <- promise.FutureData{Data:promise.FutureData{}, Ex:nil}
+			returnChannel <- promise.FutureData{Data: promise.FutureData{}, Ex: nil}
 			break
 		} else if action == finalize_action.BuyerFinalizeAction {
 			panic("must be implement")
 		} else if action == finalize_action.PaymentFailedFinalizeAction {
 			finalizeState.persistOrderState(ctx, &order, itemsId, action, true, "")
-			returnChannel <- promise.FutureData{Data:promise.FutureData{}, Ex:nil}
+			returnChannel <- promise.FutureData{Data: promise.FutureData{}, Ex: nil}
 		} else if action == finalize_action.MarketFinalizeAction {
 			panic("must be implement")
 		} else {
 			logger.Err("actions in not valid for finalize, action: %v, order: %v", action, order)
 			finalizeState.persistOrderState(ctx, &order, itemsId, action, false, "received param type is not a actions.IEnumAction")
-			returnChannel <- promise.FutureData{Data:promise.FutureData{}, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+			returnChannel <- promise.FutureData{Data: promise.FutureData{}, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 			break
 		}
 	}
@@ -131,4 +130,3 @@ func (finalizeState finalizeActionLauncher) doUpdateOrderState(ctx context.Conte
 	//order.Items[index].Progress.StepsHistory[len(order.Items[index].Progress.StepsHistory)].StatesHistory =
 	//	append(order.Items[index].Progress.StepsHistory[len(order.Items[index].Progress.StepsHistory)].StatesHistory, stateHistory)
 }
-

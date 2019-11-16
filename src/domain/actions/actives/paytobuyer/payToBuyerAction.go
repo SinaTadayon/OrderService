@@ -43,6 +43,3 @@ func (payToBuyer payToBuyerActiveActionImpl) ActionType() actions.ActionType {
 func (payToBuyer payToBuyerActiveActionImpl) ActionEnums() []actions.IEnumAction {
 	return payToBuyer.enumAction
 }
-
-
-

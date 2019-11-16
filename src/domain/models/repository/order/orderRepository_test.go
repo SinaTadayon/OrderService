@@ -36,12 +36,12 @@ func init() {
 		Port:     config.Mongo.Port,
 		Username: config.Mongo.User,
 		//Password:     App.Cfg.Mongo.Pass,
-		ConnTimeout:  time.Duration(config.Mongo.ConnectionTimeout),
-		ReadTimeout:  time.Duration(config.Mongo.ReadTimeout),
-		WriteTimeout: time.Duration(config.Mongo.WriteTimeout),
+		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout),
+		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout),
+		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout),
 		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime),
-		MaxPoolSize: uint64(config.Mongo.MaxPoolSize),
-		MinPoolSize: uint64(config.Mongo.MinPoolSize),
+		MaxPoolSize:     uint64(config.Mongo.MaxPoolSize),
+		MinPoolSize:     uint64(config.Mongo.MinPoolSize),
 	}
 
 	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
@@ -167,7 +167,7 @@ func TestFindAllWithPageAndPerPageRepository_success(t *testing.T) {
 	order = createOrder()
 	_, err = orderRepository.Insert(order)
 	assert.Nil(t, err)
-	orders, _, err := orderRepository.FindAllWithPage(2,2)
+	orders, _, err := orderRepository.FindAllWithPage(2, 2)
 	assert.Nil(t, err)
 	assert.Equal(t, len(orders), 1)
 }
@@ -184,7 +184,7 @@ func TestFindAllWithPageAndPerPageRepository_failed(t *testing.T) {
 	order = createOrder()
 	_, err = orderRepository.Insert(order)
 	assert.Nil(t, err)
-	_, _, err = orderRepository.FindAllWithPage(1002,2000)
+	_, _, err = orderRepository.FindAllWithPage(1002, 2000)
 	assert.NotNil(t, err)
 	assert.Equal(t, err, errorPageNotAvailable)
 }
@@ -203,10 +203,10 @@ func TestFindAllWithPageAndPerPageAndSortRepository_success(t *testing.T) {
 	_, err = orderRepository.Insert(order)
 	assert.Nil(t, err)
 
-	orders, _, err := orderRepository.FindAllWithPageAndSort(1,2, "buyerInfo.firstName", 1)
+	orders, _, err := orderRepository.FindAllWithPageAndSort(1, 2, "buyerInfo.firstName", 1)
 	assert.Nil(t, err)
 	assert.Equal(t, len(orders), 2)
-	assert.Equal(t,orders[0].BuyerInfo.FirstName, "AAAA")
+	assert.Equal(t, orders[0].BuyerInfo.FirstName, "AAAA")
 }
 
 func TestFindByIdRepository(t *testing.T) {
@@ -288,7 +288,7 @@ func TestFindByFilterRepository(t *testing.T) {
 	assert.Nil(t, err)
 
 	orders, err := orderRepository.FindByFilter(func() interface{} {
-		return bson.D{{"buyerInfo.firstName", "Reza"},{"deletedAt", nil}}
+		return bson.D{{"buyerInfo.firstName", "Reza"}, {"deletedAt", nil}}
 	})
 
 	assert.Nil(t, err)
@@ -310,7 +310,7 @@ func TestFindByFilterWithSortOrderRepository(t *testing.T) {
 	assert.Nil(t, err)
 
 	orders, err := orderRepository.FindByFilterWithSort(func() (interface{}, string, int) {
-		return bson.D{{"buyerInfo.firstName", "AAAA"},{"deletedAt", nil}}, "buyerInfo.firstName", 1
+		return bson.D{{"buyerInfo.firstName", "AAAA"}, {"deletedAt", nil}}, "buyerInfo.firstName", 1
 	})
 	assert.Nil(t, err)
 	assert.Equal(t, orders[0].BuyerInfo.FirstName, "AAAA")
@@ -329,8 +329,8 @@ func TestFindByFilterWithPageAndPerPageRepository_success(t *testing.T) {
 	_, err = orderRepository.Insert(order)
 	assert.Nil(t, err)
 	orders, _, err := orderRepository.FindByFilterWithPage(func() interface{} {
-		return bson.D{{},{"deletedAt", nil}}
-	}, 2,2)
+		return bson.D{{}, {"deletedAt", nil}}
+	}, 2, 2)
 	assert.Nil(t, err)
 	assert.Equal(t, len(orders), 1)
 }
@@ -348,8 +348,8 @@ func TestFindByFilterWithPageAndPerPageRepository_failed(t *testing.T) {
 	_, err = orderRepository.Insert(order)
 	assert.Nil(t, err)
 	_, _, err = orderRepository.FindByFilterWithPage(func() interface{} {
-		return bson.D{{},{"deletedAt", nil}}
-	}, 20002,2000)
+		return bson.D{{}, {"deletedAt", nil}}
+	}, 20002, 2000)
 	assert.NotNil(t, err)
 	assert.Equal(t, err, errorPageNotAvailable)
 }
@@ -369,10 +369,11 @@ func TestFindByFilterWithPageAndPerPageAndSortRepository_success(t *testing.T) {
 	assert.Nil(t, err)
 
 	orders, _, err := orderRepository.FindByFilterWithPageAndSort(func() (interface{}, string, int) {
-		return bson.D{{},{"deletedAt", nil}}, "buyerInfo.firstName", 1},1,2)
+		return bson.D{{}, {"deletedAt", nil}}, "buyerInfo.firstName", 1
+	}, 1, 2)
 	assert.Nil(t, err)
 	assert.Equal(t, len(orders), 2)
-	assert.Equal(t,orders[0].BuyerInfo.FirstName, "AAAA")
+	assert.Equal(t, orders[0].BuyerInfo.FirstName, "AAAA")
 }
 
 func removeCollection() {
@@ -382,61 +383,61 @@ func removeCollection() {
 func createOrder() entities.Order {
 	//currentTime := time.Now().UTC()
 
-	paymentRequest := entities.PaymentRequest {
-		Amount:	     	75400000,
-		Currency:		"IRR",
-		Gateway: 		"AAP",
-		CreatedAt:   	time.Now().UTC(),
+	paymentRequest := entities.PaymentRequest{
+		Amount:    75400000,
+		Currency:  "IRR",
+		Gateway:   "AAP",
+		CreatedAt: time.Now().UTC(),
 	}
 
-	paymentResponse	:= entities.PaymentResponse {
-		Result:			true,
-		Reason:			"",
-		Description:	"",
-		CallBackUrl:	"http://baman.io/payment-service",
-		InvoiceId:		12345678946,
-		PaymentId:		"r3r434ef45d",
-		CreatedAt:   	time.Now().UTC(),
+	paymentResponse := entities.PaymentResponse{
+		Result:      true,
+		Reason:      "",
+		Description: "",
+		CallBackUrl: "http://baman.io/payment-service",
+		InvoiceId:   12345678946,
+		PaymentId:   "r3r434ef45d",
+		CreatedAt:   time.Now().UTC(),
 	}
 
-	paymentResult := entities.PaymentResult {
-		Result:			true,
-		Reason:			"",
-		PaymentId:      "r3r434ef45d",
-		InvoiceId:		12345678946,
-		Amount:    		75400000,
-		ReqBody:   		"",
-		ResBody:  		"",
-		CardNumMask: 	"545498******4553",
-		CreatedAt:   	time.Now().UTC(),
+	paymentResult := entities.PaymentResult{
+		Result:      true,
+		Reason:      "",
+		PaymentId:   "r3r434ef45d",
+		InvoiceId:   12345678946,
+		Amount:      75400000,
+		ReqBody:     "",
+		ResBody:     "",
+		CardNumMask: "545498******4553",
+		CreatedAt:   time.Now().UTC(),
 	}
 
-	buyerInfo := entities.BuyerInfo {
-		FirstName:			"Sina",
-		LastName:   		"Tadayon",
-		Mobile:     		"09123343534",
-		Email:      		"sina.tadayon@baman.io",
-		NationalId: 		"00598342521",
-		Gender:				"male",
-		IP:         		"127.0.0.1",
-		FinanceInfo:   		entities.FinanceInfo {
-			Iban:			"IR9450345802934803",
-			CardNumber:		"4444555533332222",
-			AccountNumber:	"293.6000.9439283.1",
-			BankName:		"passargad",
+	buyerInfo := entities.BuyerInfo{
+		FirstName:  "Sina",
+		LastName:   "Tadayon",
+		Mobile:     "09123343534",
+		Email:      "sina.tadayon@baman.io",
+		NationalId: "00598342521",
+		Gender:     "male",
+		IP:         "127.0.0.1",
+		FinanceInfo: entities.FinanceInfo{
+			Iban:          "IR9450345802934803",
+			CardNumber:    "4444555533332222",
+			AccountNumber: "293.6000.9439283.1",
+			BankName:      "passargad",
 		},
-		ShippingAddress: 	entities.AddressInfo {
-			Address:		"Tehran, Narmak, Golestan.st",
-			Phone:   		"0217734873",
-			Country: 		"Iran",
-			City: 			"Tehran",
-			Province: 		"Tehran",
-			Neighbourhood:	"Chizar",
-			Location:		entities.Location{
+		ShippingAddress: entities.AddressInfo{
+			Address:       "Tehran, Narmak, Golestan.st",
+			Phone:         "0217734873",
+			Country:       "Iran",
+			City:          "Tehran",
+			Province:      "Tehran",
+			Neighbourhood: "Chizar",
+			Location: entities.Location{
 				Type:        "Point",
 				Coordinates: []float64{-72.7738706, 41.6332836},
 			},
-			ZipCode: 		"1645630586",
+			ZipCode: "1645630586",
 		},
 	}
 
@@ -465,7 +466,7 @@ func createOrder() entities.Order {
 			}},
 		},
 		BuyerInfo: buyerInfo,
-		Amount: entities.Amount {
+		Amount: entities.Amount{
 			Total:         75400000,
 			Subtotal:      73000000,
 			Discount:      15600000,
@@ -473,7 +474,7 @@ func createOrder() entities.Order {
 			ShipmentTotal: 5700000,
 			PaymentMethod: "IPG",
 			PaymentOption: "APP",
-			Voucher:		&entities.Voucher{
+			Voucher: &entities.Voucher{
 				Amount:  230000,
 				Code:    "Market",
 				Details: nil,
@@ -490,7 +491,7 @@ func createOrder() entities.Order {
 				Image:       "",
 				Returnable:  false,
 				DeletedAt:   nil,
-				Attributes:	 map[string]string {
+				Attributes: map[string]string{
 					"Quantity":  "0",
 					"Width":     "5cm",
 					"Height":    "7cm",
@@ -500,10 +501,10 @@ func createOrder() entities.Order {
 					"Materials": "Stone",
 				},
 				SellerInfo: entities.SellerInfo{
-					SellerId: 		  "129384234",
-					Profile:            &entities.SellerProfile{
-						SellerId:        129384234,
-						GeneralInfo:     &entities.GeneralSellerInfo{
+					SellerId: "129384234",
+					Profile: &entities.SellerProfile{
+						SellerId: 129384234,
+						GeneralInfo: &entities.GeneralSellerInfo{
 							ShopDisplayName:          "Sazgar",
 							Type:                     "",
 							Email:                    "info@sazgar.com",
@@ -524,14 +525,14 @@ func createOrder() entities.Order {
 							CompanyRationalId:         "1823128434",
 							TradeNumber:               "19293712937",
 						},
-						IndividualInfo:  &entities.IndividualSellerInfo{
+						IndividualInfo: &entities.IndividualSellerInfo{
 							FirstName:          "Sazgar",
 							FamilyName:         "Sazgar",
 							NationalId:         "3254534334",
 							NationalIdFrontURL: "http://adkuhfadlf",
 							NationalIdBackURL:  "http://adkuhfadlf",
 						},
-						ReturnInfo:      &entities.ReturnInfo{
+						ReturnInfo: &entities.ReturnInfo{
 							Country:       "Iran",
 							Province:      "Tehran",
 							City:          "Tehran",
@@ -539,14 +540,14 @@ func createOrder() entities.Order {
 							PostalAddress: "joradan",
 							PostalCode:    "28349394332",
 						},
-						ContactPerson:   &entities.SellerContactPerson{
+						ContactPerson: &entities.SellerContactPerson{
 							FirstName:   "Sazgar",
 							FamilyName:  "Sazgar",
 							MobilePhone: "9324729348",
 							Email:       "sazgar@sazgar.com",
 						},
-						ShipmentInfo:    &entities.SellerShipmentInfo{
-							SameCity:    &entities.PricePlan{
+						ShipmentInfo: &entities.SellerShipmentInfo{
+							SameCity: &entities.PricePlan{
 								Threshold:        934858,
 								BelowPrice:       92384729,
 								ReactionTimeDays: 98293484,
@@ -557,13 +558,13 @@ func createOrder() entities.Order {
 								ReactionTimeDays: 98293484,
 							},
 						},
-						FinanceData:     &entities.SellerFinanceData{
+						FinanceData: &entities.SellerFinanceData{
 							Iban:                    "405872058724850",
 							AccountHolderFirstName:  "sazgar",
 							AccountHolderFamilyName: "sazgar",
 						},
-						CreatedAt:       time.Now().UTC(),
-						UpdatedAt:       time.Now().UTC(),
+						CreatedAt: time.Now().UTC(),
+						UpdatedAt: time.Now().UTC(),
 					},
 				},
 				Price: entities.Price{
@@ -573,7 +574,7 @@ func createOrder() entities.Order {
 					SellerCommission: 5334444,
 					Currency:         "IRR",
 				},
-				ShipmentSpec: entities.ShipmentSpec {
+				ShipmentSpec: entities.ShipmentSpec{
 					CarrierName:    "Post",
 					CarrierProduct: "Post Express",
 					CarrierType:    "Standard",
@@ -586,19 +587,19 @@ func createOrder() entities.Order {
 					Details:        "no return",
 				},
 				ShipmentDetails: entities.ShipmentDetails{
-					SellerShipmentDetail: 	entities.ShipmentDetail{
-						CarrierName: 		"Post",
-						TrackingNumber:   	"545349534958349",
-						Image:            	"",
-						Description:      	"",
-						CreatedAt:        	time.Now().UTC(),
+					SellerShipmentDetail: entities.ShipmentDetail{
+						CarrierName:    "Post",
+						TrackingNumber: "545349534958349",
+						Image:          "",
+						Description:    "",
+						CreatedAt:      time.Now().UTC(),
 					},
 					BuyerReturnShipmentDetail: entities.ShipmentDetail{
-						CarrierName: 			"Post",
-						TrackingNumber:   		"545349534958349",
-						Image:                  "",
-						Description:            "",
-						CreatedAt:              time.Now().UTC(),
+						CarrierName:    "Post",
+						TrackingNumber: "545349534958349",
+						Image:          "",
+						Description:    "",
+						CreatedAt:      time.Now().UTC(),
 					},
 				},
 				Progress: entities.Progress{
@@ -659,7 +660,7 @@ func createOrder() entities.Order {
 				Image:       "",
 				Returnable:  true,
 				DeletedAt:   nil,
-				Attributes:	 map[string]string {
+				Attributes: map[string]string{
 					"Quantity":  "0",
 					"Width":     "5cm",
 					"Height":    "7cm",
@@ -669,8 +670,8 @@ func createOrder() entities.Order {
 					"Materials": "Stone",
 				},
 				SellerInfo: entities.SellerInfo{
-					SellerId:			"2384723083",
-					Profile:			&entities.SellerProfile{
+					SellerId: "2384723083",
+					Profile: &entities.SellerProfile{
 						SellerId:        2384723083,
 						GeneralInfo:     nil,
 						CorporationInfo: nil,
@@ -683,7 +684,7 @@ func createOrder() entities.Order {
 						UpdatedAt:       time.Now().UTC(),
 					},
 				},
-				Price: entities.Price {
+				Price: entities.Price{
 					Unit:             1270000,
 					Original:         7340000,
 					Special:          1000000,
@@ -703,19 +704,19 @@ func createOrder() entities.Order {
 					Details:        "no return",
 				},
 				ShipmentDetails: entities.ShipmentDetails{
-					SellerShipmentDetail: 	entities.ShipmentDetail{
-						CarrierName: 		"Post",
-						TrackingNumber:   	"545349534958349",
-						Image:            	"",
-						Description:      	"",
-						CreatedAt:        	time.Now().UTC(),
+					SellerShipmentDetail: entities.ShipmentDetail{
+						CarrierName:    "Post",
+						TrackingNumber: "545349534958349",
+						Image:          "",
+						Description:    "",
+						CreatedAt:      time.Now().UTC(),
 					},
 					BuyerReturnShipmentDetail: entities.ShipmentDetail{
-						CarrierName: 			"Post",
-						TrackingNumber:   		"545349534958349",
-						Image:                  "",
-						Description:            "",
-						CreatedAt:              time.Now().UTC(),
+						CarrierName:    "Post",
+						TrackingNumber: "545349534958349",
+						Image:          "",
+						Description:    "",
+						CreatedAt:      time.Now().UTC(),
 					},
 				},
 				Progress: entities.Progress{

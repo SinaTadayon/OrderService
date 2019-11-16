@@ -6,7 +6,7 @@ import (
 
 type ActorType int
 
-var actorTypeStrings = [] string { "PaymentActor",
+var actorTypeStrings = []string{"PaymentActor",
 	"OperatorActor", "SellerActor",
 	"BuyerActor", "SchedulerActor", "CheckoutActor", "SystemActor"}
 
@@ -20,18 +20,18 @@ const (
 	SystemActor
 )
 
-func (actorType ActorType)	Name() string {
+func (actorType ActorType) Name() string {
 	return actorType.String()
 }
 
-func (actorType ActorType)  Ordinal() int {
+func (actorType ActorType) Ordinal() int {
 	if actorType < PaymentActor || actorType > SystemActor {
 		return -1
 	}
 	return int(actorType)
 }
 
-func (actorType ActorType)	Values() []string {
+func (actorType ActorType) Values() []string {
 	return actorTypeStrings
 }
 
@@ -40,7 +40,7 @@ func (actorType ActorType) String() string {
 		return ""
 	}
 
-	return  actorTypeStrings[actorType]
+	return actorTypeStrings[actorType]
 }
 
 func FromString(actorType string) (ActorType, error) {
@@ -63,4 +63,3 @@ func FromString(actorType string) (ActorType, error) {
 		return -1, errors.New("invalid actorType string")
 	}
 }
-

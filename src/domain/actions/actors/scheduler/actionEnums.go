@@ -6,7 +6,7 @@ import (
 
 type ActionEnums int
 
-var actionStrings = []string { "TimeoutAction", "WaitForShippingDaysTimeoutAction",
+var actionStrings = []string{"TimeoutAction", "WaitForShippingDaysTimeoutAction",
 	"NoActionForXDaysTimeoutAction", "WaitXDaysTimeoutAction",
 	"AutoApprovedAction"}
 
@@ -59,4 +59,3 @@ func FromString(action string) (ActionEnums, error) {
 		return -1, errors.New("invalid actionEnums string")
 	}
 }
-

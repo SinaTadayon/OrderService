@@ -5,9 +5,9 @@ import (
 )
 
 type Item struct {
-	ItemId      string            `bson:"itemId"`
-	InventoryId string            `bson:"inventoryId"`
-	Title       string            `bson:"title"`
+	ItemId          string            `bson:"itemId"`
+	InventoryId     string            `bson:"inventoryId"`
+	Title           string            `bson:"title"`
 	Brand           string            `bson:"brand"`
 	Guaranty        string            `bson:"guaranty"`
 	Category        string            `bson:"category"`
@@ -27,54 +27,54 @@ type Item struct {
 }
 
 type ShipmentDetails struct {
-	SellerShipmentDetail       	ShipmentDetail `bson:"sellerShipmentDetail"`
-	BuyerReturnShipmentDetail 	ShipmentDetail `bson:"buyerReturnShipmentDetail"`
+	SellerShipmentDetail      ShipmentDetail `bson:"sellerShipmentDetail"`
+	BuyerReturnShipmentDetail ShipmentDetail `bson:"buyerReturnShipmentDetail"`
 }
 
 type ShipmentDetail struct {
-	CarrierName 	 	string     			`bson:"carrierName"`
-	ShippingMethod	 	string 				`bson:"shippingMethod"`
-	TrackingNumber   	string    			`bson:"trackingNumber"`
-	Image            	string    			`bson:"image"`
-	Description      	string    			`bson:"description"`
-	CreatedAt        	time.Time 			`bson:"createdAt"`
+	CarrierName    string    `bson:"carrierName"`
+	ShippingMethod string    `bson:"shippingMethod"`
+	TrackingNumber string    `bson:"trackingNumber"`
+	Image          string    `bson:"image"`
+	Description    string    `bson:"description"`
+	CreatedAt      time.Time `bson:"createdAt"`
 }
 
 type Progress struct {
-	CurrentStepName  	string `bson:"currentStepName"`
-	CurrentStepIndex 	int    `bson:"currentStepIndex"`
+	CurrentStepName  string `bson:"currentStepName"`
+	CurrentStepIndex int    `bson:"currentStepIndex"`
 	//CurrentState		State				`bson:"currentState"`
-	CreatedAt 			time.Time			`bson:"createdAt"`
-	StepsHistory   		[]StepHistory		`bson:"stepsHistory"`
+	CreatedAt    time.Time     `bson:"createdAt"`
+	StepsHistory []StepHistory `bson:"stepsHistory"`
 }
 
 type StepHistory struct {
-	Name    			string				`bson:"name"`
-	Index				int					`bson:"index"`
-	CreatedAt 			time.Time			`bson:"createdAt"`
-	ActionHistory		[]Action			`bson:"actionHistory"`
+	Name          string    `bson:"name"`
+	Index         int       `bson:"index"`
+	CreatedAt     time.Time `bson:"createdAt"`
+	ActionHistory []Action  `bson:"actionHistory"`
 	//StatesHistory		[]StateHistory		`bson:"statesHistory"`
 }
 
 type StateHistory struct {
-	Name         		string				`bson:"name"`
-	Index        		int					`bson:"index"`
-	Type 				string				`bson:"type"`
-	Action      		Action				`bson:"action"`
-	Result 				bool				`bson:"result"`
-	Reason       		string				`bson:"reason"`
-	CreatedAt    		time.Time			`bson:"createdAt"`
+	Name      string    `bson:"name"`
+	Index     int       `bson:"index"`
+	Type      string    `bson:"type"`
+	Action    Action    `bson:"action"`
+	Result    bool      `bson:"result"`
+	Reason    string    `bson:"reason"`
+	CreatedAt time.Time `bson:"createdAt"`
 }
 
 type State struct {
-	Name         		string				`bson:"name"`
-	Index        		int					`bson:"index"`
-	Type 				string				`bson:"type"`
-	Actions				[]Action			`bson:"actions"`
-	AcceptedAction      Action				`bson:"acceptedAction"`
-	Result 				bool				`bson:"actionResult"`
-	Reason       		string				`bson:"reason"`
-	CreatedAt    		time.Time			`bson:"createdAt"`
+	Name           string    `bson:"name"`
+	Index          int       `bson:"index"`
+	Type           string    `bson:"type"`
+	Actions        []Action  `bson:"actions"`
+	AcceptedAction Action    `bson:"acceptedAction"`
+	Result         bool      `bson:"actionResult"`
+	Reason         string    `bson:"reason"`
+	CreatedAt      time.Time `bson:"createdAt"`
 }
 
 /*
@@ -86,20 +86,19 @@ type State struct {
 	Time: dispatched timestamp
 */
 type Action struct {
-	Name				string					`bson:"name"`
-	Type 				string					`bson:"type"`
-	Base 				string					`bson:"base"`
-	Data				map[string]interface{}	`bson:"data"`
-	Result 				bool					`bson:"result"`
-	Reason       		string					`bson:"reason"`
-	Time				*time.Time				`bson:"time"`
-	CreatedAt			time.Time				`bson:"createdAt"`
+	Name      string                 `bson:"name"`
+	Type      string                 `bson:"type"`
+	Base      string                 `bson:"base"`
+	Data      map[string]interface{} `bson:"data"`
+	Result    bool                   `bson:"result"`
+	Reason    string                 `bson:"reason"`
+	Time      *time.Time             `bson:"time"`
+	CreatedAt time.Time              `bson:"createdAt"`
 }
 
-
 type SellerInfo struct {
-	SellerId 			string 					`bson:"sellerId"`
-	Profile				*SellerProfile			`bson:"profile"`
+	SellerId string         `bson:"sellerId"`
+	Profile  *SellerProfile `bson:"profile"`
 }
 
 type Price struct {
@@ -125,4 +124,3 @@ type ShipmentSpec struct {
 	ReturnTime     int32  `bson:"returnTime"`
 	Details        string `bson:"Details"`
 }
-

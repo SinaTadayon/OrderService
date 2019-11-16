@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	actorType = actors.CheckoutActor
+	actorType  = actors.CheckoutActor
 	actionType = actions.ActorAction
 )
 

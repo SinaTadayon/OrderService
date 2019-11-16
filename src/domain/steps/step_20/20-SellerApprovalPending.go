@@ -13,12 +13,12 @@ import (
 )
 
 const (
-	stepName string 	= "Seller_Approval_Pending"
-	stepIndex int		= 20
-	Approved			= "Approved"
-	ApprovalPending 	= "ApprovalPending"
-	StockReleased		= "StockReleased"
-	AutoReject			= "AutoReject"
+	stepName        string = "Seller_Approval_Pending"
+	stepIndex       int    = 20
+	Approved               = "Approved"
+	ApprovalPending        = "ApprovalPending"
+	StockReleased          = "StockReleased"
+	AutoReject             = "AutoReject"
 )
 
 type sellerApprovalPendingStep struct {
@@ -51,7 +51,8 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", sellerApprovalPending.Name(), order.OrderId, ApprovalPending)
 		sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
 		sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, ApprovalPending, true, "", true, steps.InProgressStatus)
-		if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {}
+		if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
+		}
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
 		returnChannel <- promise.FutureData{Data: nil, Ex: nil}
@@ -64,10 +65,12 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 				iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, itemsId, StockReleased)
 				futureData := iPromise.Data()
 				if futureData == nil {
-					if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {}
+					if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
+					}
 					logger.Err("StockService promise channel has been closed, order: %s", order.OrderId)
 				} else if futureData.Ex != nil {
-					if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {}
+					if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
+					}
 					logger.Err("released stock from stockService failed, error: %s, orderId: %s", futureData.Ex.Error(), order.OrderId)
 					returnChannel := make(chan promise.FutureData, 1)
 					defer close(returnChannel)
@@ -85,7 +88,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 				if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 					returnChannel := make(chan promise.FutureData, 1)
 					defer close(returnChannel)
-					returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+					returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 					return promise.NewPromise(returnChannel, 1, 1)
 				}
 				return sellerApprovalPending.Childes()[1].ProcessOrder(ctx, order, itemsId, nil)
@@ -103,7 +106,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 			logger.Err("%s step received invalid action, order: %v, action: %s", sellerApprovalPending.Name(), order, req.Action)
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
-			returnChannel <- promise.FutureData{Data: nil, Ex:promise.FutureError{Code:promise.NotAccepted, Reason:"Action Expired"}}
+			returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotAccepted, Reason: "Action Expired"}}
 			return promise.NewPromise(returnChannel, 1, 1)
 		}
 
@@ -113,7 +116,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 			if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 				returnChannel := make(chan promise.FutureData, 1)
 				defer close(returnChannel)
-				returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 				return promise.NewPromise(returnChannel, 1, 1)
 			}
 			return sellerApprovalPending.Childes()[0].ProcessOrder(ctx, order, itemsId, nil)
@@ -121,7 +124,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 			if req.Data == nil {
 				returnChannel := make(chan promise.FutureData, 1)
 				defer close(returnChannel)
-				returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.BadRequest, Reason:"Reason Data Required"}}
+				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.BadRequest, Reason: "Reason Data Required"}}
 				return promise.NewPromise(returnChannel, 1, 1)
 			}
 
@@ -137,10 +140,12 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 			iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, itemsId, StockReleased)
 			futureData := iPromise.Data()
 			if futureData == nil {
-				if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {}
+				if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
+				}
 				logger.Err("StockService promise channel has been closed, order: %s", order.OrderId)
 			} else if futureData.Ex != nil {
-				if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {}
+				if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
+				}
 				logger.Err("released stock from stockService failed, error: %s, orderId: %s", futureData.Ex.Error(), order.OrderId)
 				returnChannel := make(chan promise.FutureData, 1)
 				defer close(returnChannel)
@@ -157,7 +162,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 			if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 				returnChannel := make(chan promise.FutureData, 1)
 				defer close(returnChannel)
-				returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 				return promise.NewPromise(returnChannel, 1, 1)
 			}
 
@@ -177,9 +182,9 @@ func (sellerApprovalPending sellerApprovalPendingStep) validateAction(ctx contex
 	if itemsId != nil && len(itemsId) > 0 {
 		for _, id := range itemsId {
 			for i := 0; i < len(order.Items); i++ {
-				length := len(order.Items[i].Progress.StepsHistory)-1
+				length := len(order.Items[i].Progress.StepsHistory) - 1
 				if order.Items[i].ItemId == id && order.Items[i].Progress.StepsHistory[length].Name != sellerApprovalPending.Name() {
-						return false
+					return false
 				}
 			}
 		}
@@ -196,7 +201,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) validateAction(ctx contex
 }
 
 func (sellerApprovalPending sellerApprovalPendingStep) persistOrder(ctx context.Context, order *entities.Order) error {
-	_ , err := global.Singletons.OrderRepository.Save(*order)
+	_, err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", sellerApprovalPending.Name(), order, err.Error())
 	}
@@ -244,18 +249,18 @@ func (sellerApprovalPending sellerApprovalPendingStep) doUpdateOrderItemsProgres
 
 	var action entities.Action
 	if isSetExpireTime {
-		expiredTime := order.Items[index].UpdatedAt.Add(time.Hour *
+		expiredTime := order.Items[index].UpdatedAt.Add(time.Hour*
 			time.Duration(24) +
-			time.Minute * time.Duration(0) +
-			time.Second * time.Duration(0))
+			time.Minute*time.Duration(0) +
+			time.Second*time.Duration(0))
 
 		action = entities.Action{
-			Name:      actionName,
-			Result:    result,
-			Reason:    reason,
-			Data:		map[string]interface{}{
-						"expiredTime": expiredTime,
-						},
+			Name:   actionName,
+			Result: result,
+			Reason: reason,
+			Data: map[string]interface{}{
+				"expiredTime": expiredTime,
+			},
 			CreatedAt: order.Items[index].UpdatedAt,
 		}
 	} else {
@@ -269,7 +274,6 @@ func (sellerApprovalPending sellerApprovalPendingStep) doUpdateOrderItemsProgres
 
 	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 }
-
 
 //
 //import "gitlab.faza.io/order-project/order-service"

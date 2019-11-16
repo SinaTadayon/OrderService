@@ -13,10 +13,10 @@ import (
 )
 
 type iStockServiceImpl struct {
-	stockService 	stockProto.StockClient
-	grpcConnection 	*grpc.ClientConn
-	serverAddress 	string
-	serverPort		int
+	stockService   stockProto.StockClient
+	grpcConnection *grpc.ClientConn
+	serverAddress  string
+	serverPort     int
 }
 
 func NewStockService(address string, port int) IStockService {
@@ -44,7 +44,7 @@ func (stock *iStockServiceImpl) CloseConnection() {
 	}
 }
 
-func (stock *iStockServiceImpl)  GetStockClient() stockProto.StockClient {
+func (stock *iStockServiceImpl) GetStockClient() stockProto.StockClient {
 	return stock.stockService
 }
 
@@ -68,7 +68,6 @@ func (stock *iStockServiceImpl) SingleStockAction(ctx context.Context, inventory
 	return nil
 }
 
-
 func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order entities.Order, itemsId []string, action string) promise.IPromise {
 	//if action == stock_action.ReservedAction {
 	//	panic("must be implement")
@@ -79,15 +78,15 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order ent
 	//}
 	//return nil
 
-		//returnChannel := make(chan promise.FutureData, 1)
-		//defer close(returnChannel)
-		//returnChannel <- promise.FutureData{Data:nil, Ex:nil}
-		//return promise.NewPromise(returnChannel, 1, 1)
+	//returnChannel := make(chan promise.FutureData, 1)
+	//defer close(returnChannel)
+	//returnChannel <- promise.FutureData{Data:nil, Ex:nil}
+	//return promise.NewPromise(returnChannel, 1, 1)
 	if err := stock.ConnectToStockService(); err != nil {
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{
-			Code:   promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{
+			Code: promise.InternalError, Reason: "Unknown Error"}}
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
@@ -105,7 +104,7 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order ent
 		}
 	} else {
 		itemStocks = make(map[string]int, len(order.Items))
-		for i:= 0; i < len(order.Items); i++ {
+		for i := 0; i < len(order.Items); i++ {
 			if _, ok := itemStocks[order.Items[i].InventoryId]; !ok {
 				itemStocks[order.Items[i].InventoryId] = int(order.Items[i].Quantity)
 			}
@@ -121,7 +120,7 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order ent
 				Quantity:    int32(quantity),
 				InventoryId: inventoryId,
 			}
-			if response ,err := stock.stockService.StockReserve(ctx, request); err != nil {
+			if response, err := stock.stockService.StockReserve(ctx, request); err != nil {
 				logger.Err("Stock reserved failed, orderId: %s, inventoryId %s with quantity %d, error: %s", order.OrderId, inventoryId, quantity, err)
 				return stock.rollbackReservedStocks(ctx, &order, reservedStock)
 			} else {
@@ -142,8 +141,7 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order ent
 			//response , err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId:request.InventoryId})
 			//logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
 
-
-			if _ ,err := stock.stockService.StockRelease(ctx, request); err != nil {
+			if _, err := stock.stockService.StockRelease(ctx, request); err != nil {
 				logger.Err("Stock release failed, orderId: %s, inventoryId %s with quantity %d, error: %s", order.OrderId, inventoryId, quantity, err)
 				return stock.rollbackSettlementStocks(ctx, &order, releaseStock)
 			} else {
@@ -160,7 +158,7 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order ent
 				Quantity:    int32(quantity),
 				InventoryId: inventoryId,
 			}
-			if _ ,err = stock.stockService.StockSettle(ctx, request); err != nil {
+			if _, err = stock.stockService.StockSettle(ctx, request); err != nil {
 				logger.Err("stockService.StockSettle failed, orderId: %s, inventoryId: %s, quantity: %d, error: %s",
 					order.OrderId, request.InventoryId, request.Quantity, err)
 
@@ -173,7 +171,7 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order ent
 
 	returnChannel := make(chan promise.FutureData, 1)
 	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data: nil, Ex:nil}
+	returnChannel <- promise.FutureData{Data: nil, Ex: nil}
 	return promise.NewPromise(returnChannel, 1, 1)
 }
 
@@ -186,7 +184,7 @@ func (stock *iStockServiceImpl) rollbackReservedStocks(ctx context.Context, orde
 			InventoryId: inventoryId,
 		}
 
-		if _ ,err := stock.stockService.StockRelease(ctx, request); err != nil {
+		if _, err := stock.stockService.StockRelease(ctx, request); err != nil {
 			logger.Err("stockService.StockRelease failed, orderId: %s, inventoryId %s with quantity %d",
 				order.OrderId, inventoryId, quantity)
 		} else {
@@ -225,4 +223,3 @@ func (stock *iStockServiceImpl) rollbackSettlementStocks(ctx context.Context, or
 		Code: promise.InternalError, Reason: "Unknown Error"}}
 	return promise.NewPromise(returnChannel, 1, 1)
 }
-

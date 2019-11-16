@@ -17,23 +17,22 @@ import (
 //409 - Conflict - Anything which causes conflicts on the server, the most famous one, a not unique email error, a duplicate entity...
 
 const (
-	BadRequest			= 400
-	ForBidden			= 403
-	NotFound			= 404
-	NotAccepted			= 406
-	Conflict			= 409
-	ValidationError 	= 422
+	BadRequest      = 400
+	ForBidden       = 403
+	NotFound        = 404
+	NotAccepted     = 406
+	Conflict        = 409
+	ValidationError = 422
 )
 
-
 type BaseStepImpl struct {
-	name           	string
-	index          	int
-	childes        	[]IStep
-	parents        	[]IStep
-	states 			[]states.IState
-	statesMap 		map[int]states.IState
-	configs			map[string]interface{}
+	name      string
+	index     int
+	childes   []IStep
+	parents   []IStep
+	states    []states.IState
+	statesMap map[int]states.IState
+	configs   map[string]interface{}
 }
 
 func NewBaseStep(name string, index int, childes, parents []IStep, stateList []states.IState) *BaseStepImpl {
@@ -89,11 +88,11 @@ func (base BaseStepImpl) Index() int {
 	return base.index
 }
 
-func (base BaseStepImpl) Childes()	[]IStep {
+func (base BaseStepImpl) Childes() []IStep {
 	return base.childes
 }
 
-func (base BaseStepImpl) Parents()	[]IStep {
+func (base BaseStepImpl) Parents() []IStep {
 	return base.parents
 }
 
@@ -154,8 +153,8 @@ func (base BaseStepImpl) doUpdateOrderStep(ctx context.Context, order *entities.
 	order.Items[index].Progress.CurrentStepIndex = base.Index()
 
 	stepHistory := entities.StepHistory{
-		Name: base.Name(),
-		Index: base.Index(),
+		Name:      base.Name(),
+		Index:     base.Index(),
 		CreatedAt: order.Items[index].Progress.CreatedAt,
 		//ActionHistory: make([]entities.Action, 0, 1),
 	}

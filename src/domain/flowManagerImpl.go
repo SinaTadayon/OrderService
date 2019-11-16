@@ -97,8 +97,8 @@ import (
 )
 
 type iFlowManagerImpl struct {
-	nameStepsMap		map[string]steps.IStep
-	indexStepsMap		map[int]steps.IStep
+	nameStepsMap  map[string]steps.IStep
+	indexStepsMap map[int]steps.IStep
 }
 
 func NewFlowManager() (IFlowManager, error) {
@@ -122,13 +122,13 @@ func (flowManager *iFlowManagerImpl) GetIndexStepsMap() map[int]steps.IStep {
 }
 
 func (flowManager *iFlowManagerImpl) setupFlowManager() error {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	//////////////////////////////////////////////////////////////////
 	// Pay To Market
 	// create empty step93 that required for step95
-	step93 := pay_to_market_step.New(emptyStep, emptyStep,emptyState...)
+	step93 := pay_to_market_step.New(emptyStep, emptyStep, emptyState...)
 	baseStep93 := step93.(steps.IBaseStep)
 
 	// add to flowManager maps
@@ -206,7 +206,6 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	flowManager.createStep1()
 	flowManager.createStep0()
 
-
 	// Change route to support seller shipped reject route to shipment to
 	flowManager.indexStepsMap[30].Childes()[1] = flowManager.indexStepsMap[21]
 	flowManager.indexStepsMap[43].Childes()[1] = flowManager.indexStepsMap[80]
@@ -214,8 +213,8 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 }
 
 func (flowManager *iFlowManagerImpl) createStep94() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	// Create Finalize State
 	finalizeState := finalize_state.New(1, emptyState, emptyState,
@@ -232,13 +231,13 @@ func (flowManager *iFlowManagerImpl) createStep94() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep95() {
-	var emptyState 	[]states.IState
+	var emptyState []states.IState
 
 	step93 := flowManager.indexStepsMap[93]
 	step94 := flowManager.indexStepsMap[94]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
-		retry_action.RetryAction: step93,
+		retry_action.RetryAction:                          step93,
 		manual_payment_action.ManualPaymentToMarketAction: step94,
 	}
 
@@ -258,8 +257,8 @@ func (flowManager *iFlowManagerImpl) createStep95() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep93(baseStep93 steps.IBaseStep) {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step94 := flowManager.indexStepsMap[94]
 	step95 := flowManager.indexStepsMap[95]
@@ -267,10 +266,10 @@ func (flowManager *iFlowManagerImpl) createStep93(baseStep93 steps.IBaseStep) {
 	payToMarketActions := pay_to_market_action.NewOf(pay_to_market_action.SuccessAction, pay_to_market_action.FailedAction)
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
 		pay_to_market_action.SuccessAction: step94,
-		pay_to_market_action.FailedAction: step95,
+		pay_to_market_action.FailedAction:  step95,
 	}
 
-	nextToStepState := next_to_step_state.New(1, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	nextToStepState := next_to_step_state.New(1, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 	payToMarketState := pay_to_market_state.New(0, []states.IState{nextToStepState}, emptyState, payToMarketActions)
 
 	// TODO check change baseStep3 cause of change Step93 settings
@@ -284,8 +283,8 @@ func (flowManager *iFlowManagerImpl) createStep93(baseStep93 steps.IBaseStep) {
 }
 
 func (flowManager *iFlowManagerImpl) createStep91() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step93 := flowManager.indexStepsMap[93]
 
@@ -309,13 +308,13 @@ func (flowManager *iFlowManagerImpl) createStep91() {
 
 // TODO: checking flow and next to step states sequence
 func (flowManager *iFlowManagerImpl) createStep92() {
-	var emptyState 	[]states.IState
+	var emptyState []states.IState
 
 	step90 := flowManager.indexStepsMap[90]
 	step91 := flowManager.indexStepsMap[91]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
-		retry_action.RetryAction: step90,
+		retry_action.RetryAction:                          step90,
 		manual_payment_action.ManualPaymentToSellerAction: step91,
 	}
 
@@ -338,8 +337,8 @@ func (flowManager *iFlowManagerImpl) createStep92() {
 
 // TODO settlement stock must be call once as a result it must be save in db
 func (flowManager *iFlowManagerImpl) createStep90(baseStep90 steps.IBaseStep) {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step91 := flowManager.indexStepsMap[91]
 	step92 := flowManager.indexStepsMap[92]
@@ -347,10 +346,10 @@ func (flowManager *iFlowManagerImpl) createStep90(baseStep90 steps.IBaseStep) {
 	payToSellerActions := pay_to_seller_action.NewOf(pay_to_seller_action.SuccessAction, pay_to_seller_action.FailedAction)
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
 		pay_to_seller_action.SuccessAction: step91,
-		pay_to_seller_action.FailedAction: step92,
+		pay_to_seller_action.FailedAction:  step92,
 	}
 
-	nextToStepState := next_to_step_state.New(1, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	nextToStepState := next_to_step_state.New(1, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 	payToSellerState := pay_to_seller_state.New(0, []states.IState{nextToStepState}, emptyState, payToSellerActions)
 
 	// TODO check change baseStep90 cause of change Step90 settings
@@ -364,8 +363,8 @@ func (flowManager *iFlowManagerImpl) createStep90(baseStep90 steps.IBaseStep) {
 }
 
 func (flowManager *iFlowManagerImpl) createStep81() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	// Create Finalize State
 	finalizeState := finalize_state.New(1, emptyState, emptyState,
@@ -383,13 +382,13 @@ func (flowManager *iFlowManagerImpl) createStep81() {
 
 // TODO: checking flow and next to step states sequence
 func (flowManager *iFlowManagerImpl) createStep82() {
-	var emptyState 	[]states.IState
+	var emptyState []states.IState
 
 	step80 := flowManager.indexStepsMap[80]
 	step81 := flowManager.indexStepsMap[81]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
-		retry_action.RetryAction: step80,
+		retry_action.RetryAction:                         step80,
 		manual_payment_action.ManualPaymentToBuyerAction: step81,
 	}
 
@@ -402,7 +401,7 @@ func (flowManager *iFlowManagerImpl) createStep82() {
 	retryState := retry_state.New(0, []states.IState{operatorNotificationState, nextToStep}, emptyState, retry_action.NewOf(retry_action.RetryAction))
 
 	step82 := pay_to_buyer_failed_step.New([]steps.IStep{step81}, []steps.IStep{step80},
-		retryState,operatorNotificationState, manualPaymentState, nextToStep)
+		retryState, operatorNotificationState, manualPaymentState, nextToStep)
 
 	// add to flowManager maps
 	flowManager.indexStepsMap[step82.Index()] = step82
@@ -411,8 +410,8 @@ func (flowManager *iFlowManagerImpl) createStep82() {
 
 // TODO release stock must be call once as a result it must be save in db
 func (flowManager *iFlowManagerImpl) createStep80(baseStep80 steps.IBaseStep) {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step81 := flowManager.indexStepsMap[81]
 	step82 := flowManager.indexStepsMap[82]
@@ -420,10 +419,10 @@ func (flowManager *iFlowManagerImpl) createStep80(baseStep80 steps.IBaseStep) {
 	payToBuyerActions := pay_to_buyer_action.NewOf(pay_to_buyer_action.SuccessAction, pay_to_buyer_action.FailedAction)
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
 		pay_to_buyer_action.SuccessAction: step81,
-		pay_to_buyer_action.FailedAction: step82,
+		pay_to_buyer_action.FailedAction:  step82,
 	}
 
-	nextToStepState := next_to_step_state.New(2, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	nextToStepState := next_to_step_state.New(2, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 	payToBuyerState := pay_to_buyer_state.New(1, []states.IState{nextToStepState}, emptyState, payToBuyerActions)
 	stockReleaseActionState := stock_action_state.New(0, []states.IState{payToBuyerState}, emptyState, stock_action.NewOf(stock_action.ReleasedAction))
 
@@ -438,8 +437,8 @@ func (flowManager *iFlowManagerImpl) createStep80(baseStep80 steps.IBaseStep) {
 }
 
 func (flowManager *iFlowManagerImpl) createStep55() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step80 := flowManager.indexStepsMap[80]
 
@@ -447,7 +446,7 @@ func (flowManager *iFlowManagerImpl) createStep55() {
 		next_to_step_action.NextToStepAction: step80,
 	}
 
-	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 
 	step55 := return_shipment_success_step.New([]steps.IStep{step80}, emptyStep, nextToStepState)
 
@@ -457,8 +456,8 @@ func (flowManager *iFlowManagerImpl) createStep55() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep54() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step90 := flowManager.indexStepsMap[90]
 
@@ -466,7 +465,7 @@ func (flowManager *iFlowManagerImpl) createStep54() {
 		next_to_step_action.NextToStepAction: step90,
 	}
 
-	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 	step54 := return_shipment_canceled_step.New([]steps.IStep{step90}, emptyStep, nextToStepState)
 
 	// add to flowManager maps
@@ -475,18 +474,18 @@ func (flowManager *iFlowManagerImpl) createStep54() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep53() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step55 := flowManager.indexStepsMap[55]
 	step54 := flowManager.indexStepsMap[54]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
 		operator_action.ReturnCanceledAction: step54,
-		operator_action.ReturnedAction: step55,
+		operator_action.ReturnedAction:       step55,
 	}
 
-	nextToStepState := next_to_step_state.New(2, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	nextToStepState := next_to_step_state.New(2, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 	operatorActionState := operator_action_state.New(1, []states.IState{nextToStepState}, emptyState, operator_action.NewOf(operator_action.ReturnCanceledAction, operator_action.ReturnedAction))
 	notificationState := notification_state.New(0, []states.IState{operatorActionState}, emptyState, notification_action.NewOf(notification_action.OperatorNotificationAction))
 
@@ -499,15 +498,15 @@ func (flowManager *iFlowManagerImpl) createStep53() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep50() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step53 := flowManager.indexStepsMap[53]
 	step55 := flowManager.indexStepsMap[55]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
-		seller_action.NeedSupportAction: step53,
-		seller_action.ApprovedAction: step55,
+		seller_action.NeedSupportAction:     step53,
+		seller_action.ApprovedAction:        step55,
 		scheduler_action.AutoApprovedAction: step55,
 	}
 
@@ -526,18 +525,18 @@ func (flowManager *iFlowManagerImpl) createStep50() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep52() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step50 := flowManager.indexStepsMap[50]
 	step54 := flowManager.indexStepsMap[54]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
 		operator_action.ReturnDeliveredAction: step50,
-		operator_action.ReturnCanceledAction: step54,
+		operator_action.ReturnCanceledAction:  step54,
 	}
 
-	nextToStepState := next_to_step_state.New(2, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	nextToStepState := next_to_step_state.New(2, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 	operatorActionState := operator_action_state.New(1, []states.IState{nextToStepState}, emptyState, operator_action.NewOf(operator_action.ReturnCanceledAction, operator_action.ReturnDeliveredAction))
 	notificationState := notification_state.New(0, []states.IState{operatorActionState}, emptyState, notification_action.NewOf(notification_action.OperatorNotificationAction))
 
@@ -551,14 +550,14 @@ func (flowManager *iFlowManagerImpl) createStep52() {
 
 // TODO schedulers need a config for timeout or auto approved
 func (flowManager *iFlowManagerImpl) createStep51() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step50 := flowManager.indexStepsMap[50]
 	step52 := flowManager.indexStepsMap[52]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
-		buyer_action.NeedSupportAction: step52,
+		buyer_action.NeedSupportAction:                 step52,
 		scheduler_action.NoActionForXDaysTimeoutAction: step50,
 	}
 
@@ -577,14 +576,14 @@ func (flowManager *iFlowManagerImpl) createStep51() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep42() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step51 := flowManager.indexStepsMap[51]
 	step50 := flowManager.indexStepsMap[50]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
-		buyer_action.DeliveredAction: step50,
+		buyer_action.DeliveredAction:                      step50,
 		scheduler_action.WaitForShippingDaysTimeoutAction: step51,
 	}
 
@@ -603,8 +602,8 @@ func (flowManager *iFlowManagerImpl) createStep42() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep40() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step90 := flowManager.indexStepsMap[90]
 
@@ -612,7 +611,7 @@ func (flowManager *iFlowManagerImpl) createStep40() {
 		next_to_step_action.NextToStepAction: step90,
 	}
 
-	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 	step40 := shipment_success_step.New([]steps.IStep{step90}, emptyStep, nextToStepState)
 
 	// add to flowManager maps
@@ -621,8 +620,8 @@ func (flowManager *iFlowManagerImpl) createStep40() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep44() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step40 := flowManager.indexStepsMap[40]
 	step42 := flowManager.indexStepsMap[42]
@@ -632,7 +631,7 @@ func (flowManager *iFlowManagerImpl) createStep44() {
 		scheduler_action.WaitXDaysTimeoutAction:      step40,
 	}
 
-	nextToStepState := next_to_step_state.New(4, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	nextToStepState := next_to_step_state.New(4, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 	schedulerActionState := scheduler_action_state.New(3, []states.IState{nextToStepState}, emptyState, scheduler_action.NewOf(scheduler_action.WaitXDaysTimeoutAction))
 	buyerEnterReturnShipmentDetailDelayedActionState := buyer_action_state.New("Buyer_Enter_Return_Shipment_Detail_Delayed_Action_State", 2, []states.IState{nextToStepState}, emptyState, buyer_action.NewOf(buyer_action.EnterReturnShipmentDetailAction))
 	composeActorsActionState := system_action_state.New(1, []states.IState{buyerEnterReturnShipmentDetailDelayedActionState, schedulerActionState}, emptyState, system_action.NewOf(system_action.ComposeActorsAction))
@@ -640,7 +639,7 @@ func (flowManager *iFlowManagerImpl) createStep44() {
 
 	step44 := return_shipment_detail_delayed_step.New([]steps.IStep{step40, step42}, emptyStep,
 		notificationState, composeActorsActionState, buyerEnterReturnShipmentDetailDelayedActionState,
-		schedulerActionState,  nextToStepState)
+		schedulerActionState, nextToStepState)
 
 	// add to flowManager maps
 	flowManager.indexStepsMap[step44.Index()] = step44
@@ -648,8 +647,8 @@ func (flowManager *iFlowManagerImpl) createStep44() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep41() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step42 := flowManager.indexStepsMap[42]
 	step44 := flowManager.indexStepsMap[44]
@@ -674,18 +673,18 @@ func (flowManager *iFlowManagerImpl) createStep41() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep43() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step41 := flowManager.indexStepsMap[41]
 	step40 := flowManager.indexStepsMap[40]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
-		operator_action.ReturnedAction: step41,
+		operator_action.ReturnedAction:       step41,
 		operator_action.ReturnCanceledAction: step40,
 	}
 
-	nextToStepState := next_to_step_state.New(2, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	nextToStepState := next_to_step_state.New(2, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 	operatorActionState := operator_action_state.New(1, []states.IState{nextToStepState}, emptyState, operator_action.NewOf(operator_action.ReturnedAction, operator_action.ReturnCanceledAction))
 	notificationState := notification_state.New(0, []states.IState{operatorActionState}, emptyState, notification_action.NewOf(notification_action.OperatorNotificationAction))
 
@@ -698,8 +697,8 @@ func (flowManager *iFlowManagerImpl) createStep43() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep36() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step80 := flowManager.indexStepsMap[80]
 
@@ -707,7 +706,7 @@ func (flowManager *iFlowManagerImpl) createStep36() {
 		next_to_step_action.NextToStepAction: step80,
 	}
 
-	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 	step36 := shipment_canceled_step.New([]steps.IStep{step80}, emptyStep, nextToStepState)
 
 	// add to flowManager maps
@@ -716,8 +715,8 @@ func (flowManager *iFlowManagerImpl) createStep36() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep32() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step43 := flowManager.indexStepsMap[43]
 	step41 := flowManager.indexStepsMap[41]
@@ -725,8 +724,8 @@ func (flowManager *iFlowManagerImpl) createStep32() {
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
 		scheduler_action.AutoApprovedAction: step40,
-		buyer_action.ApprovedAction: step40,
-		buyer_action.NeedSupportAction: step43,
+		buyer_action.ApprovedAction:         step40,
+		buyer_action.NeedSupportAction:      step43,
 		buyer_action.ReturnIfPossibleAction: step41,
 	}
 
@@ -745,18 +744,18 @@ func (flowManager *iFlowManagerImpl) createStep32() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep35() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step36 := flowManager.indexStepsMap[36]
 	step32 := flowManager.indexStepsMap[32]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
-		operator_action.CanceledAction: step36,
+		operator_action.CanceledAction:  step36,
 		operator_action.DeliveredAction: step32,
 	}
 
-	nextToStepState := next_to_step_state.New(2, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	nextToStepState := next_to_step_state.New(2, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 	operatorActionState := operator_action_state.New(1, []states.IState{nextToStepState}, emptyState, operator_action.NewOf(operator_action.DeliveredAction, operator_action.CanceledAction))
 	notificationState := notification_state.New(0, []states.IState{operatorActionState}, emptyState, notification_action.NewOf(notification_action.OperatorNotificationAction))
 
@@ -769,21 +768,21 @@ func (flowManager *iFlowManagerImpl) createStep35() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep34() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step35 := flowManager.indexStepsMap[35]
 	step32 := flowManager.indexStepsMap[32]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
-		seller_action.NeedSupportAction: step35,
+		seller_action.NeedSupportAction:                step35,
 		scheduler_action.NoActionForXDaysTimeoutAction: step32,
 	}
 
 	nextToStep := next_to_step_state.New(4, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 	schedulerActionState := scheduler_action_state.New(3, []states.IState{nextToStep}, emptyState, scheduler_action.NewOf(scheduler_action.NoActionForXDaysTimeoutAction))
 	sellerShipmentDeliveryPendingActionState := seller_action_state.New("Seller_Shipment_Delivery_Pending_Action_State", 2, []states.IState{nextToStep}, emptyState, seller_action.NewOf(seller_action.NeedSupportAction))
-	composeActorsActionState := system_action_state.New(1, []states.IState{sellerShipmentDeliveryPendingActionState,schedulerActionState}, emptyState, system_action.NewOf(system_action.ComposeActorsAction))
+	composeActorsActionState := system_action_state.New(1, []states.IState{sellerShipmentDeliveryPendingActionState, schedulerActionState}, emptyState, system_action.NewOf(system_action.ComposeActorsAction))
 	notificationActionState := notification_state.New(0, []states.IState{composeActorsActionState}, emptyState, notification_action.NewOf(notification_action.SellerNotificationAction))
 
 	step34 := shipment_delivery_pending_step.New([]steps.IStep{step35, step32}, emptyStep,
@@ -795,14 +794,14 @@ func (flowManager *iFlowManagerImpl) createStep34() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep31() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step32 := flowManager.indexStepsMap[32]
 	step34 := flowManager.indexStepsMap[34]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
-		seller_action.DeliveredAction: step32,
+		seller_action.DeliveredAction:                     step32,
 		scheduler_action.WaitForShippingDaysTimeoutAction: step34,
 	}
 
@@ -823,15 +822,15 @@ func (flowManager *iFlowManagerImpl) createStep31() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep33() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step31 := flowManager.indexStepsMap[31]
 	step36 := flowManager.indexStepsMap[36]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
 		seller_action.EnterShipmentDetailAction: step31,
-		buyer_action.CanceledAction: step36,
+		buyer_action.CanceledAction:             step36,
 	}
 
 	nextToStep := next_to_step_state.New(4, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
@@ -849,18 +848,18 @@ func (flowManager *iFlowManagerImpl) createStep33() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep30() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step31 := flowManager.indexStepsMap[31]
 	step33 := flowManager.indexStepsMap[33]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
-		seller_action.EnterShipmentDetailAction: step31,
+		seller_action.EnterShipmentDetailAction:        step31,
 		scheduler_action.NoActionForXDaysTimeoutAction: step33,
 	}
 
-	nextToStepState := next_to_step_state.New(4, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	nextToStepState := next_to_step_state.New(4, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 	schedulerActionState := scheduler_action_state.New(3, []states.IState{nextToStepState}, emptyState, scheduler_action.NewOf(scheduler_action.NoActionForXDaysTimeoutAction))
 	sellerEnterShipmentDetailActionState := seller_action_state.New("Seller_Enter_Shipment_Detail_Action_State", 2, []states.IState{nextToStepState}, emptyState, seller_action.NewOf(seller_action.EnterShipmentDetailAction))
 	composeActorsActionState := system_action_state.New(1, []states.IState{sellerEnterShipmentDetailActionState, schedulerActionState}, emptyState, system_action.NewOf(system_action.ComposeActorsAction))
@@ -868,7 +867,7 @@ func (flowManager *iFlowManagerImpl) createStep30() {
 
 	step30 := shipment_pending_step.New([]steps.IStep{step31, step33}, emptyStep,
 		notificationState, composeActorsActionState, sellerEnterShipmentDetailActionState,
-		schedulerActionState,  nextToStepState)
+		schedulerActionState, nextToStepState)
 
 	// add to flowManager maps
 	flowManager.indexStepsMap[step30.Index()] = step30
@@ -876,8 +875,8 @@ func (flowManager *iFlowManagerImpl) createStep30() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep21() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step80 := flowManager.indexStepsMap[80]
 
@@ -885,7 +884,7 @@ func (flowManager *iFlowManagerImpl) createStep21() {
 		next_to_step_action.NextToStepAction: step80,
 	}
 
-	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 	step21 := shipment_rejected_by_seller_step.New([]steps.IStep{step80}, emptyStep, nextToStepState)
 
 	// add to flowManager maps
@@ -894,15 +893,15 @@ func (flowManager *iFlowManagerImpl) createStep21() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep20() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step30 := flowManager.indexStepsMap[30]
 	step21 := flowManager.indexStepsMap[21]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
-		seller_action.ApprovedAction: step30,
-		seller_action.RejectAction: step21,
+		seller_action.ApprovedAction:                   step30,
+		seller_action.RejectAction:                     step21,
 		scheduler_action.NoActionForXDaysTimeoutAction: step21,
 	}
 
@@ -921,8 +920,8 @@ func (flowManager *iFlowManagerImpl) createStep20() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep14() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step80 := flowManager.indexStepsMap[80]
 
@@ -930,7 +929,7 @@ func (flowManager *iFlowManagerImpl) createStep14() {
 		next_to_step_action.NextToStepAction: step80,
 	}
 
-	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	nextToStepState := next_to_step_state.New(0, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 	step14 := payment_rejected_step.New([]steps.IStep{step80}, emptyStep, nextToStepState)
 
 	// add to flowManager maps
@@ -939,19 +938,19 @@ func (flowManager *iFlowManagerImpl) createStep14() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep11() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step14 := flowManager.indexStepsMap[14]
 	step20 := flowManager.indexStepsMap[20]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
-		buyer_action.RejectAction: step14,
+		buyer_action.RejectAction:   step14,
 		buyer_action.ApprovedAction: step20,
 	}
 
-	nextToStepState := next_to_step_state.New(2, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
-	buyerPaymentApprovalActionState := buyer_action_state.New("Buyer_Payment_Approval_Action_State",1, []states.IState{nextToStepState}, emptyState, buyer_action.NewOf(buyer_action.ApprovedAction, buyer_action.RejectAction))
+	nextToStepState := next_to_step_state.New(2, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
+	buyerPaymentApprovalActionState := buyer_action_state.New("Buyer_Payment_Approval_Action_State", 1, []states.IState{nextToStepState}, emptyState, buyer_action.NewOf(buyer_action.ApprovedAction, buyer_action.RejectAction))
 	notificationState := notification_state.New(0, []states.IState{buyerPaymentApprovalActionState}, emptyState, notification_action.NewOf(notification_action.BuyerNotificationAction))
 
 	step11 := payment_success_step.New([]steps.IStep{step14, step20}, emptyStep,
@@ -963,8 +962,8 @@ func (flowManager *iFlowManagerImpl) createStep11() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep12() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	// Create Finalize State
 	finalizeState := finalize_state.New(2, emptyState, emptyState,
@@ -984,19 +983,19 @@ func (flowManager *iFlowManagerImpl) createStep12() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep10() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step12 := flowManager.indexStepsMap[12]
 	step11 := flowManager.indexStepsMap[11]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
 		order_payment_action.OrderPaymentFailedAction: step12,
-		payment_action.FailedAction: step12,
-		payment_action.SuccessAction: step11,
+		payment_action.FailedAction:                   step12,
+		payment_action.SuccessAction:                  step11,
 	}
 
-	nextToStepState := next_to_step_state.New(2, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	nextToStepState := next_to_step_state.New(2, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 	paymentActionState := payment_action_state.New(1, []states.IState{nextToStepState}, emptyState, payment_action.NewOf(payment_action.SuccessAction, payment_action.FailedAction))
 	orderPaymentActionState := order_payment_action_state.New(0, []states.IState{paymentActionState, nextToStepState}, emptyState, order_payment_action.NewOf(order_payment_action.OrderPaymentAction, order_payment_action.OrderPaymentFailedAction))
 
@@ -1009,8 +1008,8 @@ func (flowManager *iFlowManagerImpl) createStep10() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep1() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	// Create Finalize State
 	finalizeState := finalize_state.New(1, emptyState, emptyState,
@@ -1024,38 +1023,37 @@ func (flowManager *iFlowManagerImpl) createStep1() {
 }
 
 func (flowManager *iFlowManagerImpl) createStep0() {
-	var emptyState 	[]states.IState
-	var emptyStep 	[]steps.IStep
+	var emptyState []states.IState
+	var emptyStep []steps.IStep
 
 	step1 := flowManager.indexStepsMap[1]
 	step10 := flowManager.indexStepsMap[10]
 
 	actionStepMap := map[actions.IEnumAction]steps.IStep{
-		stock_action.FailedAction:  step1,
+		stock_action.FailedAction:   step1,
 		stock_action.ReservedAction: step10,
 	}
 
-	nextToStepState := next_to_step_state.New(3, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction) ,actionStepMap)
+	nextToStepState := next_to_step_state.New(3, emptyState, emptyState, next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 	stockReservedActionState := stock_action_state.New(1, []states.IState{nextToStepState}, emptyState, stock_action.NewOf(stock_action.ReservedAction, stock_action.FailedAction))
 	checkoutStateAction := checkout_action_state.New(0, []states.IState{stockReservedActionState, nextToStepState}, emptyState, checkout_action.NewOf(checkout_action.NewOrderAction))
 
 	step0 := new_order_step.New([]steps.IStep{step1, step10}, emptyStep,
-			checkoutStateAction, stockReservedActionState, nextToStepState)
+		checkoutStateAction, stockReservedActionState, nextToStepState)
 	// add to flowManager maps
 	flowManager.indexStepsMap[step0.Index()] = step0
 	flowManager.nameStepsMap[step0.Name()] = step0
 }
-
 
 // TODO Must be refactored
 func (flowManager iFlowManagerImpl) MessageHandler(ctx context.Context, req *message.MessageRequest) promise.IPromise {
 	// received New Order Request
 	//if len(req.OrderId) == 0 {
 
-		step0 := flowManager.indexStepsMap[0]
-		return step0.ProcessMessage(ctx, req)
+	step0 := flowManager.indexStepsMap[0]
+	return step0.ProcessMessage(ctx, req)
 
-		// TODO must be implement
+	// TODO must be implement
 	//}
 	//} else if len(req.ItemId) != 0 {
 
@@ -1078,15 +1076,15 @@ func (flowManager iFlowManagerImpl) SellerApprovalPending(ctx context.Context, r
 		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
 			req.OrderId, err)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.NotFound, Reason:"OrderId Not Found"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "OrderId Not Found"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
 	itemsId := make([]string, 0, len(order.Items))
-	for i:= 0; i < len(order.Items); i++ {
+	for i := 0; i < len(order.Items); i++ {
 		if order.Items[i].SellerInfo.SellerId == req.SellerId {
-			itemsId = append(itemsId,order.Items[i].ItemId)
+			itemsId = append(itemsId, order.Items[i].ItemId)
 		}
 	}
 
@@ -1097,7 +1095,7 @@ func (flowManager iFlowManagerImpl) SellerApprovalPending(ctx context.Context, r
 	}
 
 	returnChannel := make(chan promise.FutureData, 1)
-	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.NotFound, Reason:"ActionType Not Found"}}
+	returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "ActionType Not Found"}}
 	defer close(returnChannel)
 	return promise.NewPromise(returnChannel, 1, 1)
 }
@@ -1108,7 +1106,7 @@ func (flowManager iFlowManagerImpl) BuyerApprovalPending(ctx context.Context, re
 		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
 			req.OrderId, err)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.NotFound, Reason:"OrderId Not Found"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "OrderId Not Found"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
@@ -1125,7 +1123,7 @@ func (flowManager iFlowManagerImpl) BuyerApprovalPending(ctx context.Context, re
 	}
 
 	returnChannel := make(chan promise.FutureData, 1)
-	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.NotFound, Reason:"ActionType Not Found"}}
+	returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "ActionType Not Found"}}
 	defer close(returnChannel)
 	return promise.NewPromise(returnChannel, 1, 1)
 }
@@ -1136,7 +1134,7 @@ func (flowManager iFlowManagerImpl) PaymentGatewayResult(ctx context.Context, re
 		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
 			req.OrderID, err)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.NotFound, Reason:"OrderId Not Found"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "OrderId Not Found"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
@@ -1188,9 +1186,9 @@ func (flowManager iFlowManagerImpl) OperatorActionPending(ctx context.Context, r
 	}
 
 	itemsId := make([]string, 0, 1)
-	for i:= 0; i < len(orders[0].Items); i++ {
+	for i := 0; i < len(orders[0].Items); i++ {
 		if orders[0].Items[i].ItemId == req.ItemId {
-			itemsId = append(itemsId,orders[0].Items[i].ItemId)
+			itemsId = append(itemsId, orders[0].Items[i].ItemId)
 		}
 	}
 
@@ -1199,13 +1197,13 @@ func (flowManager iFlowManagerImpl) OperatorActionPending(ctx context.Context, r
 	}
 
 	returnChannel := make(chan promise.FutureData, 1)
-	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.NotFound, Reason:"ActionType Not Found"}}
+	returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "ActionType Not Found"}}
 	defer close(returnChannel)
 	return promise.NewPromise(returnChannel, 1, 1)
 }
 
 func (flowManager iFlowManagerImpl) BackOfficeOrdersListView(ctx context.Context, req *message.RequestBackOfficeOrdersList) promise.IPromise {
-	orders ,total ,err := global.Singletons.OrderRepository.FindAllWithPageAndSort(int64(req.Page), int64(req.PerPage), req.Sort, int(req.Direction))
+	orders, total, err := global.Singletons.OrderRepository.FindAllWithPageAndSort(int64(req.Page), int64(req.PerPage), req.Sort, int(req.Direction))
 
 	if err != nil {
 		logger.Err("BackOfficeOrdersListView() => FindAllWithPageAndSort failed")
@@ -1219,7 +1217,7 @@ func (flowManager iFlowManagerImpl) BackOfficeOrdersListView(ctx context.Context
 		Total:  total,
 		Orders: make([]*message.BackOfficeOrdersList, 0, len(orders)),
 	}
-	
+
 	for _, order := range orders {
 		backOfficeOrder := &message.BackOfficeOrdersList{
 			OrderId:     order.OrderId,
@@ -1234,25 +1232,25 @@ func (flowManager iFlowManagerImpl) BackOfficeOrdersListView(ctx context.Context
 		}
 
 		itemsInventory := make(map[string]int, len(order.Items))
-		for i:= 0; i < len(order.Items); i++ {
+		for i := 0; i < len(order.Items); i++ {
 			if _, ok := itemsInventory[order.Items[i].InventoryId]; !ok {
-				backOfficeOrder.BasketSize += order.Items[i].Quantity   
+				backOfficeOrder.BasketSize += order.Items[i].Quantity
 			}
 		}
-		
+
 		if order.Amount.Voucher != nil {
-			backOfficeOrder.PaidAmount =  int64(order.Amount.Total - order.Amount.Voucher.Amount)
+			backOfficeOrder.PaidAmount = int64(order.Amount.Total - order.Amount.Voucher.Amount)
 			backOfficeOrder.Voucher = true
 		} else {
 			backOfficeOrder.Voucher = false
-			backOfficeOrder.PaidAmount =  0
+			backOfficeOrder.PaidAmount = 0
 		}
 
 		response.Orders = append(response.Orders, backOfficeOrder)
 	}
 
 	returnChannel := make(chan promise.FutureData, 1)
-	returnChannel <- promise.FutureData{Data:&response, Ex:nil}
+	returnChannel <- promise.FutureData{Data: &response, Ex: nil}
 	defer close(returnChannel)
 	return promise.NewPromise(returnChannel, 1, 1)
 }
@@ -1264,21 +1262,21 @@ func (flowManager iFlowManagerImpl) BackOfficeOrderDetailView(ctx context.Contex
 		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
 			req.Id, err)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.NotFound, Reason:"OrderId Not Found"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "OrderId Not Found"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
-	
+
 	response := &message.ResponseOrderDetailView{
-		OrderId:      order.OrderId,
-		CreatedAt:    order.CreatedAt.Unix(),
-		Ip:           order.BuyerInfo.IP,
-		Status:       order.Status,
-		Payment:      &message.PaymentInfo{
-			PaymentMethod:        order.Amount.PaymentMethod,
-			PaymentOption:        order.Amount.PaymentOption,
+		OrderId:   order.OrderId,
+		CreatedAt: order.CreatedAt.Unix(),
+		Ip:        order.BuyerInfo.IP,
+		Status:    order.Status,
+		Payment: &message.PaymentInfo{
+			PaymentMethod: order.Amount.PaymentMethod,
+			PaymentOption: order.Amount.PaymentOption,
 		},
-		Billing:      &message.BillingInfo{
+		Billing: &message.BillingInfo{
 			BuyerId:    order.BuyerInfo.BuyerId,
 			FullName:   order.BuyerInfo.FirstName + order.BuyerInfo.LastName,
 			Phone:      order.BuyerInfo.Phone,
@@ -1294,17 +1292,17 @@ func (flowManager iFlowManagerImpl) BackOfficeOrderDetailView(ctx context.Contex
 			Address:      order.BuyerInfo.ShippingAddress.Address,
 			ZipCode:      order.BuyerInfo.ShippingAddress.ZipCode,
 		},
-		Items: 		  make([]*message.ItemInfo, 0, len(order.Items)),
+		Items: make([]*message.ItemInfo, 0, len(order.Items)),
 	}
 
 	for _, item := range order.Items {
 		itemInfo := &message.ItemInfo{
-			ItemId:               item.ItemId,
-			SellerId:             item.SellerInfo.SellerId,
-			InventoryId:          item.InventoryId,
-			Quantity:             item.Quantity,
-			ItemStatus:           item.Status,
-			Price:				  &message.PriceInfo{
+			ItemId:      item.ItemId,
+			SellerId:    item.SellerInfo.SellerId,
+			InventoryId: item.InventoryId,
+			Quantity:    item.Quantity,
+			ItemStatus:  item.Status,
+			Price: &message.PriceInfo{
 				Unit:             item.Price.Unit,
 				Total:            item.Price.Total,
 				Original:         item.Price.Original,
@@ -1313,8 +1311,8 @@ func (flowManager iFlowManagerImpl) BackOfficeOrderDetailView(ctx context.Contex
 				SellerCommission: item.Price.SellerCommission,
 				Currency:         item.Price.Currency,
 			},
-			UpdatedAt:            item.UpdatedAt.Unix(),
-			Actions:     		  []string{"success", "cancel"},
+			UpdatedAt: item.UpdatedAt.Unix(),
+			Actions:   []string{"success", "cancel"},
 		}
 
 		lastStep := item.Progress.StepsHistory[len(item.Progress.StepsHistory)-1]
@@ -1335,14 +1333,14 @@ func (flowManager iFlowManagerImpl) BackOfficeOrderDetailView(ctx context.Contex
 
 	if order.PaymentService != nil && len(order.PaymentService) == 1 {
 		if order.PaymentService[0].PaymentResult != nil {
-			response.Payment.Result =  order.PaymentService[0].PaymentResponse.Result		
+			response.Payment.Result = order.PaymentService[0].PaymentResponse.Result
 		} else {
-			response.Payment.Result =  false
+			response.Payment.Result = false
 		}
 	}
 
 	returnChannel := make(chan promise.FutureData, 1)
-	returnChannel <- promise.FutureData{Data:response, Ex:nil}
+	returnChannel <- promise.FutureData{Data: response, Ex: nil}
 	defer close(returnChannel)
 	return promise.NewPromise(returnChannel, 1, 1)
 }
@@ -1351,7 +1349,8 @@ func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSelle
 	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
 		return bson.D{{"createdAt",
 			bson.D{{"$gte", time.Unix(int64(req.StartDateTime), 0).UTC()}}},
-			{"items.status", req.Status }, {"items.sellerInfo.sellerId", req.SellerId }}})
+			{"items.status", req.Status}, {"items.sellerInfo.sellerId", req.SellerId}}
+	})
 
 	if err != nil {
 		logger.Err("SellerReportOrders() => OrderRepository.FindByFilter failed, startDateTime: %v, status: %s, error: %s",
@@ -1362,7 +1361,7 @@ func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSelle
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	if orders == nil || len(orders) == 0  {
+	if orders == nil || len(orders) == 0 {
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: nil}
 		defer close(returnChannel)
@@ -1371,7 +1370,7 @@ func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSelle
 
 	reports := make([]*entities.SellerExportOrders, 0, len(orders))
 
-	for _, order :=range orders {
+	for _, order := range orders {
 		for _, item := range order.Items {
 			if item.Status == req.Status {
 				itemReport := &entities.SellerExportOrders{
@@ -1399,7 +1398,7 @@ func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSelle
 
 	csvReports = append(csvReports, csvHeadLines)
 	for _, itemReport := range reports {
-		csvRecord := []string {
+		csvRecord := []string{
 			itemReport.OrderId,
 			itemReport.ItemId,
 			itemReport.ProductId,
@@ -1421,7 +1420,7 @@ func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSelle
 		logger.Err("SellerReportOrders() => create file %s failed, startDateTime: %v, status: %s, error: %s",
 			fileName, req.StartDateTime, req.Status, err)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code:promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
@@ -1503,7 +1502,8 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
 		return bson.D{{"createdAt",
 			bson.D{{"$gte", time.Unix(int64(req.StartDateTime), 0).UTC()},
-						 {"$lte", time.Unix(int64(req.EndDataTime), 0).UTC()}}}}})
+				{"$lte", time.Unix(int64(req.EndDataTime), 0).UTC()}}}}
+	})
 
 	if err != nil {
 		logger.Err("BackOfficeReportOrderItems() => request itemId not found, OrderRepository.FindById failed, startDateTime: %v, endDateTime: %v, error: %s",
@@ -1514,7 +1514,7 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	if orders == nil || len(orders) == 0  {
+	if orders == nil || len(orders) == 0 {
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: nil}
 		defer close(returnChannel)
@@ -1522,8 +1522,8 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 	}
 
 	reports := make([]*entities.BackOfficeExportItems, 0, len(orders))
-	
-	for _, order :=range orders {
+
+	for _, order := range orders {
 		for _, item := range order.Items {
 			itemReport := &entities.BackOfficeExportItems{
 				ItemId:      item.ItemId,
@@ -1550,7 +1550,7 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 
 	csvReports = append(csvReports, csvHeadLines)
 	for _, itemReport := range reports {
-		csvRecord := []string {
+		csvRecord := []string{
 			itemReport.ItemId,
 			itemReport.InventoryId,
 			itemReport.ProductId,
@@ -1573,13 +1573,13 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 		logger.Err("BackOfficeReportOrderItems() => create file %s failed, startDateTime: %v, endDateTime: %v, error: %s",
 			fileName, req.StartDateTime, req.EndDataTime, err)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code:promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
 	w := csv.NewWriter(f)
-	 // calls Flush internally
+	// calls Flush internally
 	if err := w.WriteAll(csvReports); err != nil {
 		logger.Err("BackOfficeReportOrderItems() => write csv to file failed, startDateTime: %v, endDateTime: %v, error: %s",
 			req.StartDateTime, req.EndDataTime, err)
@@ -1673,7 +1673,6 @@ func (flowManager iFlowManagerImpl) SchedulerEvents(event events.SchedulerEvent)
 
 	} else if event.ActionName == "SellerShipmentPending" {
 		flowManager.indexStepsMap[30].ProcessOrder(ctx, *order, event.ItemsId, "actionExpired")
-
 
 	} else if event.ActionName == "ShipmentDeliveredPending" {
 		flowManager.indexStepsMap[32].ProcessOrder(ctx, *order, event.ItemsId, "actionApproved")

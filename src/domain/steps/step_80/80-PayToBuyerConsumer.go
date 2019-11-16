@@ -1,7 +1,5 @@
 package pay_to_buyer_step
 
-
-
 //
 //import (
 //	"context"

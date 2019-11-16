@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	stepName string 	= "Pay_To_Market_Success"
-	stepIndex int		= 94
+	stepName  string = "Pay_To_Market_Success"
+	stepIndex int    = 94
 )
 
 type payToMarketSuccessStep struct {

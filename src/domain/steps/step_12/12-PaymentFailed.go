@@ -13,10 +13,9 @@ import (
 )
 
 const (
-	stepName string 	= "Payment_Failed"
-	stepIndex int		= 12
-	PaymentFailed		= "PaymentFailed"
-
+	stepName      string = "Payment_Failed"
+	stepIndex     int    = 12
+	PaymentFailed        = "PaymentFailed"
 )
 
 type paymentFailedStep struct {
@@ -43,7 +42,6 @@ func (paymentFailed paymentFailedStep) ProcessMessage(ctx context.Context, reque
 	panic("implementation required")
 }
 
-
 // TODO steps must be append step history and changes to order object
 func (paymentFailed paymentFailedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	//stockState, ok := paymentFailed.Childes()[0].(launcher_state.ILauncherState)
@@ -60,15 +58,16 @@ func (paymentFailed paymentFailedStep) ProcessOrder(ctx context.Context, order e
 
 	paymentFailed.UpdateAllOrderStatus(ctx, &order, itemsId, steps.ClosedStatus, false)
 	paymentFailed.updateOrderItemsProgress(ctx, &order, itemsId, PaymentFailed, true, steps.ClosedStatus)
-	if err := paymentFailed.persistOrder(ctx, &order); err != nil{}
+	if err := paymentFailed.persistOrder(ctx, &order); err != nil {
+	}
 	returnChannel := make(chan promise.FutureData, 1)
 	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code:promise.NotAccepted, Reason:"Order Payment Failed"}}
+	returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotAccepted, Reason: "Order Payment Failed"}}
 	return promise.NewPromise(returnChannel, 1, 1)
 }
 
 func (paymentFailed paymentFailedStep) persistOrder(ctx context.Context, order *entities.Order) error {
-	_ , err := global.Singletons.OrderRepository.Save(*order)
+	_, err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", paymentFailed.Name(), order, err.Error())
 	}
@@ -122,7 +121,6 @@ func (paymentFailed paymentFailedStep) doUpdateOrderItemsProgress(ctx context.Co
 
 	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 }
-
 
 //
 //import (

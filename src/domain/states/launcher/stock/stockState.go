@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	stateName string = "Stock_Action_State"
-	activeType = actives.StockAction
+	stateName  string = "Stock_Action_State"
+	activeType        = actives.StockAction
 )
 
 type stockActionLauncher struct {
@@ -54,7 +54,7 @@ func (stockState stockActionLauncher) ActionLauncher(ctx context.Context, order 
 			iPromise = stockState.doReleasedAction(ctx, &order, itemsId)
 			break
 		} else if action == stock_action.SettlementAction {
-			iPromise =  stockState.doSettlementAction(ctx, &order, itemsId)
+			iPromise = stockState.doSettlementAction(ctx, &order, itemsId)
 			break
 		} else if action == stock_action.FailedAction {
 
@@ -69,7 +69,7 @@ func (stockState stockActionLauncher) ActionLauncher(ctx context.Context, order 
 
 func (stockState stockActionLauncher) createFailedPromise() promise.IPromise {
 	returnChannel := make(chan promise.FutureData, 1)
-	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+	returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 	defer close(returnChannel)
 	return promise.NewPromise(returnChannel, 1, 1)
 }
@@ -79,13 +79,13 @@ func (stockState stockActionLauncher) doReservedAction(ctx context.Context, orde
 	if ok != true {
 		logger.Err("NextToStepState isn't child of StockState, order: %v", order)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
 	itemStocks := make(map[string]int, len(order.Items))
-	for i:= 0; i < len(order.Items); i++ {
+	for i := 0; i < len(order.Items); i++ {
 		if value, ok := itemStocks[order.Items[i].InventoryId]; ok {
 			itemStocks[order.Items[i].InventoryId] = value + 1
 		} else {
@@ -99,7 +99,7 @@ func (stockState stockActionLauncher) doReservedAction(ctx context.Context, orde
 		stockState.persistOrderState(ctx, order, stock_action.ReservedAction, false)
 		logger.Err("StockService promise channel has been closed, order: %v", order)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		go func() {
 			nextToStepState.ActionLauncher(ctx, *order, nil, stock_action.FailedAction)
@@ -111,7 +111,7 @@ func (stockState stockActionLauncher) doReservedAction(ctx context.Context, orde
 		logger.Err("Reserved stock from stockService failed, error: %s, order: %v", futureData.Ex.Error(), order)
 		stockState.persistOrderState(ctx, order, stock_action.ReservedAction, false)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		go func() {
 			nextToStepState.ActionLauncher(ctx, *order, nil, stock_action.FailedAction)
@@ -129,7 +129,7 @@ func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, orde
 		logger.Err("notificationState isn't child of StockState, order: %v", order)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
@@ -138,14 +138,14 @@ func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, orde
 		logger.Err("finalizedState isn't child of StockState, order: %v", order)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
 	var itemStocks map[string]int
 	if itemsId != nil && len(itemsId) > 0 {
 		itemStocks = make(map[string]int, len(itemsId))
-		for _ , itemId :=range itemsId {
+		for _, itemId := range itemsId {
 			for i := 0; i < len(order.Items); i++ {
 				if order.Items[i].ItemId == itemId {
 					if value, ok := itemStocks[order.Items[i].InventoryId]; ok {
@@ -158,7 +158,7 @@ func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, orde
 		}
 	} else {
 		itemStocks = make(map[string]int, len(order.Items))
-		for i:= 0; i < len(order.Items); i++ {
+		for i := 0; i < len(order.Items); i++ {
 			if value, ok := itemStocks[order.Items[i].InventoryId]; ok {
 				itemStocks[order.Items[i].InventoryId] = value + 1
 			} else {
@@ -173,7 +173,7 @@ func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, orde
 		stockState.persistOrderState(ctx, order, stock_action.ReleasedAction, false)
 		logger.Err("StockService promise channel has been closed, order: %v", order)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		go func() {
 			finalizedState.ActionLauncher(ctx, *order, nil, finalize_action.PaymentFailedFinalizeAction)
@@ -185,7 +185,7 @@ func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, orde
 		logger.Err("Reserved stock from stockService failed, error: %s, order: %v", futureData.Ex.Error(), order)
 		stockState.persistOrderState(ctx, order, stock_action.ReleasedAction, false)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		go func() {
 			finalizedState.ActionLauncher(ctx, *order, nil, finalize_action.PaymentFailedFinalizeAction)

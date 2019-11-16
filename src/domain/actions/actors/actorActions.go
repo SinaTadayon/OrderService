@@ -6,6 +6,6 @@ import (
 
 type IActorAction interface {
 	actions.IAction
-	ActionEnums() 		[]actions.IEnumAction
-	ActorType() 		ActorType
+	ActionEnums() []actions.IEnumAction
+	ActorType() ActorType
 }

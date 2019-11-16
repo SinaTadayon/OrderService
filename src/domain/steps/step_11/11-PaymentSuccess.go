@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	stepName string 	= "Payment_Success"
-	stepIndex int		= 11
-	PaymentSuccess 		= "PaymentSuccess"
+	stepName       string = "Payment_Success"
+	stepIndex      int    = 11
+	PaymentSuccess        = "PaymentSuccess"
 )
 
 type paymentSuccessStep struct {
@@ -42,7 +42,6 @@ func (paymentSuccess paymentSuccessStep) ProcessMessage(ctx context.Context, req
 	panic("implementation required")
 }
 
-
 // TODO PaymentApprovalAction must be handled and implement
 // TODO notification must be handled and implement
 func (paymentSuccess paymentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
@@ -60,7 +59,7 @@ func (paymentSuccess paymentSuccessStep) ProcessOrder(ctx context.Context, order
 	if err := paymentSuccess.persistOrder(ctx, &order); err != nil {
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
@@ -69,7 +68,7 @@ func (paymentSuccess paymentSuccessStep) ProcessOrder(ctx context.Context, order
 }
 
 func (paymentSuccess paymentSuccessStep) persistOrder(ctx context.Context, order *entities.Order) error {
-	_ , err := global.Singletons.OrderRepository.Save(*order)
+	_, err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", paymentSuccess.Name(), order, err.Error())
 	}
@@ -121,7 +120,6 @@ func (paymentSuccess paymentSuccessStep) doUpdateOrderItemsProgress(ctx context.
 
 	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 }
-
 
 //import (
 //	"encoding/json"

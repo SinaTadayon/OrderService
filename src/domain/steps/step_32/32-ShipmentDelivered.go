@@ -13,10 +13,10 @@ import (
 )
 
 const (
-	stepName string 	= "Shipment_Delivered"
-	stepIndex int		= 32
-	ShipmentDeliveredPending		= "ShipmentDeliveredPending"
-	AutoApprovedShipmentDelivered	= "AutoApproved"
+	stepName                      string = "Shipment_Delivered"
+	stepIndex                     int    = 32
+	ShipmentDeliveredPending             = "ShipmentDeliveredPending"
+	AutoApprovedShipmentDelivered        = "AutoApproved"
 )
 
 type shipmentDeliveredStep struct {
@@ -49,7 +49,7 @@ func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context,
 		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", shipmentDelivered.Name(), order.OrderId, ShipmentDeliveredPending)
 		shipmentDelivered.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
 		shipmentDelivered.updateOrderItemsProgress(ctx, &order, itemsId, ShipmentDeliveredPending, true, "", true, steps.InProgressStatus)
-		if err:= shipmentDelivered.persistOrder(ctx, &order); err != nil {
+		if err := shipmentDelivered.persistOrder(ctx, &order); err != nil {
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
 			returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
@@ -63,7 +63,7 @@ func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context,
 		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", shipmentDelivered.Name(), order.OrderId, AutoApprovedShipmentDelivered)
 		shipmentDelivered.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
 		shipmentDelivered.updateOrderItemsProgress(ctx, &order, itemsId, AutoApprovedShipmentDelivered, true, "", true, steps.InProgressStatus)
-		if err:= shipmentDelivered.persistOrder(ctx, &order); err != nil {
+		if err := shipmentDelivered.persistOrder(ctx, &order); err != nil {
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
 			returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
@@ -78,7 +78,6 @@ func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context,
 	defer close(returnChannel)
 	returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 	return promise.NewPromise(returnChannel, 1, 1)
-
 
 	//} else {
 	//	req, ok := param.(message.RequestSellerOrderAction)
@@ -126,7 +125,7 @@ func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context,
 }
 
 func (shipmentDelivered shipmentDeliveredStep) persistOrder(ctx context.Context, order *entities.Order) error {
-	_ , err := global.Singletons.OrderRepository.Save(*order)
+	_, err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", shipmentDelivered.Name(), order, err.Error())
 	}
@@ -173,25 +172,25 @@ func (shipmentDelivered shipmentDeliveredStep) doUpdateOrderItemsProgress(ctx co
 	var action entities.Action
 	if isSetExpireTime {
 		// TODO must be checked calculation
-		expiredTime := order.Items[index].UpdatedAt.Add(time.Hour *
+		expiredTime := order.Items[index].UpdatedAt.Add(time.Hour*
 			time.Duration(order.Items[index].ShipmentSpec.ShippingTime) +
-			time.Minute * time.Duration(0) +
-			time.Second * time.Duration(0))
+			time.Minute*time.Duration(0) +
+			time.Second*time.Duration(0))
 
 		action = entities.Action{
-			Name:      actionName,
-			Result:    result,
-			Reason:		reason,
+			Name:   actionName,
+			Result: result,
+			Reason: reason,
 			Data: map[string]interface{}{
 				"expiredTime": expiredTime,
 			},
 			CreatedAt: order.Items[index].UpdatedAt,
 		}
 	} else {
-		action = entities.Action {
+		action = entities.Action{
 			Name:      actionName,
 			Result:    result,
-			Reason:	   reason,
+			Reason:    reason,
 			CreatedAt: order.Items[index].UpdatedAt,
 		}
 	}

@@ -13,22 +13,22 @@ import (
 )
 
 const (
-	databaseName  	string = "orderService"
+	databaseName    string = "orderService"
 	collectionName  string = "orders"
-	defaultDocCount	int	   = 1024
+	defaultDocCount int    = 1024
 )
 
-var errorTotalCountExceeded 	= errors.New("total count exceeded")
-var errorPageNotAvailable    	= errors.New("page not available")
-var errorDeleteFailed 			= errors.New("update deletedAt field failed")
-var errorRemoveFailed 			= errors.New("remove order failed")
-var errorUpdateFailed 			= errors.New("update order failed")
+var errorTotalCountExceeded = errors.New("total count exceeded")
+var errorPageNotAvailable = errors.New("page not available")
+var errorDeleteFailed = errors.New("update deletedAt field failed")
+var errorRemoveFailed = errors.New("remove order failed")
+var errorUpdateFailed = errors.New("update order failed")
 
 type iItemRepositoryImpl struct {
-	mongoAdapter  *mongoadapter.Mongo
+	mongoAdapter *mongoadapter.Mongo
 }
 
-func NewItemRepository(mongoDriver  *mongoadapter.Mongo) (IItemRepository, error) {
+func NewItemRepository(mongoDriver *mongoadapter.Mongo) (IItemRepository, error) {
 
 	_, err := mongoDriver.AddUniqueIndex(databaseName, collectionName, "items.itemId")
 	if err != nil {
@@ -42,7 +42,7 @@ func NewItemRepository(mongoDriver  *mongoadapter.Mongo) (IItemRepository, error
 func (repo iItemRepositoryImpl) Update(item entities.Item) (*entities.Item, error) {
 
 	item.UpdatedAt = time.Now().UTC()
-	var updateResult, err = repo.mongoAdapter.UpdateOne(databaseName, collectionName, bson.D{{"items.itemId", item.ItemId},{"items.deletedAt", nil}},
+	var updateResult, err = repo.mongoAdapter.UpdateOne(databaseName, collectionName, bson.D{{"items.itemId", item.ItemId}, {"items.deletedAt", nil}},
 		bson.D{{"$set", item}})
 	if err != nil {
 		return nil, err
@@ -132,10 +132,12 @@ func (repo iItemRepositoryImpl) FindByFilterWithSort(supplier func() (interface{
 }
 
 func (repo iItemRepositoryImpl) FindByFilterWithPage(supplier func() interface{}, page, perPage int64) ([]*entities.Item, int64, error) {
-	panic("implementation required")}
+	panic("implementation required")
+}
 
 func (repo iItemRepositoryImpl) FindByFilterWithPageAndSort(supplier func() (interface{}, string, int), page, perPage int64) ([]*entities.Item, int64, error) {
-	panic("implementation required")}
+	panic("implementation required")
+}
 
 func (repo iItemRepositoryImpl) ExistsById(itemId string) (bool, error) {
 	panic("implementation required")
@@ -143,13 +145,13 @@ func (repo iItemRepositoryImpl) ExistsById(itemId string) (bool, error) {
 
 func (repo iItemRepositoryImpl) Count() (int64, error) {
 	var result struct {
-		Count 	int64
+		Count int64
 	}
 
-	pipeline := []bson.M{bson.M{"$match": bson.M{"items.deletedAt": nil }},
-		bson.M{ "$unwind": "$items"},
-		bson.M{ "$group": bson.M{ "_id": nil, "count": bson.M{ "$sum": 1}}},
-		bson.M{"$project": bson.M{"count": 1, "_id" : 0}}}
+	pipeline := []bson.M{{"$match": bson.M{"items.deletedAt": nil}},
+		{"$unwind": "$items"},
+		{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+		{"$project": bson.M{"count": 1, "_id": 0}}}
 
 	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
 	if err != nil {
@@ -175,7 +177,8 @@ func (repo iItemRepositoryImpl) CountWithFilter(supplier func() interface{}) (in
 }
 
 func (repo iItemRepositoryImpl) DeleteById(itemId string) (*entities.Item, error) {
-	panic("implementation required")}
+	panic("implementation required")
+}
 
 func (repo iItemRepositoryImpl) Delete(item entities.Item) (*entities.Item, error) {
 	return repo.DeleteById(item.ItemId)
@@ -186,10 +189,12 @@ func (repo iItemRepositoryImpl) DeleteAllWithItems([]entities.Item) error {
 }
 
 func (repo iItemRepositoryImpl) DeleteAll() error {
-	panic("implementation required")}
+	panic("implementation required")
+}
 
 func (repo iItemRepositoryImpl) RemoveById(orderId string) error {
-	panic("implementation required")}
+	panic("implementation required")
+}
 
 func (repo iItemRepositoryImpl) Remove(item entities.Item) error {
 	return repo.RemoveById(item.ItemId)
@@ -200,7 +205,8 @@ func (repo iItemRepositoryImpl) RemoveAllWithItems([]entities.Item) error {
 }
 
 func (repo iItemRepositoryImpl) RemoveAll() error {
-	panic("implementation required")}
+	panic("implementation required")
+}
 
 func closeCursor(context context.Context, cursor *mongo.Cursor) {
 	err := cursor.Close(context)

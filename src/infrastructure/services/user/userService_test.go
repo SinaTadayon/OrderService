@@ -17,7 +17,6 @@ import (
 var config *configs.Cfg
 var userService *iUserServiceImpl
 
-
 func init() {
 	var err error
 	var path string
@@ -33,7 +32,7 @@ func init() {
 		panic("configs.LoadConfig failed")
 	}
 
-	userService = &iUserServiceImpl {
+	userService = &iUserServiceImpl{
 		client:        nil,
 		serverAddress: config.UserService.Address,
 		serverPort:    config.UserService.Port,
@@ -41,7 +40,7 @@ func init() {
 }
 
 func TestGetSellerInfo(t *testing.T) {
-	ctx, _ := context.WithTimeout(context.Background(), 5 * time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	err := userService.getUserService(ctx)
 	assert.Nil(t, err)
 
@@ -51,11 +50,11 @@ func TestGetSellerInfo(t *testing.T) {
 	iPromise := userService.GetSellerProfile(ctx, "1000002")
 	futureData := iPromise.Data()
 	assert.Nil(t, futureData.Ex)
-	assert.Equal(t, futureData.Data.(*entities.SellerProfile).SellerId , int64(1000002))
+	assert.Equal(t, futureData.Data.(*entities.SellerProfile).SellerId, int64(1000002))
 }
 
 func TestAuthenticationToken(t *testing.T) {
-	ctx, _ := context.WithTimeout(context.Background(), 5 * time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	err := userService.getUserService(ctx)
 	assert.Nil(t, err)
 
@@ -96,6 +95,3 @@ func TestAuthenticationToken(t *testing.T) {
 //	user.BirthDate = "1990-01-06"
 //	return user
 //}
-
-
-

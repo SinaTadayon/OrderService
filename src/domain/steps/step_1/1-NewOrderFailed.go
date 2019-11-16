@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	stepName string 	= "New_Order_Failed"
-	stepIndex int		= 1
-	NewOrderFailed		= "NewOrderFailed"
+	stepName       string = "New_Order_Failed"
+	stepIndex      int    = 1
+	NewOrderFailed        = "NewOrderFailed"
 )
 
 type newOrderProcessingFailedStep struct {
@@ -67,15 +67,16 @@ func (newOrderProcessingFailed newOrderProcessingFailedStep) ProcessOrder(ctx co
 
 	newOrderProcessingFailed.UpdateAllOrderStatus(ctx, &order, itemsId, steps.ClosedStatus, false)
 	newOrderProcessingFailed.updateOrderItemsProgress(ctx, &order, itemsId, NewOrderFailed, true, steps.ClosedStatus)
-	if err := newOrderProcessingFailed.persistOrder(ctx, &order); err != nil{}
+	if err := newOrderProcessingFailed.persistOrder(ctx, &order); err != nil {
+	}
 	returnChannel := make(chan promise.FutureData, 1)
 	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code:promise.NotAccepted, Reason:"Order Payment Failed"}}
+	returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotAccepted, Reason: "Order Payment Failed"}}
 	return promise.NewPromise(returnChannel, 1, 1)
 }
 
 func (newOrderProcessingFailed newOrderProcessingFailedStep) persistOrder(ctx context.Context, order *entities.Order) error {
-	_ , err := global.Singletons.OrderRepository.Save(*order)
+	_, err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", newOrderProcessingFailed.Name(), order, err.Error())
 	}
@@ -128,4 +129,3 @@ func (newOrderProcessingFailed newOrderProcessingFailedStep) doUpdateOrderItemsP
 
 	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 }
-

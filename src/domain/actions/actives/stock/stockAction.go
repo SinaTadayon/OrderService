@@ -43,6 +43,3 @@ func (stock stockActiveActionImpl) ActionType() actions.ActionType {
 func (stock stockActiveActionImpl) ActionEnums() []actions.IEnumAction {
 	return stock.enumAction
 }
-
-
-

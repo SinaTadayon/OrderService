@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	actorType = actors.SystemActor
+	actorType        = actors.SystemActor
 	stateName string = "System_Action_State"
 )
 

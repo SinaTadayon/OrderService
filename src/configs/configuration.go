@@ -10,31 +10,31 @@ import (
 
 type Cfg struct {
 	App struct {
-		ServiceMode							 string `env:"ORDER_SERVICE_MODE"`
+		ServiceMode                          string `env:"ORDER_SERVICE_MODE"`
 		SmsTemplateDir                       string `env:"NOTIFICATION_SMS_TEMPLATES"`
 		EmailTemplateNotifySellerForNewOrder string `env:"EMAIL_TMP_NOTIFY_SELLER_FOR_NEW_ORDER"`
 	}
 
 	GRPCServer struct {
 		Address string `env:"ORDER_SERVER_ADDRESS"`
-		Port   	int `env:"ORDER_SERVER_PORT"`
+		Port    int    `env:"ORDER_SERVER_PORT"`
 	}
 
 	UserService struct {
-		Address string 	`env:"USER_SERVICE_ADDRESS"`
-		Port   	int 	`env:"USER_SERVICE_PORT"`
+		Address string `env:"USER_SERVICE_ADDRESS"`
+		Port    int    `env:"USER_SERVICE_PORT"`
 	}
 
 	PaymentGatewayService struct {
-		Address 	string `env:"PAYMENT_GATEWAY_ADDRESS"`
-		Port   		int `env:"PAYMENT_GATEWAY_PORT"`
-		MockEnabled	bool `env:"PAYMENT_SERVICE_MOCK_ENABLED"`
+		Address     string `env:"PAYMENT_GATEWAY_ADDRESS"`
+		Port        int    `env:"PAYMENT_GATEWAY_PORT"`
+		MockEnabled bool   `env:"PAYMENT_SERVICE_MOCK_ENABLED"`
 	}
 
 	StockService struct {
-		Address 	string `env:"STOCK_SERVICE_ADDRESS"`
-		Port   		int `env:"STOCK_SERVICE_PORT"`
-		MockEnabled	bool `env:"STOCK_SERVICE_MOCK_ENABLED"`
+		Address     string `env:"STOCK_SERVICE_ADDRESS"`
+		Port        int    `env:"STOCK_SERVICE_PORT"`
+		MockEnabled bool   `env:"STOCK_SERVICE_MOCK_ENABLED"`
 	}
 
 	Kafka struct {
@@ -53,9 +53,9 @@ type Cfg struct {
 		ConnectionTimeout int    `env:"ORDER_SERVICE_MONGO_CONN_TIMEOUT"`
 		ReadTimeout       int    `env:"ORDER_SERVICE_MONGO_READ_TIMEOUT"`
 		WriteTimeout      int    `env:"ORDER_SERVICE_MONGO_WRITE_TIMEOUT"`
-		MaxConnIdleTime	  int	 `env:"ORDER_SERVICE_MONGO_MAX_CONN_IDLE_TIME"`
-		MaxPoolSize		  int	 `env:"ORDER_SERVICE_MONGO_MAX_POOL_SIZE"`
-		MinPoolSize		  int	 `env:"ORDER_SERVICE_MONGO_MIN_POOL_SIZE"`
+		MaxConnIdleTime   int    `env:"ORDER_SERVICE_MONGO_MAX_CONN_IDLE_TIME"`
+		MaxPoolSize       int    `env:"ORDER_SERVICE_MONGO_MAX_POOL_SIZE"`
+		MinPoolSize       int    `env:"ORDER_SERVICE_MONGO_MIN_POOL_SIZE"`
 	}
 }
 

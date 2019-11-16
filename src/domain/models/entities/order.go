@@ -13,7 +13,7 @@ const (
 	randomMax int = 999
 )
 
-func init () {
+func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
@@ -21,53 +21,50 @@ func init () {
 //	ID 	primitive.ObjectID `bson:"_id"`
 //}
 
-
 //Order Status: New, InProgress, Closed
 type Order struct {
-	ID           			primitive.ObjectID  `bson:"-"`
-	OrderId        			string				`bson:"orderId"`
-	PaymentService 			[]PaymentService	`bson:"paymentService"`
-	SystemPayment  			SystemPayment		`bson:"systemPayment"`
-	Status					string				`bson:"status"`
-	BuyerInfo          		BuyerInfo			`bson:"buyerInfo"`
-	Amount         			Amount				`bson:"amount"`
-	Items          			[]Item				`bson:"items"`
-	CreatedAt      			time.Time			`bson:"createdAt"`
-	UpdatedAt      			time.Time			`bson:"updatedAt"`
-	DeletedAt      			*time.Time			`bson:"deletedAt"`
+	ID             primitive.ObjectID `bson:"-"`
+	OrderId        string             `bson:"orderId"`
+	PaymentService []PaymentService   `bson:"paymentService"`
+	SystemPayment  SystemPayment      `bson:"systemPayment"`
+	Status         string             `bson:"status"`
+	BuyerInfo      BuyerInfo          `bson:"buyerInfo"`
+	Amount         Amount             `bson:"amount"`
+	Items          []Item             `bson:"items"`
+	CreatedAt      time.Time          `bson:"createdAt"`
+	UpdatedAt      time.Time          `bson:"updatedAt"`
+	DeletedAt      *time.Time         `bson:"deletedAt"`
 }
-
 
 type PaymentService struct {
-	PaymentRequest  *PaymentRequest  		`bson:"paymentRequest"`
-	PaymentResponse *PaymentResponse 		`bson:"paymentResponse"`
-	PaymentResult   *PaymentResult   		`bson:"paymentResult"`
+	PaymentRequest  *PaymentRequest  `bson:"paymentRequest"`
+	PaymentResponse *PaymentResponse `bson:"paymentResponse"`
+	PaymentResult   *PaymentResult   `bson:"paymentResult"`
 }
-
 
 // TODO get configs of pay to market from siavash
 type SystemPayment struct {
-	PayToBuyer  []PayToBuyerInfo		`bson:"payToBuyer"`
-	PayToSeller []PayToSellerInfo		`bson:"payToSeller"`
-	PayToMarket []PayToMarket			`bson:"payToMarket"`
+	PayToBuyer  []PayToBuyerInfo  `bson:"payToBuyer"`
+	PayToSeller []PayToSellerInfo `bson:"payToSeller"`
+	PayToMarket []PayToMarket     `bson:"payToMarket"`
 }
 
 type PayToBuyerInfo struct {
-	PaymentRequest  *PaymentRequest  		`bson:"paymentRequest"`
-	PaymentResponse *PaymentResponse 		`bson:"paymentResponse"`
-	PaymentResult   *PaymentResult   		`bson:"paymentResult"`
+	PaymentRequest  *PaymentRequest  `bson:"paymentRequest"`
+	PaymentResponse *PaymentResponse `bson:"paymentResponse"`
+	PaymentResult   *PaymentResult   `bson:"paymentResult"`
 }
 
 type PayToSellerInfo struct {
-	PaymentRequest  *PaymentRequest  		`bson:"paymentRequest"`
-	PaymentResponse *PaymentResponse 		`bson:"paymentResponse"`
-	PaymentResult   *PaymentResult   		`bson:"paymentResult"`
+	PaymentRequest  *PaymentRequest  `bson:"paymentRequest"`
+	PaymentResponse *PaymentResponse `bson:"paymentResponse"`
+	PaymentResult   *PaymentResult   `bson:"paymentResult"`
 }
 
 type PayToMarket struct {
-	PaymentRequest  *PaymentRequest  		`bson:"paymentRequest"`
-	PaymentResponse *PaymentResponse 		`bson:"paymentResponse"`
-	PaymentResult   *PaymentResult   		`bson:"paymentResult"`
+	PaymentRequest  *PaymentRequest  `bson:"paymentRequest"`
+	PaymentResponse *PaymentResponse `bson:"paymentResponse"`
+	PaymentResult   *PaymentResult   `bson:"paymentResult"`
 }
 
 type Amount struct {
@@ -82,15 +79,13 @@ type Amount struct {
 }
 
 type Voucher struct {
-	Amount			uint64					`bson:"amount"`
-	Code 			string					`bson:"code"`
-	Details			*VoucherDetails			`bson:"details"`
+	Amount  uint64          `bson:"amount"`
+	Code    string          `bson:"code"`
+	Details *VoucherDetails `bson:"details"`
 }
-
 
 // TODO will be complete
 type VoucherDetails struct {
-
 }
 
 func (order Order) IsIdEmpty() bool {
@@ -120,11 +115,11 @@ func GenerateOrderId() string {
 func byteToHash(bytes []byte) uint32 {
 	var h uint32 = 0
 	for _, val := range bytes {
-		h = 31 * h + uint32(val & 0xff)
+		h = 31*h + uint32(val&0xff)
 	}
 	return h
 }
 
 func GenerateRandomNumber() uint32 {
-	return uint32(rand.Intn(randomMax - randomMin + 1) + randomMin)
+	return uint32(rand.Intn(randomMax-randomMin+1) + randomMin)
 }

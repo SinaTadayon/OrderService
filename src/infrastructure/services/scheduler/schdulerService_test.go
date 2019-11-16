@@ -43,12 +43,12 @@ func init() {
 		Port:     config.Mongo.Port,
 		Username: config.Mongo.User,
 		//Password:     App.Cfg.Mongo.Pass,
-		ConnTimeout:  time.Duration(config.Mongo.ConnectionTimeout),
-		ReadTimeout:  time.Duration(config.Mongo.ReadTimeout),
-		WriteTimeout: time.Duration(config.Mongo.WriteTimeout),
+		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout),
+		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout),
+		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout),
 		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime),
-		MaxPoolSize: uint64(config.Mongo.MaxPoolSize),
-		MinPoolSize: uint64(config.Mongo.MinPoolSize),
+		MaxPoolSize:     uint64(config.Mongo.MaxPoolSize),
+		MinPoolSize:     uint64(config.Mongo.MinPoolSize),
 	}
 
 	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
@@ -57,7 +57,7 @@ func init() {
 		panic("mongo adapter creation failed, " + err.Error())
 	}
 
-	global.Singletons.OrderRepository ,err = order_repository.NewOrderRepository(mongoDriver)
+	global.Singletons.OrderRepository, err = order_repository.NewOrderRepository(mongoDriver)
 	if err != nil {
 		logger.Err("repository creation failed, %s ", err.Error())
 		panic("order repository creation failed, " + err.Error())
@@ -83,7 +83,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order := &pb.RequestNewOrder{
 		Amount: &pb.Amount{},
 		Buyer: &pb.Buyer{
-			Finance: &pb.FinanceInfo{},
+			Finance:         &pb.FinanceInfo{},
 			ShippingAddress: &pb.Address{},
 		},
 	}
@@ -97,7 +97,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order.Amount.ShipmentTotal = 700000
 	order.Amount.Voucher = &pb.Voucher{
 		Amount: 40000,
-		Code: "348",
+		Code:   "348",
 	}
 
 	order.Buyer.BuyerId = "123456"
@@ -124,11 +124,11 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order.Buyer.ShippingAddress.Lat = "10.1345664"
 	order.Buyer.ShippingAddress.Long = "22.1345664"
 
-	item := pb.Item {
-		Price:    &pb.PriceInfo{},
-		Shipment: &pb.ShippingSpec{},
+	item := pb.Item{
+		Price:      &pb.PriceInfo{},
+		Shipment:   &pb.ShippingSpec{},
 		Attributes: make(map[string]string, 10),
-		SellerId: "123456",
+		SellerId:   "123456",
 	}
 
 	item.InventoryId = "11111-22222"
@@ -169,11 +169,11 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 
 	order.Items = append(order.Items, &item)
 
-	item1 := pb.Item {
-		Price:    &pb.PriceInfo{},
-		Shipment: &pb.ShippingSpec{},
+	item1 := pb.Item{
+		Price:      &pb.PriceInfo{},
+		Shipment:   &pb.ShippingSpec{},
 		Attributes: make(map[string]string, 10),
-		SellerId: "678912",
+		SellerId:   "678912",
 	}
 
 	item1.InventoryId = "1111-33333"
@@ -253,8 +253,8 @@ func doUpdateOrderStep(order *entities.Order, index int, stepName string, stepIn
 	order.Items[index].Progress.CurrentStepIndex = stepIndex
 
 	stepHistory := entities.StepHistory{
-		Name: stepName,
-		Index: stepIndex,
+		Name:      stepName,
+		Index:     stepIndex,
 		CreatedAt: order.Items[index].Progress.CreatedAt,
 		//ActionHistory: make([]entities.Action, 0, 1),
 	}
@@ -302,15 +302,15 @@ func doUpdateOrderItemsProgress(order *entities.Order, index int,
 		order.Items[index].Progress.StepsHistory[length].ActionHistory = make([]entities.Action, 0, 5)
 	}
 
-	expiredTime := order.Items[index].UpdatedAt.Add(time.Hour *
+	expiredTime := order.Items[index].UpdatedAt.Add(time.Hour*
 		time.Duration(0) +
-		time.Minute * time.Duration(0) +
-		time.Second * time.Duration(1))
+		time.Minute*time.Duration(0) +
+		time.Second*time.Duration(1))
 
 	action := entities.Action{
-		Name:      actionName,
-		Result:    result,
-		Data:		map[string]interface{}{
+		Name:   actionName,
+		Result: result,
+		Data: map[string]interface{}{
 			"expiredTime": expiredTime,
 		},
 		CreatedAt: order.Items[index].UpdatedAt,
@@ -328,7 +328,7 @@ func TestSchedulerSellerApprovalPending(t *testing.T) {
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "20.Seller_Approval_Pending", 20)
 	updateOrderItemsProgress(newOrder, nil, "ApprovalPending", true, steps.InProgressStatus)
-	order , err := global.Singletons.OrderRepository.Save(*newOrder)
+	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
 	defer removeCollection()
@@ -346,7 +346,7 @@ func TestSchedulerSellerApprovalPending(t *testing.T) {
 
 	length := len(changedOrder.Items[0].Progress.StepsHistory) - 1
 	assert.Equal(t, changedOrder.Items[0].Progress.StepsHistory[length].Index, 80)
-	assert.Equal(t, changedOrder.Items[0].Progress.StepsHistory[length].ActionHistory[len(changedOrder.Items[0].Progress.StepsHistory[length].ActionHistory) - 1].Name, "CANCELED")
+	assert.Equal(t, changedOrder.Items[0].Progress.StepsHistory[length].ActionHistory[len(changedOrder.Items[0].Progress.StepsHistory[length].ActionHistory)-1].Name, "CANCELED")
 }
 
 func TestSchedulerSellerShipmentPending(t *testing.T) {
@@ -359,12 +359,12 @@ func TestSchedulerSellerShipmentPending(t *testing.T) {
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
 	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, steps.InProgressStatus)
-	order , err := global.Singletons.OrderRepository.Save(*newOrder)
+	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
 	defer removeCollection()
 
-	data := ScheduleModel {
+	data := ScheduleModel{
 		Step:   "30.Shipment_Pending",
 		Action: "SellerShipmentPending",
 	}
@@ -377,7 +377,7 @@ func TestSchedulerSellerShipmentPending(t *testing.T) {
 
 	length := len(changedOrder.Items[0].Progress.StepsHistory) - 1
 	assert.Equal(t, changedOrder.Items[0].Progress.StepsHistory[length].Index, 80)
-	assert.Equal(t, changedOrder.Items[0].Progress.StepsHistory[length].ActionHistory[len(changedOrder.Items[0].Progress.StepsHistory[length].ActionHistory) - 1].Name, "CANCELED")
+	assert.Equal(t, changedOrder.Items[0].Progress.StepsHistory[length].ActionHistory[len(changedOrder.Items[0].Progress.StepsHistory[length].ActionHistory)-1].Name, "CANCELED")
 }
 
 func TestSchedulerShipmentDeliveredPending(t *testing.T) {
@@ -390,12 +390,12 @@ func TestSchedulerShipmentDeliveredPending(t *testing.T) {
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "32.Shipment_Delivered", 32)
 	updateOrderItemsProgress(newOrder, nil, "ShipmentDeliveredPending", true, steps.InProgressStatus)
-	order , err := global.Singletons.OrderRepository.Save(*newOrder)
+	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
 	defer removeCollection()
 
-	data := ScheduleModel {
+	data := ScheduleModel{
 		Step:   "32.Shipment_Delivered",
 		Action: "ShipmentDeliveredPending",
 	}
@@ -408,7 +408,7 @@ func TestSchedulerShipmentDeliveredPending(t *testing.T) {
 
 	length := len(changedOrder.Items[0].Progress.StepsHistory) - 1
 	assert.Equal(t, changedOrder.Items[0].Progress.StepsHistory[length].Index, 90)
-	assert.Equal(t, changedOrder.Items[0].Progress.StepsHistory[length].ActionHistory[len(changedOrder.Items[0].Progress.StepsHistory[length].ActionHistory) - 1].Name, "DELIVERED")
+	assert.Equal(t, changedOrder.Items[0].Progress.StepsHistory[length].ActionHistory[len(changedOrder.Items[0].Progress.StepsHistory[length].ActionHistory)-1].Name, "DELIVERED")
 }
 
 //func TestSchedulerHealthWorker(t *testing.T) {
@@ -426,5 +426,6 @@ func TestSchedulerShipmentDeliveredPending(t *testing.T) {
 //}
 
 func removeCollection() {
-	if err := global.Singletons.OrderRepository.RemoveAll(); err != nil {}
+	if err := global.Singletons.OrderRepository.RemoveAll(); err != nil {
+	}
 }

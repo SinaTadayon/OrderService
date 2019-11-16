@@ -15,10 +15,10 @@ import (
 )
 
 const (
-	stepName string 	= "New_Order"
-	stepIndex int		= 0
-	StockReserved		= "StockReserved"
-	StockReleased		= "StockReleased"
+	stepName      string = "New_Order"
+	stepIndex     int    = 0
+	StockReserved        = "StockReserved"
+	StockReleased        = "StockReleased"
 )
 
 type newOrderProcessingStep struct {
@@ -49,7 +49,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	if err := ptypes.UnmarshalAny(request.Data, &requestNewOrder); err != nil {
 		logger.Err("Could not unmarshal requestNewOrder from anything field, error: %s, request: %v", err, request)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.BadRequest, Reason:"Invalid requestNewOrder"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.BadRequest, Reason: "Invalid requestNewOrder"}}
 		close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
@@ -67,7 +67,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	if err != nil {
 		logger.Err("Converter.Map requestNewOrder to order object failed, error: %s, requestNewOrder: %v", err, requestNewOrder)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.BadRequest, Reason:"Received requestNewOrder invalid"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.BadRequest, Reason: "Received requestNewOrder invalid"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
@@ -90,7 +90,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	if err != nil {
 		logger.Err("Save NewOrder Step Failed, error: %s, order: %v", err, newOrder)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
@@ -100,7 +100,8 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	if futureData == nil {
 		newOrderProcessing.UpdateAllOrderStatus(ctx, order, nil, steps.ClosedStatus, true)
 		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReserved, false, steps.ClosedStatus)
-		if err := newOrderProcessing.persistOrder(ctx, order); err != nil {}
+		if err := newOrderProcessing.persistOrder(ctx, order); err != nil {
+		}
 		logger.Err("StockService promise channel has been closed, order: %v", order)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
@@ -114,11 +115,12 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	if futureData.Ex != nil {
 		newOrderProcessing.UpdateAllOrderStatus(ctx, order, nil, steps.ClosedStatus, true)
 		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReserved, false, steps.ClosedStatus)
-		if err := newOrderProcessing.persistOrder(ctx, order); err != nil {}
+		if err := newOrderProcessing.persistOrder(ctx, order); err != nil {
+		}
 		logger.Err("Reserved stock from stockService failed, error: %s, order: %v", futureData.Ex.Error(), order)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		go func() {
 			newOrderProcessing.Childes()[0].ProcessOrder(ctx, *order, nil, nil)
 		}()
@@ -130,7 +132,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 		newOrderProcessing.releasedStock(ctx, order)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 
 		go func() {
 			newOrderProcessing.Childes()[0].ProcessOrder(ctx, *order, nil, nil)
@@ -151,7 +153,7 @@ func (newOrderProcessing newOrderProcessingStep) releasedStock(ctx context.Conte
 	futureData := iPromise.Data()
 	if futureData == nil {
 		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, steps.ClosedStatus)
-		logger.Err("StockService promise channel has been closed, step: %s, orderId: %s",  newOrderProcessing.Name(), order.OrderId)
+		logger.Err("StockService promise channel has been closed, step: %s, orderId: %s", newOrderProcessing.Name(), order.OrderId)
 		return
 	}
 
@@ -166,7 +168,7 @@ func (newOrderProcessing newOrderProcessingStep) releasedStock(ctx context.Conte
 }
 
 func (newOrderProcessing newOrderProcessingStep) persistOrder(ctx context.Context, order *entities.Order) error {
-	_ , err := global.Singletons.OrderRepository.Save(*order)
+	_, err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", newOrderProcessing.Name(), order, err.Error())
 	}
@@ -217,4 +219,3 @@ func (newOrderProcessing newOrderProcessingStep) doUpdateOrderItemsProgress(ctx 
 
 	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 }
-

@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	stepName string 	= "Pay_To_Seller"
-	stepIndex int		= 90
-	Delivered			= "DELIVERED"
+	stepName  string = "Pay_To_Seller"
+	stepIndex int    = 90
+	Delivered        = "DELIVERED"
 )
 
 type payToSellerStep struct {
@@ -61,12 +61,12 @@ func (payToSeller payToSellerStep) ProcessOrder(ctx context.Context, order entit
 	}
 	returnChannel := make(chan promise.FutureData, 1)
 	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data:nil, Ex:nil}
+	returnChannel <- promise.FutureData{Data: nil, Ex: nil}
 	return promise.NewPromise(returnChannel, 1, 1)
 }
 
 func (payToSeller payToSellerStep) persistOrder(ctx context.Context, order *entities.Order) error {
-	_ , err := global.Singletons.OrderRepository.Save(*order)
+	_, err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", payToSeller.Name(), order, err.Error())
 	}
@@ -119,7 +119,6 @@ func (payToSeller payToSellerStep) doUpdateOrderItemsProgress(ctx context.Contex
 
 	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 }
-
 
 //
 //import (

@@ -22,7 +22,7 @@ func TestFlowManagerSteps(t *testing.T) {
 
 	assert.Nil(t, flowManager.setupFlowManager())
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[0], 0, "0.New_Order", []int{1,10}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[0], 0, "0.New_Order", []int{1, 10}); err != nil {
 		t.Fatalf("validate step0 failed: %s\n", err)
 	}
 
@@ -38,7 +38,7 @@ func TestFlowManagerSteps(t *testing.T) {
 		t.Fatalf("validate step12 failed: %s\n", err)
 	}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[11], 11, "11.Payment_Success", []int{20,14}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[11], 11, "11.Payment_Success", []int{20, 14}); err != nil {
 		t.Fatalf("validate step11 failed: %s\n", err)
 	}
 
@@ -46,7 +46,7 @@ func TestFlowManagerSteps(t *testing.T) {
 		t.Fatalf("validate step14 failed: %s\n", err)
 	}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[20], 20, "20.Seller_Approval_Pending", []int{30,21}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[20], 20, "20.Seller_Approval_Pending", []int{30, 21}); err != nil {
 		t.Fatalf("validate step20 failed: %s\n", err)
 	}
 
@@ -58,23 +58,23 @@ func TestFlowManagerSteps(t *testing.T) {
 	//	t.Fatalf("validate step30 failed: %s\n", err)
 	//}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[31], 31, "31.Shipped", []int{32,34}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[31], 31, "31.Shipped", []int{32, 34}); err != nil {
 		t.Fatalf("validate step31 failed: %s\n", err)
 	}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[32], 32, "32.Shipment_Delivered", []int{40,41,43}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[32], 32, "32.Shipment_Delivered", []int{40, 41, 43}); err != nil {
 		t.Fatalf("validate step32 failed: %s\n", err)
 	}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[33], 33, "33.Shipment_Detail_Delayed", []int{31,36}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[33], 33, "33.Shipment_Detail_Delayed", []int{31, 36}); err != nil {
 		t.Fatalf("validate step33 failed: %s\n", err)
 	}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[34], 34, "34.Shipment_Delivery_Pending", []int{32,35}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[34], 34, "34.Shipment_Delivery_Pending", []int{32, 35}); err != nil {
 		t.Fatalf("validate step34 failed: %s\n", err)
 	}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[35], 35, "35.Shipment_Delivery_Delayed", []int{32,36}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[35], 35, "35.Shipment_Delivery_Delayed", []int{32, 36}); err != nil {
 		t.Fatalf("validate step35 failed: %s\n", err)
 	}
 
@@ -86,11 +86,11 @@ func TestFlowManagerSteps(t *testing.T) {
 		t.Fatalf("validate step40 failed: %s\n", err)
 	}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[41], 41, "41.Return_Shipment_Pending", []int{42,44}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[41], 41, "41.Return_Shipment_Pending", []int{42, 44}); err != nil {
 		t.Fatalf("validate step41 failed: %s\n", err)
 	}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[42], 42, "42.Return_Shipped", []int{50,51}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[42], 42, "42.Return_Shipped", []int{50, 51}); err != nil {
 		t.Fatalf("validate step42 failed: %s\n", err)
 	}
 
@@ -98,23 +98,23 @@ func TestFlowManagerSteps(t *testing.T) {
 	//	t.Fatalf("validate step43 failed: %s\n", err)
 	//}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[44], 44, "44.Return_Shipment_Detail_Delayed", []int{40,42}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[44], 44, "44.Return_Shipment_Detail_Delayed", []int{40, 42}); err != nil {
 		t.Fatalf("validate step44 failed: %s\n", err)
 	}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[50], 50, "50.Return_Shipment_Delivered", []int{53,55}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[50], 50, "50.Return_Shipment_Delivered", []int{53, 55}); err != nil {
 		t.Fatalf("validate step50 failed: %s\n", err)
 	}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[51], 51, "51.Return_Shipment_Delivery_Pending", []int{50,52}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[51], 51, "51.Return_Shipment_Delivery_Pending", []int{50, 52}); err != nil {
 		t.Fatalf("validate step51 failed: %s\n", err)
 	}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[52], 52, "52.Return_Shipment_Delivery_Delayed", []int{50,54}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[52], 52, "52.Return_Shipment_Delivery_Delayed", []int{50, 54}); err != nil {
 		t.Fatalf("validate step52 failed: %s\n", err)
 	}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[53], 53, "53.Return_Shipment_Delivery_Problem", []int{54,55}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[53], 53, "53.Return_Shipment_Delivery_Problem", []int{54, 55}); err != nil {
 		t.Fatalf("validate step53 failed: %s\n", err)
 	}
 
@@ -126,7 +126,7 @@ func TestFlowManagerSteps(t *testing.T) {
 		t.Fatalf("validate step55 failed: %s\n", err)
 	}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[80], 80, "80.Pay_To_Buyer", []int{81,82}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[80], 80, "80.Pay_To_Buyer", []int{81, 82}); err != nil {
 		t.Fatalf("validate step80 failed: %s\n", err)
 	}
 
@@ -138,7 +138,7 @@ func TestFlowManagerSteps(t *testing.T) {
 		t.Fatalf("validate step82 failed: %s\n", err)
 	}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[90], 90, "90.Pay_To_Seller", []int{91,92}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[90], 90, "90.Pay_To_Seller", []int{91, 92}); err != nil {
 		t.Fatalf("validate step90 failed: %s\n", err)
 	}
 
@@ -150,7 +150,7 @@ func TestFlowManagerSteps(t *testing.T) {
 		t.Fatalf("validate step92 failed: %s\n", err)
 	}
 
-	if err := stepValidation(flowManager.GetIndexStepsMap()[93], 93, "93.Pay_To_Market", []int{94,95}); err != nil {
+	if err := stepValidation(flowManager.GetIndexStepsMap()[93], 93, "93.Pay_To_Market", []int{94, 95}); err != nil {
 		t.Fatalf("validate step93 failed: %s\n", err)
 	}
 
@@ -161,7 +161,6 @@ func TestFlowManagerSteps(t *testing.T) {
 	if err := stepValidation(flowManager.GetIndexStepsMap()[95], 95, "95.Pay_To_Market_Failed", []int{94}); err != nil {
 		t.Fatalf("validate step95 failed: %s\n", err)
 	}
-
 
 	//keys := make([]int, 0, len(flowManager.GetIndexStepsMap()))
 	//for k := range flowManager.GetIndexStepsMap() {
@@ -197,7 +196,7 @@ func traversState(states []states.IState) {
 			if activeAction.ActiveType() == actives.NextToStepAction {
 				nextToStepState := state.(next_to_step_state.INextToStep)
 				for action, step := range nextToStepState.ActionStepMap() {
-					fmt.Printf("************* => ActionMap -> action: %s, stepIndex: %d\n",action, step.Index())
+					fmt.Printf("************* => ActionMap -> action: %s, stepIndex: %d\n", action, step.Index())
 				}
 			} else {
 				fmt.Printf("************* => active enum actions: %s\n", activeAction.ActionEnums())

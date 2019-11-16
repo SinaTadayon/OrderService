@@ -6,7 +6,7 @@ import (
 
 type ActionEnums int
 
-var actionStrings = []string {"ComposeActorsAction", "CombineActorsAction"}
+var actionStrings = []string{"ComposeActorsAction", "CombineActorsAction"}
 
 const (
 	ComposeActorsAction ActionEnums = iota
@@ -34,7 +34,7 @@ func (action ActionEnums) String() string {
 		return ""
 	}
 
-	return  actionStrings[action]
+	return actionStrings[action]
 }
 
 func FromString(action string) (ActionEnums, error) {
@@ -47,4 +47,3 @@ func FromString(action string) (ActionEnums, error) {
 		return -1, errors.New("invalid actionEnums string")
 	}
 }
-

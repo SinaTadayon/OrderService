@@ -9,10 +9,10 @@ import (
 
 type iActiveEventImpl struct {
 	*events.BaseEventImpl
-	order 		entities.Order
-	itemsId		[]string
-	activeType 	actives.ActiveType
-	action		actives.IActiveAction
+	order      entities.Order
+	itemsId    []string
+	activeType actives.ActiveType
+	action     actives.IActiveAction
 }
 
 func NewActiveEvent(order entities.Order, itemsId []string, activeType actives.ActiveType,
@@ -21,7 +21,7 @@ func NewActiveEvent(order entities.Order, itemsId []string, activeType actives.A
 		order, itemsId, activeType, action}
 }
 
-func (activeEvent iActiveEventImpl) Order()	entities.Order {
+func (activeEvent iActiveEventImpl) Order() entities.Order {
 	return activeEvent.order
 }
 

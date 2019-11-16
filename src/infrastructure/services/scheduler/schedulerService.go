@@ -9,6 +9,6 @@ type ISchedulerService interface {
 }
 
 type ScheduleModel struct {
-	Step 	string
-	Action  string
+	Step   string
+	Action string
 }

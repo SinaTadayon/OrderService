@@ -43,6 +43,3 @@ func (payToMarket payToMarketActiveActionImpl) ActionType() actions.ActionType {
 func (payToMarket payToMarketActiveActionImpl) ActionEnums() []actions.IEnumAction {
 	return payToMarket.enumAction
 }
-
-
-

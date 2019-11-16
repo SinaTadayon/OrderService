@@ -3,7 +3,6 @@ package order_repository
 import "gitlab.faza.io/order-project/order-service/domain/models/entities"
 
 type IOrderRepository interface {
-
 	Save(order entities.Order) (*entities.Order, error)
 
 	SaveAll(orders []entities.Order) ([]*entities.Order, error)
@@ -30,7 +29,7 @@ type IOrderRepository interface {
 
 	FindByFilterWithPage(supplier func() (filter interface{}), page, perPage int64) ([]*entities.Order, int64, error)
 
-	FindByFilterWithPageAndSort(supplier func() (filter interface{}, fieldName string, direction int) , page, perPage int64) ([]*entities.Order, int64, error)
+	FindByFilterWithPageAndSort(supplier func() (filter interface{}, fieldName string, direction int), page, perPage int64) ([]*entities.Order, int64, error)
 
 	ExistsById(orderId string) (bool, error)
 

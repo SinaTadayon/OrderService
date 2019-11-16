@@ -28,7 +28,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order := &pb.RequestNewOrder{
 		Amount: &pb.Amount{},
 		Buyer: &pb.Buyer{
-			Finance: &pb.FinanceInfo{},
+			Finance:         &pb.FinanceInfo{},
 			ShippingAddress: &pb.Address{},
 		},
 	}
@@ -42,7 +42,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order.Amount.ShipmentTotal = 700000
 	order.Amount.Voucher = &pb.Voucher{
 		Amount: 40000,
-		Code: "348",
+		Code:   "348",
 	}
 
 	order.Buyer.LastName = "Tadayon"
@@ -68,11 +68,11 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order.Buyer.ShippingAddress.Lat = "10.1345664"
 	order.Buyer.ShippingAddress.Long = "22.1345664"
 
-	item := pb.Item {
-		Price:    &pb.PriceInfo{},
-		Shipment: &pb.ShippingSpec{},
+	item := pb.Item{
+		Price:      &pb.PriceInfo{},
+		Shipment:   &pb.ShippingSpec{},
 		Attributes: make(map[string]string, 10),
-		SellerId: "123456",
+		SellerId:   "123456",
 	}
 
 	item.InventoryId = "11111-22222"
@@ -113,11 +113,11 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 
 	order.Items = append(order.Items, &item)
 
-	item1 := pb.Item {
-		Price:    &pb.PriceInfo{},
-		Shipment: &pb.ShippingSpec{},
+	item1 := pb.Item{
+		Price:      &pb.PriceInfo{},
+		Shipment:   &pb.ShippingSpec{},
 		Attributes: make(map[string]string, 10),
-		SellerId: "678912",
+		SellerId:   "678912",
 	}
 
 	item1.InventoryId = "11111-33333"
@@ -162,9 +162,9 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 
 func createMetaDataRequest() *message.RequestMetadata {
 	var metadata = &message.RequestMetadata{
-		Page:                 1,
-		PerPage:              25,
-		Sorts:                []*message.MetaSorts{
+		Page:    1,
+		PerPage: 25,
+		Sorts: []*message.MetaSorts{
 			{
 				Name:      "mobile",
 				Direction: 0,
@@ -173,10 +173,10 @@ func createMetaDataRequest() *message.RequestMetadata {
 				Direction: 1,
 			},
 		},
-		Filters:              []*message.MetaFilter{
+		Filters: []*message.MetaFilter{
 			{
-				Name: "mobile",
-				Opt: "eq",
+				Name:  "mobile",
+				Opt:   "eq",
 				Value: "012933434",
 			},
 		},

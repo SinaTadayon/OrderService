@@ -19,6 +19,6 @@ type EmailRequest struct {
 }
 
 type SMSRequest struct {
-	Phone  		string
-	Body 		string
+	Phone string
+	Body  string
 }

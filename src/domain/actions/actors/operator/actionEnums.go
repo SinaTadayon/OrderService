@@ -6,7 +6,7 @@ import (
 
 type ActionEnums int
 
-var actionStrings = []string { "AcceptAction", "DeliveredAction", "RejectAction",
+var actionStrings = []string{"AcceptAction", "DeliveredAction", "RejectAction",
 	"CanceledAction", "ReturnedAction",
 	"ReturnCanceledAction", "ReturnDeliveredAction"}
 
@@ -41,7 +41,7 @@ func (action ActionEnums) String() string {
 		return ""
 	}
 
-	return  actionStrings[action]
+	return actionStrings[action]
 }
 
 func FromString(action string) (ActionEnums, error) {
@@ -64,4 +64,3 @@ func FromString(action string) (ActionEnums, error) {
 		return -1, errors.New("invalid actorActionImpl string")
 	}
 }
-

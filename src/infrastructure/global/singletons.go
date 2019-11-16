@@ -12,8 +12,9 @@ import (
 )
 
 type CtxKey int
+
 const (
-	CtxUserID 		CtxKey = iota
+	CtxUserID CtxKey = iota
 	CtxAuthToken
 	CtxStepName
 	CtxStepIndex
@@ -21,14 +22,14 @@ const (
 )
 
 var Singletons struct {
-	Kafka           	*kafkaadapter.Kafka
-	OrderRepository 	order_repository.IOrderRepository
-	ItemRepository  	item_repository.IItemRepository
-	Converter       	converter.IConverter
-	StockService    	stock_service.IStockService
-	PaymentService  	payment_service.IPaymentService
-	NotifyService   	notify_service.INotificationService
-	UserService 		user_service.IUserService
+	Kafka           *kafkaadapter.Kafka
+	OrderRepository order_repository.IOrderRepository
+	ItemRepository  item_repository.IItemRepository
+	Converter       converter.IConverter
+	StockService    stock_service.IStockService
+	PaymentService  payment_service.IPaymentService
+	NotifyService   notify_service.INotificationService
+	UserService     user_service.IUserService
 	//SchedulerService	scheduler_service.ISchedulerService
 	//FlowManager		domain.IFlowManager
 	//GRPCServer      grpc.Server

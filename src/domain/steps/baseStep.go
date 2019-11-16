@@ -5,6 +5,6 @@ import (
 )
 
 type IBaseStep interface {
-	BaseStep() 		*BaseStepImpl
-	StatesMap()		map[int]states.IState
+	BaseStep() *BaseStepImpl
+	StatesMap() map[int]states.IState
 }

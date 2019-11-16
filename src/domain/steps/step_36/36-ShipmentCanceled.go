@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	stepName string 	= "Shipment_Canceled"
-	stepIndex int		= 36
+	stepName  string = "Shipment_Canceled"
+	stepIndex int    = 36
 )
 
 type shipmentCanceledStep struct {
@@ -41,7 +41,6 @@ func (shipmentCanceled shipmentCanceledStep) ProcessMessage(ctx context.Context,
 func (shipmentCanceled shipmentCanceledStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	panic("implementation required")
 }
-
 
 //import (
 //	"gitlab.faza.io/order-project/order-service"

@@ -5,7 +5,7 @@ import (
 )
 
 type IEvent interface {
-	EventType()		EventType
-	Data() 			interface{}
-	Timestamp()		time.Time
+	EventType() EventType
+	Data() interface{}
+	Timestamp() time.Time
 }

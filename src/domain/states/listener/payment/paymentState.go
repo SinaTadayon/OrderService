@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	actorType = actors.PaymentActor
+	actorType        = actors.PaymentActor
 	stateName string = "Payment_Action_State"
 )
 
@@ -52,7 +52,7 @@ func (paymentAction paymentActionListener) ActionListener(ctx context.Context, e
 	if event == nil {
 		logger.Err("Received Event is nil")
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
@@ -61,7 +61,7 @@ func (paymentAction paymentActionListener) ActionListener(ctx context.Context, e
 	if ok != true {
 		logger.Err("nextToStepState isn't child of paymentAction, event: %v", event)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
@@ -72,7 +72,7 @@ func (paymentAction paymentActionListener) ActionListener(ctx context.Context, e
 		paymentAction.persistOrderState(ctx, &order, activeEvent.ItemsId(), activeEvent.ActiveAction().ActionEnums()[0], true, "", nil)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data:activeEvent.Data(), Ex:nil}
+		returnChannel <- promise.FutureData{Data: activeEvent.Data(), Ex: nil}
 		return promise.NewPromise(returnChannel, 1, 1)
 	} else {
 		actorEvent := event.(actor_event.IActorEvent)
@@ -97,7 +97,7 @@ func (paymentAction paymentActionListener) ActionListener(ctx context.Context, e
 			}()
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
-			returnChannel <- promise.FutureData{Data:actorEvent.Data(), Ex:nil}
+			returnChannel <- promise.FutureData{Data: actorEvent.Data(), Ex: nil}
 			return promise.NewPromise(returnChannel, 1, 1)
 		} else {
 			paymentAction.persistOrderState(ctx, &order, actorEvent.ItemsId(), payment_action.FailedAction, false, "", &paymentResult)

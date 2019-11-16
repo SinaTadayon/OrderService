@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	stateName string = "Pay_To_Seller_Action_State"
-	activeType = actives.PayToSellerAction
+	stateName  string = "Pay_To_Seller_Action_State"
+	activeType        = actives.PayToSellerAction
 )
 
 type payToSellerActionLauncher struct {
@@ -37,7 +37,6 @@ func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) la
 	panic("implementation required")
 }
 
-func (payToSeller payToSellerActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId[] string, param interface{}) promise.IPromise {
+func (payToSeller payToSellerActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	panic("implementation required")
 }
-

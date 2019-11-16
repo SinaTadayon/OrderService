@@ -6,7 +6,7 @@ import (
 
 type ActionEnums int
 
-var actionStrings = []string {"NewOrderAction"}
+var actionStrings = []string{"NewOrderAction"}
 
 const (
 	NewOrderAction ActionEnums = iota

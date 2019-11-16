@@ -7,29 +7,28 @@ import (
 
 type IPaymentService interface {
 	OrderPayment(ctx context.Context, request PaymentRequest) promise.IPromise
-
 }
 
 type PaymentRequest struct {
-	Amount 		int64
-	Gateway		string
-	Currency 	string
-	OrderId 	string
+	Amount   int64
+	Gateway  string
+	Currency string
+	OrderId  string
 }
 
 type PaymentResponse struct {
 	CallbackUrl string
-	InvoiceId 	int64
-	PaymentId	string
+	InvoiceId   int64
+	PaymentId   string
 }
 
 type PaymentResult struct {
-	OrderId		string
-	PaymentId   string
-	InvoiceId 	int64
-	Amount 		int64
-	ReqBody 	string
-	ResBody		string
-	CardMask	string
-	Result		bool
+	OrderId   string
+	PaymentId string
+	InvoiceId int64
+	Amount    int64
+	ReqBody   string
+	ResBody   string
+	CardMask  string
+	Result    bool
 }

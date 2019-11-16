@@ -22,11 +22,11 @@ func NewBaseListener(name string, index int, childes, parents []states.IState,
 		action, actorType}
 }
 
-func (listener *BaseListenerImpl) SetName(name string)  {
+func (listener *BaseListenerImpl) SetName(name string) {
 	listener.name = name
 }
 
-func (listener *BaseListenerImpl) SetIndex(index int)  {
+func (listener *BaseListenerImpl) SetIndex(index int) {
 	listener.index = index
 }
 
@@ -50,11 +50,11 @@ func (listener BaseListenerImpl) Index() int {
 	return listener.index
 }
 
-func (listener BaseListenerImpl) Childes()	[]states.IState {
+func (listener BaseListenerImpl) Childes() []states.IState {
 	return listener.childes
 }
 
-func (listener BaseListenerImpl) Parents()	[]states.IState {
+func (listener BaseListenerImpl) Parents() []states.IState {
 	return listener.parents
 }
 

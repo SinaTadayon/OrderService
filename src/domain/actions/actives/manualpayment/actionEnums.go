@@ -3,6 +3,7 @@ package manual_payment_action
 import (
 	"errors"
 )
+
 type ActionEnums int
 
 var actionStrings = []string{"ManualPaymentToMarketAction",
@@ -36,7 +37,7 @@ func (action ActionEnums) String() string {
 		return ""
 	}
 
-	return  actionStrings[action]
+	return actionStrings[action]
 }
 
 func FromString(actionEnums string) (ActionEnums, error) {
@@ -51,4 +52,3 @@ func FromString(actionEnums string) (ActionEnums, error) {
 		return -1, errors.New("invalid actionEnums string")
 	}
 }
-

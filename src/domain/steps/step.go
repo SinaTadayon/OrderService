@@ -9,17 +9,17 @@ import (
 )
 
 const (
-	NewStatus		 = "NEW"
+	NewStatus        = "NEW"
 	InProgressStatus = "IN_PROGRESS"
-	ClosedStatus	 = "CLOSED"
+	ClosedStatus     = "CLOSED"
 )
 
 type IStep interface {
-	Name() 		string
-	Index()		int
-	Childes()	[]IStep
-	Parents()	[]IStep
-	States() 	[]states.IState
+	Name() string
+	Index() int
+	Childes() []IStep
+	Parents() []IStep
+	States() []states.IState
 	ProcessMessage(ctx context.Context, request *message.MessageRequest) promise.IPromise
 	ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise
 }

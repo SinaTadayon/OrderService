@@ -12,17 +12,16 @@ func TestOrderConverter(t *testing.T) {
 	RequestNewOrder := createRequestNewOrder()
 	out, err := converter.Map(*RequestNewOrder, entities.Order{})
 	assert.NoError(t, err, "mapping order request to order failed")
-	order , ok := out.(*entities.Order)
+	order, ok := out.(*entities.Order)
 	assert.True(t, ok, "mapping order request to order failed")
 	assert.NotEmpty(t, order.Amount.Total)
 }
-
 
 func createRequestNewOrder() *pb.RequestNewOrder {
 	order := &pb.RequestNewOrder{
 		Amount: &pb.Amount{},
 		Buyer: &pb.Buyer{
-			Finance: &pb.FinanceInfo{},
+			Finance:         &pb.FinanceInfo{},
 			ShippingAddress: &pb.Address{},
 		},
 	}
@@ -36,7 +35,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order.Amount.ShipmentTotal = 700000
 	order.Amount.Voucher = &pb.Voucher{
 		Amount: 40000,
-		Code: "348",
+		Code:   "348",
 	}
 
 	order.Buyer.LastName = "Tadayon"
@@ -62,11 +61,11 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order.Buyer.ShippingAddress.Lat = "10.1345664"
 	order.Buyer.ShippingAddress.Long = "22.1345664"
 
-	item := pb.Item {
-		Price:    &pb.PriceInfo{},
+	item := pb.Item{
+		Price:      &pb.PriceInfo{},
 		Attributes: make(map[string]string, 10),
-		Shipment: &pb.ShippingSpec{},
-		SellerId: "6546345",
+		Shipment:   &pb.ShippingSpec{},
+		SellerId:   "6546345",
 	}
 
 	item.InventoryId = "453564554435345"
@@ -84,7 +83,6 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item.Price.Unit = 100000
 	item.Price.Currency = "IRR"
 
-	
 	item.Attributes["Quantity"] = "10"
 	item.Attributes["Width"] = "8cm"
 	item.Attributes["Height"] = "10cm"

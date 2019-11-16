@@ -40,7 +40,8 @@ func TestOrderPayment_Success(t *testing.T) {
 	}
 
 	defer func() {
-		if err := payment.grpcConnection.Close(); err != nil {}
+		if err := payment.grpcConnection.Close(); err != nil {
+		}
 	}()
 
 	request := PaymentRequest{
@@ -58,5 +59,3 @@ func TestOrderPayment_Success(t *testing.T) {
 	paymentResponse := futureData.Data.(PaymentResponse)
 	assert.NotEmpty(t, paymentResponse.CallbackUrl)
 }
-
-

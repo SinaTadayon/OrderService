@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	stateName string = "New_Order_Process_Action_State"
-	activeType = actives.NewOrderAction
+	stateName  string = "New_Order_Process_Action_State"
+	activeType        = actives.NewOrderAction
 )
 
 type finalizeActionLauncher struct {
@@ -40,4 +40,3 @@ func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) la
 func (finalize finalizeActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	panic("implementation required")
 }
-

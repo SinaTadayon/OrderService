@@ -8,8 +8,8 @@ import (
 
 type IActiveEvent interface {
 	events.IEvent
-	Order()			entities.Order
-	ItemsId()		[]string
-	ActiveType() 	actives.ActiveType
-	ActiveAction() 	actives.IActiveAction
+	Order() entities.Order
+	ItemsId() []string
+	ActiveType() actives.ActiveType
+	ActiveAction() actives.IActiveAction
 }

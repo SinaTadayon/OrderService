@@ -43,6 +43,3 @@ func (retryAction retryActiveActionImpl) ActionType() actions.ActionType {
 func (retryAction retryActiveActionImpl) ActionEnums() []actions.IEnumAction {
 	return retryAction.enumAction
 }
-
-
-

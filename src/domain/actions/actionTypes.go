@@ -31,7 +31,7 @@ func (actionType ActionType) String() string {
 		return ""
 	}
 
-	return  actionTypeStrings[actionType]
+	return actionTypeStrings[actionType]
 }
 
 func actionFromString(actionType string) (ActionType, error) {

@@ -7,11 +7,11 @@ type iPromiseImpl struct {
 }
 
 func NewPromise(channel DataChan, count int, capacity int) IPromise {
-	return &iPromiseImpl{channel:channel, count:count, capacity:capacity}
+	return &iPromiseImpl{channel: channel, count: count, capacity: capacity}
 }
 
 func (promise iPromiseImpl) Data() *FutureData {
-	futureData ,ok := <-promise.channel
+	futureData, ok := <-promise.channel
 	if ok != true {
 		return nil
 	}
@@ -22,12 +22,10 @@ func (promise iPromiseImpl) Channel() DataChan {
 	return promise.channel
 }
 
-func (promise iPromiseImpl) Count()	int {
+func (promise iPromiseImpl) Count() int {
 	return promise.count
 }
 
 func (promise iPromiseImpl) Capacity() int {
 	return promise.capacity
 }
-
-

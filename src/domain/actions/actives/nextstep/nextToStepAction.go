@@ -43,6 +43,3 @@ func (nextToStep nextToStepActiveActionImpl) ActionType() actions.ActionType {
 func (nextToStep nextToStepActiveActionImpl) ActionEnums() []actions.IEnumAction {
 	return nextToStep.enumAction
 }
-
-
-

@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	stepName string 	= "Payment_Pending"
-	stepIndex int		= 10
-	
+	stepName  string = "Payment_Pending"
+	stepIndex int    = 10
+
 	PaymentCallbackUrlRequest = "PaymentCallbackUrlRequest"
 	OrderPayment              = "OrderPayment"
 	StockReleased             = "StockReleased"
@@ -57,7 +57,6 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 	//	return promise.NewPromise(returnChannel, 1, 1)
 	//}
 
-
 	paymentAction := param.(string)
 
 	if paymentAction == PaymentCallbackUrlRequest {
@@ -68,10 +67,10 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			order.PaymentService = []entities.PaymentService{
 				{
 					PaymentRequest: &entities.PaymentRequest{
-						Amount:      0,
-						Currency:    "IRR",
-						Gateway:     "Assanpardakht",
-						CreatedAt:   time.Now().UTC(),
+						Amount:    0,
+						Currency:  "IRR",
+						Gateway:   "Assanpardakht",
+						CreatedAt: time.Now().UTC(),
 					},
 
 					PaymentResult: &entities.PaymentResult{
@@ -86,7 +85,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 						CreatedAt:   time.Now().UTC(),
 					},
 
-					PaymentResponse: &entities.PaymentResponse {
+					PaymentResponse: &entities.PaymentResponse{
 						Result:      true,
 						CallBackUrl: "http://staging.faza.io/callback-success",
 						InvoiceId:   0,
@@ -99,7 +98,8 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			logger.Audit("Amount paid by voucher order success, order: %s, voucher: %d", order.OrderId, order.Amount.Voucher.Amount)
 			paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, true)
 			paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, true, steps.InProgressStatus)
-			if err := paymentPending.persistOrder(ctx, &order); err != nil {}
+			if err := paymentPending.persistOrder(ctx, &order); err != nil {
+			}
 
 			go func() {
 				paymentPending.Childes()[1].ProcessOrder(ctx, order, nil, nil)
@@ -107,7 +107,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
-			returnChannel <- promise.FutureData{Data:order.PaymentService[0].PaymentResponse.CallBackUrl , Ex:nil}
+			returnChannel <- promise.FutureData{Data: order.PaymentService[0].PaymentResponse.CallBackUrl, Ex: nil}
 			return promise.NewPromise(returnChannel, 1, 1)
 		}
 
@@ -124,10 +124,10 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 		order.PaymentService = []entities.PaymentService{
 			{
 				PaymentRequest: &entities.PaymentRequest{
-					Amount:      uint64(paymentRequest.Amount),
-					Currency:    paymentRequest.Currency,
-					Gateway:     paymentRequest.Gateway,
-					CreatedAt:   time.Now().UTC(),
+					Amount:    uint64(paymentRequest.Amount),
+					Currency:  paymentRequest.Currency,
+					Gateway:   paymentRequest.Gateway,
+					CreatedAt: time.Now().UTC(),
 				},
 			},
 		}
@@ -136,38 +136,40 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 		futureData := iPromise.Data()
 		if futureData == nil {
 			order.PaymentService[0].PaymentResponse = &entities.PaymentResponse{
-				Result:      false,
-				Reason:      "PaymentService.OrderPayment in orderPaymentState failed",
-				CreatedAt:   time.Now().UTC(),
+				Result:    false,
+				Reason:    "PaymentService.OrderPayment in orderPaymentState failed",
+				CreatedAt: time.Now().UTC(),
 			}
 
 			paymentPending.UpdateAllOrderStatus(ctx, &order, nil, steps.ClosedStatus, true)
 			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, false, steps.ClosedStatus)
 			paymentPending.releasedStock(ctx, &order)
-			if err := paymentPending.persistOrder(ctx, &order); err != nil {}
+			if err := paymentPending.persistOrder(ctx, &order); err != nil {
+			}
 
 			logger.Err("PaymentService promise channel has been closed, orderId: %s", order.OrderId)
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
-			returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+			returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 			return promise.NewPromise(returnChannel, 1, 1)
 		}
 
 		if futureData.Ex != nil {
 			order.PaymentService[0].PaymentResponse = &entities.PaymentResponse{
-				Result:      false,
-				Reason:      futureData.Ex.Error(),
-				CreatedAt:   time.Now().UTC(),
+				Result:    false,
+				Reason:    futureData.Ex.Error(),
+				CreatedAt: time.Now().UTC(),
 			}
 
 			paymentPending.UpdateAllOrderStatus(ctx, &order, nil, steps.ClosedStatus, true)
 			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, false, steps.ClosedStatus)
 			paymentPending.releasedStock(ctx, &order)
-			if err := paymentPending.persistOrder(ctx, &order); err != nil {}
+			if err := paymentPending.persistOrder(ctx, &order); err != nil {
+			}
 			logger.Err("PaymentService.OrderPayment in orderPaymentState failed, orderId: %s, error: %s", order.OrderId, futureData.Ex.Error())
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
-			returnChannel <- promise.FutureData{Data:nil, Ex:futureData.Ex}
+			returnChannel <- promise.FutureData{Data: nil, Ex: futureData.Ex}
 			return promise.NewPromise(returnChannel, 1, 1)
 		}
 
@@ -184,11 +186,12 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 		}
 
 		paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, true, steps.NewStatus)
-		if err := paymentPending.persistOrder(ctx, &order); err != nil {}
+		if err := paymentPending.persistOrder(ctx, &order); err != nil {
+		}
 
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data:paymentResponse.CallbackUrl, Ex:nil}
+		returnChannel <- promise.FutureData{Data: paymentResponse.CallbackUrl, Ex: nil}
 		return promise.NewPromise(returnChannel, 1, 1)
 
 	} else if paymentAction == OrderPayment {
@@ -198,21 +201,23 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, false, steps.ClosedStatus)
 			paymentPending.UpdateAllOrderStatus(ctx, &order, nil, steps.ClosedStatus, true)
 			paymentPending.releasedStock(ctx, &order)
-			if err := paymentPending.persistOrder(ctx, &order); err != nil {}
+			if err := paymentPending.persistOrder(ctx, &order); err != nil {
+			}
 			return paymentPending.Childes()[0].ProcessOrder(ctx, order, nil, nil)
 		}
 
 		logger.Audit("PaymentResult of order success, order: %s", order.OrderId)
 		paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, true)
 		paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, true, steps.InProgressStatus)
-		if err := paymentPending.persistOrder(ctx, &order); err != nil {}
+		if err := paymentPending.persistOrder(ctx, &order); err != nil {
+		}
 		return paymentPending.Childes()[1].ProcessOrder(ctx, order, nil, nil)
 	}
 
 	logger.Err("%s step received invalid action, orderId: %s, action: %s", paymentPending.Name(), order.OrderId, paymentAction)
 	returnChannel := make(chan promise.FutureData, 1)
 	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+	returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 	return promise.NewPromise(returnChannel, 1, 1)
 	//orderPayment.persistOrderState(ctx, &order, itemsId, order_payment_action.OrderPaymentAction,
 	//	true, "", &paymentResponse)
@@ -224,7 +229,7 @@ func (paymentPending paymentPendingStep) releasedStock(ctx context.Context, orde
 	futureData := iPromise.Data()
 	if futureData == nil {
 		paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, steps.ClosedStatus)
-		logger.Err("StockService promise channel has been closed, step: %s, orderId: %s",  paymentPending.Name(), order.OrderId)
+		logger.Err("StockService promise channel has been closed, step: %s, orderId: %s", paymentPending.Name(), order.OrderId)
 		return
 	}
 
@@ -239,7 +244,7 @@ func (paymentPending paymentPendingStep) releasedStock(ctx context.Context, orde
 }
 
 func (paymentPending paymentPendingStep) persistOrder(ctx context.Context, order *entities.Order) error {
-	_ , err := global.Singletons.OrderRepository.Save(*order)
+	_, err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, orderId: %s, error: %s", paymentPending.Name(), order.OrderId, err.Error())
 	}
@@ -292,8 +297,6 @@ func (paymentPending paymentPendingStep) doUpdateOrderItemsProgress(ctx context.
 
 	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 }
-
-
 
 //func (ppr *PaymentPendingRequest) validate() error {
 //	var errValidation []string

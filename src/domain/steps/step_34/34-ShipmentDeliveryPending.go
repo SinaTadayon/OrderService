@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	stepName string 	= "Shipment_Delivery_Pending"
-	stepIndex int		= 34
+	stepName  string = "Shipment_Delivery_Pending"
+	stepIndex int    = 34
 )
 
 type shipmentDeliveryPendingStep struct {
@@ -41,7 +41,6 @@ func (shipmentDeliveryPending shipmentDeliveryPendingStep) ProcessMessage(ctx co
 func (shipmentDeliveryPending shipmentDeliveryPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	panic("implementation required")
 }
-
 
 //
 //import (

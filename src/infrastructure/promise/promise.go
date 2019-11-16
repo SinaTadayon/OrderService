@@ -19,14 +19,13 @@ const (
 	InternalError   = 500
 )
 
-
 type DataChan <-chan FutureData
 
 type IPromise interface {
 	Data() *FutureData
-	Channel() 	DataChan
-	Count()		int
-	Capacity()	int
+	Channel() DataChan
+	Count() int
+	Capacity() int
 }
 
 type FutureData struct {
@@ -35,8 +34,8 @@ type FutureData struct {
 }
 
 type FutureError struct {
-	Code 	int32
-	Reason	string
+	Code   int32
+	Reason string
 }
 
 func (error FutureError) Error() string {

@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	stepName string 	= "Pay_To_Market_Failed"
-	stepIndex int		= 95
+	stepName  string = "Pay_To_Market_Failed"
+	stepIndex int    = 95
 )
 
 type payToMarketFailedStep struct {
@@ -41,7 +41,6 @@ func (payToMarketFailed payToMarketFailedStep) ProcessMessage(ctx context.Contex
 func (payToMarketFailed payToMarketFailedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	panic("implementation required")
 }
-
 
 //
 //import (

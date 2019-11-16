@@ -18,6 +18,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	ptime "github.com/yaa110/go-persian-calendar"
+
 	//"errors"
 	"net"
 	//"net/http"
@@ -239,6 +241,8 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 							Currency:         orderItem.Price.Currency,
 						},
 						DeliveryAddress: &pb.Address{
+							FirstName:     order.BuyerInfo.ShippingAddress.FirstName,
+							LastName:      order.BuyerInfo.ShippingAddress.LastName,
 							Address:       order.BuyerInfo.ShippingAddress.Address,
 							Phone:         order.BuyerInfo.ShippingAddress.Phone,
 							Mobile:        order.BuyerInfo.ShippingAddress.Mobile,
@@ -246,11 +250,15 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 							City:          order.BuyerInfo.ShippingAddress.City,
 							Province:      order.BuyerInfo.ShippingAddress.Province,
 							Neighbourhood: order.BuyerInfo.ShippingAddress.Neighbourhood,
-							Lat:           fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[1]),
-							Long:          fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[0]),
 							ZipCode:       order.BuyerInfo.ShippingAddress.ZipCode,
 						},
 					}
+
+					if order.BuyerInfo.ShippingAddress.Location != nil {
+						newResponseItem.DeliveryAddress.Lat = fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[1])
+						newResponseItem.DeliveryAddress.Long = fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[0])
+					}
+
 					lastStep := orderItem.Progress.StepsHistory[len(orderItem.Progress.StepsHistory)-1]
 					if lastStep.ActionHistory != nil {
 						lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
@@ -378,22 +386,22 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 				},
 			},
 			ShippingAddress: &pb.Address{
-				FirstName:            order.BuyerInfo.ShippingAddress.FirstName,
-				LastName:             order.BuyerInfo.ShippingAddress.LastName,
-				Address:              order.BuyerInfo.ShippingAddress.Address,
-				Phone:                order.BuyerInfo.ShippingAddress.Phone,
-				Mobile:               order.BuyerInfo.ShippingAddress.Mobile,
-				Country:              order.BuyerInfo.ShippingAddress.Country,
-				City:                 order.BuyerInfo.ShippingAddress.City,
-				Province:             order.BuyerInfo.ShippingAddress.Province,
-				Neighbourhood:        order.BuyerInfo.ShippingAddress.Neighbourhood,
+				FirstName:     order.BuyerInfo.ShippingAddress.FirstName,
+				LastName:      order.BuyerInfo.ShippingAddress.LastName,
+				Address:       order.BuyerInfo.ShippingAddress.Address,
+				Phone:         order.BuyerInfo.ShippingAddress.Phone,
+				Mobile:        order.BuyerInfo.ShippingAddress.Mobile,
+				Country:       order.BuyerInfo.ShippingAddress.Country,
+				City:          order.BuyerInfo.ShippingAddress.City,
+				Province:      order.BuyerInfo.ShippingAddress.Province,
+				Neighbourhood: order.BuyerInfo.ShippingAddress.Neighbourhood,
 			},
 			Items: make([]*pb.BuyerOrderItems, 0, len(order.Items)),
 		}
-		coordinates := order.BuyerInfo.ShippingAddress.Location.Coordinates
-		if len(coordinates) == 2 {
-			responseOrder.ShippingAddress.Lat = fmt.Sprintf("%f", coordinates[1])
-			responseOrder.ShippingAddress.Long = fmt.Sprintf("%f", coordinates[0])
+
+		if order.BuyerInfo.ShippingAddress.Location != nil {
+			responseOrder.ShippingAddress.Lat = fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[1])
+			responseOrder.ShippingAddress.Long = fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[0])
 		}
 
 		orderItemMap := make(map[string]*pb.BuyerOrderItems, 16)

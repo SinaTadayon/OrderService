@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	stepName string 	= "Return_Shipment_Success"
-	stepIndex int		= 55
+	stepName  string = "Return_Shipment_Success"
+	stepIndex int    = 55
 )
 
 type returnShipmentSuccessStep struct {
@@ -41,8 +41,6 @@ func (returnShipmentSuccess returnShipmentSuccessStep) ProcessMessage(ctx contex
 func (returnShipmentSuccess returnShipmentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	panic("implementation required")
 }
-
-
 
 //
 //import (

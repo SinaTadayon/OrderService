@@ -8,8 +8,8 @@ import (
 
 type IActorEvent interface {
 	events.IEvent
-	Order() 		entities.Order
-	ItemsId()		[]string
-	ActorType() 	actors.ActorType
-	ActorAction() 	actors.IActorAction
+	Order() entities.Order
+	ItemsId() []string
+	ActorType() actors.ActorType
+	ActorAction() actors.IActorAction
 }

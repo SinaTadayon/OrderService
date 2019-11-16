@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	stepName string 	= "Shipment_Delivery_Problem"
-	stepIndex int		= 43
-	StockReleased		= "StockReleased"
+	stepName      string = "Shipment_Delivery_Problem"
+	stepIndex     int    = 43
+	StockReleased        = "StockReleased"
 )
 
 type shipmentDeliveryProblemStep struct {
@@ -66,7 +66,7 @@ func (shipmentDeliveryProblem shipmentDeliveryProblemStep) ProcessOrder(ctx cont
 		logger.Err("%s step received invalid action, order: %v, action: %s", shipmentDeliveryProblem.Name(), order, req.Action)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex:promise.FutureError{Code:promise.NotAccepted, Reason:"Action Expired"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotAccepted, Reason: "Action Expired"}}
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
@@ -77,11 +77,11 @@ func (shipmentDeliveryProblem shipmentDeliveryProblemStep) ProcessOrder(ctx cont
 			shipmentDeliveryProblem.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
 		}
 
-		shipmentDeliveryProblem.updateOrderItemsProgress(ctx, &order, itemsId,  req, steps.ClosedStatus)
+		shipmentDeliveryProblem.updateOrderItemsProgress(ctx, &order, itemsId, req, steps.ClosedStatus)
 		if err := shipmentDeliveryProblem.persistOrder(ctx, &order); err != nil {
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
-			returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+			returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 			return promise.NewPromise(returnChannel, 1, 1)
 		}
 		return shipmentDeliveryProblem.Childes()[0].ProcessOrder(ctx, order, itemsId, nil)
@@ -90,10 +90,12 @@ func (shipmentDeliveryProblem shipmentDeliveryProblemStep) ProcessOrder(ctx cont
 		iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, itemsId, StockReleased)
 		futureData := iPromise.Data()
 		if futureData == nil {
-			if err := shipmentDeliveryProblem.persistOrder(ctx, &order); err != nil {}
+			if err := shipmentDeliveryProblem.persistOrder(ctx, &order); err != nil {
+			}
 			logger.Err("StockService promise channel has been closed, order: %s", order.OrderId)
 		} else if futureData.Ex != nil {
-			if err := shipmentDeliveryProblem.persistOrder(ctx, &order); err != nil {}
+			if err := shipmentDeliveryProblem.persistOrder(ctx, &order); err != nil {
+			}
 			logger.Err("released stock from stockService failed, error: %s, orderId: %s", futureData.Ex.Error(), order.OrderId)
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
@@ -110,7 +112,7 @@ func (shipmentDeliveryProblem shipmentDeliveryProblemStep) ProcessOrder(ctx cont
 		if err := shipmentDeliveryProblem.persistOrder(ctx, &order); err != nil {
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
-			returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+			returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 			return promise.NewPromise(returnChannel, 1, 1)
 		}
 
@@ -148,7 +150,7 @@ func (shipmentDeliveryProblem shipmentDeliveryProblemStep) validateAction(ctx co
 }
 
 func (shipmentDeliveryProblem shipmentDeliveryProblemStep) persistOrder(ctx context.Context, order *entities.Order) error {
-	_ , err := global.Singletons.OrderRepository.Save(*order)
+	_, err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", shipmentDeliveryProblem.Name(), order, err.Error())
 	}
@@ -205,7 +207,6 @@ func (shipmentDeliveryProblem shipmentDeliveryProblemStep) doUpdateOrderItemsPro
 
 	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 }
-
 
 //
 //import (

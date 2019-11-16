@@ -15,7 +15,7 @@ type iActorEventImpl struct {
 	itemsId []string
 }
 
-func NewActorEvent(actor actors.ActorType, action actors.IActorAction, order entities.Order, itemsId[] string, data interface{}, timestamp time.Time) IActorEvent {
+func NewActorEvent(actor actors.ActorType, action actors.IActorAction, order entities.Order, itemsId []string, data interface{}, timestamp time.Time) IActorEvent {
 	return &iActorEventImpl{events.NewBaseEventImpl(events.ActorEvent, data, timestamp), actor, action, order, itemsId}
 }
 

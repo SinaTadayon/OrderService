@@ -6,7 +6,6 @@ import (
 
 type IActiveAction interface {
 	actions.IAction
-	ActionEnums() 		[]actions.IEnumAction
-	ActiveType() 		ActiveType
+	ActionEnums() []actions.IEnumAction
+	ActiveType() ActiveType
 }
-

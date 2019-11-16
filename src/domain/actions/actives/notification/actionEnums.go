@@ -3,6 +3,7 @@ package notification_action
 import (
 	"errors"
 )
+
 type ActionEnums int
 
 var actionStrings = []string{"SellerNotificationAction", "BuyerNotificationAction",
@@ -53,4 +54,3 @@ func FromString(actionEnums string) (ActionEnums, error) {
 		return -1, errors.New("invalid actionEnums string")
 	}
 }
-

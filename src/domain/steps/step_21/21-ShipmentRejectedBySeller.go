@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	stepName string 	= "Shipment_Rejected_By_Seller"
-	stepIndex int		= 21
-	RejectedBySeller	= "RejectedBySeller"
+	stepName         string = "Shipment_Rejected_By_Seller"
+	stepIndex        int    = 21
+	RejectedBySeller        = "RejectedBySeller"
 )
 
 type shipmentRejectedBySellerStep struct {
@@ -63,7 +63,7 @@ func (shipmentRejectedBySeller shipmentRejectedBySellerStep) ProcessOrder(ctx co
 }
 
 func (shipmentRejectedBySeller shipmentRejectedBySellerStep) persistOrder(ctx context.Context, order *entities.Order) error {
-	_ , err := global.Singletons.OrderRepository.Save(*order)
+	_, err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", shipmentRejectedBySeller.Name(), order, err.Error())
 	}
@@ -118,8 +118,6 @@ func (shipmentRejectedBySeller shipmentRejectedBySellerStep) doUpdateOrderItemsP
 	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 
 }
-
-
 
 //
 //import (

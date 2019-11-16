@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	stepName string 	= "Pay_To_Buyer"
-	stepIndex int		= 80
-	Canceled			= "CANCELED"
+	stepName  string = "Pay_To_Buyer"
+	stepIndex int    = 80
+	Canceled         = "CANCELED"
 )
 
 type payToBuyerStep struct {
@@ -53,7 +53,7 @@ func (payToBuyer payToBuyerStep) ProcessOrder(ctx context.Context, order entitie
 	}
 
 	payToBuyer.updateOrderItemsProgress(ctx, &order, itemsId, Canceled, true, steps.ClosedStatus)
-	if err := payToBuyer.persistOrder(ctx, &order); err != nil{
+	if err := payToBuyer.persistOrder(ctx, &order); err != nil {
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
@@ -61,12 +61,12 @@ func (payToBuyer payToBuyerStep) ProcessOrder(ctx context.Context, order entitie
 	}
 	returnChannel := make(chan promise.FutureData, 1)
 	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data:nil, Ex:nil}
+	returnChannel <- promise.FutureData{Data: nil, Ex: nil}
 	return promise.NewPromise(returnChannel, 1, 1)
 }
 
 func (payToBuyer payToBuyerStep) persistOrder(ctx context.Context, order *entities.Order) error {
-	_ , err := global.Singletons.OrderRepository.Save(*order)
+	_, err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", payToBuyer.Name(), order, err.Error())
 	}
@@ -119,7 +119,6 @@ func (payToBuyer payToBuyerStep) doUpdateOrderItemsProgress(ctx context.Context,
 
 	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 }
-
 
 //
 //import (

@@ -34,7 +34,7 @@ func (launcher *BaseLauncherImpl) SetChildes(states []states.IState) {
 	launcher.childes = states
 }
 
-func (launcher *BaseLauncherImpl) SetParents(states []states.IState ) {
+func (launcher *BaseLauncherImpl) SetParents(states []states.IState) {
 	launcher.parents = states
 }
 
@@ -54,11 +54,11 @@ func (launcher BaseLauncherImpl) Index() int {
 	return launcher.index
 }
 
-func (launcher BaseLauncherImpl) Childes()	[]states.IState {
+func (launcher BaseLauncherImpl) Childes() []states.IState {
 	return launcher.childes
 }
 
-func (launcher BaseLauncherImpl) Parents()	[]states.IState {
+func (launcher BaseLauncherImpl) Parents() []states.IState {
 	return launcher.parents
 }
 

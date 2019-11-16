@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	stepName string 	= "Payment_Control"
-	stepIndex int		= 13
+	stepName  string = "Payment_Control"
+	stepIndex int    = 13
 )
 
 type paymentControlStep struct {
@@ -41,7 +41,6 @@ func (paymentControl paymentControlStep) ProcessMessage(ctx context.Context, req
 func (paymentControl paymentControlStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	panic("implementation required")
 }
-
 
 //
 //import (

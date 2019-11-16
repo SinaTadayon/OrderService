@@ -15,22 +15,22 @@ import (
 )
 
 const (
-	databaseName  	string = "orderService"
+	databaseName    string = "orderService"
 	collectionName  string = "orders"
-	defaultDocCount	int	   = 1024
+	defaultDocCount int    = 1024
 )
 
-var errorTotalCountExceeded 	= errors.New("total count exceeded")
-var errorPageNotAvailable    	= errors.New("page not available")
-var errorDeleteFailed 			= errors.New("update deletedAt field failed")
-var errorRemoveFailed 			= errors.New("remove order failed")
-var errorUpdateFailed 			= errors.New("update order failed")
+var errorTotalCountExceeded = errors.New("total count exceeded")
+var errorPageNotAvailable = errors.New("page not available")
+var errorDeleteFailed = errors.New("update deletedAt field failed")
+var errorRemoveFailed = errors.New("remove order failed")
+var errorUpdateFailed = errors.New("update order failed")
 
 type iOrderRepositoryImpl struct {
-	mongoAdapter  *mongoadapter.Mongo
+	mongoAdapter *mongoadapter.Mongo
 }
 
-func NewOrderRepository(mongoDriver  *mongoadapter.Mongo) (IOrderRepository, error) {
+func NewOrderRepository(mongoDriver *mongoadapter.Mongo) (IOrderRepository, error) {
 
 	_, err := mongoDriver.AddUniqueIndex(databaseName, collectionName, "orderId")
 	if err != nil {
@@ -57,8 +57,8 @@ func (repo iOrderRepositoryImpl) Save(order entities.Order) (*entities.Order, er
 			}
 		}
 
-		for key,value := range mapItemIds {
-			for index, _ := range order.Items {
+		for key, value := range mapItemIds {
+			for index := range order.Items {
 				if index == value {
 					order.Items[index].ItemId = order.OrderId + strconv.Itoa(int(key))
 					order.Items[index].CreatedAt = time.Now().UTC()
@@ -83,7 +83,7 @@ func (repo iOrderRepositoryImpl) Save(order entities.Order) (*entities.Order, er
 		order.ID = insertOneResult.InsertedID.(primitive.ObjectID)
 	} else {
 		order.UpdatedAt = time.Now().UTC()
-		var updateResult, err = repo.mongoAdapter.UpdateOne(databaseName, collectionName, bson.D{{"orderId", order.OrderId},{"deletedAt", nil}},
+		var updateResult, err = repo.mongoAdapter.UpdateOne(databaseName, collectionName, bson.D{{"orderId", order.OrderId}, {"deletedAt", nil}},
 			bson.D{{"$set", order}})
 		if err != nil {
 			return nil, err
@@ -118,7 +118,7 @@ func (repo iOrderRepositoryImpl) Insert(order entities.Order) (*entities.Order, 
 		}
 
 		for key, value := range mapItemIds {
-			for index, _ := range order.Items {
+			for index := range order.Items {
 				if index == value {
 					order.Items[index].ItemId = order.OrderId + strconv.Itoa(int(key))
 					order.Items[index].CreatedAt = time.Now().UTC()
@@ -131,7 +131,7 @@ func (repo iOrderRepositoryImpl) Insert(order entities.Order) (*entities.Order, 
 
 	order.CreatedAt = time.Now().UTC()
 	order.UpdatedAt = time.Now().UTC()
-	var insertOneResult, err= repo.mongoAdapter.InsertOne(databaseName, collectionName, &order)
+	var insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, &order)
 	if err != nil {
 		return nil, err
 	}
@@ -218,7 +218,7 @@ func (repo iOrderRepositoryImpl) FindAllWithPage(page, perPage int64) ([]*entiti
 	// total 160 page=6 perPage=30
 	var availablePages int64
 
-	if totalCount % perPage != 0 {
+	if totalCount%perPage != 0 {
 		availablePages = (totalCount / perPage) + 1
 	} else {
 		availablePages = totalCount / perPage
@@ -275,7 +275,7 @@ func (repo iOrderRepositoryImpl) FindAllWithPageAndSort(page, perPage int64, fie
 	// total 160 page=6 perPage=30
 	var availablePages int64
 
-	if totalCount % perPage != 0 {
+	if totalCount%perPage != 0 {
 		availablePages = (totalCount / perPage) + 1
 	} else {
 		availablePages = totalCount / perPage
@@ -332,7 +332,7 @@ func (repo iOrderRepositoryImpl) FindAllById(ids ...string) ([]*entities.Order, 
 
 func (repo iOrderRepositoryImpl) FindById(orderId string) (*entities.Order, error) {
 	var order entities.Order
-	singleResult := repo.mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"orderId", orderId},{"deletedAt", nil}})
+	singleResult := repo.mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"orderId", orderId}, {"deletedAt", nil}})
 	if err := singleResult.Err(); err != nil {
 		return nil, err
 	}
@@ -423,7 +423,7 @@ func (repo iOrderRepositoryImpl) FindByFilterWithPage(supplier func() interface{
 	// total 160 page=6 perPage=30
 	var availablePages int64
 
-	if totalCount % perPage != 0 {
+	if totalCount%perPage != 0 {
 		availablePages = (totalCount / perPage) + 1
 	} else {
 		availablePages = totalCount / perPage
@@ -477,12 +477,12 @@ func (repo iOrderRepositoryImpl) FindByFilterWithPageAndSort(supplier func() (in
 	}
 
 	filter, fieldName, direction := supplier()
-	var totalCount, err = repo.CountWithFilter(func() interface{} {return filter})
+	var totalCount, err = repo.CountWithFilter(func() interface{} { return filter })
 
 	// total 160 page=6 perPage=30
 	var availablePages int64
 
-	if totalCount % perPage != 0 {
+	if totalCount%perPage != 0 {
 		availablePages = (totalCount / perPage) + 1
 	} else {
 		availablePages = totalCount / perPage
@@ -534,7 +534,7 @@ func (repo iOrderRepositoryImpl) FindByFilterWithPageAndSort(supplier func() (in
 }
 
 func (repo iOrderRepositoryImpl) ExistsById(orderId string) (bool, error) {
-	singleResult := repo.mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"orderId", orderId},{"deletedAt", nil}})
+	singleResult := repo.mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"orderId", orderId}, {"deletedAt", nil}})
 	if err := singleResult.Err(); err != nil {
 		if repo.mongoAdapter.NoDocument(err) {
 			return false, nil
@@ -545,7 +545,7 @@ func (repo iOrderRepositoryImpl) ExistsById(orderId string) (bool, error) {
 }
 
 func (repo iOrderRepositoryImpl) Count() (int64, error) {
-	total, err := repo.mongoAdapter.Count(databaseName, collectionName, bson.D{{"deletedAt", nil }})
+	total, err := repo.mongoAdapter.Count(databaseName, collectionName, bson.D{{"deletedAt", nil}})
 	if err != nil {
 		return 0, err
 	}
@@ -569,13 +569,13 @@ func (repo iOrderRepositoryImpl) DeleteById(orderId string) (*entities.Order, er
 
 	deletedAt := time.Now().UTC()
 	order.DeletedAt = &deletedAt
-	for index, _ := range order.Items {
+	for index := range order.Items {
 		order.Items[index].DeletedAt = &deletedAt
 	}
 
 	updateResult, err := repo.mongoAdapter.UpdateOne(databaseName, collectionName,
-					bson.D{{"orderId", order.OrderId},{"deletedAt", nil}},
-					bson.D{{"$set", order}})
+		bson.D{{"orderId", order.OrderId}, {"deletedAt", nil}},
+		bson.D{{"$set", order}})
 	if err != nil {
 		return nil, err
 	}
@@ -595,28 +595,28 @@ func (repo iOrderRepositoryImpl) DeleteAllWithOrders([]entities.Order) error {
 	panic("implementation required")
 }
 
-// TODO items.$.deleteAt must be checked if nil 
+// TODO items.$.deleteAt must be checked if nil
 func (repo iOrderRepositoryImpl) DeleteAll() error {
-	 _, err := repo.mongoAdapter.UpdateMany(databaseName, collectionName,
-	 			bson.D{{"deletedAt", nil}, {"items.$.deletedAt", nil}},
-	 			bson.M{"$set": bson.M{"deletedAt": time.Now().UTC(), 
-	 				"items.$.deletedAt": time.Now().UTC()}})
-	 if err != nil {
-	 	return err
-	 }
-	 return nil
+	_, err := repo.mongoAdapter.UpdateMany(databaseName, collectionName,
+		bson.D{{"deletedAt", nil}, {"items.$.deletedAt", nil}},
+		bson.M{"$set": bson.M{"deletedAt": time.Now().UTC(),
+			"items.$.deletedAt": time.Now().UTC()}})
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (repo iOrderRepositoryImpl) RemoveById(orderId string) error {
-	 result, err := repo.mongoAdapter.DeleteOne(databaseName, collectionName, bson.M{"orderId": orderId})
-	 if err != nil {
-	 	return err
-	 }
+	result, err := repo.mongoAdapter.DeleteOne(databaseName, collectionName, bson.M{"orderId": orderId})
+	if err != nil {
+		return err
+	}
 
-	 if result.DeletedCount != 1 {
-	 	return errorRemoveFailed
-	 }
-	 return nil
+	if result.DeletedCount != 1 {
+		return errorRemoveFailed
+	}
+	return nil
 }
 
 func (repo iOrderRepositoryImpl) Remove(order entities.Order) error {

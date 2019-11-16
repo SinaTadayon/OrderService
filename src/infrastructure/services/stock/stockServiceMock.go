@@ -8,7 +8,6 @@ import (
 )
 
 type iStockServiceMock struct {
-
 }
 
 func NewStockServiceMock() IStockService {

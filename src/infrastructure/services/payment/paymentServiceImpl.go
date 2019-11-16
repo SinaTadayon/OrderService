@@ -12,10 +12,10 @@ import (
 )
 
 type iPaymentServiceImpl struct {
-	paymentService 	payment_gateway.PaymentGatewayClient
-	grpcConnection 	*grpc.ClientConn
-	serverAddress 	string
-	serverPort		int
+	paymentService payment_gateway.PaymentGatewayClient
+	grpcConnection *grpc.ClientConn
+	serverAddress  string
+	serverPort     int
 }
 
 func NewPaymentService(address string, port int) IPaymentService {
@@ -37,25 +37,23 @@ func (payment *iPaymentServiceImpl) ConnectToStockService() error {
 	return nil
 }
 
-
 // TODO checking return error of payment
 func (payment iPaymentServiceImpl) OrderPayment(ctx context.Context, request PaymentRequest) promise.IPromise {
 
 	if err := payment.ConnectToStockService(); err != nil {
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{
-			Code:   promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{
+			Code: promise.InternalError, Reason: "Unknown Error"}}
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-
-	ctx1 , _ := context.WithCancel(context.Background())
+	ctx1, _ := context.WithCancel(context.Background())
 	gatewayRequest := &payment_gateway.GenerateRedirRequest{
-		Gateway:              request.Gateway,
-		Amount:               request.Amount,
-		Currency:             request.Currency,
-		OrderID:              request.OrderId,
+		Gateway:  request.Gateway,
+		Amount:   request.Amount,
+		Currency: request.Currency,
+		OrderID:  request.OrderId,
 	}
 
 	response, err := payment.paymentService.GenerateRedirectURL(ctx1, gatewayRequest)
@@ -64,18 +62,18 @@ func (payment iPaymentServiceImpl) OrderPayment(ctx context.Context, request Pay
 			request.OrderId, request.Amount, request.Gateway, request.Currency, err)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	paymentResponse := PaymentResponse {
+	paymentResponse := PaymentResponse{
 		CallbackUrl: response.CallbackUrl,
-		InvoiceId: response.InvoiceId,
-		PaymentId: response.PaymentId,
+		InvoiceId:   response.InvoiceId,
+		PaymentId:   response.PaymentId,
 	}
 
 	returnChannel := make(chan promise.FutureData, 1)
 	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data:paymentResponse, Ex:nil}
+	returnChannel <- promise.FutureData{Data: paymentResponse, Ex: nil}
 	return promise.NewPromise(returnChannel, 1, 1)
 }

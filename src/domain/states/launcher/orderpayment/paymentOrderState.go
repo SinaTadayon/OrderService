@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	stateName string = "Payment_Order_Action_State"
-	activeType = actives.OrderPaymentAction
+	stateName  string = "Payment_Order_Action_State"
+	activeType        = actives.OrderPaymentAction
 )
 
 type orderPaymentActionLauncher struct {
@@ -50,7 +50,7 @@ func (orderPayment orderPaymentActionLauncher) ActionLauncher(ctx context.Contex
 	if ok != true {
 		logger.Err("paymentState isn't child of orderPaymentState, order: %v", order)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
@@ -60,7 +60,7 @@ func (orderPayment orderPaymentActionLauncher) ActionLauncher(ctx context.Contex
 		logger.Err("nextToStep isn't child of orderPaymentState, order: %v", order)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
@@ -74,10 +74,10 @@ func (orderPayment orderPaymentActionLauncher) ActionLauncher(ctx context.Contex
 	order.PaymentService = []entities.PaymentService{
 		{
 			PaymentRequest: &entities.PaymentRequest{
-				Amount:      uint64(paymentRequest.Amount),
-				Currency:    paymentRequest.Currency,
-				Gateway:     paymentRequest.Gateway,
-				CreatedAt:   time.Time{},
+				Amount:    uint64(paymentRequest.Amount),
+				Currency:  paymentRequest.Currency,
+				Gateway:   paymentRequest.Gateway,
+				CreatedAt: time.Time{},
 			},
 		},
 	}
@@ -100,7 +100,7 @@ func (orderPayment orderPaymentActionLauncher) ActionLauncher(ctx context.Contex
 		logger.Err("PaymentService.OrderPayment in orderPaymentState failed, order: %v", order)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
@@ -120,7 +120,7 @@ func (orderPayment orderPaymentActionLauncher) ActionLauncher(ctx context.Contex
 		logger.Err("PaymentService.OrderPayment in orderPaymentState failed, order: %v, error: %s", order, futureData.Ex.Error())
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data:nil, Ex:futureData.Ex}
+		returnChannel <- promise.FutureData{Data: nil, Ex: futureData.Ex}
 		go func() {
 			nextToStepState.ActionLauncher(ctx, order, nil, order_payment_action.OrderPaymentFailedAction)
 		}()
@@ -207,4 +207,3 @@ func (orderPayment orderPaymentActionLauncher) doUpdateOrderState(ctx context.Co
 	//order.Items[index].Progress.StepsHistory[len(order.Items[index].Progress.StepsHistory)].StatesHistory =
 	//	append(order.Items[index].Progress.StepsHistory[len(order.Items[index].Progress.StepsHistory)].StatesHistory, stateHistory)
 }
-

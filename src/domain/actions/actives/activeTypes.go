@@ -6,7 +6,7 @@ import (
 
 type ActiveType int
 
-var actionStrings = [] string {"NotificationAction", "NextToStepAction", "PayToSellerAction",
+var actionStrings = []string{"NotificationAction", "NextToStepAction", "PayToSellerAction",
 	"PayToBuyerAction", "PayToMarketAction",
 	"StockAction", "ManualPaymentAction", "OrderPaymentAction",
 	"RetryAction", "NewOrderAction", "FinalizeAction"}
@@ -30,7 +30,7 @@ func (action ActiveType) Name() string {
 }
 
 func (action ActiveType) Ordinal() int {
-	if action  < NotificationAction || action  > FinalizeAction {
+	if action < NotificationAction || action > FinalizeAction {
 		return -1
 	}
 	return int(action)
@@ -76,4 +76,3 @@ func FromString(action string) (ActiveType, error) {
 		return -1, errors.New("invalid activeType string")
 	}
 }
-

@@ -22,15 +22,15 @@ import (
 )
 
 var App struct {
-	Config          	*configs.Cfg
-	flowManager     	domain.IFlowManager
-	grpcServer      	grpc_server.Server
-	schedulerService	scheduler_service.ISchedulerService
+	Config           *configs.Cfg
+	flowManager      domain.IFlowManager
+	grpcServer       grpc_server.Server
+	schedulerService scheduler_service.ISchedulerService
 }
 var brokers []string
 
 const (
-	PaymentUrl                        = "PaymentURL"
+	PaymentUrl = "PaymentURL"
 	//MongoDB                           = "orders"
 	//Orders                            = "orders"
 	OrderRollbackMongoError           = "can not rollback on kafka"
@@ -46,15 +46,15 @@ func main() {
 
 		scheduleDataList := []scheduler_service.ScheduleModel{
 			{
-				Step: "20.Seller_Approval_Pending",
+				Step:   "20.Seller_Approval_Pending",
 				Action: "ApprovalPending",
 			},
 			{
-				Step: "30.Shipment_Pending",
+				Step:   "30.Shipment_Pending",
 				Action: "SellerShipmentPending",
 			},
 			{
-				Step: "32.Shipment_Delivered",
+				Step:   "32.Shipment_Delivered",
 				Action: "ShipmentDeliveredPending",
 			},
 		}
@@ -99,12 +99,12 @@ func init() {
 		Port:     App.Config.Mongo.Port,
 		Username: App.Config.Mongo.User,
 		//Password:     App.Cfg.Mongo.Pass,
-		ConnTimeout:  time.Duration(App.Config.Mongo.ConnectionTimeout),
-		ReadTimeout:  time.Duration(App.Config.Mongo.ReadTimeout),
-		WriteTimeout: time.Duration(App.Config.Mongo.WriteTimeout),
+		ConnTimeout:     time.Duration(App.Config.Mongo.ConnectionTimeout),
+		ReadTimeout:     time.Duration(App.Config.Mongo.ReadTimeout),
+		WriteTimeout:    time.Duration(App.Config.Mongo.WriteTimeout),
 		MaxConnIdleTime: time.Duration(App.Config.Mongo.MaxConnIdleTime),
-		MaxPoolSize: uint64(App.Config.Mongo.MaxPoolSize),
-		MinPoolSize: uint64(App.Config.Mongo.MinPoolSize),
+		MaxPoolSize:     uint64(App.Config.Mongo.MaxPoolSize),
+		MinPoolSize:     uint64(App.Config.Mongo.MinPoolSize),
 	}
 
 	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
@@ -113,20 +113,20 @@ func init() {
 		panic("mongo adapter creation failed, " + err.Error())
 	}
 
-	global.Singletons.OrderRepository ,err = order_repository.NewOrderRepository(mongoDriver)
-	 if err != nil {
-		 logger.Err("repository creation failed, %s ", err.Error())
-		 panic("order repository creation failed, " + err.Error())
-	 }
+	global.Singletons.OrderRepository, err = order_repository.NewOrderRepository(mongoDriver)
+	if err != nil {
+		logger.Err("repository creation failed, %s ", err.Error())
+		panic("order repository creation failed, " + err.Error())
+	}
 
-	 // TODO create item repository
-	 App.flowManager, err = domain.NewFlowManager()
+	// TODO create item repository
+	App.flowManager, err = domain.NewFlowManager()
 	if err != nil {
 		logger.Err("flowManager creation failed, %s ", err.Error())
 		panic("flowManager creation failed, " + err.Error())
 	}
 
-	 App.grpcServer = grpc_server.NewServer(App.Config.GRPCServer.Address, uint16(App.Config.GRPCServer.Port), App.flowManager)
+	App.grpcServer = grpc_server.NewServer(App.Config.GRPCServer.Address, uint16(App.Config.GRPCServer.Port), App.flowManager)
 
 	global.Singletons.Converter = converter.NewConverter()
 
@@ -143,7 +143,7 @@ func init() {
 	if App.Config.PaymentGatewayService.MockEnabled {
 		global.Singletons.PaymentService = payment_service.NewPaymentServiceMock()
 	} else {
-		global.Singletons.PaymentService = payment_service.NewPaymentService(App.Config.PaymentGatewayService.Address,App.Config.PaymentGatewayService.Port)
+		global.Singletons.PaymentService = payment_service.NewPaymentService(App.Config.PaymentGatewayService.Address, App.Config.PaymentGatewayService.Port)
 	}
 
 	global.Singletons.NotifyService = notify_service.NewNotificationService()
@@ -183,4 +183,3 @@ func init() {
 	//	os.Exit(1)
 	//}
 }
-

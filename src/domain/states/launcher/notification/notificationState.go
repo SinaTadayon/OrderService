@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	stateName string = "Notification_Action_State"
-	activeType = actives.NotificationAction
+	stateName  string = "Notification_Action_State"
+	activeType        = actives.NotificationAction
 )
 
 type notificationActionLauncher struct {
@@ -76,7 +76,7 @@ func (notificationState notificationActionLauncher) ActionLauncher(ctx context.C
 			logger.Err("finalize state doesn't exist in index 0 of notificationState, order: %v", order)
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
-			returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+			returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 			return promise.NewPromise(returnChannel, 1, 1)
 		}
 

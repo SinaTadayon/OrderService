@@ -13,10 +13,10 @@ import (
 )
 
 const (
-	stepName string 	= "Shipment_Success"
-	stepIndex int		= 40
-	ShipmentSuccess		= "ShipmentSuccess"
-	StockSettlement		= "StockSettlement"
+	stepName        string = "Shipment_Success"
+	stepIndex       int    = 40
+	ShipmentSuccess        = "ShipmentSuccess"
+	StockSettlement        = "StockSettlement"
 )
 
 type shipmentSuccessStep struct {
@@ -52,11 +52,13 @@ func (shipmentSuccess shipmentSuccessStep) ProcessOrder(ctx context.Context, ord
 	futureData := iPromise.Data()
 	if futureData == nil {
 		shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, StockSettlement, false, steps.ClosedStatus)
-		if err := shipmentSuccess.persistOrder(ctx, &order); err != nil {}
+		if err := shipmentSuccess.persistOrder(ctx, &order); err != nil {
+		}
 		logger.Err("StockService promise channel has been closed, order: %s", order.OrderId)
 	} else if futureData.Ex != nil {
 		shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, StockSettlement, false, steps.ClosedStatus)
-		if err := shipmentSuccess.persistOrder(ctx, &order); err != nil {}
+		if err := shipmentSuccess.persistOrder(ctx, &order); err != nil {
+		}
 		logger.Err("Settlement stock from stockService failed, error: %s, orderId: %s", futureData.Ex.Error(), order.OrderId)
 	}
 
@@ -71,7 +73,7 @@ func (shipmentSuccess shipmentSuccessStep) ProcessOrder(ctx context.Context, ord
 }
 
 func (shipmentSuccess shipmentSuccessStep) persistOrder(ctx context.Context, order *entities.Order) error {
-	_ , err := global.Singletons.OrderRepository.Save(*order)
+	_, err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
 		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", shipmentSuccess.Name(), order, err.Error())
 	}
@@ -124,7 +126,6 @@ func (shipmentSuccess shipmentSuccessStep) doUpdateOrderItemsProgress(ctx contex
 	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 
 }
-
 
 //import (
 //	"gitlab.faza.io/order-project/order-service"

@@ -13,33 +13,32 @@ import (
 )
 
 const (
-	databaseName  	string = "orderService"
-	collectionName  string = "orders"
+	databaseName   string = "orderService"
+	collectionName string = "orders"
 )
 
-
 type fetchItemData struct {
-	OrderId  		string
-	ItemId	 		string
-	SellerId		string
-	StepName		string
-	StepIndex		int
-	ActionHistory	[]fetchActionHistory
+	OrderId       string
+	ItemId        string
+	SellerId      string
+	StepName      string
+	StepIndex     int
+	ActionHistory []fetchActionHistory
 }
 
 type fetchActionHistory struct {
-	ActionName		string
-	ExpiredTime		time.Time
-	CreatedAt		time.Time
+	ActionName  string
+	ExpiredTime time.Time
+	CreatedAt   time.Time
 }
 
 type iSchedulerServiceImpl struct {
-	mongoAdapter  *mongoadapter.Mongo
-	flowManager   domain.IFlowManager
+	mongoAdapter *mongoadapter.Mongo
+	flowManager  domain.IFlowManager
 }
 
-func NewScheduler(mongoAdapter  *mongoadapter.Mongo, flowManager domain.IFlowManager) ISchedulerService {
-	return &iSchedulerServiceImpl{mongoAdapter:mongoAdapter, flowManager:flowManager}
+func NewScheduler(mongoAdapter *mongoadapter.Mongo, flowManager domain.IFlowManager) ISchedulerService {
+	return &iSchedulerServiceImpl{mongoAdapter: mongoAdapter, flowManager: flowManager}
 }
 
 func (scheduler *iSchedulerServiceImpl) Scheduler(ctx context.Context, schedulerData []ScheduleModel) error {
@@ -62,7 +61,8 @@ func (scheduler *iSchedulerServiceImpl) doSchedule(ctx context.Context, schedule
 	}
 	//for {
 	select {
-	case <-ctx.Done(): return
+	case <-ctx.Done():
+		return
 		//default:
 	}
 	//}
@@ -70,13 +70,14 @@ func (scheduler *iSchedulerServiceImpl) doSchedule(ctx context.Context, schedule
 
 func (scheduler *iSchedulerServiceImpl) scheduleProcess(ctx context.Context, model ScheduleModel) {
 
-	heartbeat := scheduler.worker(ctx, time.Duration(1 * time.Minute), time.Duration(1 * time.Hour), model)
-	const timeout = 5*time.Minute
+	heartbeat := scheduler.worker(ctx, time.Duration(1*time.Minute), time.Duration(1*time.Hour), model)
+	const timeout = 5 * time.Minute
 
 	for {
 		select {
-		case <-ctx.Done(): return
-		case _, ok :=  <- heartbeat:
+		case <-ctx.Done():
+			return
+		case _, ok := <-heartbeat:
 			if ok == false {
 				logger.Audit("heartbeat of worker scheduler closed, step: %s, action: %s ", model.Step, model.Action)
 				//heartbeat = scheduler.worker(ctx, time.Duration(1 * time.Second), time.Duration(10 * time.Second), model)
@@ -85,7 +86,7 @@ func (scheduler *iSchedulerServiceImpl) scheduleProcess(ctx context.Context, mod
 
 			logger.Audit("heartbeat pulse")
 
-		case <- time.After(timeout):
+		case <-time.After(timeout):
 			logger.Audit("worker goroutine is not healthy!, step: %s, action: %s ", model.Step, model.Action)
 			return
 		}
@@ -102,16 +103,19 @@ func (scheduler *iSchedulerServiceImpl) worker(ctx context.Context, pulseInterva
 		schedule := time.Tick(scheduleInterval)
 		sendPulse := func() {
 			select {
-			case heartbeat <-struct{}{}:
+			case heartbeat <- struct{}{}:
 			default:
 			}
 		}
 
 		for {
 			select {
-			case <-ctx.Done(): return
-			case <-pulse: sendPulse()
-			case <-schedule: scheduler.doProcess(ctx, data)
+			case <-ctx.Done():
+				return
+			case <-pulse:
+				sendPulse()
+			case <-schedule:
+				scheduler.doProcess(ctx, data)
 			}
 		}
 	}()
@@ -123,43 +127,39 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 	logger.Audit("doProcess called . . .")
 	time.Sleep(5 * time.Second)
 	pipeline := []bson.M{
-		bson.M{ "$match": bson.M{"items.deletedAt": nil, "items.progress.currentStepName": data.Step }},
-		bson.M{ "$unwind": "$items"},
-		bson.M{ "$unwind": bson.M{"path": "$items.progress.stepsHistory", "preserveNullAndEmptyArrays": false}},
-		bson.M{ "$match": bson.M{"items.progress.stepsHistory.name": data.Step }},
-		bson.M{ "$project": bson.M{
-				"_id": 0,
-				"orderId": 1,
-				"itemId": "$items.itemId",
-				"sellerId": "$items.sellerInfo.sellerId",
-				"stepName": "$items.progress.stepsHistory.name",
-				"stepIndex": "$items.progress.stepsHistory.index",
-				"actionHistory":
-				bson.M{"$filter":
-					bson.M{"input": "$items.progress.stepsHistory.actionHistory",
-							"as": "action",
-							"cond": bson.M{"$eq": bson.A{"$$action.name", data.Action}},
-						},
-					},
-				},
+		{"$match": bson.M{"items.deletedAt": nil, "items.progress.currentStepName": data.Step}},
+		{"$unwind": "$items"},
+		{"$unwind": bson.M{"path": "$items.progress.stepsHistory", "preserveNullAndEmptyArrays": false}},
+		{"$match": bson.M{"items.progress.stepsHistory.name": data.Step}},
+		{"$project": bson.M{
+			"_id":       0,
+			"orderId":   1,
+			"itemId":    "$items.itemId",
+			"sellerId":  "$items.sellerInfo.sellerId",
+			"stepName":  "$items.progress.stepsHistory.name",
+			"stepIndex": "$items.progress.stepsHistory.index",
+			"actionHistory": bson.M{"$filter": bson.M{"input": "$items.progress.stepsHistory.actionHistory",
+				"as":   "action",
+				"cond": bson.M{"$eq": bson.A{"$$action.name", data.Action}},
 			},
-		bson.M{ "$project": bson.M{
-			"orderId": 1,
-			"itemId": 1,
-			"sellerId": 1,
-			"stepName": 1,
+			},
+		},
+		},
+		{"$project": bson.M{
+			"orderId":   1,
+			"itemId":    1,
+			"sellerId":  1,
+			"stepName":  1,
 			"stepIndex": 1,
-			"actionHistory":
-				bson.M{"$map":
-					bson.M{"input": "$actionHistory",
-						"as": "action",
-						"in": bson.M{"actionName": "$$action.name",
-							"expiredTime": "$$action.data.expiredTime",
-							"createdAt":   "$$action.createdAt"},
-					},
-				},
-			}},
-		}
+			"actionHistory": bson.M{"$map": bson.M{"input": "$actionHistory",
+				"as": "action",
+				"in": bson.M{"actionName": "$$action.name",
+					"expiredTime": "$$action.data.expiredTime",
+					"createdAt":   "$$action.createdAt"},
+			},
+			},
+		}},
+	}
 
 	cursor, err := scheduler.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
 	if err != nil {
@@ -171,7 +171,8 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 	defer closeCursor(ctx, cursor)
 
 	select {
-	case <-ctx.Done(): return
+	case <-ctx.Done():
+		return
 	default:
 	}
 
@@ -189,10 +190,10 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 
 		if scheduler.checkExpiredTime(&fetchData) {
 			if sellerMap, isFindOrder := expiredOrderMap[fetchData.OrderId]; isFindOrder {
-				 if schedulerEvent, isFindSeller := sellerMap[fetchData.SellerId]; isFindSeller {
-				 	schedulerEvent.ItemsId = append(schedulerEvent.ItemsId, fetchData.ItemId)
-				 } else {
-				 	newEvent := &events.SchedulerEvent {
+				if schedulerEvent, isFindSeller := sellerMap[fetchData.SellerId]; isFindSeller {
+					schedulerEvent.ItemsId = append(schedulerEvent.ItemsId, fetchData.ItemId)
+				} else {
+					newEvent := &events.SchedulerEvent{
 						OrderId:    fetchData.OrderId,
 						SellerId:   fetchData.SellerId,
 						ItemsId:    nil,
@@ -200,12 +201,12 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 						ActionName: fetchData.ActionHistory[0].ActionName,
 					}
 
-				 	newEvent.ItemsId = make([]string,0, 16)
-				 	newEvent.ItemsId = append(newEvent.ItemsId, fetchData.ItemId)
-				 	expiredOrderMap[fetchData.OrderId][fetchData.SellerId] = newEvent
-				 }
+					newEvent.ItemsId = make([]string, 0, 16)
+					newEvent.ItemsId = append(newEvent.ItemsId, fetchData.ItemId)
+					expiredOrderMap[fetchData.OrderId][fetchData.SellerId] = newEvent
+				}
 			} else {
-				newEvent := &events.SchedulerEvent {
+				newEvent := &events.SchedulerEvent{
 					OrderId:    fetchData.OrderId,
 					SellerId:   fetchData.SellerId,
 					ItemsId:    nil,
@@ -213,7 +214,7 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 					ActionName: fetchData.ActionHistory[0].ActionName,
 				}
 
-				newEvent.ItemsId = make([]string,0, 16)
+				newEvent.ItemsId = make([]string, 0, 16)
 				newEvent.ItemsId = append(newEvent.ItemsId, fetchData.ItemId)
 
 				expiredOrderMap[fetchData.OrderId] = make(map[string]*events.SchedulerEvent, 16)
@@ -231,7 +232,7 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 
 func (scheduler *iSchedulerServiceImpl) checkExpiredTime(fetchData *fetchItemData) bool {
 	if fetchData.ActionHistory[0].ExpiredTime.Before(time.Now().UTC()) {
-		logger.Audit("action expired, " +
+		logger.Audit("action expired, "+
 			"orderId: %s, itemId: %s, stepName: %s, stepIndex: %d, actionName: %s, expiredTime: %s ",
 			fetchData.OrderId, fetchData.ItemId, fetchData.StepName, fetchData.StepIndex,
 			fetchData.ActionHistory[0].ActionName, fetchData.ActionHistory[0].ExpiredTime)

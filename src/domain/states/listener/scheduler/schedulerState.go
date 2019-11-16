@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	actorType = actors.SchedulerActor
+	actorType        = actors.SchedulerActor
 	stateName string = "Scheduler_Action_State"
 )
 

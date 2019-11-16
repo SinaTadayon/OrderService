@@ -43,6 +43,3 @@ func (manualPayment manualPaymentActiveActionImpl) ActionType() actions.ActionTy
 func (manualPayment manualPaymentActiveActionImpl) ActionEnums() []actions.IEnumAction {
 	return manualPayment.enumAction
 }
-
-
-

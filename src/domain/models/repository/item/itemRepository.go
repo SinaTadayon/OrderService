@@ -3,7 +3,6 @@ package item_repository
 import "gitlab.faza.io/order-project/order-service/domain/models/entities"
 
 type IItemRepository interface {
-
 	Update(item entities.Item) (*entities.Item, error)
 
 	UpdateAll(items []entities.Item) ([]*entities.Item, error)
@@ -30,7 +29,7 @@ type IItemRepository interface {
 
 	FindByFilterWithPage(supplier func() (filter interface{}), page, perPage int64) ([]*entities.Item, int64, error)
 
-	FindByFilterWithPageAndSort(supplier func() (filter interface{}, fieldName string, direction int) , page, perPage int64) ([]*entities.Item, int64, error)
+	FindByFilterWithPageAndSort(supplier func() (filter interface{}, fieldName string, direction int), page, perPage int64) ([]*entities.Item, int64, error)
 
 	ExistsById(itemId string) (bool, error)
 
@@ -56,4 +55,3 @@ type IItemRepository interface {
 
 	RemoveAll() error
 }
-

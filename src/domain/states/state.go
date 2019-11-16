@@ -5,10 +5,9 @@ import (
 )
 
 type IState interface {
-	Name() 		string
-	Index()		int
-	Childes()	[]IState
-	Parents()	[]IState
-	Actions() 	actions.IAction
+	Name() string
+	Index() int
+	Childes() []IState
+	Parents() []IState
+	Actions() actions.IAction
 }
-

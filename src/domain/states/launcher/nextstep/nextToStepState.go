@@ -15,13 +15,13 @@ import (
 )
 
 const (
-	stateName string = "Next_To_Step_Action_State"
-	activeType = actives.NextToStepAction
+	stateName  string = "Next_To_Step_Action_State"
+	activeType        = actives.NextToStepAction
 )
 
 type nextToStepActionLauncher struct {
 	*launcher_state.BaseLauncherImpl
-	actionStepMap 	map[actions.IEnumAction]steps.IStep
+	actionStepMap map[actions.IEnumAction]steps.IStep
 }
 
 func New(index int, childes, parents []states.IState, actions actions.IAction, actionStepMap map[actions.IEnumAction]steps.IStep) launcher_state.ILauncherState {
@@ -51,7 +51,7 @@ func (nextStep nextToStepActionLauncher) ActionLauncher(ctx context.Context, ord
 	if param == nil {
 		logger.Err("received param in NextToStepState is nil, order: %v", order)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
@@ -61,7 +61,7 @@ func (nextStep nextToStepActionLauncher) ActionLauncher(ctx context.Context, ord
 		logger.Err("param in NextToStepState is not actions.IEnumAction type, order: %v", order)
 		nextStep.persistOrderState(ctx, &order, itemsId, nil, false, "received param type is not a actions.IEnumAction")
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}

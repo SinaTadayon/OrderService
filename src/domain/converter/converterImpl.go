@@ -9,7 +9,6 @@ import (
 )
 
 type iConverterImpl struct {
-
 }
 
 func NewConverter() IConverter {
@@ -21,7 +20,7 @@ func (iconv iConverterImpl) Map(in interface{}, out interface{}) (interface{}, e
 
 	var ok bool
 	var newOrderDto ordersrv.RequestNewOrder
-	newOrderDto ,ok = in.(ordersrv.RequestNewOrder)
+	newOrderDto, ok = in.(ordersrv.RequestNewOrder)
 	if ok == false {
 		return nil, errors.New("mapping from input type not supported")
 	}
@@ -46,7 +45,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 		return nil, errors.New("items of RequestNewOrder empty")
 	}
 
-	order.BuyerInfo.BuyerId	  = newOrderDto.Buyer.BuyerId
+	order.BuyerInfo.BuyerId = newOrderDto.Buyer.BuyerId
 	order.BuyerInfo.FirstName = newOrderDto.Buyer.FirstName
 	order.BuyerInfo.LastName = newOrderDto.Buyer.LastName
 	order.BuyerInfo.Mobile = newOrderDto.Buyer.Mobile
@@ -96,7 +95,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	if newOrderDto.Amount.Voucher != nil {
 		order.Amount.Voucher = &entities.Voucher{
 			Amount: newOrderDto.Amount.Voucher.Amount,
-			Code: newOrderDto.Amount.Voucher.Code,
+			Code:   newOrderDto.Amount.Voucher.Code,
 		}
 		// TODO implement voucher details
 	}
@@ -112,9 +111,9 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 			return nil, errors.New("item Count of RequestNewOrder invalid")
 		}
 
-		for i:= 0; i < int(item.Quantity); i++ {
+		for i := 0; i < int(item.Quantity); i++ {
 			var newItem = entities.Item{}
-			newItem.InventoryId	= item.InventoryId
+			newItem.InventoryId = item.InventoryId
 			newItem.Title = item.Title
 			newItem.Brand = item.Brand
 			newItem.Guaranty = item.Guaranty
@@ -159,7 +158,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	return &order, nil
 }
 
-func setOrderLocation(lat, long string , order *entities.Order) {
+func setOrderLocation(lat, long string, order *entities.Order) {
 	var latitude, longitude float64
 	var err error
 	if len(lat) == 0 || len(long) == 0 {
@@ -176,6 +175,7 @@ func setOrderLocation(lat, long string , order *entities.Order) {
 		return
 	}
 
+	order.BuyerInfo.ShippingAddress.Location = &entities.Location{}
 	order.BuyerInfo.ShippingAddress.Location.Type = "Point"
 	order.BuyerInfo.ShippingAddress.Location.Coordinates = []float64{longitude, latitude}
 }

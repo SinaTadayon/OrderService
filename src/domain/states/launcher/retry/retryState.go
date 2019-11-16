@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	stateName string = "Retry_Action_State"
-	activeType = actives.RetryAction
+	stateName  string = "Retry_Action_State"
+	activeType        = actives.RetryAction
 )
 
 type finalizeActionLauncher struct {
@@ -37,7 +37,6 @@ func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) la
 	panic("implementation required")
 }
 
-func (finalize finalizeActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId[] string, param interface{}) promise.IPromise {
+func (finalize finalizeActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
 	panic("implementation required")
 }
-

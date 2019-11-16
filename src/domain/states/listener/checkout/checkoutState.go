@@ -15,12 +15,11 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	"time"
-
 	//message "gitlab.faza.io/protos/order"
 )
 
 const (
-	actorType = actors.CheckoutActor
+	actorType        = actors.CheckoutActor
 	stateName string = "Checkout_Action_State"
 )
 
@@ -52,7 +51,7 @@ func (checkoutActionState checkoutActionListener) ActionListener(ctx context.Con
 	if event == nil {
 		logger.Err("Received Event is nil")
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
@@ -61,7 +60,7 @@ func (checkoutActionState checkoutActionListener) ActionListener(ctx context.Con
 	if ok != true {
 		logger.Err("StockState isn't child of CheckoutState, event: %v", event)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
@@ -72,7 +71,7 @@ func (checkoutActionState checkoutActionListener) ActionListener(ctx context.Con
 	if actorEvent.ActorType() != actors.CheckoutActor {
 		logger.Err("Received actorType of event is not CheckoutActor, event: %v", event)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
@@ -80,7 +79,7 @@ func (checkoutActionState checkoutActionListener) ActionListener(ctx context.Con
 	if actorEvent.ActorAction().ActionEnums()[0] != checkout_action.NewOrderAction {
 		logger.Err("Received actorAction of event is not NewOrderAction, event: %v", event)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
@@ -92,7 +91,7 @@ func (checkoutActionState checkoutActionListener) ActionListener(ctx context.Con
 	if err != nil {
 		logger.Err("Save NewOrder Failed, error: %s, newOrder: %v", err, newOrder)
 		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}

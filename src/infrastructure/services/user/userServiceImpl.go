@@ -16,11 +16,10 @@ const (
 	layout = "2006-01-02 15:04:05 +0000 MST"
 )
 
-
 type iUserServiceImpl struct {
-	client 		*userclient.Client
-	serverAddress 	string
-	serverPort		int
+	client        *userclient.Client
+	serverAddress string
+	serverPort    int
 }
 
 func NewUserService(serverAddress string, serverPort int) IUserService {
@@ -58,7 +57,7 @@ func (userService *iUserServiceImpl) getUserService(ctx context.Context) error {
 
 func (userService iUserServiceImpl) AuthenticateContextToken(ctx context.Context) (*acl.Acl, error) {
 	if err := userService.getUserService(ctx); err != nil {
-		return nil,err
+		return nil, err
 	}
 	access, err := userService.client.VerifyAndGetUserFromContextToken(ctx)
 	return access, err
@@ -68,26 +67,26 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 	if err := userService.getUserService(ctx); err != nil {
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex:promise.FutureError{Code:promise.InternalError, Reason:"Connect to UserService failed"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Connect to UserService failed"}}
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
 	userProfile, err := userService.client.InternalUserGetOne("userId", sellerId, "", ctx)
 	if err != nil {
-		logger.Err("userService.client.InternalUserGetOne failed, sellerId: %s, error: %s",sellerId, err)
+		logger.Err("userService.client.InternalUserGetOne failed, sellerId: %s, error: %s", sellerId, err)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex:promise.FutureError{Code:promise.NotFound, Reason:"sellerId Not Found"}}
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "sellerId Not Found"}}
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
 	sellerProfile := &entities.SellerProfile{
-		SellerId:       userProfile.Data.UserId,
+		SellerId: userProfile.Data.UserId,
 	}
 
 	if userProfile.Data.Seller.GeneralInfo != nil {
-		sellerProfile.GeneralInfo =    &entities.GeneralSellerInfo{
-			ShopDisplayName: 		   userProfile.Data.Seller.GeneralInfo.ShopDisplayName,
+		sellerProfile.GeneralInfo = &entities.GeneralSellerInfo{
+			ShopDisplayName:          userProfile.Data.Seller.GeneralInfo.ShopDisplayName,
 			Type:                     userProfile.Data.Seller.GeneralInfo.Type,
 			Email:                    userProfile.Data.Seller.GeneralInfo.Email,
 			LandPhone:                userProfile.Data.Seller.GeneralInfo.LandPhone,
@@ -113,7 +112,7 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 	}
 
 	if userProfile.Data.Seller.CorpInfo != nil {
-		sellerProfile.CorporationInfo =       &entities.CorporateSellerInfo{
+		sellerProfile.CorporationInfo = &entities.CorporateSellerInfo{
 			CompanyRegisteredName:     userProfile.Data.Seller.CorpInfo.CompanyRegisteredName,
 			CompanyRegistrationNumber: userProfile.Data.Seller.CorpInfo.CompanyRegistrationNumber,
 			CompanyRationalId:         userProfile.Data.Seller.CorpInfo.CompanyRationalID,
@@ -132,7 +131,7 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 	}
 
 	if userProfile.Data.Seller.ReturnInfo != nil {
-		sellerProfile.ReturnInfo =     &entities.ReturnInfo{
+		sellerProfile.ReturnInfo = &entities.ReturnInfo{
 
 			PostalAddress: userProfile.Data.Seller.ReturnInfo.PostalAddress,
 			PostalCode:    userProfile.Data.Seller.ReturnInfo.PostalCode,
@@ -156,7 +155,7 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 	}
 
 	if userProfile.Data.Seller.ContactPerson != nil {
-		sellerProfile.ContactPerson =  &entities.SellerContactPerson{
+		sellerProfile.ContactPerson = &entities.SellerContactPerson{
 			FirstName:   userProfile.Data.Seller.ContactPerson.FirstName,
 			FamilyName:  userProfile.Data.Seller.ContactPerson.FamilyName,
 			MobilePhone: userProfile.Data.Seller.ContactPerson.MobilePhone,
@@ -167,7 +166,7 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 	if userProfile.Data.Seller.ShipmentInfo != nil {
 		sellerProfile.ShipmentInfo = &entities.SellerShipmentInfo{}
 		if userProfile.Data.Seller.ShipmentInfo.SameCity != nil {
-			sellerProfile.ShipmentInfo.SameCity =      &entities.PricePlan{
+			sellerProfile.ShipmentInfo.SameCity = &entities.PricePlan{
 				Threshold:        userProfile.Data.Seller.ShipmentInfo.SameCity.Threshold,
 				BelowPrice:       userProfile.Data.Seller.ShipmentInfo.SameCity.BelowPrice,
 				ReactionTimeDays: userProfile.Data.Seller.ShipmentInfo.SameCity.ReactionTimeDays,
@@ -175,7 +174,7 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 		}
 
 		if userProfile.Data.Seller.ShipmentInfo.DifferentCity != nil {
-			sellerProfile.ShipmentInfo.DifferentCity =      &entities.PricePlan{
+			sellerProfile.ShipmentInfo.DifferentCity = &entities.PricePlan{
 				Threshold:        userProfile.Data.Seller.ShipmentInfo.DifferentCity.Threshold,
 				BelowPrice:       userProfile.Data.Seller.ShipmentInfo.DifferentCity.BelowPrice,
 				ReactionTimeDays: userProfile.Data.Seller.ShipmentInfo.DifferentCity.ReactionTimeDays,
@@ -191,14 +190,14 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 		}
 	}
 
-	timestamp, err := time.Parse(layout,userProfile.Data.CreatedAt)
+	timestamp, err := time.Parse(layout, userProfile.Data.CreatedAt)
 	if err != nil {
 		logger.Err("GetSellerProfile() => createdAt time parse failed, sellerId: %s, error: %s", sellerId, err)
 		timestamp = time.Now()
 	}
 
 	sellerProfile.CreatedAt = timestamp
-	timestamp, err = time.Parse(layout,userProfile.Data.UpdatedAt)
+	timestamp, err = time.Parse(layout, userProfile.Data.UpdatedAt)
 	if err != nil {
 		logger.Err("GetSellerProfile() => updatedAt time parse failed, sellerId: %s, error: %s", sellerId, err)
 		timestamp = time.Now()
@@ -207,6 +206,6 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 
 	returnChannel := make(chan promise.FutureData, 1)
 	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data:sellerProfile ,Ex:nil}
+	returnChannel <- promise.FutureData{Data: sellerProfile, Ex: nil}
 	return promise.NewPromise(returnChannel, 1, 1)
 }

@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	actorType = actors.OperatorActor
+	actorType        = actors.OperatorActor
 	stateName string = "Operator_Action_State"
 )
 

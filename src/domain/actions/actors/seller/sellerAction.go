@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	actorType = actors.SellerActor
+	actorType  = actors.SellerActor
 	actionType = actions.ActorAction
 )
 
@@ -43,4 +43,3 @@ func (sellerAction sellerActorActionImpl) ActionType() actions.ActionType {
 func (sellerAction sellerActorActionImpl) ActionEnums() []actions.IEnumAction {
 	return sellerAction.enumAction
 }
-
