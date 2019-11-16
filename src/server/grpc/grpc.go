@@ -3,6 +3,9 @@ package grpc_server
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
@@ -14,8 +17,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"strconv"
-	"time"
 
 	//"errors"
 	"net"
@@ -32,16 +33,16 @@ const (
 	ISO8601 = "2006-01-02T15:04:05-0700"
 )
 
-type Server struct{
+type Server struct {
 	pb.UnimplementedOrderServiceServer
 	pg.UnimplementedBankResultHookServer
-	flowManager 	domain.IFlowManager
-	address 		string
-	port			uint16
+	flowManager domain.IFlowManager
+	address     string
+	port        uint16
 }
 
 func NewServer(address string, port uint16, flowManager domain.IFlowManager) Server {
-	return Server{flowManager:flowManager, address:address, port:port}
+	return Server{flowManager: flowManager, address: address, port: port}
 }
 
 // TODO error handling
@@ -52,7 +53,7 @@ func (server *Server) OrderRequestsHandler(ctx context.Context, req *pb.MessageR
 
 	flowManagerCtx, _ := context.WithTimeout(context.Background(), 3*time.Second)
 	promiseHandler := server.flowManager.MessageHandler(flowManagerCtx, req)
-	futureData := <- promiseHandler.Channel()
+	futureData := <-promiseHandler.Channel()
 	if futureData.Ex != nil {
 		futureErr := futureData.Ex.(promise.FutureError)
 		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
@@ -193,7 +194,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseSellerFindAllItems, error) {
 
 	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
-		return bson.D{{"items.sellerInfo.sellerId", req.Id }}
+		return bson.D{{"items.sellerInfo.sellerId", req.Id}}
 	})
 
 	if err != nil {
@@ -214,15 +215,15 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 						Title:       orderItem.Title,
 						Image:       orderItem.Image,
 						Returnable:  orderItem.Returnable,
-						Status:      &pb.Status{
+						Status: &pb.Status{
 							OrderStatus: order.Status,
 							ItemStatus:  orderItem.Status,
 							StepStatus:  "none",
 						},
-						CreatedAt:   orderItem.CreatedAt.Format(ISO8601),
-						UpdatedAt:   orderItem.UpdatedAt.Format(ISO8601),
-						Quantity:    orderItem.Quantity,
-						Attributes:  orderItem.Attributes,
+						CreatedAt:  orderItem.CreatedAt.Format(ISO8601),
+						UpdatedAt:  orderItem.UpdatedAt.Format(ISO8601),
+						Quantity:   orderItem.Quantity,
+						Attributes: orderItem.Attributes,
 						Price: &pb.SellerFindAllItems_Price{
 							Unit:             orderItem.Price.Unit,
 							Total:            orderItem.Price.Original,
@@ -230,16 +231,16 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 							Currency:         orderItem.Price.Currency,
 						},
 						DeliveryAddress: &pb.Address{
-							Address:              order.BuyerInfo.ShippingAddress.Address,
-							Phone:                order.BuyerInfo.ShippingAddress.Phone,
-							Mobile:               order.BuyerInfo.ShippingAddress.Mobile,
-							Country:              order.BuyerInfo.ShippingAddress.Country,
-							City:                 order.BuyerInfo.ShippingAddress.City,
-							Province:             order.BuyerInfo.ShippingAddress.Province,
-							Neighbourhood:        order.BuyerInfo.ShippingAddress.Neighbourhood,
-							Lat:                  fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[1]),
-							Long:                 fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[0]),
-							ZipCode:              order.BuyerInfo.ShippingAddress.ZipCode,
+							Address:       order.BuyerInfo.ShippingAddress.Address,
+							Phone:         order.BuyerInfo.ShippingAddress.Phone,
+							Mobile:        order.BuyerInfo.ShippingAddress.Mobile,
+							Country:       order.BuyerInfo.ShippingAddress.Country,
+							City:          order.BuyerInfo.ShippingAddress.City,
+							Province:      order.BuyerInfo.ShippingAddress.Province,
+							Neighbourhood: order.BuyerInfo.ShippingAddress.Neighbourhood,
+							Lat:           fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[1]),
+							Long:          fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[0]),
+							ZipCode:       order.BuyerInfo.ShippingAddress.ZipCode,
 						},
 					}
 					lastStep := orderItem.Progress.StepsHistory[len(orderItem.Progress.StepsHistory)-1]
@@ -260,7 +261,7 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 	var response = pb.ResponseSellerFindAllItems{}
 	response.Items = make([]*pb.SellerFindAllItems, 0, len(sellerItemMap))
 
-	for _ , item := range sellerItemMap {
+	for _, item := range sellerItemMap {
 		response.Items = append(response.Items, item)
 	}
 
@@ -299,7 +300,7 @@ func (server Server) SellerOrderAction(ctx context.Context, req *pb.RequestSelle
 
 func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseBuyerFindAllOrders, error) {
 	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
-		return bson.D{{"buyerInfo.buyerId", req.Id }}
+		return bson.D{{"buyerInfo.buyerId", req.Id}}
 	})
 
 	if err != nil {
@@ -307,41 +308,44 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
 	}
 
-	var response  pb.ResponseBuyerFindAllOrders
+	var response pb.ResponseBuyerFindAllOrders
 	responseOrders := make([]*pb.BuyerAllOrders, 0, len(orders))
 
 	for _, order := range orders {
-		responseOrder := &pb.BuyerAllOrders {
-			OrderId: order.OrderId,
-			CreatedAt: order.CreatedAt.Format(ISO8601),
-			UpdatedAt: order.UpdatedAt.Format(ISO8601),
+		responseOrder := &pb.BuyerAllOrders{
+			OrderId:     order.OrderId,
+			CreatedAt:   order.CreatedAt.Format(ISO8601),
+			UpdatedAt:   order.UpdatedAt.Format(ISO8601),
 			OrderStatus: order.Status,
 			Amount: &pb.Amount{
-				Total: order.Amount.Total,
-				Subtotal: order.Amount.Subtotal,
-				Discount: order.Amount.Discount,
-				Currency: order.Amount.Currency,
+				Total:         order.Amount.Total,
+				Subtotal:      order.Amount.Subtotal,
+				Discount:      order.Amount.Discount,
+				Currency:      order.Amount.Currency,
 				ShipmentTotal: order.Amount.ShipmentTotal,
 				PaymentMethod: order.Amount.PaymentMethod,
 				PaymentOption: order.Amount.PaymentOption,
 				Voucher: &pb.Voucher{
-					Amount:               order.Amount.Voucher.Amount,
-					Code:                 order.Amount.Voucher.Code,
+					Amount: order.Amount.Voucher.Amount,
+					Code:   order.Amount.Voucher.Code,
 				},
 			},
 			ShippingAddress: &pb.Address{
-				Address:              order.BuyerInfo.ShippingAddress.Address,
-				Phone:                order.BuyerInfo.ShippingAddress.Phone,
-				Mobile:               order.BuyerInfo.ShippingAddress.Mobile,
-				Country:              order.BuyerInfo.ShippingAddress.Country,
-				City:                 order.BuyerInfo.ShippingAddress.City,
-				Province:             order.BuyerInfo.ShippingAddress.Province,
-				Neighbourhood:        order.BuyerInfo.ShippingAddress.Neighbourhood,
-				Lat:                  fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[1]),
-				Long:                 fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[0]),
-				ZipCode:              order.BuyerInfo.ShippingAddress.ZipCode,
+				Address:       order.BuyerInfo.ShippingAddress.Address,
+				Phone:         order.BuyerInfo.ShippingAddress.Phone,
+				Mobile:        order.BuyerInfo.ShippingAddress.Mobile,
+				Country:       order.BuyerInfo.ShippingAddress.Country,
+				City:          order.BuyerInfo.ShippingAddress.City,
+				Province:      order.BuyerInfo.ShippingAddress.Province,
+				Neighbourhood: order.BuyerInfo.ShippingAddress.Neighbourhood,
+				ZipCode:       order.BuyerInfo.ShippingAddress.ZipCode,
 			},
 			Items: make([]*pb.BuyerOrderItems, 0, len(order.Items)),
+		}
+		coordinates := order.BuyerInfo.ShippingAddress.Location.Coordinates
+		if len(coordinates) == 2 {
+			responseOrder.ShippingAddress.Lat = fmt.Sprintf("%f", coordinates[1])
+			responseOrder.ShippingAddress.Long = fmt.Sprintf("%f", coordinates[0])
 		}
 
 		orderItemMap := make(map[string]*pb.BuyerOrderItems, 16)
@@ -352,23 +356,23 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 					InventoryId: item.InventoryId,
 					Title:       item.Title,
 					Brand:       item.Brand,
-					Category:  item.Category,
-					Guaranty:   item.Guaranty,
+					Category:    item.Category,
+					Guaranty:    item.Guaranty,
 					Image:       item.Image,
 					Returnable:  item.Returnable,
 					SellerId:    item.SellerInfo.SellerId,
 					Quantity:    item.Quantity,
 					Attributes:  item.Attributes,
-					ItemStatus: item.Status,
+					ItemStatus:  item.Status,
 					Price: &pb.BuyerOrderItems_Price{
 						Unit:     item.Price.Unit,
-						Total: 	  item.Price.Total,
-						Original:  item.Price.Original,
-						Special: item.Price.Special,
+						Total:    item.Price.Total,
+						Original: item.Price.Original,
+						Special:  item.Price.Special,
 						Currency: item.Price.Currency,
 					},
 					Shipment: &pb.BuyerOrderItems_ShipmentSpec{
-						CarrierName:    item.ShipmentSpec.CarrierName,
+						CarrierName:  item.ShipmentSpec.CarrierName,
 						ShippingCost: item.ShipmentSpec.ShippingCost,
 					},
 				}
@@ -386,7 +390,7 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 			}
 		}
 
-		for _ , orderItem := range orderItemMap {
+		for _, orderItem := range orderItemMap {
 			responseOrder.Items = append(responseOrder.Items, orderItem)
 		}
 
@@ -404,7 +408,7 @@ func (server Server) convertNewOrderRequestToMessage(req *pb.RequestNewOrder) *p
 		logger.Err("could not serialize timestamp")
 	}
 
-	request := pb.MessageRequest {
+	request := pb.MessageRequest{
 		OrderId: "",
 		//ItemId: orderId + strconv.Itoa(int(entities.GenerateRandomNumber())),
 		Time: ptypes.TimestampNow(),
@@ -498,7 +502,7 @@ func (server Server) Start() {
 	//addGrpcStateRule()
 
 	port := strconv.Itoa(int(server.port))
-	lis, err := net.Listen("tcp", server.address + ":" + port)
+	lis, err := net.Listen("tcp", server.address+":"+port)
 	if err != nil {
 		logger.Err("Failed to listen to TCP on port " + port + err.Error())
 	}
