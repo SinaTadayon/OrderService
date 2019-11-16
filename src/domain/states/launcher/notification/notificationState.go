@@ -43,7 +43,7 @@ func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) la
 
 // TODO must be implement sms and email templates and related to steps and actions
 // TODO must decouple from child
-func (notificationState notificationActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (notificationState notificationActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 
 	returnChannel := make(chan promise.FutureData, 1)
 	defer close(returnChannel)
@@ -86,7 +86,7 @@ func (notificationState notificationActionLauncher) ActionLauncher(ctx context.C
 	return promise.NewPromise(returnChannel, 1, 1)
 }
 
-func (notificationState notificationActionLauncher) persistOrderState(ctx context.Context, order *entities.Order, itemsId []string,
+func (notificationState notificationActionLauncher) persistOrderState(ctx context.Context, order *entities.Order, itemsId []uint64,
 	acceptedAction actions.IEnumAction, result bool, reason string) {
 	order.UpdatedAt = time.Now().UTC()
 
@@ -96,7 +96,7 @@ func (notificationState notificationActionLauncher) persistOrderState(ctx contex
 				if order.Items[i].ItemId == id {
 					notificationState.doUpdateOrderState(ctx, order, i, acceptedAction, result, reason)
 				} else {
-					logger.Err("finalize received itemId %s not exist in order, order: %v", id, order)
+					logger.Err("finalize received itemId %d not exist in order, orderId: %d", id, order.OrderId)
 				}
 			}
 		}

@@ -18,9 +18,9 @@ const (
 )
 
 type fetchItemData struct {
-	OrderId       string
-	ItemId        string
-	SellerId      string
+	OrderId       uint64
+	ItemId        uint64
+	SellerId      uint64
 	StepName      string
 	StepIndex     int
 	ActionHistory []fetchActionHistory
@@ -176,7 +176,7 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 	default:
 	}
 
-	var expiredOrderMap = make(map[string]map[string]*events.SchedulerEvent, 64)
+	var expiredOrderMap = make(map[uint64]map[uint64]*events.SchedulerEvent, 64)
 
 	// iterate through all documents
 	for cursor.Next(ctx) {
@@ -201,7 +201,7 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 						ActionName: fetchData.ActionHistory[0].ActionName,
 					}
 
-					newEvent.ItemsId = make([]string, 0, 16)
+					newEvent.ItemsId = make([]uint64, 0, 16)
 					newEvent.ItemsId = append(newEvent.ItemsId, fetchData.ItemId)
 					expiredOrderMap[fetchData.OrderId][fetchData.SellerId] = newEvent
 				}
@@ -214,10 +214,10 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 					ActionName: fetchData.ActionHistory[0].ActionName,
 				}
 
-				newEvent.ItemsId = make([]string, 0, 16)
+				newEvent.ItemsId = make([]uint64, 0, 16)
 				newEvent.ItemsId = append(newEvent.ItemsId, fetchData.ItemId)
 
-				expiredOrderMap[fetchData.OrderId] = make(map[string]*events.SchedulerEvent, 16)
+				expiredOrderMap[fetchData.OrderId] = make(map[uint64]*events.SchedulerEvent, 16)
 				expiredOrderMap[fetchData.OrderId][fetchData.SellerId] = newEvent
 			}
 		}
@@ -233,7 +233,7 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 func (scheduler *iSchedulerServiceImpl) checkExpiredTime(fetchData *fetchItemData) bool {
 	if fetchData.ActionHistory[0].ExpiredTime.Before(time.Now().UTC()) {
 		logger.Audit("action expired, "+
-			"orderId: %s, itemId: %s, stepName: %s, stepIndex: %d, actionName: %s, expiredTime: %s ",
+			"orderId: %d, itemId: %d, stepName: %s, stepIndex: %d, actionName: %s, expiredTime: %s ",
 			fetchData.OrderId, fetchData.ItemId, fetchData.StepName, fetchData.StepIndex,
 			fetchData.ActionHistory[0].ActionName, fetchData.ActionHistory[0].ExpiredTime)
 		return true

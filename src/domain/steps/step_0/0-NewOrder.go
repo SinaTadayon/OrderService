@@ -117,7 +117,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReserved, false, steps.ClosedStatus)
 		if err := newOrderProcessing.persistOrder(ctx, order); err != nil {
 		}
-		logger.Err("Reserved stock from stockService failed, error: %s, order: %v", futureData.Ex.Error(), order)
+		logger.Err("Reserved stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
@@ -145,7 +145,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	//return checkoutState.ActionListener(ctx, newOrderEvent, nil)
 }
 
-func (newOrderProcessing newOrderProcessingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (newOrderProcessing newOrderProcessingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 	panic("implementation required")
 }
 func (newOrderProcessing newOrderProcessingStep) releasedStock(ctx context.Context, order *entities.Order) {
@@ -153,18 +153,18 @@ func (newOrderProcessing newOrderProcessingStep) releasedStock(ctx context.Conte
 	futureData := iPromise.Data()
 	if futureData == nil {
 		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, steps.ClosedStatus)
-		logger.Err("StockService promise channel has been closed, step: %s, orderId: %s", newOrderProcessing.Name(), order.OrderId)
+		logger.Err("StockService promise channel has been closed, step: %s, orderId: %d", newOrderProcessing.Name(), order.OrderId)
 		return
 	}
 
 	if futureData.Ex != nil {
 		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, steps.ClosedStatus)
-		logger.Err("Reserved stock from stockService failed, step: %s, order: %s, error: %s", newOrderProcessing.Name(), order.OrderId, futureData.Ex.Error())
+		logger.Err("Reserved stock from stockService failed, step: %s, orderId: %d, error: %s", newOrderProcessing.Name(), order.OrderId, futureData.Ex.Error())
 		return
 	}
 
 	newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, true, steps.ClosedStatus)
-	logger.Audit("Reserved stock from stockService success, step: %s, order: %s", newOrderProcessing.Name(), order.OrderId)
+	logger.Audit("Reserved stock from stockService success, step: %s, orderId: %d", newOrderProcessing.Name(), order.OrderId)
 }
 
 func (newOrderProcessing newOrderProcessingStep) persistOrder(ctx context.Context, order *entities.Order) error {
@@ -175,7 +175,7 @@ func (newOrderProcessing newOrderProcessingStep) persistOrder(ctx context.Contex
 	return err
 }
 
-func (newOrderProcessing newOrderProcessingStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string, action string, result bool, itemStatus string) {
+func (newOrderProcessing newOrderProcessingStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []uint64, action string, result bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -189,7 +189,7 @@ func (newOrderProcessing newOrderProcessingStep) updateOrderItemsProgress(ctx co
 			}
 
 			if !findFlag {
-				logger.Err("%s received itemId %s not exist in order, orderId: %v", newOrderProcessing.Name(), id, order.OrderId)
+				logger.Err("%s received itemId %d not exist in order, orderId: %d", newOrderProcessing.Name(), id, order.OrderId)
 			}
 		}
 	} else {

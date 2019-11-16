@@ -43,9 +43,9 @@ func (shipmentSuccess shipmentSuccessStep) ProcessMessage(ctx context.Context, r
 	panic("implementation required")
 }
 
-func (shipmentSuccess shipmentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (shipmentSuccess shipmentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 
-	logger.Audit("shipmentSuccess step, orderId: %s", order.OrderId)
+	logger.Audit("shipmentSuccess step, orderId: %d", order.OrderId)
 	shipmentSuccess.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
 
 	iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, itemsId, StockSettlement)
@@ -54,12 +54,12 @@ func (shipmentSuccess shipmentSuccessStep) ProcessOrder(ctx context.Context, ord
 		shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, StockSettlement, false, steps.ClosedStatus)
 		if err := shipmentSuccess.persistOrder(ctx, &order); err != nil {
 		}
-		logger.Err("StockService promise channel has been closed, order: %s", order.OrderId)
+		logger.Err("StockService promise channel has been closed, order: %d", order.OrderId)
 	} else if futureData.Ex != nil {
 		shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, StockSettlement, false, steps.ClosedStatus)
 		if err := shipmentSuccess.persistOrder(ctx, &order); err != nil {
 		}
-		logger.Err("Settlement stock from stockService failed, error: %s, orderId: %s", futureData.Ex.Error(), order.OrderId)
+		logger.Err("Settlement stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
 	}
 
 	shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, ShipmentSuccess, true, steps.InProgressStatus)
@@ -80,8 +80,7 @@ func (shipmentSuccess shipmentSuccessStep) persistOrder(ctx context.Context, ord
 	return err
 }
 
-func (shipmentSuccess shipmentSuccessStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
-	action string, result bool, itemStatus string) {
+func (shipmentSuccess shipmentSuccessStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []uint64, action string, result bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -95,7 +94,7 @@ func (shipmentSuccess shipmentSuccessStep) updateOrderItemsProgress(ctx context.
 				}
 			}
 			if !findFlag {
-				logger.Err("%s received itemId %s not exist in order, order: %v", shipmentSuccess.Name(), id, order)
+				logger.Err("%s received itemId %d not exist in order, orderId: %d", shipmentSuccess.Name(), id, order.OrderId)
 			}
 		}
 	} else {

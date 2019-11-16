@@ -45,10 +45,10 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessMessage(ctx contex
 	panic("implementation required")
 }
 
-func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 
 	if param == nil {
-		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", sellerApprovalPending.Name(), order.OrderId, ApprovalPending)
+		logger.Audit("Order Received in %s step, orderId: %d, Action: %s", sellerApprovalPending.Name(), order.OrderId, ApprovalPending)
 		sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
 		sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, ApprovalPending, true, "", true, steps.InProgressStatus)
 		if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
@@ -58,7 +58,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 		returnChannel <- promise.FutureData{Data: nil, Ex: nil}
 		return promise.NewPromise(returnChannel, 1, 1)
 	} else {
-		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", sellerApprovalPending.Name(), order.OrderId, Approved)
+		logger.Audit("Order Received in %s step, orderId: %d, Action: %s", sellerApprovalPending.Name(), order.OrderId, Approved)
 		req, ok := param.(*message.RequestSellerOrderAction)
 		if ok != true {
 			if param == "actionExpired" {
@@ -67,11 +67,11 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 				if futureData == nil {
 					if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 					}
-					logger.Err("StockService promise channel has been closed, order: %s", order.OrderId)
+					logger.Err("StockService promise channel has been closed, order: %d", order.OrderId)
 				} else if futureData.Ex != nil {
 					if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 					}
-					logger.Err("released stock from stockService failed, error: %s, orderId: %s", futureData.Ex.Error(), order.OrderId)
+					logger.Err("released stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
 					returnChannel := make(chan promise.FutureData, 1)
 					defer close(returnChannel)
 					returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
@@ -142,11 +142,11 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 			if futureData == nil {
 				if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 				}
-				logger.Err("StockService promise channel has been closed, order: %s", order.OrderId)
+				logger.Err("StockService promise channel has been closed, order: %d", order.OrderId)
 			} else if futureData.Ex != nil {
 				if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 				}
-				logger.Err("released stock from stockService failed, error: %s, orderId: %s", futureData.Ex.Error(), order.OrderId)
+				logger.Err("released stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
 				returnChannel := make(chan promise.FutureData, 1)
 				defer close(returnChannel)
 				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
@@ -177,8 +177,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 	}
 }
 
-func (sellerApprovalPending sellerApprovalPendingStep) validateAction(ctx context.Context, order *entities.Order,
-	itemsId []string) bool {
+func (sellerApprovalPending sellerApprovalPendingStep) validateAction(ctx context.Context, order *entities.Order, itemsId []uint64) bool {
 	if itemsId != nil && len(itemsId) > 0 {
 		for _, id := range itemsId {
 			for i := 0; i < len(order.Items); i++ {
@@ -209,8 +208,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) persistOrder(ctx context.
 	return err
 }
 
-func (sellerApprovalPending sellerApprovalPendingStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order,
-	itemsId []string, action string, result bool, reason string, isSetExpireTime bool, itemStatus string) {
+func (sellerApprovalPending sellerApprovalPendingStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []uint64, action string, result bool, reason string, isSetExpireTime bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -224,7 +222,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) updateOrderItemsProgress(
 				}
 			}
 			if findFlag == false {
-				logger.Err("%s received itemId %s not exist in order, orderId: %v", sellerApprovalPending.Name(), id, order.OrderId)
+				logger.Err("%s received itemId %d not exist in order, orderId: %d", sellerApprovalPending.Name(), id, order.OrderId)
 			}
 		}
 	} else {

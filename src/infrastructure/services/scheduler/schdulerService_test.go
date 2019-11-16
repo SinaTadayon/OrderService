@@ -100,7 +100,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Code:   "348",
 	}
 
-	order.Buyer.BuyerId = "123456"
+	order.Buyer.BuyerId = 123456
 	order.Buyer.LastName = "Tadayon"
 	order.Buyer.FirstName = "Sina"
 	order.Buyer.Email = "Sina.Tadayon@baman.io"
@@ -128,7 +128,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Price:      &pb.PriceInfo{},
 		Shipment:   &pb.ShippingSpec{},
 		Attributes: make(map[string]string, 10),
-		SellerId:   "123456",
+		SellerId:   123456,
 	}
 
 	item.InventoryId = "11111-22222"
@@ -173,7 +173,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Price:      &pb.PriceInfo{},
 		Shipment:   &pb.ShippingSpec{},
 		Attributes: make(map[string]string, 10),
-		SellerId:   "678912",
+		SellerId:   678912,
 	}
 
 	item1.InventoryId = "1111-33333"
@@ -216,7 +216,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	return order
 }
 
-func updateOrderStatus(order *entities.Order, itemsId []string, orderStatus string, isUpdateOnlyOrderStatus bool, stepName string, stepIndex int) {
+func updateOrderStatus(order *entities.Order, itemsId []uint64, orderStatus string, isUpdateOnlyOrderStatus bool, stepName string, stepIndex int) {
 
 	if isUpdateOnlyOrderStatus == true {
 		order.UpdatedAt = time.Now().UTC()
@@ -236,7 +236,7 @@ func updateOrderStatus(order *entities.Order, itemsId []string, orderStatus stri
 					}
 				}
 				if !findFlag {
-					logger.Err("%s received itemId %s not exist in order, orderId: %v", stepName, id, order.OrderId)
+					logger.Err("%s received itemId %d not exist in order, orderId: %d", stepName, id, order.OrderId)
 				}
 			}
 		} else {
@@ -266,7 +266,7 @@ func doUpdateOrderStep(order *entities.Order, index int, stepName string, stepIn
 	order.Items[index].Progress.StepsHistory = append(order.Items[index].Progress.StepsHistory, stepHistory)
 }
 
-func updateOrderItemsProgress(order *entities.Order, itemsId []string, action string, result bool, itemStatus string) {
+func updateOrderItemsProgress(order *entities.Order, itemsId []uint64, action string, result bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -280,7 +280,7 @@ func updateOrderItemsProgress(order *entities.Order, itemsId []string, action st
 			}
 
 			if !findFlag {
-				logger.Err("received itemId %s not exist in order, orderId: %v", id, order.OrderId)
+				logger.Err("received itemId %d not exist in order, orderId: %d", id, order.OrderId)
 			}
 		}
 	} else {

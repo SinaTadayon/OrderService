@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	ptime "github.com/yaa110/go-persian-calendar"
 	"gitlab.faza.io/go-framework/logger"
 	order_payment_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/orderpayment"
 	"gitlab.faza.io/order-project/order-service/domain/events"
@@ -13,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"io"
 	"os"
+	"strconv"
 	"time"
 
 	//"errors"
@@ -1073,7 +1075,7 @@ func (flowManager iFlowManagerImpl) MessageHandler(ctx context.Context, req *mes
 func (flowManager iFlowManagerImpl) SellerApprovalPending(ctx context.Context, req *message.RequestSellerOrderAction) promise.IPromise {
 	order, err := global.Singletons.OrderRepository.FindById(req.OrderId)
 	if err != nil {
-		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
+		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, orderId: %d, error: %s",
 			req.OrderId, err)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "OrderId Not Found"}}
@@ -1081,7 +1083,7 @@ func (flowManager iFlowManagerImpl) SellerApprovalPending(ctx context.Context, r
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	itemsId := make([]string, 0, len(order.Items))
+	itemsId := make([]uint64, 0, len(order.Items))
 	for i := 0; i < len(order.Items); i++ {
 		if order.Items[i].SellerInfo.SellerId == req.SellerId {
 			itemsId = append(itemsId, order.Items[i].ItemId)
@@ -1103,7 +1105,7 @@ func (flowManager iFlowManagerImpl) SellerApprovalPending(ctx context.Context, r
 func (flowManager iFlowManagerImpl) BuyerApprovalPending(ctx context.Context, req *message.RequestBuyerOrderAction) promise.IPromise {
 	order, err := global.Singletons.OrderRepository.FindById(req.OrderId)
 	if err != nil {
-		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
+		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, orderId: %d, error: %s",
 			req.OrderId, err)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "OrderId Not Found"}}
@@ -1129,9 +1131,19 @@ func (flowManager iFlowManagerImpl) BuyerApprovalPending(ctx context.Context, re
 }
 
 func (flowManager iFlowManagerImpl) PaymentGatewayResult(ctx context.Context, req *pg.PaygateHookRequest) promise.IPromise {
-	order, err := global.Singletons.OrderRepository.FindById(req.OrderID)
+	orderId, err := strconv.Atoi(req.OrderID)
 	if err != nil {
-		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
+		logger.Err("PaymentGatewayResult() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
+			req.OrderID, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.BadRequest, Reason: "OrderId Invalid"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	order, err := global.Singletons.OrderRepository.FindById(uint64(orderId))
+	if err != nil {
+		logger.Err("PaymentGatewayResult() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
 			req.OrderID, err)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "OrderId Not Found"}}
@@ -1160,7 +1172,7 @@ func (flowManager iFlowManagerImpl) OperatorActionPending(ctx context.Context, r
 	})
 
 	if err != nil {
-		logger.Err("MessageHandler() => request itemId not found, OrderRepository.FindById failed, itemId: %s, error: %s",
+		logger.Err("MessageHandler() => request itemId not found, OrderRepository.FindById failed, itemId: %d, error: %s",
 			req.ItemId, err)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
@@ -1169,7 +1181,7 @@ func (flowManager iFlowManagerImpl) OperatorActionPending(ctx context.Context, r
 	}
 
 	if len(orders) == 0 {
-		logger.Err("MessageHandler() => request itemId not found, itemId: %s", req.ItemId)
+		logger.Err("MessageHandler() => request itemId not found, itemId: %d", req.ItemId)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "ItemId Not Found"}}
 		defer close(returnChannel)
@@ -1177,7 +1189,7 @@ func (flowManager iFlowManagerImpl) OperatorActionPending(ctx context.Context, r
 	}
 
 	if len(orders) > 1 {
-		logger.Err("MessageHandler() => request itemId found in multiple order, itemId: %s, error: %s",
+		logger.Err("MessageHandler() => request itemId found in multiple order, itemId: %d, error: %s",
 			req.ItemId, err)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
@@ -1185,7 +1197,7 @@ func (flowManager iFlowManagerImpl) OperatorActionPending(ctx context.Context, r
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	itemsId := make([]string, 0, 1)
+	itemsId := make([]uint64, 0, 1)
 	for i := 0; i < len(orders[0].Items); i++ {
 		if orders[0].Items[i].ItemId == req.ItemId {
 			itemsId = append(itemsId, orders[0].Items[i].ItemId)
@@ -1257,9 +1269,20 @@ func (flowManager iFlowManagerImpl) BackOfficeOrdersListView(ctx context.Context
 
 // TODO check payment length
 func (flowManager iFlowManagerImpl) BackOfficeOrderDetailView(ctx context.Context, req *message.RequestIdentifier) promise.IPromise {
-	order, err := global.Singletons.OrderRepository.FindById(req.Id)
+
+	orderId, err := strconv.Atoi(req.Id)
 	if err != nil {
-		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
+		logger.Err("BackOfficeOrderDetailView() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
+			req.Id, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.BadRequest, Reason: "OrderId Invalid"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	order, err := global.Singletons.OrderRepository.FindById(uint64(orderId))
+	if err != nil {
+		logger.Err("BackOfficeOrderDetailView() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
 			req.Id, err)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "OrderId Not Found"}}
@@ -1322,7 +1345,7 @@ func (flowManager iFlowManagerImpl) BackOfficeOrderDetailView(ctx context.Contex
 			itemInfo.StepStatus = lastAction.Name
 		} else {
 			itemInfo.StepStatus = "none"
-			logger.Audit("BackOfficeOrderDetailView() => Action History is nil, orderId: %s, itemId: %s", order.OrderId, item.ItemId)
+			logger.Audit("BackOfficeOrderDetailView() => Action History is nil, orderId: %d, itemId: %d", order.OrderId, item.ItemId)
 		}
 
 		//lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
@@ -1382,9 +1405,32 @@ func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSelle
 					Commission:  item.Price.SellerCommission,
 					Category:    item.Category,
 					Status:      item.Status,
-					CreatedAt:   item.CreatedAt.String(),
-					UpdatedAt:   item.UpdatedAt.String(),
 				}
+
+				//localTime := item.CreatedAt.Local()
+				tempTime := time.Date(item.CreatedAt.Year(),
+					item.CreatedAt.Month(),
+					item.CreatedAt.Day(),
+					item.CreatedAt.Hour(),
+					item.CreatedAt.Minute(),
+					item.CreatedAt.Second(),
+					item.CreatedAt.Nanosecond(),
+					ptime.Iran())
+
+				pt := ptime.New(tempTime)
+				itemReport.CreatedAt = pt.String()
+
+				tempTime = time.Date(item.UpdatedAt.Year(),
+					item.UpdatedAt.Month(),
+					item.UpdatedAt.Day(),
+					item.UpdatedAt.Hour(),
+					item.UpdatedAt.Minute(),
+					item.UpdatedAt.Second(),
+					item.UpdatedAt.Nanosecond(),
+					ptime.Iran())
+
+				pt = ptime.New(tempTime)
+				itemReport.UpdatedAt = pt.String()
 				reports = append(reports, itemReport)
 			}
 		}
@@ -1399,8 +1445,8 @@ func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSelle
 	csvReports = append(csvReports, csvHeadLines)
 	for _, itemReport := range reports {
 		csvRecord := []string{
-			itemReport.OrderId,
-			itemReport.ItemId,
+			strconv.Itoa(int(itemReport.OrderId)),
+			strconv.Itoa(int(itemReport.ItemId)),
 			itemReport.ProductId,
 			itemReport.InventoryId,
 			fmt.Sprint(itemReport.PaidPrice),
@@ -1522,6 +1568,7 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 	}
 
 	reports := make([]*entities.BackOfficeExportItems, 0, len(orders))
+	sellerProfileMap := make(map[uint64]entities.SellerProfile)
 
 	for _, order := range orders {
 		for _, item := range order.Items {
@@ -1535,10 +1582,55 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 				SellerName:  "",
 				Price:       item.Price.Total,
 				Status:      item.Status,
-				CreatedAt:   item.CreatedAt.String(),
-				UpdatedAt:   item.UpdatedAt.String(),
 			}
+
+			tempTime := time.Date(item.CreatedAt.Year(),
+				item.CreatedAt.Month(),
+				item.CreatedAt.Day(),
+				item.CreatedAt.Hour(),
+				item.CreatedAt.Minute(),
+				item.CreatedAt.Second(),
+				item.CreatedAt.Nanosecond(),
+				ptime.Iran())
+
+			pt := ptime.New(tempTime)
+			itemReport.CreatedAt = pt.String()
+
+			tempTime = time.Date(item.UpdatedAt.Year(),
+				item.UpdatedAt.Month(),
+				item.UpdatedAt.Day(),
+				item.UpdatedAt.Hour(),
+				item.UpdatedAt.Minute(),
+				item.UpdatedAt.Second(),
+				item.UpdatedAt.Nanosecond(),
+				ptime.Iran())
+
+			pt = ptime.New(tempTime)
+			itemReport.UpdatedAt = pt.String()
 			reports = append(reports, itemReport)
+
+			if sellerProfile, ok := sellerProfileMap[item.SellerInfo.SellerId]; !ok {
+				userCtx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+				ipromise := global.Singletons.UserService.GetSellerProfile(userCtx, strconv.Itoa(int(item.SellerInfo.SellerId)))
+				futureData := ipromise.Data()
+				if futureData.Ex != nil {
+					logger.Err("BackOfficeReportOrderItems() => get sellerProfile failed, orderId: %d, itemId: %d, sellerId: %d",
+						order.OrderId, item.ItemId, item.SellerInfo.SellerId)
+					continue
+				}
+
+				sellerInfo, ok := futureData.Data.(entities.SellerProfile)
+				if ok != true {
+					logger.Err("BackOfficeReportOrderItems() => get sellerProfile invalid, orderId: %d, itemId: %d, sellerId: %d",
+						order.OrderId, item.ItemId, item.SellerInfo.SellerId)
+					continue
+				}
+
+				sellerProfileMap[item.SellerInfo.SellerId] = sellerProfile
+				itemReport.SellerName = sellerInfo.GeneralInfo.ShopDisplayName
+			} else {
+				itemReport.SellerName = sellerProfile.GeneralInfo.ShopDisplayName
+			}
 		}
 	}
 
@@ -1551,12 +1643,12 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 	csvReports = append(csvReports, csvHeadLines)
 	for _, itemReport := range reports {
 		csvRecord := []string{
-			itemReport.ItemId,
+			strconv.Itoa(int(itemReport.ItemId)),
 			itemReport.InventoryId,
 			itemReport.ProductId,
-			itemReport.BuyerId,
+			strconv.Itoa(int(itemReport.BuyerId)),
 			itemReport.BuyerPhone,
-			itemReport.SellerId,
+			strconv.Itoa(int(itemReport.SellerId)),
 			itemReport.SellerName,
 			fmt.Sprint(itemReport.Price),
 			itemReport.Status,

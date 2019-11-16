@@ -1,7 +1,7 @@
 package entities
 
 type BuyerInfo struct {
-	BuyerId         string      `bson:"buyerId"`
+	BuyerId         uint64      `bson:"buyerId"`
 	FirstName       string      `bson:"firstName"`
 	LastName        string      `bson:"lastName"`
 	Phone           string      `bson:"phone"`

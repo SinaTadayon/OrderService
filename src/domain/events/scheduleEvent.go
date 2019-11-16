@@ -1,9 +1,9 @@
 package events
 
 type SchedulerEvent struct {
-	OrderId    string
-	SellerId   string
-	ItemsId    []string
+	OrderId    uint64
+	SellerId   uint64
+	ItemsId    []uint64
 	StepIndex  int
 	ActionName string
 }

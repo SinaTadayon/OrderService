@@ -43,7 +43,7 @@ func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) la
 }
 
 // TODO sencetive checking for save stock state and stock action
-func (stockState stockActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (stockState stockActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 
 	var iPromise promise.IPromise
 	for _, action := range stockState.Actions().(actives.IActiveAction).ActionEnums() {
@@ -74,7 +74,7 @@ func (stockState stockActionLauncher) createFailedPromise() promise.IPromise {
 	return promise.NewPromise(returnChannel, 1, 1)
 }
 
-func (stockState stockActionLauncher) doReservedAction(ctx context.Context, order *entities.Order, itemsId []string) promise.IPromise {
+func (stockState stockActionLauncher) doReservedAction(ctx context.Context, order *entities.Order, itemsId []uint64) promise.IPromise {
 	nextToStepState, ok := stockState.Childes()[0].(launcher_state.ILauncherState)
 	if ok != true {
 		logger.Err("NextToStepState isn't child of StockState, order: %v", order)
@@ -108,7 +108,7 @@ func (stockState stockActionLauncher) doReservedAction(ctx context.Context, orde
 	}
 
 	if futureData.Ex != nil {
-		logger.Err("Reserved stock from stockService failed, error: %s, order: %v", futureData.Ex.Error(), order)
+		logger.Err("Reserved stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
 		stockState.persistOrderState(ctx, order, stock_action.ReservedAction, false)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
@@ -123,7 +123,7 @@ func (stockState stockActionLauncher) doReservedAction(ctx context.Context, orde
 	return nextToStepState.ActionLauncher(ctx, *order, nil, stock_action.ReservedAction)
 }
 
-func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, order *entities.Order, itemsId []string) promise.IPromise {
+func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, order *entities.Order, itemsId []uint64) promise.IPromise {
 	notificationState, ok := stockState.Childes()[0].(launcher_state.ILauncherState)
 	if ok != true {
 		logger.Err("notificationState isn't child of StockState, order: %v", order)
@@ -182,7 +182,7 @@ func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, orde
 	}
 
 	if futureData.Ex != nil {
-		logger.Err("Reserved stock from stockService failed, error: %s, order: %v", futureData.Ex.Error(), order)
+		logger.Err("Reserved stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
 		stockState.persistOrderState(ctx, order, stock_action.ReleasedAction, false)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
@@ -197,7 +197,7 @@ func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, orde
 	return notificationState.ActionLauncher(ctx, *order, itemsId, nil)
 }
 
-func (stockState stockActionLauncher) doSettlementAction(ctx context.Context, order *entities.Order, itemsId []string) promise.IPromise {
+func (stockState stockActionLauncher) doSettlementAction(ctx context.Context, order *entities.Order, itemsId []uint64) promise.IPromise {
 	panic("must be implement")
 }
 

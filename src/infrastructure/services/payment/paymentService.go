@@ -13,7 +13,7 @@ type PaymentRequest struct {
 	Amount   int64
 	Gateway  string
 	Currency string
-	OrderId  string
+	OrderId  uint64
 }
 
 type PaymentResponse struct {

@@ -25,7 +25,7 @@ service OrderService {
 }
 
 message RequestBackOfficeOrderAction {
-    string itemId = 1;
+    uint64 itemId = 1;
     string actionType = 2;
     string action = 3;
     string description = 4;
@@ -36,7 +36,7 @@ message ResponseBackOfficeOrderAction {
 }
 
 message RequestSellerReportOrders {
-    string sellerId = 1;
+    uint64 sellerId = 1;
     int64 startDateTime = 2;
     string Status = 3;
 }
@@ -57,7 +57,7 @@ message RequestBackOfficeReportOrderItems {
 }
 
 message ResponseOrderDetailView {
-    string orderId = 1;
+    uint64 orderId = 1;
     int64 createdAt = 2;
     string ip = 3;
     string status = 4;
@@ -68,8 +68,8 @@ message ResponseOrderDetailView {
 }
 
 message ItemInfo {
-    string itemId = 1;
-    string sellerId = 2;
+    uint64 itemId = 1;
+    uint64 sellerId = 2;
     string inventoryId = 3;
     int32  quantity   = 4;
     string itemStatus = 5;
@@ -90,7 +90,7 @@ message ShippingInfo {
 }
 
 message BillingInfo {
-    string buyerId = 1;
+    uint64 buyerId = 1;
     string fullName = 2;
     string phone = 3;
     string mobile = 4;
@@ -116,7 +116,7 @@ message ResponseBackOfficeOrdersList {
 }
 
 message BackOfficeOrdersList {
-    string orderId = 1;
+    uint64 orderId = 1;
     int64  purchasedOn = 2;
     int32  basketSize = 3;
     string billTo = 4;
@@ -164,7 +164,7 @@ message Item {
     string guaranty = 5;
     string image = 6;
     bool returnable = 7;
-    string sellerId = 8;
+    uint64 sellerId = 8;
     int32 quantity = 9;
     map<string, string> attributes = 10;
     PriceInfo price = 11;
@@ -172,7 +172,7 @@ message Item {
 }
 
 message Buyer {
-    string buyerId = 1;
+    uint64 buyerId = 1;
     string firstName = 2;
     string lastName = 3;
     string phone = 4;
@@ -233,7 +233,7 @@ message ShippingSpec {
 message Event {
     string actor = 1;
     string action = 2;
-    repeated string itemsId = 3;
+    repeated uint64 itemsId = 3;
     google.protobuf.Any data = 4;
 }
 
@@ -246,8 +246,8 @@ message ResponseBuyerFindAllOrders {
 }
 
 message BuyerAllOrders {
-    string  buyerId     = 1;
-    string  orderId     = 2;
+    uint64  buyerId     = 1;
+    uint64  orderId     = 2;
     string  createdAt   = 3;
     string  updatedAt   = 4;
     string  orderStatus = 5;
@@ -264,7 +264,7 @@ message BuyerOrderItems {
     string guaranty = 5;
     string image = 6;
     bool returnable = 7;
-    string sellerId = 8;
+    uint64 sellerId = 8;
     int32 quantity = 9;
     string itemStatus = 10;
     string stepStatus = 11;
@@ -288,9 +288,9 @@ message ResponseSellerOrderAction {
 }
 
 message RequestBuyerOrderAction {
-    string buyerId      = 1;
-    string orderId      = 2;
-    repeated string itemsId       = 3;
+    uint64 buyerId      = 1;
+    uint64 orderId      = 2;
+    repeated uint64 itemsId       = 3;
     string actionType   = 4;
     string action       = 5;
     string reason       = 6;
@@ -301,8 +301,8 @@ message ResponseBuyerOrderAction {
 }
 
 message RequestSellerOrderAction {
-    string orderId      = 1;
-    string sellerId     = 2;
+    uint64 orderId      = 1;
+    uint64 sellerId     = 2;
     string actionType   = 3;
     string action       = 4;
     oneof data {
@@ -325,8 +325,8 @@ message ResponseSellerFindAllItems {
 }
 
 message SellerFindAllItems {
-    string orderId = 1;
-    string itemId = 2;
+    uint64 orderId = 1;
+    uint64 itemId = 2;
     string inventoryId = 3;
     string title = 4;
     string image = 5;

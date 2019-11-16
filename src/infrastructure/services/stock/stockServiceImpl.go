@@ -68,7 +68,7 @@ func (stock *iStockServiceImpl) SingleStockAction(ctx context.Context, inventory
 	return nil
 }
 
-func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order entities.Order, itemsId []string, action string) promise.IPromise {
+func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order entities.Order, itemsId []uint64, action string) promise.IPromise {
 	//if action == stock_action.ReservedAction {
 	//	panic("must be implement")
 	//} else if action == stock_action.ReleasedAction {
@@ -121,10 +121,10 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order ent
 				InventoryId: inventoryId,
 			}
 			if response, err := stock.stockService.StockReserve(ctx, request); err != nil {
-				logger.Err("Stock reserved failed, orderId: %s, inventoryId %s with quantity %d, error: %s", order.OrderId, inventoryId, quantity, err)
+				logger.Err("Stock reserved failed, orderId: %d, inventoryId %s with quantity %d, error: %s", order.OrderId, inventoryId, quantity, err)
 				return stock.rollbackReservedStocks(ctx, &order, reservedStock)
 			} else {
-				logger.Audit("StockReserved success, orderId: %s, inventoryId: %s,  available: %d, reserved: %d",
+				logger.Audit("StockReserved success, orderId: %d, inventoryId: %s,  available: %d, reserved: %d",
 					order.OrderId, inventoryId, response.Available, response.Reserved)
 				reservedStock[inventoryId] = quantity
 			}
@@ -142,7 +142,7 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order ent
 			//logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
 
 			if _, err := stock.stockService.StockRelease(ctx, request); err != nil {
-				logger.Err("Stock release failed, orderId: %s, inventoryId %s with quantity %d, error: %s", order.OrderId, inventoryId, quantity, err)
+				logger.Err("Stock release failed, orderId: %d, inventoryId %s with quantity %d, error: %s", order.OrderId, inventoryId, quantity, err)
 				return stock.rollbackSettlementStocks(ctx, &order, releaseStock)
 			} else {
 				releaseStock[inventoryId] = quantity
@@ -159,7 +159,7 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order ent
 				InventoryId: inventoryId,
 			}
 			if _, err = stock.stockService.StockSettle(ctx, request); err != nil {
-				logger.Err("stockService.StockSettle failed, orderId: %s, inventoryId: %s, quantity: %d, error: %s",
+				logger.Err("stockService.StockSettle failed, orderId: %d, inventoryId: %s, quantity: %d, error: %s",
 					order.OrderId, request.InventoryId, request.Quantity, err)
 
 				return stock.rollbackSettlementStocks(ctx, &order, settlementStock)
@@ -176,7 +176,7 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order ent
 }
 
 func (stock *iStockServiceImpl) rollbackReservedStocks(ctx context.Context, order *entities.Order, reservedStock map[string]int) promise.IPromise {
-	logger.Audit("rollbackReservedStocks, orderId: %s", order.OrderId)
+	logger.Audit("rollbackReservedStocks, orderId: %d", order.OrderId)
 	for inventoryId, quantity := range reservedStock {
 		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 		request := &stockProto.StockRequest{
@@ -185,7 +185,7 @@ func (stock *iStockServiceImpl) rollbackReservedStocks(ctx context.Context, orde
 		}
 
 		if _, err := stock.stockService.StockRelease(ctx, request); err != nil {
-			logger.Err("stockService.StockRelease failed, orderId: %s, inventoryId %s with quantity %d",
+			logger.Err("stockService.StockRelease failed, orderId: %d, inventoryId %s with quantity %d",
 				order.OrderId, inventoryId, quantity)
 		} else {
 			reservedStock[inventoryId] = quantity

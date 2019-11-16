@@ -19,9 +19,9 @@ type IOrderRepository interface {
 
 	FindAllWithPageAndSort(page, perPage int64, fieldName string, direction int) ([]*entities.Order, int64, error)
 
-	FindAllById(ids ...string) ([]*entities.Order, error)
+	FindAllById(ids ...uint64) ([]*entities.Order, error)
 
-	FindById(orderId string) (*entities.Order, error)
+	FindById(orderId uint64) (*entities.Order, error)
 
 	FindByFilter(supplier func() (filter interface{})) ([]*entities.Order, error)
 
@@ -31,14 +31,14 @@ type IOrderRepository interface {
 
 	FindByFilterWithPageAndSort(supplier func() (filter interface{}, fieldName string, direction int), page, perPage int64) ([]*entities.Order, int64, error)
 
-	ExistsById(orderId string) (bool, error)
+	ExistsById(orderId uint64) (bool, error)
 
 	Count() (int64, error)
 
 	CountWithFilter(supplier func() (filter interface{})) (int64, error)
 
 	// only set DeletedAt field
-	DeleteById(orderId string) (*entities.Order, error)
+	DeleteById(orderId uint64) (*entities.Order, error)
 
 	Delete(order entities.Order) (*entities.Order, error)
 
@@ -47,7 +47,7 @@ type IOrderRepository interface {
 	DeleteAll() error
 
 	// remove order from db
-	RemoveById(orderId string) error
+	RemoveById(orderId uint64) error
 
 	Remove(order entities.Order) error
 

@@ -44,7 +44,7 @@ func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) la
 	panic("implementation required")
 }
 
-func (orderPayment orderPaymentActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (orderPayment orderPaymentActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 
 	paymentState, ok := orderPayment.Childes()[0].(listener_state.IListenerState)
 	if ok != true {
@@ -146,7 +146,7 @@ func (orderPayment orderPaymentActionLauncher) ActionLauncher(ctx context.Contex
 	return paymentState.ActionListener(ctx, activeEvent, nil)
 }
 
-func (orderPayment orderPaymentActionLauncher) persistOrderState(ctx context.Context, order *entities.Order, itemsId []string,
+func (orderPayment orderPaymentActionLauncher) persistOrderState(ctx context.Context, order *entities.Order, itemsId []uint64,
 	acceptedAction actions.IEnumAction, result bool, reason string, paymentResponse *payment_service.PaymentResponse) {
 	order.UpdatedAt = time.Now().UTC()
 
@@ -156,7 +156,7 @@ func (orderPayment orderPaymentActionLauncher) persistOrderState(ctx context.Con
 				if order.Items[i].ItemId == id {
 					orderPayment.doUpdateOrderState(ctx, order, i, acceptedAction, result, reason, paymentResponse)
 				} else {
-					logger.Err("orderPayment received itemId %s not exist in order, order: %v", id, order)
+					logger.Err("orderPayment received itemId %d not exist in order, order: %v", id, order)
 				}
 			}
 		}

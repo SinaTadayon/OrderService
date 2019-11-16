@@ -18,8 +18,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	ptime "github.com/yaa110/go-persian-calendar"
-
 	//"errors"
 	"net"
 	//"net/http"
@@ -203,8 +201,14 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
 	}
 
+	sellerId, err := strconv.Atoi(req.Id)
+	if err != nil {
+		logger.Err(" SellerFindAllItems() => sellerId invalid: %s", req.Id)
+		return nil, status.Error(codes.Code(promise.BadRequest), "SellerId Invalid")
+	}
+
 	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
-		return bson.D{{"items.sellerInfo.sellerId", req.Id}}
+		return bson.D{{"items.sellerInfo.sellerId", uint64(sellerId)}}
 	})
 
 	if err != nil {
@@ -216,7 +220,7 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 
 	for _, order := range orders {
 		for _, orderItem := range order.Items {
-			if orderItem.SellerInfo.SellerId == req.Id {
+			if strconv.Itoa(int(orderItem.SellerInfo.SellerId)) == req.Id {
 				if _, ok := sellerItemMap[orderItem.InventoryId]; !ok {
 					newResponseItem := &pb.SellerFindAllItems{
 						OrderId:     order.OrderId,
@@ -265,7 +269,7 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 						newResponseItem.Status.StepStatus = lastAction.Name
 					} else {
 						newResponseItem.Status.StepStatus = "none"
-						logger.Audit("SellerFindAllItems() => Action History is nil, orderId: %s, itemId: %s", order.OrderId, orderItem.ItemId)
+						logger.Audit("SellerFindAllItems() => Action History is nil, orderId: %d, itemId: %d", order.OrderId, orderItem.ItemId)
 					}
 
 					sellerItemMap[orderItem.InventoryId] = newResponseItem
@@ -293,8 +297,8 @@ func (server Server) BuyerOrderAction(ctx context.Context, req *pb.RequestBuyerO
 		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
 	}
 
-	if strconv.Itoa(int(userAcl.User().UserID)) != req.BuyerId {
-		logger.Err(" BuyerOrderAction() => token userId %d not authorized for buyerId %s", userAcl.User().UserID, req.BuyerId)
+	if userAcl.User().UserID != int64(req.BuyerId) {
+		logger.Err(" BuyerOrderAction() => token userId %d not authorized for buyerId %d", userAcl.User().UserID, req.BuyerId)
 		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
 	}
 
@@ -321,8 +325,8 @@ func (server Server) SellerOrderAction(ctx context.Context, req *pb.RequestSelle
 		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
 	}
 
-	if strconv.Itoa(int(userAcl.User().UserID)) != req.SellerId {
-		logger.Err("SellerOrderAction() => token userId %d not authorized for sellerId %s", userAcl.User().UserID, req.SellerId)
+	if userAcl.User().UserID != int64(req.SellerId) {
+		logger.Err("SellerOrderAction() => token userId %d not authorized for sellerId %d", userAcl.User().UserID, req.SellerId)
 		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
 	}
 
@@ -354,8 +358,14 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
 	}
 
+	buyerId, err := strconv.Atoi(req.Id)
+	if err != nil {
+		logger.Err(" SellerFindAllItems() => buyerId invalid: %s", req.Id)
+		return nil, status.Error(codes.Code(promise.BadRequest), "BuyerId Invalid")
+	}
+
 	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
-		return bson.D{{"buyerInfo.buyerId", req.Id}}
+		return bson.D{{"buyerInfo.buyerId", uint64(buyerId)}}
 	})
 
 	if err != nil {
@@ -440,7 +450,7 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 					newResponseOrderItem.StepStatus = lastAction.Name
 				} else {
 					newResponseOrderItem.StepStatus = "none"
-					logger.Audit("BuyerFindAllOrders() => Action History is nil, orderId: %s, itemId: %s", order.OrderId, item.ItemId)
+					logger.Audit("BuyerFindAllOrders() => Action History is nil, orderId: %d, itemId: %d", order.OrderId, item.ItemId)
 				}
 				orderItemMap[item.InventoryId] = newResponseOrderItem
 			}
@@ -575,8 +585,8 @@ func (server Server) SellerReportOrders(req *pb.RequestSellerReportOrders, srv p
 		return status.Error(codes.Code(promise.InternalError), "Unknown Error")
 	}
 
-	if strconv.Itoa(int(userAcl.User().UserID)) != req.SellerId {
-		logger.Err(" SellerFindAllItems() => token userId %d not authorized for sellerId %s", userAcl.User().UserID, req.SellerId)
+	if userAcl.User().UserID != int64(req.SellerId) {
+		logger.Err(" SellerFindAllItems() => token userId %d not authorized for sellerId %d", userAcl.User().UserID, req.SellerId)
 		return status.Error(codes.Code(promise.Forbidden), "User token not authorized")
 	}
 

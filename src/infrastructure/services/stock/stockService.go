@@ -9,7 +9,7 @@ import (
 
 type IStockService interface {
 	SingleStockAction(ctx context.Context, inventoryId string, count int, action string) promise.IPromise
-	BatchStockActions(ctx context.Context, order entities.Order, itemsId []string, action string) promise.IPromise
+	BatchStockActions(ctx context.Context, order entities.Order, itemsId []uint64, action string) promise.IPromise
 
 	GetStockClient() stockProto.StockClient
 	ConnectToStockService() error

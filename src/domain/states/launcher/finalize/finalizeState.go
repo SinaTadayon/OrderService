@@ -43,7 +43,7 @@ func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) la
 
 // TODO must be dynamic
 // TODO check actions and improve handling actions
-func (finalizeState finalizeActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (finalizeState finalizeActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 
 	returnChannel := make(chan promise.FutureData, 1)
 	defer close(returnChannel)
@@ -69,7 +69,7 @@ func (finalizeState finalizeActionLauncher) ActionLauncher(ctx context.Context, 
 	return promise.NewPromise(returnChannel, 1, 1)
 }
 
-func (finalizeState finalizeActionLauncher) persistOrderState(ctx context.Context, order *entities.Order, itemsId []string,
+func (finalizeState finalizeActionLauncher) persistOrderState(ctx context.Context, order *entities.Order, itemsId []uint64,
 	acceptedAction actions.IEnumAction, result bool, reason string) {
 	order.UpdatedAt = time.Now().UTC()
 
@@ -79,7 +79,7 @@ func (finalizeState finalizeActionLauncher) persistOrderState(ctx context.Contex
 				if order.Items[i].ItemId == id {
 					finalizeState.doUpdateOrderState(ctx, order, i, acceptedAction, result, reason)
 				} else {
-					logger.Err("finalize received itemId %s not exist in order, order: %v", id, order)
+					logger.Err("finalize received itemId %d not exist in order, orderId: %d", id, order.OrderId)
 				}
 			}
 		}

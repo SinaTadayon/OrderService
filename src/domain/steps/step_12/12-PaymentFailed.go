@@ -43,7 +43,7 @@ func (paymentFailed paymentFailedStep) ProcessMessage(ctx context.Context, reque
 }
 
 // TODO steps must be append step history and changes to order object
-func (paymentFailed paymentFailedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (paymentFailed paymentFailedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 	//stockState, ok := paymentFailed.Childes()[0].(launcher_state.ILauncherState)
 	//if ok != true || stockState.ActiveType() != actives.StockAction {
 	//	logger.Err("stock state doesn't exist in index 0 of %s statesMap , order: %v", paymentFailed.Name(), order)
@@ -75,7 +75,7 @@ func (paymentFailed paymentFailedStep) persistOrder(ctx context.Context, order *
 	return err
 }
 
-func (paymentFailed paymentFailedStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
+func (paymentFailed paymentFailedStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []uint64,
 	action string, result bool, itemStatus string) {
 
 	findFlag := false
@@ -91,7 +91,7 @@ func (paymentFailed paymentFailedStep) updateOrderItemsProgress(ctx context.Cont
 			}
 
 			if findFlag == false {
-				logger.Err("%s received itemId %s not exist in order, orderId: %v", paymentFailed.Name(), id, order.OrderId)
+				logger.Err("%s received itemId %d not exist in order, orderId: %d", paymentFailed.Name(), id, order.OrderId)
 			}
 		}
 	} else {

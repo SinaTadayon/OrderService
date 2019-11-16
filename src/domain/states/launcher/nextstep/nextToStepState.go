@@ -46,7 +46,7 @@ func (nextStep nextToStepActionLauncher) ActionStepMap() map[actions.IEnumAction
 	return nextStep.actionStepMap
 }
 
-func (nextStep nextToStepActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (nextStep nextToStepActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 
 	if param == nil {
 		logger.Err("received param in NextToStepState is nil, order: %v", order)
@@ -78,7 +78,7 @@ func (nextStep nextToStepActionLauncher) ActionLauncher(ctx context.Context, ord
 	}
 }
 
-func (nextStep nextToStepActionLauncher) persistOrderState(ctx context.Context, order *entities.Order, itemsId []string,
+func (nextStep nextToStepActionLauncher) persistOrderState(ctx context.Context, order *entities.Order, itemsId []uint64,
 	acceptedAction actions.IEnumAction, result bool, reason string) {
 	order.UpdatedAt = time.Now().UTC()
 
@@ -88,7 +88,7 @@ func (nextStep nextToStepActionLauncher) persistOrderState(ctx context.Context, 
 				if order.Items[i].ItemId == id {
 					nextStep.doUpdateOrderState(ctx, order, i, acceptedAction, result, reason)
 				} else {
-					logger.Err("nextToStep received itemId %s not exist in order, order: %v", id, order)
+					logger.Err("nextToStep received itemId %d not exist in order, order: %v", id, order)
 				}
 			}
 		}

@@ -4,7 +4,6 @@ import (
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"math/rand"
-	"strconv"
 	"time"
 )
 
@@ -24,7 +23,7 @@ func init() {
 //Order Status: New, InProgress, Closed
 type Order struct {
 	ID             primitive.ObjectID `bson:"-"`
-	OrderId        string             `bson:"orderId"`
+	OrderId        uint64             `bson:"orderId"`
 	PaymentService []PaymentService   `bson:"paymentService"`
 	SystemPayment  SystemPayment      `bson:"systemPayment"`
 	Status         string             `bson:"status"`
@@ -98,7 +97,7 @@ func (order Order) IsIdEmpty() bool {
 }
 
 // TODO concurrency check
-func GenerateOrderId() string {
+func GenerateOrderId() uint64 {
 	var err error
 	var bytes []byte
 	var orderId uint32
@@ -109,7 +108,8 @@ func GenerateOrderId() string {
 			break
 		}
 	}
-	return strconv.FormatUint(uint64(orderId), 10)
+	//return strconv.FormatUint(uint64(orderId), 10)
+	return uint64(orderId)
 }
 
 func byteToHash(bytes []byte) uint32 {

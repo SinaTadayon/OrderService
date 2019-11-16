@@ -45,7 +45,7 @@ func (shipmentPending shipmentPendingStep) ProcessMessage(ctx context.Context, r
 	panic("implementation required")
 }
 
-func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 
 	if param == nil {
 		shipmentPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
@@ -69,11 +69,11 @@ func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, ord
 				if futureData == nil {
 					if err := shipmentPending.persistOrder(ctx, &order); err != nil {
 					}
-					logger.Err("StockService promise channel has been closed, order: %s", order.OrderId)
+					logger.Err("StockService promise channel has been closed, order: %d", order.OrderId)
 				} else if futureData.Ex != nil {
 					if err := shipmentPending.persistOrder(ctx, &order); err != nil {
 					}
-					logger.Err("released stock from stockService failed, error: %s, orderId: %s", futureData.Ex.Error(), order.OrderId)
+					logger.Err("released stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
 					returnChannel := make(chan promise.FutureData, 1)
 					defer close(returnChannel)
 					returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
@@ -154,11 +154,11 @@ func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, ord
 			if futureData == nil {
 				if err := shipmentPending.persistOrder(ctx, &order); err != nil {
 				}
-				logger.Err("StockService promise channel has been closed, order: %s", order.OrderId)
+				logger.Err("StockService promise channel has been closed, orderId: %d", order.OrderId)
 			} else if futureData.Ex != nil {
 				if err := shipmentPending.persistOrder(ctx, &order); err != nil {
 				}
-				logger.Err("released stock from stockService failed, error: %s, orderId: %s", futureData.Ex.Error(), order.OrderId)
+				logger.Err("released stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
 				returnChannel := make(chan promise.FutureData, 1)
 				defer close(returnChannel)
 				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
@@ -199,8 +199,7 @@ func (shipmentPending shipmentPendingStep) persistOrder(ctx context.Context, ord
 	return err
 }
 
-func (shipmentPending shipmentPendingStep) validateAction(ctx context.Context, order *entities.Order,
-	itemsId []string) bool {
+func (shipmentPending shipmentPendingStep) validateAction(ctx context.Context, order *entities.Order, itemsId []uint64) bool {
 	if itemsId != nil && len(itemsId) > 0 {
 		for _, id := range itemsId {
 			for i := 0; i < len(order.Items); i++ {
@@ -222,8 +221,7 @@ func (shipmentPending shipmentPendingStep) validateAction(ctx context.Context, o
 	return true
 }
 
-func (shipmentPending shipmentPendingStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
-	action string, result bool, reason string, req *message.RequestSellerOrderAction_Success, isSetExpireTime bool, itemStatus string) {
+func (shipmentPending shipmentPendingStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []uint64, action string, result bool, reason string, req *message.RequestSellerOrderAction_Success, isSetExpireTime bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -244,7 +242,7 @@ func (shipmentPending shipmentPendingStep) updateOrderItemsProgress(ctx context.
 				}
 			}
 			if !findFlag {
-				logger.Err("%s received itemId %s not exist in order, orderId: %v", shipmentPending.Name(), id, order.OrderId)
+				logger.Err("%s received itemId %d not exist in order, orderId: %d", shipmentPending.Name(), id, order.OrderId)
 			}
 		}
 	} else {

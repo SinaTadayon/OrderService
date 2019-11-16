@@ -48,7 +48,7 @@ func TestOrderPayment_Success(t *testing.T) {
 		Gateway:  "asanpardakht",
 		Amount:   1200000,
 		Currency: "IRR",
-		OrderId:  "123456789",
+		OrderId:  123456789,
 	}
 
 	ipromise := payment.OrderPayment(ctx, request)

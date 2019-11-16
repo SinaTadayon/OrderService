@@ -41,18 +41,54 @@ func (userService *iUserServiceImpl) getUserService(ctx context.Context) error {
 	}
 	userService.client, err = userclient.NewClient(ctx, config, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
-		logger.Err("userclient.NewClient failed, %s", err)
+		logger.Err("userclient.NewClient failed, address: %s, port: %d, error: %s", userService.serverAddress, userService.serverPort, err)
 		return err
 	}
-	ctx, cancel := context.WithTimeout(ctx, config.Timeout)
-	defer cancel()
+	ctx, _ = context.WithTimeout(ctx, config.Timeout)
+	//defer cancel()
 	_, err = userService.client.Connect(ctx)
 	if err != nil {
-		logger.Err("userService.client.Connect failed, %s", err)
+		logger.Err("userclient.NewClient failed, address: %s, port: %d, error: %s", userService.serverAddress, userService.serverPort, err)
 		return err
 	}
 
 	return nil
+}
+
+func (userService *iUserServiceImpl) UserLogin(ctx context.Context, username, password string) promise.IPromise {
+	if err := userService.getUserService(ctx); err != nil {
+		returnChannel := make(chan promise.FutureData, 1)
+		defer close(returnChannel)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Connect to UserService failed"}}
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	result, err := userService.client.Login(username, password, ctx)
+	if err != nil {
+		logger.Err("UserLogin() => userService.client.Login failed, username: %s, password: %s, error: %s", username, password, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		defer close(returnChannel)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	if int(result.Code) != 200 {
+		logger.Err("UserLogin() => userService.client.Login failed, username: %s, password: %s, error: %s", username, password, err)
+		returnChannel := make(chan promise.FutureData, 1)
+		defer close(returnChannel)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.Forbidden, Reason: "User Login Failed"}}
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
+	loginTokens := LoginTokens{
+		AccessToken:  result.Data.AccessToken,
+		RefreshToken: result.Data.RefreshToken,
+	}
+
+	returnChannel := make(chan promise.FutureData, 1)
+	defer close(returnChannel)
+	returnChannel <- promise.FutureData{Data: loginTokens, Ex: nil}
+	return promise.NewPromise(returnChannel, 1, 1)
 }
 
 func (userService iUserServiceImpl) AuthenticateContextToken(ctx context.Context) (*acl.Acl, error) {

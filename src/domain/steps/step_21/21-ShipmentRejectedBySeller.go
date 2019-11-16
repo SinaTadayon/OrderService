@@ -42,9 +42,9 @@ func (shipmentRejectedBySeller shipmentRejectedBySellerStep) ProcessMessage(ctx 
 	panic("implementation required")
 }
 
-func (shipmentRejectedBySeller shipmentRejectedBySellerStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (shipmentRejectedBySeller shipmentRejectedBySellerStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 
-	logger.Audit("shipmentRejectedBySeller step, orderId: %s", order.OrderId)
+	logger.Audit("shipmentRejectedBySeller step, orderId: %d", order.OrderId)
 
 	if len(order.Items) == len(itemsId) {
 		shipmentRejectedBySeller.UpdateAllOrderStatus(ctx, &order, itemsId, steps.ClosedStatus, false)
@@ -71,8 +71,7 @@ func (shipmentRejectedBySeller shipmentRejectedBySellerStep) persistOrder(ctx co
 	return err
 }
 
-func (shipmentRejectedBySeller shipmentRejectedBySellerStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
-	action string, result bool, itemStatus string) {
+func (shipmentRejectedBySeller shipmentRejectedBySellerStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []uint64, action string, result bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -87,7 +86,7 @@ func (shipmentRejectedBySeller shipmentRejectedBySellerStep) updateOrderItemsPro
 			}
 
 			if findFlag == false {
-				logger.Err("%s received itemId %s not exist in order, orderId: %v", shipmentRejectedBySeller.Name(), id, order.OrderId)
+				logger.Err("%s received itemId %d not exist in order, orderId: %d", shipmentRejectedBySeller.Name(), id, order.OrderId)
 			}
 		}
 	} else {

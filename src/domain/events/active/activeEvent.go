@@ -9,7 +9,7 @@ import (
 type IActiveEvent interface {
 	events.IEvent
 	Order() entities.Order
-	ItemsId() []string
+	ItemsId() []uint64
 	ActiveType() actives.ActiveType
 	ActiveAction() actives.IActiveAction
 }

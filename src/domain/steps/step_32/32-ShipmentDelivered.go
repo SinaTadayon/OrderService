@@ -43,10 +43,10 @@ func (shipmentDelivered shipmentDeliveredStep) ProcessMessage(ctx context.Contex
 	panic("implementation required")
 }
 
-func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 
 	if param == nil {
-		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", shipmentDelivered.Name(), order.OrderId, ShipmentDeliveredPending)
+		logger.Audit("Order Received in %s step, orderId: %d, Action: %s", shipmentDelivered.Name(), order.OrderId, ShipmentDeliveredPending)
 		shipmentDelivered.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
 		shipmentDelivered.updateOrderItemsProgress(ctx, &order, itemsId, ShipmentDeliveredPending, true, "", true, steps.InProgressStatus)
 		if err := shipmentDelivered.persistOrder(ctx, &order); err != nil {
@@ -60,7 +60,7 @@ func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context,
 		returnChannel <- promise.FutureData{Data: nil, Ex: nil}
 		return promise.NewPromise(returnChannel, 1, 1)
 	} else if param == "actionApproved" {
-		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", shipmentDelivered.Name(), order.OrderId, AutoApprovedShipmentDelivered)
+		logger.Audit("Order Received in %s step, orderId: %d, Action: %s", shipmentDelivered.Name(), order.OrderId, AutoApprovedShipmentDelivered)
 		shipmentDelivered.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
 		shipmentDelivered.updateOrderItemsProgress(ctx, &order, itemsId, AutoApprovedShipmentDelivered, true, "", true, steps.InProgressStatus)
 		if err := shipmentDelivered.persistOrder(ctx, &order); err != nil {
@@ -73,7 +73,7 @@ func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context,
 		return shipmentDelivered.Childes()[2].ProcessOrder(ctx, order, itemsId, nil)
 	}
 
-	logger.Audit("invalid action, Order Received in %s step, orderId: %s, Action: %s", shipmentDelivered.Name(), order.OrderId, param)
+	logger.Audit("invalid action, Order Received in %s step, orderId: %d, Action: %s", shipmentDelivered.Name(), order.OrderId, param)
 	returnChannel := make(chan promise.FutureData, 1)
 	defer close(returnChannel)
 	returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
@@ -132,8 +132,7 @@ func (shipmentDelivered shipmentDeliveredStep) persistOrder(ctx context.Context,
 	return err
 }
 
-func (shipmentDelivered shipmentDeliveredStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
-	action string, result bool, reason string, isSetExpireTime bool, itemStatus string) {
+func (shipmentDelivered shipmentDeliveredStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []uint64, action string, result bool, reason string, isSetExpireTime bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -147,7 +146,7 @@ func (shipmentDelivered shipmentDeliveredStep) updateOrderItemsProgress(ctx cont
 				}
 			}
 			if !findFlag {
-				logger.Err("%s received itemId %s not exist in order, orderId: %v", shipmentDelivered.Name(), id, order.OrderId)
+				logger.Err("%s received itemId %d not exist in order, orderId: %d", shipmentDelivered.Name(), id, order.OrderId)
 			}
 		}
 	} else {

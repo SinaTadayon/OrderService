@@ -116,7 +116,7 @@ func (base BaseStepImpl) String() string {
 	return strconv.Itoa(base.index) + "." + base.name
 }
 
-func (base BaseStepImpl) UpdateAllOrderStatus(ctx context.Context, order *entities.Order, itemsId []string, orderStatus string, isUpdateOnlyOrderStatus bool) {
+func (base BaseStepImpl) UpdateAllOrderStatus(ctx context.Context, order *entities.Order, itemsId []uint64, orderStatus string, isUpdateOnlyOrderStatus bool) {
 
 	if isUpdateOnlyOrderStatus == true {
 		order.UpdatedAt = time.Now().UTC()
@@ -136,7 +136,7 @@ func (base BaseStepImpl) UpdateAllOrderStatus(ctx context.Context, order *entiti
 					}
 				}
 				if !findFlag {
-					logger.Err("%s received itemId %s not exist in order, orderId: %v", base.Name(), id, order.OrderId)
+					logger.Err("%s received itemId %d not exist in order, orderId: %d", base.Name(), id, order.OrderId)
 				}
 			}
 		} else {

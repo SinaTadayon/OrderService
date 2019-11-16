@@ -5,7 +5,7 @@ import (
 )
 
 type Item struct {
-	ItemId          string            `bson:"itemId"`
+	ItemId          uint64            `bson:"itemId"`
 	InventoryId     string            `bson:"inventoryId"`
 	Title           string            `bson:"title"`
 	Brand           string            `bson:"brand"`
@@ -97,7 +97,7 @@ type Action struct {
 }
 
 type SellerInfo struct {
-	SellerId string         `bson:"sellerId"`
+	SellerId uint64         `bson:"sellerId"`
 	Profile  *SellerProfile `bson:"profile"`
 }
 

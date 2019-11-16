@@ -42,9 +42,9 @@ func (payToSeller payToSellerStep) ProcessMessage(ctx context.Context, request *
 	panic("implementation required")
 }
 
-func (payToSeller payToSellerStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (payToSeller payToSellerStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 
-	logger.Audit("Pay to Seller step, orderId: %s", order.OrderId)
+	logger.Audit("Pay to Seller step, orderId: %d", order.OrderId)
 
 	if len(order.Items) == len(itemsId) {
 		payToSeller.UpdateAllOrderStatus(ctx, &order, itemsId, steps.ClosedStatus, false)
@@ -73,8 +73,7 @@ func (payToSeller payToSellerStep) persistOrder(ctx context.Context, order *enti
 	return err
 }
 
-func (payToSeller payToSellerStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
-	action string, result bool, itemStatus string) {
+func (payToSeller payToSellerStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []uint64, action string, result bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -89,7 +88,7 @@ func (payToSeller payToSellerStep) updateOrderItemsProgress(ctx context.Context,
 			}
 
 			if findFlag == false {
-				logger.Err("%s received itemId %s not exist in order, orderId: %v", payToSeller.Name(), id, order.OrderId)
+				logger.Err("%s received itemId %d not exist in order, orderId: %d", payToSeller.Name(), id, order.OrderId)
 			}
 		}
 	} else {

@@ -38,7 +38,7 @@ func (returnShipmentDeliveryPending returnShipmentDeliveryPendingStep) ProcessMe
 	panic("implementation required")
 }
 
-func (returnShipmentDeliveryPending returnShipmentDeliveryPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (returnShipmentDeliveryPending returnShipmentDeliveryPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 	panic("implementation required")
 }
 

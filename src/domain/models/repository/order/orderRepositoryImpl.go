@@ -10,7 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"strconv"
 	"time"
 )
 
@@ -43,7 +42,7 @@ func NewOrderRepository(mongoDriver *mongoadapter.Mongo) (IOrderRepository, erro
 
 func (repo iOrderRepositoryImpl) Save(order entities.Order) (*entities.Order, error) {
 
-	if len(order.OrderId) == 0 {
+	if order.OrderId == 0 {
 		order.OrderId = entities.GenerateOrderId()
 		mapItemIds := make(map[int]int, len(order.Items))
 		for i := 0; i < len(order.Items); i++ {
@@ -60,7 +59,7 @@ func (repo iOrderRepositoryImpl) Save(order entities.Order) (*entities.Order, er
 		for key, value := range mapItemIds {
 			for index := range order.Items {
 				if index == value {
-					order.Items[index].ItemId = order.OrderId + strconv.Itoa(int(key))
+					order.Items[index].ItemId = order.OrderId + uint64(key)
 					order.Items[index].CreatedAt = time.Now().UTC()
 					order.Items[index].UpdatedAt = time.Now().UTC()
 					break
@@ -103,7 +102,7 @@ func (repo iOrderRepositoryImpl) SaveAll(orders []entities.Order) ([]*entities.O
 
 func (repo iOrderRepositoryImpl) Insert(order entities.Order) (*entities.Order, error) {
 
-	if len(order.OrderId) == 0 {
+	if order.OrderId == 0 {
 		order.OrderId = entities.GenerateOrderId()
 		mapItemIds := make(map[int]int, len(order.Items))
 		for i := 0; i < len(order.Items); i++ {
@@ -120,7 +119,7 @@ func (repo iOrderRepositoryImpl) Insert(order entities.Order) (*entities.Order, 
 		for key, value := range mapItemIds {
 			for index := range order.Items {
 				if index == value {
-					order.Items[index].ItemId = order.OrderId + strconv.Itoa(int(key))
+					order.Items[index].ItemId = order.OrderId + uint64(key)
 					order.Items[index].CreatedAt = time.Now().UTC()
 					order.Items[index].UpdatedAt = time.Now().UTC()
 					break
@@ -326,11 +325,11 @@ func (repo iOrderRepositoryImpl) FindAllWithPageAndSort(page, perPage int64, fie
 	return orders, availablePages, nil
 }
 
-func (repo iOrderRepositoryImpl) FindAllById(ids ...string) ([]*entities.Order, error) {
+func (repo iOrderRepositoryImpl) FindAllById(ids ...uint64) ([]*entities.Order, error) {
 	panic("implementation required")
 }
 
-func (repo iOrderRepositoryImpl) FindById(orderId string) (*entities.Order, error) {
+func (repo iOrderRepositoryImpl) FindById(orderId uint64) (*entities.Order, error) {
 	var order entities.Order
 	singleResult := repo.mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"orderId", orderId}, {"deletedAt", nil}})
 	if err := singleResult.Err(); err != nil {
@@ -533,7 +532,7 @@ func (repo iOrderRepositoryImpl) FindByFilterWithPageAndSort(supplier func() (in
 	return orders, availablePages, nil
 }
 
-func (repo iOrderRepositoryImpl) ExistsById(orderId string) (bool, error) {
+func (repo iOrderRepositoryImpl) ExistsById(orderId uint64) (bool, error) {
 	singleResult := repo.mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"orderId", orderId}, {"deletedAt", nil}})
 	if err := singleResult.Err(); err != nil {
 		if repo.mongoAdapter.NoDocument(err) {
@@ -560,7 +559,7 @@ func (repo iOrderRepositoryImpl) CountWithFilter(supplier func() interface{}) (i
 	return total, nil
 }
 
-func (repo iOrderRepositoryImpl) DeleteById(orderId string) (*entities.Order, error) {
+func (repo iOrderRepositoryImpl) DeleteById(orderId uint64) (*entities.Order, error) {
 	var err error
 	order, err := repo.FindById(orderId)
 	if err != nil {
@@ -607,7 +606,7 @@ func (repo iOrderRepositoryImpl) DeleteAll() error {
 	return nil
 }
 
-func (repo iOrderRepositoryImpl) RemoveById(orderId string) error {
+func (repo iOrderRepositoryImpl) RemoveById(orderId uint64) error {
 	result, err := repo.mongoAdapter.DeleteOne(databaseName, collectionName, bson.M{"orderId": orderId})
 	if err != nil {
 		return err

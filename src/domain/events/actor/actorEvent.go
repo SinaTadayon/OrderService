@@ -9,7 +9,7 @@ import (
 type IActorEvent interface {
 	events.IEvent
 	Order() entities.Order
-	ItemsId() []string
+	ItemsId() []uint64
 	ActorType() actors.ActorType
 	ActorAction() actors.IActorAction
 }

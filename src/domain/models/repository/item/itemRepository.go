@@ -31,14 +31,14 @@ type IItemRepository interface {
 
 	FindByFilterWithPageAndSort(supplier func() (filter interface{}, fieldName string, direction int), page, perPage int64) ([]*entities.Item, int64, error)
 
-	ExistsById(itemId string) (bool, error)
+	ExistsById(itemId uint64) (bool, error)
 
 	Count() (int64, error)
 
 	CountWithFilter(supplier func() (filter interface{})) (int64, error)
 
 	// only set DeletedAt field
-	DeleteById(itemId string) (*entities.Item, error)
+	DeleteById(itemId uint64) (*entities.Item, error)
 
 	Delete(item entities.Item) (*entities.Item, error)
 
@@ -47,7 +47,7 @@ type IItemRepository interface {
 	DeleteAll() error
 
 	// remove item from db
-	RemoveById(itemId string) error
+	RemoveById(itemId uint64) error
 
 	Remove(item entities.Item) error
 

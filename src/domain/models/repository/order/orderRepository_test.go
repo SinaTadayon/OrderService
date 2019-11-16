@@ -433,7 +433,7 @@ func createOrder() entities.Order {
 			City:          "Tehran",
 			Province:      "Tehran",
 			Neighbourhood: "Chizar",
-			Location: entities.Location{
+			Location: &entities.Location{
 				Type:        "Point",
 				Coordinates: []float64{-72.7738706, 41.6332836},
 			},
@@ -442,7 +442,7 @@ func createOrder() entities.Order {
 	}
 
 	newOrder := entities.Order{
-		OrderId: "",
+		OrderId: 0,
 		PaymentService: []entities.PaymentService{{
 			PaymentRequest:  &paymentRequest,
 			PaymentResponse: &paymentResponse,
@@ -482,7 +482,7 @@ func createOrder() entities.Order {
 		},
 		Items: []entities.Item{
 			{
-				ItemId:      "",
+				ItemId:      0,
 				InventoryId: "1111111111",
 				Title:       "Mobile",
 				Brand:       "Nokia",
@@ -501,7 +501,7 @@ func createOrder() entities.Order {
 					"Materials": "Stone",
 				},
 				SellerInfo: entities.SellerInfo{
-					SellerId: "129384234",
+					SellerId: 129384234,
 					Profile: &entities.SellerProfile{
 						SellerId: 129384234,
 						GeneralInfo: &entities.GeneralSellerInfo{
@@ -651,7 +651,7 @@ func createOrder() entities.Order {
 				},
 			},
 			{
-				ItemId:      "",
+				ItemId:      0,
 				InventoryId: "2222222222",
 				Title:       "Laptop",
 				Brand:       "Lenovo",
@@ -670,7 +670,7 @@ func createOrder() entities.Order {
 					"Materials": "Stone",
 				},
 				SellerInfo: entities.SellerInfo{
-					SellerId: "2384723083",
+					SellerId: 2384723083,
 					Profile: &entities.SellerProfile{
 						SellerId:        2384723083,
 						GeneralInfo:     nil,

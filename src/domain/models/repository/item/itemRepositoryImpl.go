@@ -139,7 +139,7 @@ func (repo iItemRepositoryImpl) FindByFilterWithPageAndSort(supplier func() (int
 	panic("implementation required")
 }
 
-func (repo iItemRepositoryImpl) ExistsById(itemId string) (bool, error) {
+func (repo iItemRepositoryImpl) ExistsById(itemId uint64) (bool, error) {
 	panic("implementation required")
 }
 
@@ -176,7 +176,7 @@ func (repo iItemRepositoryImpl) CountWithFilter(supplier func() interface{}) (in
 	panic("implementation required")
 }
 
-func (repo iItemRepositoryImpl) DeleteById(itemId string) (*entities.Item, error) {
+func (repo iItemRepositoryImpl) DeleteById(itemId uint64) (*entities.Item, error) {
 	panic("implementation required")
 }
 
@@ -192,7 +192,7 @@ func (repo iItemRepositoryImpl) DeleteAll() error {
 	panic("implementation required")
 }
 
-func (repo iItemRepositoryImpl) RemoveById(orderId string) error {
+func (repo iItemRepositoryImpl) RemoveById(itemId uint64) error {
 	panic("implementation required")
 }
 

@@ -113,6 +113,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 
 		for i := 0; i < int(item.Quantity); i++ {
 			var newItem = entities.Item{}
+			newItem.SellerInfo.SellerId = item.SellerId
 			newItem.InventoryId = item.InventoryId
 			newItem.Title = item.Title
 			newItem.Brand = item.Brand
@@ -121,7 +122,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 			newItem.Image = item.Image
 			newItem.Quantity = item.Quantity
 			newItem.Returnable = item.Returnable
-			newItem.SellerInfo.SellerId = item.SellerId
+
 			newItem.Attributes = item.Attributes
 
 			if item.Price == nil {

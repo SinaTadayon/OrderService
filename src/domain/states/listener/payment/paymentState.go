@@ -106,7 +106,7 @@ func (paymentAction paymentActionListener) ActionListener(ctx context.Context, e
 	}
 }
 
-func (paymentAction paymentActionListener) persistOrderState(ctx context.Context, order *entities.Order, itemsId []string,
+func (paymentAction paymentActionListener) persistOrderState(ctx context.Context, order *entities.Order, itemsId []uint64,
 	acceptedAction actions.IEnumAction, result bool, reason string, paymentResult *payment_service.PaymentResult) {
 	order.UpdatedAt = time.Now().UTC()
 
@@ -116,7 +116,7 @@ func (paymentAction paymentActionListener) persistOrderState(ctx context.Context
 				if order.Items[i].ItemId == id {
 					paymentAction.doUpdateOrderState(ctx, order, i, acceptedAction, result, reason, paymentResult)
 				} else {
-					logger.Err("orderPayment received itemId %s not exist in order, order: %v", id, order)
+					logger.Err("orderPayment received itemId %d not exist in order, orderId: %d", id, order.OrderId)
 				}
 			}
 		}

@@ -40,7 +40,7 @@ func (shipped shippedStep) ProcessMessage(ctx context.Context, request *message.
 	panic("implementation required")
 }
 
-func (shipped shippedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (shipped shippedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 	return shipped.Childes()[0].ProcessOrder(ctx, order, itemsId, nil)
 }
 

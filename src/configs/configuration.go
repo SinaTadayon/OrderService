@@ -65,14 +65,14 @@ func LoadConfig(path string) (*Cfg, error) {
 		if path != "" {
 			err := godotenv.Load(path)
 			if err != nil {
-				logger.Err("Error loading testdata .env file, path: %s", path)
+				logger.Err("Error loading testdata .env file, path: %s, error: %s", path, err)
 			}
 		} else if flag.Lookup("test.v") != nil {
 			// test mode
 			err := godotenv.Load("../testdata/.env")
 			//err := godotenv.Load(path)
 			if err != nil {
-				logger.Err("Error loading testdata .env file")
+				logger.Err("Error loading testdata .env file, error: %s", err)
 			}
 		} else {
 			//err := godotenv.Load(path)

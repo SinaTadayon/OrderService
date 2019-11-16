@@ -1,12 +1,12 @@
 package entities
 
 type BackOfficeExportItems struct {
-	ItemId      string
+	ItemId      uint64
 	InventoryId string
 	ProductId   string
-	BuyerId     string
+	BuyerId     uint64
 	BuyerPhone  string
-	SellerId    string
+	SellerId    uint64
 	SellerName  string
 	Price       uint64
 	Status      string
@@ -15,8 +15,8 @@ type BackOfficeExportItems struct {
 }
 
 type SellerExportOrders struct {
-	OrderId     string
-	ItemId      string
+	OrderId     uint64
+	ItemId      uint64
 	ProductId   string
 	InventoryId string
 	PaidPrice   uint64

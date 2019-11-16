@@ -44,7 +44,7 @@ func (paymentSuccess paymentSuccessStep) ProcessMessage(ctx context.Context, req
 
 // TODO PaymentApprovalAction must be handled and implement
 // TODO notification must be handled and implement
-func (paymentSuccess paymentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (paymentSuccess paymentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 	//nextToStepState, ok := paymentSuccess.Childes()[2].(launcher_state.ILauncherState)
 	//if ok != true || nextToStepState.ActiveType() != actives.StockAction {
 	//	logger.Err("nextToStepState doesn't exist in index 2 of %s Childes() , order: %v", paymentSuccess.Name(), order)
@@ -53,7 +53,7 @@ func (paymentSuccess paymentSuccessStep) ProcessOrder(ctx context.Context, order
 	//	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
 	//	return promise.NewPromise(returnChannel, 1, 1)
 	//}
-	logger.Audit("Order Received in %s step, orderId: %s, Action: %s", paymentSuccess.Name(), order.OrderId, PaymentSuccess)
+	logger.Audit("Order Received in %s step, orderId: %d, Action: %s", paymentSuccess.Name(), order.OrderId, PaymentSuccess)
 	paymentSuccess.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, false)
 	paymentSuccess.updateOrderItemsProgress(ctx, &order, nil, PaymentSuccess, true, steps.InProgressStatus)
 	if err := paymentSuccess.persistOrder(ctx, &order); err != nil {
@@ -76,7 +76,7 @@ func (paymentSuccess paymentSuccessStep) persistOrder(ctx context.Context, order
 	return err
 }
 
-func (paymentSuccess paymentSuccessStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string, action string, result bool, itemStatus string) {
+func (paymentSuccess paymentSuccessStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []uint64, action string, result bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -90,7 +90,7 @@ func (paymentSuccess paymentSuccessStep) updateOrderItemsProgress(ctx context.Co
 				}
 			}
 			if !findFlag {
-				logger.Err("%s received itemId %s not exist in order, orderId: %v", paymentSuccess.Name(), id, order.OrderId)
+				logger.Err("%s received itemId %d not exist in order, orderId: %d", paymentSuccess.Name(), id, order.OrderId)
 			}
 		}
 	} else {

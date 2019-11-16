@@ -65,7 +65,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Price:      &pb.PriceInfo{},
 		Attributes: make(map[string]string, 10),
 		Shipment:   &pb.ShippingSpec{},
-		SellerId:   "6546345",
+		SellerId:   6546345,
 	}
 
 	item.InventoryId = "453564554435345"
@@ -103,7 +103,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	item.Shipment.VoucherAmount = 0
 	item.Shipment.Currency = "IRR"
 
-	item.SellerId = "345346343"
+	item.SellerId = 345346343
 	order.Items = append(order.Items, &item)
 	return order
 }

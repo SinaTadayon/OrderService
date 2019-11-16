@@ -38,7 +38,7 @@ func (paymentRejected paymentRejectedStep) ProcessMessage(ctx context.Context, r
 	panic("implementation required")
 }
 
-func (paymentRejected paymentRejectedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (paymentRejected paymentRejectedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 	panic("implementation required")
 }
 

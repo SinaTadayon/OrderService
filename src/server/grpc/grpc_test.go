@@ -72,7 +72,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Price:      &pb.PriceInfo{},
 		Shipment:   &pb.ShippingSpec{},
 		Attributes: make(map[string]string, 10),
-		SellerId:   "123456",
+		SellerId:   1000002,
 	}
 
 	item.InventoryId = "11111-22222"
@@ -117,7 +117,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Price:      &pb.PriceInfo{},
 		Shipment:   &pb.ShippingSpec{},
 		Attributes: make(map[string]string, 10),
-		SellerId:   "678912",
+		SellerId:   678912,
 	}
 
 	item1.InventoryId = "11111-33333"

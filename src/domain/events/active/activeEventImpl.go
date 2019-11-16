@@ -10,12 +10,12 @@ import (
 type iActiveEventImpl struct {
 	*events.BaseEventImpl
 	order      entities.Order
-	itemsId    []string
+	itemsId    []uint64
 	activeType actives.ActiveType
 	action     actives.IActiveAction
 }
 
-func NewActiveEvent(order entities.Order, itemsId []string, activeType actives.ActiveType,
+func NewActiveEvent(order entities.Order, itemsId []uint64, activeType actives.ActiveType,
 	action actives.IActiveAction, data interface{}, timestamp time.Time) IActiveEvent {
 	return &iActiveEventImpl{events.NewBaseEventImpl(events.ActiveEvent, data, timestamp),
 		order, itemsId, activeType, action}
@@ -25,7 +25,7 @@ func (activeEvent iActiveEventImpl) Order() entities.Order {
 	return activeEvent.order
 }
 
-func (activeEvent iActiveEventImpl) ItemsId() []string {
+func (activeEvent iActiveEventImpl) ItemsId() []uint64 {
 	return activeEvent.itemsId
 }
 

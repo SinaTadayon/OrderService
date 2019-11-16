@@ -43,7 +43,7 @@ func (shipmentDeliveryProblem shipmentDeliveryProblemStep) ProcessMessage(ctx co
 }
 
 // TODO operator action required handled
-func (shipmentDeliveryProblem shipmentDeliveryProblemStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (shipmentDeliveryProblem shipmentDeliveryProblemStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 	//shipmentDeliveryProblem.UpdateAllOrderStatus(ctx, &order, itemsId, "InProgress", false)
 	//shipmentDeliveryProblem.updateOrderItemsProgress(ctx, &order, itemsId, "BuyerShipmentDeliveryProblem", true)
 	//shipmentDeliveryProblem.persistOrder(ctx, &order)
@@ -52,7 +52,7 @@ func (shipmentDeliveryProblem shipmentDeliveryProblemStep) ProcessOrder(ctx cont
 	//returnChannel <- promise.FutureData{Data:nil, Ex:nil}
 	//return promise.NewPromise(returnChannel, 1, 1)
 
-	logger.Audit("Order Received in %s step, orderId: %s, Action: %s", shipmentDeliveryProblem.Name(), order.OrderId, "shipmentDelivered")
+	logger.Audit("Order Received in %s step, orderId: %d, Action: %s", shipmentDeliveryProblem.Name(), order.OrderId, "shipmentDelivered")
 	req, ok := param.(*message.RequestBackOfficeOrderAction)
 	if ok != true {
 		logger.Err("param not a message.RequestBackOfficeOrderAction type , order: %v", order)
@@ -92,11 +92,11 @@ func (shipmentDeliveryProblem shipmentDeliveryProblemStep) ProcessOrder(ctx cont
 		if futureData == nil {
 			if err := shipmentDeliveryProblem.persistOrder(ctx, &order); err != nil {
 			}
-			logger.Err("StockService promise channel has been closed, order: %s", order.OrderId)
+			logger.Err("StockService promise channel has been closed, order: %d", order.OrderId)
 		} else if futureData.Ex != nil {
 			if err := shipmentDeliveryProblem.persistOrder(ctx, &order); err != nil {
 			}
-			logger.Err("released stock from stockService failed, error: %s, orderId: %s", futureData.Ex.Error(), order.OrderId)
+			logger.Err("released stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
 			returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
@@ -126,8 +126,7 @@ func (shipmentDeliveryProblem shipmentDeliveryProblemStep) ProcessOrder(ctx cont
 	return promise.NewPromise(returnChannel, 1, 1)
 }
 
-func (shipmentDeliveryProblem shipmentDeliveryProblemStep) validateAction(ctx context.Context, order *entities.Order,
-	itemsId []string) bool {
+func (shipmentDeliveryProblem shipmentDeliveryProblemStep) validateAction(ctx context.Context, order *entities.Order, itemsId []uint64) bool {
 	if itemsId != nil && len(itemsId) > 0 {
 		for _, id := range itemsId {
 			for i := 0; i < len(order.Items); i++ {
@@ -158,7 +157,7 @@ func (shipmentDeliveryProblem shipmentDeliveryProblemStep) persistOrder(ctx cont
 	return err
 }
 
-func (shipmentDeliveryProblem shipmentDeliveryProblemStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
+func (shipmentDeliveryProblem shipmentDeliveryProblemStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []uint64,
 	req *message.RequestBackOfficeOrderAction, itemStatus string) *entities.Order {
 
 	findFlag := false
@@ -174,7 +173,7 @@ func (shipmentDeliveryProblem shipmentDeliveryProblemStep) updateOrderItemsProgr
 			}
 
 			if findFlag == false {
-				logger.Err("%s received itemId %s not exist in order, orderId: %v", shipmentDeliveryProblem.Name(), id, order.OrderId)
+				logger.Err("%s received itemId %d not exist in order, orderId: %d", shipmentDeliveryProblem.Name(), id, order.OrderId)
 			}
 		}
 	} else {

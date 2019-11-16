@@ -56,6 +56,8 @@ github.com/stretchr/testify/assert
 github.com/xdg/scram
 # github.com/xdg/stringprep v1.0.0
 github.com/xdg/stringprep
+# github.com/yaa110/go-persian-calendar v0.5.0
+github.com/yaa110/go-persian-calendar
 # gitlab.faza.io/go-framework/acl v0.0.3
 gitlab.faza.io/go-framework/acl
 # gitlab.faza.io/go-framework/kafkaadapter v0.0.1
@@ -64,7 +66,7 @@ gitlab.faza.io/go-framework/kafkaadapter
 gitlab.faza.io/go-framework/logger
 # gitlab.faza.io/go-framework/mongoadapter v0.0.8
 gitlab.faza.io/go-framework/mongoadapter
-# gitlab.faza.io/protos/order v0.0.41
+# gitlab.faza.io/protos/order v0.0.42
 gitlab.faza.io/protos/order
 # gitlab.faza.io/protos/payment-gateway v0.0.7
 gitlab.faza.io/protos/payment-gateway

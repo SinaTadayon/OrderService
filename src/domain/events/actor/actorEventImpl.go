@@ -12,10 +12,10 @@ type iActorEventImpl struct {
 	actor   actors.ActorType
 	action  actors.IActorAction
 	order   entities.Order
-	itemsId []string
+	itemsId []uint64
 }
 
-func NewActorEvent(actor actors.ActorType, action actors.IActorAction, order entities.Order, itemsId []string, data interface{}, timestamp time.Time) IActorEvent {
+func NewActorEvent(actor actors.ActorType, action actors.IActorAction, order entities.Order, itemsId []uint64, data interface{}, timestamp time.Time) IActorEvent {
 	return &iActorEventImpl{events.NewBaseEventImpl(events.ActorEvent, data, timestamp), actor, action, order, itemsId}
 }
 
@@ -31,6 +31,6 @@ func (actorEvent iActorEventImpl) Order() entities.Order {
 	return actorEvent.order
 }
 
-func (actorEvent iActorEventImpl) ItemsId() []string {
+func (actorEvent iActorEventImpl) ItemsId() []uint64 {
 	return actorEvent.itemsId
 }

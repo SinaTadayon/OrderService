@@ -43,7 +43,7 @@ func (newOrderProcessingFailed newOrderProcessingFailedStep) ProcessMessage(ctx 
 }
 
 // TODO must be dynamic check state
-func (newOrderProcessingFailed newOrderProcessingFailedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []string, param interface{}) promise.IPromise {
+func (newOrderProcessingFailed newOrderProcessingFailedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 
 	//state := newOrderProcessingFailed.StatesMap()[0]
 	//if state.Actions().ActionType() == actions.ActiveAction {
@@ -84,8 +84,7 @@ func (newOrderProcessingFailed newOrderProcessingFailedStep) persistOrder(ctx co
 	return err
 }
 
-func (newOrderProcessingFailed newOrderProcessingFailedStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []string,
-	action string, result bool, itemStatus string) {
+func (newOrderProcessingFailed newOrderProcessingFailedStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []uint64, action string, result bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -99,7 +98,7 @@ func (newOrderProcessingFailed newOrderProcessingFailedStep) updateOrderItemsPro
 			}
 
 			if findFlag == false {
-				logger.Err("%s received itemId %s not exist in order, orderId: %v", newOrderProcessingFailed.Name(), id, order.OrderId)
+				logger.Err("%s received itemId %d not exist in order, orderId: %d", newOrderProcessingFailed.Name(), id, order.OrderId)
 			}
 		}
 	} else {

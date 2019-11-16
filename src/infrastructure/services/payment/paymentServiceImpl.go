@@ -8,6 +8,7 @@ import (
 	payment_gateway "gitlab.faza.io/protos/payment-gateway"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
+	"strconv"
 	"time"
 )
 
@@ -53,12 +54,12 @@ func (payment iPaymentServiceImpl) OrderPayment(ctx context.Context, request Pay
 		Gateway:  request.Gateway,
 		Amount:   request.Amount,
 		Currency: request.Currency,
-		OrderID:  request.OrderId,
+		OrderID:  strconv.Itoa(int(request.OrderId)),
 	}
 
 	response, err := payment.paymentService.GenerateRedirectURL(ctx1, gatewayRequest)
 	if err != nil {
-		logger.Err("request to payment gateway grpc failed, orderId: %s, amount: %d, gateway: %s, currency: %s, error: %s",
+		logger.Err("request to payment gateway grpc failed, orderId: %d, amount: %d, gateway: %s, currency: %s, error: %s",
 			request.OrderId, request.Amount, request.Gateway, request.Currency, err)
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)

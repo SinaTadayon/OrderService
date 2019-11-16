@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/configs"
@@ -14,9 +16,11 @@ import (
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
+	user_service "gitlab.faza.io/order-project/order-service/infrastructure/services/user"
 	grpc_server "gitlab.faza.io/order-project/order-service/server/grpc"
 	stockProto "gitlab.faza.io/protos/stock-proto.git"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 	"io"
 	"net"
 	"os"
@@ -92,7 +96,10 @@ func init() {
 
 	global.Singletons.NotifyService = notify_service.NewNotificationService()
 
+	global.Singletons.UserService = user_service.NewUserService(App.Config.UserService.Address, App.Config.UserService.Port)
+
 	if !checkTcpPort(App.Config.GRPCServer.Address, strconv.Itoa(App.Config.GRPCServer.Port)) {
+		logger.Audit("Start GRPC Server for testing . . . ")
 		go App.grpcServer.Start()
 	}
 }
@@ -113,6 +120,27 @@ func checkTcpPort(host string, port string) bool {
 		//	fmt.Println("Opened", net.JoinHostPort(host, port))
 	}
 	return true
+}
+
+func createAuthenticatedContext() (context.Context, error) {
+	ctx, _ := context.WithTimeout(context.Background(), 15*time.Second)
+	iPromise := global.Singletons.UserService.UserLogin(ctx, "989100000002", "123456")
+	futureData := iPromise.Data()
+
+	if futureData.Ex != nil {
+		return nil, futureData.Ex
+	}
+
+	loginTokens, ok := futureData.Data.(user_service.LoginTokens)
+	if ok != true {
+		return nil, errors.New("data does not LoginTokens type")
+	}
+
+	var authorization = map[string]string{"authorization": fmt.Sprintf("Bearer %v", loginTokens.AccessToken)}
+	md := metadata.New(authorization)
+	ctxToken := metadata.NewOutgoingContext(ctx, md)
+
+	return ctxToken, nil
 }
 
 func createRequestNewOrder() *pb.RequestNewOrder {
@@ -136,7 +164,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Code:   "348",
 	}
 
-	order.Buyer.BuyerId = "123456"
+	order.Buyer.BuyerId = 1000002
 	order.Buyer.LastName = "Tadayon"
 	order.Buyer.FirstName = "Sina"
 	order.Buyer.Email = "Sina.Tadayon@baman.io"
@@ -164,7 +192,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Price:      &pb.PriceInfo{},
 		Shipment:   &pb.ShippingSpec{},
 		Attributes: make(map[string]string, 10),
-		SellerId:   "123456",
+		SellerId:   1000002,
 	}
 
 	item.InventoryId = "11111-22222"
@@ -209,7 +237,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Price:      &pb.PriceInfo{},
 		Shipment:   &pb.ShippingSpec{},
 		Attributes: make(map[string]string, 10),
-		SellerId:   "678912",
+		SellerId:   678912,
 	}
 
 	item1.InventoryId = "1111-33333"
@@ -252,7 +280,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	return order
 }
 
-func updateOrderStatus(order *entities.Order, itemsId []string, orderStatus string, isUpdateOnlyOrderStatus bool, stepName string, stepIndex int) {
+func updateOrderStatus(order *entities.Order, itemsId []uint64, orderStatus string, isUpdateOnlyOrderStatus bool, stepName string, stepIndex int) {
 
 	if isUpdateOnlyOrderStatus == true {
 		order.UpdatedAt = time.Now().UTC()
@@ -272,7 +300,7 @@ func updateOrderStatus(order *entities.Order, itemsId []string, orderStatus stri
 					}
 				}
 				if !findFlag {
-					logger.Err("%s received itemId %s not exist in order, orderId: %v", stepName, id, order.OrderId)
+					logger.Err("%s received itemId %d not exist in order, orderId: %d", stepName, id, order.OrderId)
 				}
 			}
 		} else {
@@ -302,7 +330,7 @@ func doUpdateOrderStep(order *entities.Order, index int, stepName string, stepIn
 	order.Items[index].Progress.StepsHistory = append(order.Items[index].Progress.StepsHistory, stepHistory)
 }
 
-func updateOrderItemsProgress(order *entities.Order, itemsId []string, action string, result bool, itemStatus string) {
+func updateOrderItemsProgress(order *entities.Order, itemsId []uint64, action string, result bool, itemStatus string) {
 
 	findFlag := false
 	if itemsId != nil && len(itemsId) > 0 {
@@ -316,7 +344,7 @@ func updateOrderItemsProgress(order *entities.Order, itemsId []string, action st
 			}
 
 			if !findFlag {
-				logger.Err("received itemId %s not exist in order, orderId: %v", id, order.OrderId)
+				logger.Err("received itemId %d not exist in order, orderId: %d", id, order.OrderId)
 			}
 		}
 	} else {
@@ -420,6 +448,9 @@ func TestNewOrderRequest(t *testing.T) {
 	err = addStock(ctx, requestNewOrder)
 	assert.Nil(t, err)
 
+	//ctx, err = createAuthenticatedContext()
+	//assert.Nil(t, err)
+
 	OrderService := pb.NewOrderServiceClient(grpcConn)
 	resOrder, err := OrderService.NewOrder(ctx, requestNewOrder)
 
@@ -483,7 +514,7 @@ func TestPaymentGateway(t *testing.T) {
 	defer removeCollection()
 
 	request := pg.PaygateHookRequest{
-		OrderID:   order.OrderId,
+		OrderID:   strconv.Itoa(int(order.OrderId)),
 		PaymentId: "534545345",
 		InvoiceId: 3434234234,
 		Amount:    int64(order.Amount.Total),
@@ -537,6 +568,8 @@ func TestOperatorShipmentPending_Success(t *testing.T) {
 		Action:     "success",
 	}
 
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
 	OrderService := pb.NewOrderServiceClient(grpcConn)
 	result, err := OrderService.BackOfficeOrderAction(ctx, &request)
 
@@ -586,6 +619,9 @@ func TestOperatorShipmentPending_Failed(t *testing.T) {
 		ActionType: "shipmentDelivered",
 		Action:     "cancel",
 	}
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
 
 	OrderService := pb.NewOrderServiceClient(grpcConn)
 	result, err := OrderService.BackOfficeOrderAction(ctx, &request)
@@ -639,6 +675,9 @@ func TestSellerApprovalPending_Success(t *testing.T) {
 		Action:     "success",
 		Data:       nil,
 	}
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
 
 	OrderService := pb.NewOrderServiceClient(grpcConn)
 	result, err := OrderService.SellerOrderAction(ctx, &request)
@@ -697,6 +736,9 @@ func TestSellerApprovalPending_Failed(t *testing.T) {
 		},
 	}
 
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
 	OrderService := pb.NewOrderServiceClient(grpcConn)
 	result, err := OrderService.SellerOrderAction(ctx, &request)
 
@@ -749,6 +791,9 @@ func TestShipmentPending_Success(t *testing.T) {
 			Success: &pb.RequestSellerOrderActionSuccess{ShipmentMethod: "Post", TrackingId: "839832742"},
 		},
 	}
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
 
 	OrderService := pb.NewOrderServiceClient(grpcConn)
 	result, err := OrderService.SellerOrderAction(ctx, &request)
@@ -805,6 +850,9 @@ func TestShipmentPending_Failed(t *testing.T) {
 		},
 	}
 
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
 	OrderService := pb.NewOrderServiceClient(grpcConn)
 	result, err := OrderService.SellerOrderAction(ctx, &request)
 
@@ -835,10 +883,13 @@ func TestSellerFindAllItems(t *testing.T) {
 	assert.Nil(t, err, "save failed")
 
 	request := &pb.RequestIdentifier{
-		Id: order.Items[0].SellerInfo.SellerId,
+		Id: strconv.Itoa(int(order.Items[0].SellerInfo.SellerId)),
 	}
 
 	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
 
 	OrderService := pb.NewOrderServiceClient(grpcConn)
 	result, err := OrderService.SellerFindAllItems(ctx, request)
@@ -867,8 +918,11 @@ func TestBuyerFindAllOrders(t *testing.T) {
 	defer removeCollection()
 
 	request := &pb.RequestIdentifier{
-		Id: order.BuyerInfo.BuyerId,
+		Id: strconv.Itoa(int(order.BuyerInfo.BuyerId)),
 	}
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
 
 	OrderService := pb.NewOrderServiceClient(grpcConn)
 	result, err := OrderService.BuyerFindAllOrders(ctx, request)
@@ -940,6 +994,9 @@ func TestBackOfficeOrdersListView(t *testing.T) {
 		Direction: -1,
 	}
 
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
 	OrderService := pb.NewOrderServiceClient(grpcConn)
 	result, err := OrderService.BackOfficeOrdersListView(ctx, request)
 
@@ -967,8 +1024,11 @@ func TestBackOfficeOrderDetailView(t *testing.T) {
 	defer removeCollection()
 
 	request := &pb.RequestIdentifier{
-		Id: newOrder.OrderId,
+		Id: strconv.Itoa(int(newOrder.OrderId)),
 	}
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
 
 	OrderService := pb.NewOrderServiceClient(grpcConn)
 	result, err := OrderService.BackOfficeOrderDetailView(ctx, request)
@@ -1000,6 +1060,9 @@ func TestSellerReportOrders(t *testing.T) {
 		SellerId:      order.Items[0].SellerInfo.SellerId,
 		Status:        order.Items[0].Status,
 	}
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
 
 	OrderService := pb.NewOrderServiceClient(grpcConn)
 	downloadStream, err := OrderService.SellerReportOrders(ctx, request)
@@ -1048,6 +1111,9 @@ func TestBackOfficeReportOrderItems(t *testing.T) {
 		StartDateTime: uint64(order.CreatedAt.Unix() - 10),
 		EndDataTime:   uint64(order.CreatedAt.Unix() + 10),
 	}
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
 
 	OrderService := pb.NewOrderServiceClient(grpcConn)
 	downloadStream, err := OrderService.BackOfficeReportOrderItems(ctx, request)

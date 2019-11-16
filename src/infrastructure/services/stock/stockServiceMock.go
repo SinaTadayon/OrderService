@@ -29,7 +29,7 @@ func (stock iStockServiceMock) SingleStockAction(ctx context.Context, inventoryI
 	}
 }
 
-func (stock iStockServiceMock) BatchStockActions(ctx context.Context, order entities.Order, itemsId []string, action string) promise.IPromise {
+func (stock iStockServiceMock) BatchStockActions(ctx context.Context, order entities.Order, itemsId []uint64, action string) promise.IPromise {
 	if action == "StockReserved" || action == "StockReleased" || action == "StockSettlement" {
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
