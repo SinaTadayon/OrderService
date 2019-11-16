@@ -45,10 +45,6 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	return Server{flowManager: flowManager, address: address, port: port}
 }
 
-// TODO error handling
-// TODO mongo query for id
-// TODO mapping from order request to order model
-// TODO Test Response
 func (server *Server) OrderRequestsHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
 
 	flowManagerCtx, _ := context.WithTimeout(context.Background(), 3*time.Second)
@@ -191,7 +187,19 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 
 }
 
+// TODO Add checking acl
 func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseSellerFindAllItems, error) {
+
+	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
+	if err != nil {
+		logger.Err("SellerFindAllItems() => UserService.AuthenticateContextToken failed, error: %s ", err)
+		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	if strconv.Itoa(int(userAcl.User().UserID)) != req.Id {
+		logger.Err(" SellerFindAllItems() => token userId %d not authorized for sellerId %s", userAcl.User().UserID, req.Id)
+		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+	}
 
 	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
 		return bson.D{{"items.sellerInfo.sellerId", req.Id}}
@@ -268,7 +276,20 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 	return &response, nil
 }
 
+// TODO Add checking acl
 func (server Server) BuyerOrderAction(ctx context.Context, req *pb.RequestBuyerOrderAction) (*pb.ResponseBuyerOrderAction, error) {
+
+	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
+	if err != nil {
+		logger.Err("BuyerOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
+		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	if strconv.Itoa(int(userAcl.User().UserID)) != req.BuyerId {
+		logger.Err(" BuyerOrderAction() => token userId %d not authorized for buyerId %s", userAcl.User().UserID, req.BuyerId)
+		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+	}
+
 	promiseHandler := server.flowManager.BuyerApprovalPending(ctx, req)
 	futureData := promiseHandler.Data()
 	if futureData == nil {
@@ -283,7 +304,20 @@ func (server Server) BuyerOrderAction(ctx context.Context, req *pb.RequestBuyerO
 	return &pb.ResponseBuyerOrderAction{Result: true}, nil
 }
 
+// TODO Add checking acl
 func (server Server) SellerOrderAction(ctx context.Context, req *pb.RequestSellerOrderAction) (*pb.ResponseSellerOrderAction, error) {
+
+	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
+	if err != nil {
+		logger.Err("SellerOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
+		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	if strconv.Itoa(int(userAcl.User().UserID)) != req.SellerId {
+		logger.Err("SellerOrderAction() => token userId %d not authorized for sellerId %s", userAcl.User().UserID, req.SellerId)
+		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+	}
+
 	promiseHandler := server.flowManager.SellerApprovalPending(ctx, req)
 	futureData := promiseHandler.Data()
 	if futureData == nil {
@@ -298,7 +332,20 @@ func (server Server) SellerOrderAction(ctx context.Context, req *pb.RequestSelle
 	return &pb.ResponseSellerOrderAction{Result: true}, nil
 }
 
+// TODO Add checking acl
 func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseBuyerFindAllOrders, error) {
+
+	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
+	if err != nil {
+		logger.Err("BuyerFindAllOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
+		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	if strconv.Itoa(int(userAcl.User().UserID)) != req.Id {
+		logger.Err(" BuyerFindAllOrders() => token userId %d not authorized of buyerId %s", userAcl.User().UserID, req.Id)
+		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+	}
+
 	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
 		return bson.D{{"buyerInfo.buyerId", req.Id}}
 	})
@@ -331,14 +378,15 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 				},
 			},
 			ShippingAddress: &pb.Address{
-				Address:       order.BuyerInfo.ShippingAddress.Address,
-				Phone:         order.BuyerInfo.ShippingAddress.Phone,
-				Mobile:        order.BuyerInfo.ShippingAddress.Mobile,
-				Country:       order.BuyerInfo.ShippingAddress.Country,
-				City:          order.BuyerInfo.ShippingAddress.City,
-				Province:      order.BuyerInfo.ShippingAddress.Province,
-				Neighbourhood: order.BuyerInfo.ShippingAddress.Neighbourhood,
-				ZipCode:       order.BuyerInfo.ShippingAddress.ZipCode,
+				FirstName:            order.BuyerInfo.ShippingAddress.FirstName,
+				LastName:             order.BuyerInfo.ShippingAddress.LastName,
+				Address:              order.BuyerInfo.ShippingAddress.Address,
+				Phone:                order.BuyerInfo.ShippingAddress.Phone,
+				Mobile:               order.BuyerInfo.ShippingAddress.Mobile,
+				Country:              order.BuyerInfo.ShippingAddress.Country,
+				City:                 order.BuyerInfo.ShippingAddress.City,
+				Province:             order.BuyerInfo.ShippingAddress.Province,
+				Neighbourhood:        order.BuyerInfo.ShippingAddress.Neighbourhood,
 			},
 			Items: make([]*pb.BuyerOrderItems, 0, len(order.Items)),
 		}
@@ -422,7 +470,21 @@ func (server Server) convertNewOrderRequestToMessage(req *pb.RequestNewOrder) *p
 	return &request
 }
 
+// TODO Add checking acl and authenticate
 func (server Server) BackOfficeOrdersListView(ctx context.Context, req *pb.RequestBackOfficeOrdersList) (*pb.ResponseBackOfficeOrdersList, error) {
+
+	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
+	if err != nil {
+		logger.Err("BackOfficeOrdersListView() => UserService.AuthenticateContextToken failed, error: %s ", err)
+		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	// TODO Must Be changed
+	if userAcl.User().UserID <= 0 {
+		logger.Err("BackOfficeOrdersListView() => token userId %d not authorized", userAcl.User().UserID)
+		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+	}
+
 	promiseHandler := server.flowManager.BackOfficeOrdersListView(ctx, req)
 	futureData := promiseHandler.Data()
 	if futureData == nil {
@@ -437,7 +499,21 @@ func (server Server) BackOfficeOrdersListView(ctx context.Context, req *pb.Reque
 	return futureData.Data.(*pb.ResponseBackOfficeOrdersList), nil
 }
 
+// TODO Add checking acl and authenticate
 func (server Server) BackOfficeOrderDetailView(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseOrderDetailView, error) {
+
+	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
+	if err != nil {
+		logger.Err("BackOfficeOrderDetailView() => UserService.AuthenticateContextToken failed, error: %s ", err)
+		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	// TODO Must Be changed
+	if userAcl.User().UserID <= 0 {
+		logger.Err("BackOfficeOrderDetailView() => token userId %d not authorized", userAcl.User().UserID)
+		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+	}
+
 	promiseHandler := server.flowManager.BackOfficeOrderDetailView(ctx, req)
 	futureData := promiseHandler.Data()
 	if futureData == nil {
@@ -452,7 +528,21 @@ func (server Server) BackOfficeOrderDetailView(ctx context.Context, req *pb.Requ
 	return futureData.Data.(*pb.ResponseOrderDetailView), nil
 }
 
+// TODO Add checking acl and authenticate
 func (server Server) BackOfficeOrderAction(ctx context.Context, req *pb.RequestBackOfficeOrderAction) (*pb.ResponseBackOfficeOrderAction, error) {
+
+	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
+	if err != nil {
+		logger.Err("BackOfficeOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
+		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	// TODO Must Be changed
+	if userAcl.User().UserID <= 0 {
+		logger.Err("BackOfficeOrderAction() => token userId %d not authorized", userAcl.User().UserID)
+		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+	}
+
 	promiseHandler := server.flowManager.OperatorActionPending(ctx, req)
 	futureData := promiseHandler.Data()
 	if futureData == nil {
@@ -468,7 +558,20 @@ func (server Server) BackOfficeOrderAction(ctx context.Context, req *pb.RequestB
 
 }
 
+// TODO Add checking acl and authenticate
 func (server Server) SellerReportOrders(req *pb.RequestSellerReportOrders, srv pb.OrderService_SellerReportOrdersServer) error {
+
+	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(srv.Context())
+	if err != nil {
+		logger.Err("SellerReportOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
+		return status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	if strconv.Itoa(int(userAcl.User().UserID)) != req.SellerId {
+		logger.Err(" SellerFindAllItems() => token userId %d not authorized for sellerId %s", userAcl.User().UserID, req.SellerId)
+		return status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+	}
+
 	promiseHandler := server.flowManager.SellerReportOrders(req, srv)
 	futureData := promiseHandler.Data()
 	if futureData == nil {
@@ -483,7 +586,21 @@ func (server Server) SellerReportOrders(req *pb.RequestSellerReportOrders, srv p
 	return nil
 }
 
+// TODO Add checking acl and authenticate
 func (server Server) BackOfficeReportOrderItems(req *pb.RequestBackOfficeReportOrderItems, srv pb.OrderService_BackOfficeReportOrderItemsServer) error {
+
+	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(srv.Context())
+	if err != nil {
+		logger.Err("SellerReportOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
+		return status.Error(codes.Code(promise.InternalError), "Unknown Error")
+	}
+
+	// TODO Must Be changed
+	if userAcl.User().UserID <= 0 {
+		logger.Err("BackOfficeOrderAction() => token userId %d not authorized", userAcl.User().UserID)
+		return status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+	}
+
 	promiseHandler := server.flowManager.BackOfficeReportOrderItems(req, srv)
 	futureData := promiseHandler.Data()
 	if futureData == nil {
