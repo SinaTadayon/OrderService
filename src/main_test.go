@@ -29,64 +29,6 @@ import (
 	pg "gitlab.faza.io/protos/payment-gateway"
 )
 
-
-
-//var EnvFile = ".env"
-////var ConfigurationFile = "configuration.go"
-//
-//func AppendToFile() {
-//	f, err := os.OpenFile(EnvFile, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//	defer f.Close()
-//
-//	_, err = f.WriteString("\n__CTO__")
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//}
-//func FixEnvFile() {
-//	f, err := ioutil.ReadFile(EnvFile)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//	newContent := bytes.ReplaceAll(f, []byte("\n__CTO__"), []byte{})
-//	err = ioutil.WriteFile(EnvFile, newContent, os.ModePerm)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//}
-
-//func UpdateConfigurationFile() {
-//	f, err := ioutil.ReadFile(ConfigurationFile)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//	newContent := bytes.ReplaceAll(f, []byte("Port string `env:\"PORT\"`"), []byte("Port int `env:\"PORT\"`"))
-//	err = ioutil.WriteFile(ConfigurationFile, newContent, os.ModePerm)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//}
-//func FixConfigurationFile() {
-//	f, err := ioutil.ReadFile(ConfigurationFile)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//	newContent := bytes.ReplaceAll(f, []byte("Port int `env:\"PORT\"`"), []byte("Port string `env:\"PORT\"`"))
-//	err = ioutil.WriteFile(ConfigurationFile, newContent, os.ModePerm)
-//	if err != nil {
-//		log.Fatal(err)
-//	}
-//}
-
-//func TestMain(m *testing.M) {
-//	FixEnvFile()
-//	//FixConfigurationFile()
-//	os.Exit(m.Run())
-//}
-
 func init() {
 	var err error
 	if os.Getenv("APP_ENV") == "dev" {
@@ -402,14 +344,6 @@ func doUpdateOrderItemsProgress(order *entities.Order, index int,
 	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
 }
 
-
-//func TestLoadConfig_AssertTrue(t *testing.T) {
-//	err := os.Setenv("APP_ENV", "dev")
-//	assert.Nil(t, err)
-//	_, err = configs.LoadConfig("")
-//	assert.Nil(t, err)
-//}
-
 func addStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) error {
 	if err := global.Singletons.StockService.ConnectToStockService(); err != nil {
 		return err
@@ -489,6 +423,29 @@ func TestNewOrderRequest(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, resOrder.CallbackUrl, "CallbackUrl is empty")
 }
+
+func TestNewOrderRequestWithZeroAmountAndVoucher(t *testing.T) {
+	//ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, App.Config.GRPCServer.Address + ":" +
+		strconv.Itoa(int(App.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	assert.Nil(t, err)
+	defer grpcConn.Close()
+	defer removeCollection()
+
+	requestNewOrder := createRequestNewOrder()
+	requestNewOrder.Amount.Total = 0
+	requestNewOrder.Amount.Voucher.Amount = 1000000
+	err = addStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	resOrder, err := OrderService.NewOrder(ctx, requestNewOrder)
+
+	assert.Nil(t, err)
+	assert.NotEmpty(t, resOrder.CallbackUrl, "CallbackUrl is empty")
+}
+
 
 func TestPaymentGateway(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())

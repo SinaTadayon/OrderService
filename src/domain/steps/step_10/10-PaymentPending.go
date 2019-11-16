@@ -62,6 +62,55 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 
 	if paymentAction == PaymentCallbackUrlRequest {
 		logger.Audit("Order Received in %s step, orderId: %s, Action: %s", paymentPending.Name(), order.OrderId, PaymentCallbackUrlRequest)
+
+		// handle amount == 0 because of full voucher
+		if order.Amount.Total == 0 && order.Amount.Voucher.Amount > 0 {
+			order.PaymentService = []entities.PaymentService{
+				{
+					PaymentRequest: &entities.PaymentRequest{
+						Amount:      0,
+						Currency:    "IRR",
+						Gateway:     "Assanpardakht",
+						CreatedAt:   time.Now().UTC(),
+					},
+
+					PaymentResult: &entities.PaymentResult{
+						Result:      true,
+						Reason:      "Amount paid by voucher",
+						PaymentId:   "",
+						InvoiceId:   0,
+						Amount:      0,
+						ReqBody:     "",
+						ResBody:     "",
+						CardNumMask: "",
+						CreatedAt:   time.Now().UTC(),
+					},
+
+					PaymentResponse: &entities.PaymentResponse {
+						Result:      true,
+						CallBackUrl: "http://staging.faza.io/callback-success",
+						InvoiceId:   0,
+						PaymentId:   "",
+						CreatedAt:   time.Now().UTC(),
+					},
+				},
+			}
+
+			logger.Audit("Amount paid by voucher order success, order: %s, voucher: %d", order.OrderId, order.Amount.Voucher.Amount)
+			paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, true)
+			paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, true, steps.InProgressStatus)
+			if err := paymentPending.persistOrder(ctx, &order); err != nil {}
+
+			go func() {
+				paymentPending.Childes()[1].ProcessOrder(ctx, order, nil, nil)
+			}()
+
+			returnChannel := make(chan promise.FutureData, 1)
+			defer close(returnChannel)
+			returnChannel <- promise.FutureData{Data:order.PaymentService[0].PaymentResponse.CallBackUrl , Ex:nil}
+			return promise.NewPromise(returnChannel, 1, 1)
+		}
+
 		paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.NewStatus, false)
 		//return orderPaymentState.ActionLauncher(ctx, order, nil, nil)
 
@@ -139,7 +188,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 
 		returnChannel := make(chan promise.FutureData, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data:paymentResponse, Ex:nil}
+		returnChannel <- promise.FutureData{Data:paymentResponse.CallbackUrl, Ex:nil}
 		return promise.NewPromise(returnChannel, 1, 1)
 
 	} else if paymentAction == OrderPayment {
@@ -156,6 +205,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 		logger.Audit("PaymentResult of order success, order: %s", order.OrderId)
 		paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, true)
 		paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, true, steps.InProgressStatus)
+		if err := paymentPending.persistOrder(ctx, &order); err != nil {}
 		return paymentPending.Childes()[1].ProcessOrder(ctx, order, nil, nil)
 	}
 

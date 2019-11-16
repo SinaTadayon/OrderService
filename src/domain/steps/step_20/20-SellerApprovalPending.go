@@ -249,14 +249,6 @@ func (sellerApprovalPending sellerApprovalPendingStep) doUpdateOrderItemsProgres
 			time.Minute * time.Duration(0) +
 			time.Second * time.Duration(0))
 
-		//expiredTime := order.Items[index].UpdatedAt.Add(time.Hour *
-		//	time.Duration(0) +
-		//	time.Minute * time.Duration(0) +
-		//	time.Second * time.Duration(40))
-		//
-		logger.Audit("doUpdateOrderItemsProgress() => order.Items %s, updatedAt: %s, expiredTime: %s",
-			order.Items[index].ItemId, order.Items[index].UpdatedAt, expiredTime)
-
 		action = entities.Action{
 			Name:      actionName,
 			Result:    result,

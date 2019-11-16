@@ -1257,6 +1257,7 @@ func (flowManager iFlowManagerImpl) BackOfficeOrdersListView(ctx context.Context
 	return promise.NewPromise(returnChannel, 1, 1)
 }
 
+// TODO check payment length
 func (flowManager iFlowManagerImpl) BackOfficeOrderDetailView(ctx context.Context, req *message.RequestIdentifier) promise.IPromise {
 	order, err := global.Singletons.OrderRepository.FindById(req.Id)
 	if err != nil {

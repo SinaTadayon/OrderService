@@ -88,7 +88,7 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	newOrderProcessing.UpdateAllOrderStatus(ctx, newOrder, nil, steps.NewStatus, false)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	if err != nil {
-		logger.Err("Save NewOrder Step Failed, error: %s, order: %v", err, order)
+		logger.Err("Save NewOrder Step Failed, error: %s, order: %v", err, newOrder)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
 		defer close(returnChannel)
