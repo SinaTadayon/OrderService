@@ -20,6 +20,7 @@ services:
       - stockservice
       - paymentservice
       - userservice
+      - voucherservice
 
 #  payment_success:
 #    image: ${TAG}
@@ -155,6 +156,29 @@ services:
       - REDIS_WRITE_PASSWORD=
       - GRPC_GO_LOG_SEVERITY_LEVEL=info
       - GRPC_GO_LOG_VERBOSITY_LEVEL=99
+    depends_on:
+      - mongo
+      - redis
+
+  voucherservice:
+    image: registry.faza.io/cart/cart:staging
+    ports:
+      - 9097:9097
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - PORT=9097
+      - APP_MODE=grpc-server
+      - APP_ENV=dev
+      - CART_REDIS_HOST=redis
+      - CART_REDIS_PORT=6379
+      - CART_MONGO_HOST=mongo
+      - CART_MONGO_PORT=27017
+        #CART_MONGO_USER=root
+        #CART_MONGO_PASS=toor
+      - CART_MONGO_CONN_TIMEOUT=5
+      - CART_MONGO_READ_TIMEOUT=5
+      - CART_MONGO_WRITE_TIMEOUT=5
     depends_on:
       - mongo
       - redis

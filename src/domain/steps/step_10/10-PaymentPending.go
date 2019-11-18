@@ -10,6 +10,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	message "gitlab.faza.io/protos/order"
+	"strconv"
 	"time"
 )
 
@@ -87,7 +88,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 
 					PaymentResponse: &entities.PaymentResponse{
 						Result:      true,
-						CallBackUrl: "http://staging.faza.io/callback-success",
+						CallBackUrl: "http://staging.faza.io/callback-success?orderid=" + strconv.Itoa(int(order.OrderId)),
 						InvoiceId:   0,
 						PaymentId:   "",
 						CreatedAt:   time.Now().UTC(),
@@ -95,7 +96,17 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 				},
 			}
 
-			logger.Audit("Amount paid by voucher order success, orderId: %d, voucher: %d", order.OrderId, order.Amount.Voucher.Amount)
+			iPromise := global.Singletons.VoucherService.VoucherSettlement(ctx, order.Amount.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
+			futureData := iPromise.Data()
+			if futureData.Ex != nil {
+				logger.Err("VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Amount.Voucher.Code, futureData.Ex.Error())
+				returnChannel := make(chan promise.FutureData, 1)
+				defer close(returnChannel)
+				returnChannel <- promise.FutureData{Data: nil, Ex: futureData.Ex}
+				return promise.NewPromise(returnChannel, 1, 1)
+			}
+
+			logger.Audit("Amount paid by voucher order success, orderId: %d, voucherAmount: %d, voucherCode: %s", order.OrderId, order.Amount.Voucher.Amount, order.Amount.Voucher.Code)
 			paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, true)
 			paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, true, steps.InProgressStatus)
 			if err := paymentPending.persistOrder(ctx, &order); err != nil {

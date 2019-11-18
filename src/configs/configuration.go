@@ -25,6 +25,12 @@ type Cfg struct {
 		Port    int    `env:"USER_SERVICE_PORT"`
 	}
 
+	VoucherService struct {
+		Address     string `env:"VOUCHER_SERVICE_ADDRESS"`
+		Port        int    `env:"VOUCHER_SERVICE_PORT"`
+		MockEnabled bool   `env:"VOUCHER_SERVICE_MOCK_ENABLED"`
+	}
+
 	PaymentGatewayService struct {
 		Address     string `env:"PAYMENT_GATEWAY_ADDRESS"`
 		Port        int    `env:"PAYMENT_GATEWAY_PORT"`
@@ -61,11 +67,16 @@ type Cfg struct {
 
 func LoadConfig(path string) (*Cfg, error) {
 	var config = &Cfg{}
+	currntPath, err := os.Getwd()
+	if err != nil {
+		logger.Err("get current working directory failed, error %s", err)
+	}
+
 	if os.Getenv("APP_ENV") == "dev" {
 		if path != "" {
 			err := godotenv.Load(path)
 			if err != nil {
-				logger.Err("Error loading testdata .env file, path: %s, error: %s", path, err)
+				logger.Err("Error loading testdata .env file, Working Directory: %s  path: %s, error: %s", currntPath, path, err)
 			}
 		} else if flag.Lookup("test.v") != nil {
 			// test mode
@@ -91,7 +102,7 @@ func LoadConfig(path string) (*Cfg, error) {
 	//}
 
 	// Get environment variables for Cfg
-	_, err := env.UnmarshalFromEnviron(config)
+	_, err = env.UnmarshalFromEnviron(config)
 	if err != nil {
 		return nil, err
 	}

@@ -1,0 +1,135 @@
+syntax = "proto3";
+
+package CartService;
+
+service CartService {
+    rpc GetCart(Identifier) returns (Cart);
+    rpc AddToCart(Cart) returns (Result);
+    rpc DeleteItem(DeleteItemRequest) returns (Result);
+    rpc PurgeCart(Identifier) returns (Result);
+    rpc MergeCarts(MergeRequest) returns (Result);
+    rpc UpdateQuantity(UpdateQuantityRequest) returns (Result);
+}
+
+
+service CouponService {
+    rpc CreateCouponTemplate(CouponTemplate) returns (Result);
+    rpc GetCouponTemplateByName(CouponTemplateName) returns (CouponTemplate);
+    rpc CouponUsed(CouponUseRequest) returns (Result);
+    rpc VerifyVoucher(Voucher) returns (Coupon);
+    rpc GetAllVoucherTemplates(GetAllVoucherTemplatesRequest) returns (GetAllVoucherTemplatesResponse);
+    rpc GetVoucherByTemplateName(GetVoucherByTemplateNameRequest) returns (GetVoucherByTemplateNameResponse);
+
+}
+
+message GetAllVoucherTemplatesRequest {
+    int32 page = 1;
+    int32 perpage = 2;
+ }
+
+message GetAllVoucherTemplatesResponse {
+    repeated CouponTemplate templates = 1;
+ }
+ 
+ message GetVoucherByTemplateNameRequest{
+    int32    page        = 1;
+    int32    perpage     = 2;
+    string   voucherName  = 3;
+ }
+ message GetVoucherByTemplateNameResponse{
+     repeated Voucher vouchers = 1;
+ }
+
+message Voucher {
+    string code = 1;
+}
+
+message Coupon {
+    string code = 1;
+    string startDate = 2;
+    string endDate = 3;
+    CouponDiscount couponDiscount = 4;
+}
+message CouponUseRequest {
+    string code = 1;
+    string user = 2;
+    string order = 3;
+}
+
+message CouponTemplateName {
+    string couponTemplateName = 1;
+}
+
+message CouponTemplate {
+    string title = 1;
+    string prefix = 2;
+    int32 useLimit = 3;
+    int32 count = 4;
+    int32 length = 5;
+    string startDate = 6;
+    string endDate = 7;
+    repeated string categories = 8;
+    repeated string products = 9;
+    repeated string users = 10;
+    repeated string sellers = 11;
+    bool isFirstPurchase = 12;
+    CouponDiscount couponDiscount = 13;
+}
+
+message CouponDiscount {
+    string type = 1;
+    float amount = 2;
+    float maxDiscountValue = 3;
+    float minBasketValue = 4;
+}
+
+message Price {
+    float original = 1;
+    float special  = 2;
+}
+
+message UpdateQuantityRequest {
+    string identifier = 1;
+    string inventoryId = 2;
+    int32 count = 3;
+}
+
+message Items {
+    string inventoryId = 1;
+    string title = 2;
+    string model = 3;
+    string seller = 4;
+    map<string, string> variationAttributes = 5;
+    int32 quantity = 6;
+    string guaranty = 7;
+    string img = 8;
+    Price price = 9;
+}
+
+message Cart {
+    string identifier = 1;
+    repeated Items items = 2;
+}
+
+message DeleteItemRequest {
+    string identifier = 1;
+    string inventoryId = 2;
+}
+
+message Identifier {
+    string identifier = 1;
+}
+
+message MergeRequest {
+    string guestIdentifier = 1;
+    string userIdentifier = 2;
+}
+
+message Result {
+    // HTTP STATUS
+    // 200 success
+    // 500 error
+    // 422 validation
+    int32 code = 1;
+    string message = 2;
+}

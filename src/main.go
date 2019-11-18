@@ -14,6 +14,7 @@ import (
 	scheduler_service "gitlab.faza.io/order-project/order-service/infrastructure/services/scheduler"
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	user_service "gitlab.faza.io/order-project/order-service/infrastructure/services/user"
+	voucher_service "gitlab.faza.io/order-project/order-service/infrastructure/services/voucher"
 	grpc_server "gitlab.faza.io/order-project/order-service/server/grpc"
 	"os"
 	"time"
@@ -146,9 +147,14 @@ func init() {
 		global.Singletons.PaymentService = payment_service.NewPaymentService(App.Config.PaymentGatewayService.Address, App.Config.PaymentGatewayService.Port)
 	}
 
+	if App.Config.VoucherService.MockEnabled {
+		global.Singletons.VoucherService = voucher_service.NewVoucherServiceMock()
+	} else {
+		global.Singletons.VoucherService = voucher_service.NewVoucherService(App.Config.VoucherService.Address, App.Config.VoucherService.Port)
+	}
+
 	global.Singletons.NotifyService = notify_service.NewNotificationService()
 	global.Singletons.UserService = user_service.NewUserService(App.Config.UserService.Address, App.Config.UserService.Port)
-
 	App.schedulerService = scheduler_service.NewScheduler(mongoDriver, App.flowManager)
 
 	//brokers = strings.Split(App.config.Kafka.Brokers, ",")

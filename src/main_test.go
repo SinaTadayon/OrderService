@@ -17,6 +17,7 @@ import (
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	user_service "gitlab.faza.io/order-project/order-service/infrastructure/services/user"
+	voucher_service "gitlab.faza.io/order-project/order-service/infrastructure/services/voucher"
 	grpc_server "gitlab.faza.io/order-project/order-service/server/grpc"
 	stockProto "gitlab.faza.io/protos/stock-proto.git"
 	"google.golang.org/grpc"
@@ -92,6 +93,12 @@ func init() {
 		global.Singletons.PaymentService = payment_service.NewPaymentServiceMock()
 	} else {
 		global.Singletons.PaymentService = payment_service.NewPaymentService(App.Config.PaymentGatewayService.Address, App.Config.PaymentGatewayService.Port)
+	}
+
+	if App.Config.VoucherService.MockEnabled {
+		global.Singletons.VoucherService = voucher_service.NewVoucherServiceMock()
+	} else {
+		global.Singletons.VoucherService = voucher_service.NewVoucherService(App.Config.VoucherService.Address, App.Config.VoucherService.Port)
 	}
 
 	global.Singletons.NotifyService = notify_service.NewNotificationService()
