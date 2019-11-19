@@ -146,8 +146,12 @@ func (repo iOrderRepositoryImpl) FindAll() ([]*entities.Order, error) {
 	total, err := repo.Count()
 
 	if err != nil {
-		logger.Audit("repo.Count() failed, %s", err)
+		logger.Err("repo.Count() failed, %s", err)
 		total = int64(defaultDocCount)
+	}
+
+	if total == 0 {
+		return nil, nil
 	}
 
 	cursor, err := repo.mongoAdapter.FindMany(databaseName, collectionName, bson.D{{"deletedAt", nil}})
@@ -175,8 +179,12 @@ func (repo iOrderRepositoryImpl) FindAll() ([]*entities.Order, error) {
 func (repo iOrderRepositoryImpl) FindAllWithSort(fieldName string, direction int) ([]*entities.Order, error) {
 	total, err := repo.Count()
 	if err != nil {
-		logger.Audit("repo.Count() failed, %s", err)
+		logger.Err("repo.Count() failed, %s", err)
 		total = int64(defaultDocCount)
+	}
+
+	if total == 0 {
+		return nil, nil
 	}
 
 	sortMap := make(map[string]int)
@@ -213,6 +221,13 @@ func (repo iOrderRepositoryImpl) FindAllWithPage(page, perPage int64) ([]*entiti
 	}
 
 	var totalCount, err = repo.Count()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if totalCount == 0 {
+		return nil, 0, nil
+	}
 
 	// total 160 page=6 perPage=30
 	var availablePages int64
@@ -270,6 +285,13 @@ func (repo iOrderRepositoryImpl) FindAllWithPageAndSort(page, perPage int64, fie
 	}
 
 	var totalCount, err = repo.Count()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if totalCount == 0 {
+		return nil, 0, nil
+	}
 
 	// total 160 page=6 perPage=30
 	var availablePages int64
@@ -347,8 +369,12 @@ func (repo iOrderRepositoryImpl) FindByFilter(supplier func() interface{}) ([]*e
 	filter := supplier()
 	total, err := repo.CountWithFilter(supplier)
 	if err != nil {
-		logger.Audit("repo.Count() failed, %s", err)
+		logger.Err("repo.Count() failed, %s", err)
 		total = int64(defaultDocCount)
+	}
+
+	if total == 0 {
+		return nil, nil
 	}
 
 	cursor, err := repo.mongoAdapter.FindMany(databaseName, collectionName, filter)
@@ -378,8 +404,12 @@ func (repo iOrderRepositoryImpl) FindByFilterWithSort(supplier func() (interface
 	filter, fieldName, direction := supplier()
 	total, err := repo.CountWithFilter(func() interface{} { return filter })
 	if err != nil {
-		logger.Audit("repo.Count() failed, %s", err)
+		logger.Err("repo.Count() failed, %s", err)
 		total = int64(defaultDocCount)
+	}
+
+	if total == 0 {
+		return nil, nil
 	}
 
 	sortMap := make(map[string]int)

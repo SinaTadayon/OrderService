@@ -1218,7 +1218,7 @@ func (flowManager iFlowManagerImpl) BackOfficeOrdersListView(ctx context.Context
 	orders, total, err := global.Singletons.OrderRepository.FindAllWithPageAndSort(int64(req.Page), int64(req.PerPage), req.Sort, int(req.Direction))
 
 	if err != nil {
-		logger.Err("BackOfficeOrdersListView() => FindAllWithPageAndSort failed")
+		logger.Err("BackOfficeOrdersListView() => FindAllWithPageAndSort failed, error: %s", err)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)

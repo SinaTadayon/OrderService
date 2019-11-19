@@ -217,6 +217,19 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			return paymentPending.Childes()[0].ProcessOrder(ctx, order, nil, nil)
 		}
 
+		if order.Amount.Voucher.Amount > 0 {
+			iPromise := global.Singletons.VoucherService.VoucherSettlement(ctx, order.Amount.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
+			futureData := iPromise.Data()
+			if futureData.Ex != nil {
+				logger.Err("VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Amount.Voucher.Code, futureData.Ex.Error())
+				returnChannel := make(chan promise.FutureData, 1)
+				defer close(returnChannel)
+				returnChannel <- promise.FutureData{Data: nil, Ex: futureData.Ex}
+				return promise.NewPromise(returnChannel, 1, 1)
+			}
+			logger.Audit("VoucherSettlement success, orderId: %d, voucherAmount: %d, voucherCode: %s", order.OrderId, order.Amount.Voucher.Amount, order.Amount.Voucher.Code)
+		}
+
 		logger.Audit("PaymentResult of order success, orderId: %d", order.OrderId)
 		paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, true)
 		paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, true, steps.InProgressStatus)
