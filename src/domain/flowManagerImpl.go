@@ -1225,6 +1225,13 @@ func (flowManager iFlowManagerImpl) BackOfficeOrdersListView(ctx context.Context
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
+	if len(orders) == 0 {
+		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "Orders Not Found"}}
+		defer close(returnChannel)
+		return promise.NewPromise(returnChannel, 1, 1)
+	}
+
 	response := message.ResponseBackOfficeOrdersList{
 		Total:  total,
 		Orders: make([]*message.BackOfficeOrdersList, 0, len(orders)),

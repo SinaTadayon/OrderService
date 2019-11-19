@@ -84,7 +84,7 @@ func (scheduler *iSchedulerServiceImpl) scheduleProcess(ctx context.Context, mod
 				return
 			}
 
-			logger.Audit("heartbeat pulse")
+			//logger.Audit("heartbeat pulse")
 
 		case <-time.After(timeout):
 			logger.Audit("worker goroutine is not healthy!, step: %s, action: %s ", model.Step, model.Action)
