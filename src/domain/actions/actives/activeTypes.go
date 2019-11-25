@@ -1,7 +1,7 @@
 package actives
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 )
 
 type ActiveType int

@@ -116,6 +116,45 @@ func (m *StockResponse) GetReserved() int32 {
 	return 0
 }
 
+type StockResponseMany struct {
+	Inventories          map[string]*StockResponse `protobuf:"bytes,1,rep,name=inventories,proto3" json:"inventories,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	XXX_NoUnkeyedLiteral struct{}                  `json:"-"`
+	XXX_unrecognized     []byte                    `json:"-"`
+	XXX_sizecache        int32                     `json:"-"`
+}
+
+func (m *StockResponseMany) Reset()         { *m = StockResponseMany{} }
+func (m *StockResponseMany) String() string { return proto.CompactTextString(m) }
+func (*StockResponseMany) ProtoMessage()    {}
+func (*StockResponseMany) Descriptor() ([]byte, []int) {
+	return fileDescriptor_c87a7814fbd674bd, []int{2}
+}
+
+func (m *StockResponseMany) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_StockResponseMany.Unmarshal(m, b)
+}
+func (m *StockResponseMany) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_StockResponseMany.Marshal(b, m, deterministic)
+}
+func (m *StockResponseMany) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_StockResponseMany.Merge(m, src)
+}
+func (m *StockResponseMany) XXX_Size() int {
+	return xxx_messageInfo_StockResponseMany.Size(m)
+}
+func (m *StockResponseMany) XXX_DiscardUnknown() {
+	xxx_messageInfo_StockResponseMany.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_StockResponseMany proto.InternalMessageInfo
+
+func (m *StockResponseMany) GetInventories() map[string]*StockResponse {
+	if m != nil {
+		return m.Inventories
+	}
+	return nil
+}
+
 type GetRequest struct {
 	InventoryId          string   `protobuf:"bytes,1,opt,name=InventoryId,proto3" json:"InventoryId,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -127,7 +166,7 @@ func (m *GetRequest) Reset()         { *m = GetRequest{} }
 func (m *GetRequest) String() string { return proto.CompactTextString(m) }
 func (*GetRequest) ProtoMessage()    {}
 func (*GetRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_c87a7814fbd674bd, []int{2}
+	return fileDescriptor_c87a7814fbd674bd, []int{3}
 }
 
 func (m *GetRequest) XXX_Unmarshal(b []byte) error {
@@ -155,32 +194,81 @@ func (m *GetRequest) GetInventoryId() string {
 	return ""
 }
 
+type GetRequestMany struct {
+	InventoryIds         []string `protobuf:"bytes,1,rep,name=InventoryIds,proto3" json:"InventoryIds,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *GetRequestMany) Reset()         { *m = GetRequestMany{} }
+func (m *GetRequestMany) String() string { return proto.CompactTextString(m) }
+func (*GetRequestMany) ProtoMessage()    {}
+func (*GetRequestMany) Descriptor() ([]byte, []int) {
+	return fileDescriptor_c87a7814fbd674bd, []int{4}
+}
+
+func (m *GetRequestMany) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_GetRequestMany.Unmarshal(m, b)
+}
+func (m *GetRequestMany) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_GetRequestMany.Marshal(b, m, deterministic)
+}
+func (m *GetRequestMany) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetRequestMany.Merge(m, src)
+}
+func (m *GetRequestMany) XXX_Size() int {
+	return xxx_messageInfo_GetRequestMany.Size(m)
+}
+func (m *GetRequestMany) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetRequestMany.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_GetRequestMany proto.InternalMessageInfo
+
+func (m *GetRequestMany) GetInventoryIds() []string {
+	if m != nil {
+		return m.InventoryIds
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*StockRequest)(nil), "stockProto.StockRequest")
 	proto.RegisterType((*StockResponse)(nil), "stockProto.StockResponse")
+	proto.RegisterType((*StockResponseMany)(nil), "stockProto.StockResponseMany")
+	proto.RegisterMapType((map[string]*StockResponse)(nil), "stockProto.StockResponseMany.InventoriesEntry")
 	proto.RegisterType((*GetRequest)(nil), "stockProto.GetRequest")
+	proto.RegisterType((*GetRequestMany)(nil), "stockProto.GetRequestMany")
 }
 
 func init() { proto.RegisterFile("stock.proto", fileDescriptor_c87a7814fbd674bd) }
 
 var fileDescriptor_c87a7814fbd674bd = []byte{
-	// 253 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x2e, 0x2e, 0xc9, 0x4f,
-	0xce, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0xe2, 0x02, 0x73, 0x02, 0x40, 0x6c, 0x25, 0x1f,
-	0x2e, 0x9e, 0x60, 0x10, 0x2f, 0x28, 0xb5, 0xb0, 0x34, 0xb5, 0xb8, 0x44, 0x48, 0x8a, 0x8b, 0x23,
-	0xb0, 0x34, 0x31, 0xaf, 0x24, 0xb3, 0xa4, 0x52, 0x82, 0x51, 0x81, 0x51, 0x83, 0x35, 0x08, 0xce,
-	0x17, 0x52, 0xe0, 0xe2, 0xf6, 0xcc, 0x2b, 0x4b, 0xcd, 0x2b, 0xc9, 0x2f, 0xaa, 0xf4, 0x4c, 0x91,
-	0x60, 0x52, 0x60, 0xd4, 0xe0, 0x0c, 0x42, 0x16, 0x52, 0xf2, 0xe4, 0xe2, 0x85, 0x9a, 0x56, 0x5c,
-	0x90, 0x9f, 0x57, 0x9c, 0x2a, 0x24, 0xc3, 0xc5, 0xe9, 0x58, 0x96, 0x98, 0x99, 0x93, 0x98, 0x94,
-	0x93, 0x0a, 0x35, 0x0f, 0x21, 0x00, 0xb2, 0x2c, 0x28, 0xb5, 0x38, 0xb5, 0xa8, 0x2c, 0x15, 0x62,
-	0x1a, 0x6b, 0x10, 0x9c, 0xaf, 0xa4, 0xc7, 0xc5, 0xe5, 0x9e, 0x5a, 0x02, 0x73, 0x16, 0x9a, 0xd5,
-	0x8c, 0x18, 0x56, 0x1b, 0xad, 0x62, 0xe6, 0x62, 0x05, 0xdb, 0x2d, 0xe4, 0x06, 0x75, 0x84, 0x63,
-	0x4e, 0x4e, 0x7e, 0x72, 0x62, 0x49, 0xaa, 0x90, 0x84, 0x1e, 0xc2, 0xc3, 0x7a, 0xc8, 0xbe, 0x95,
-	0x92, 0xc4, 0x22, 0x03, 0x71, 0xb9, 0x12, 0x83, 0x90, 0x2b, 0x3c, 0x68, 0xc0, 0x4e, 0xa2, 0xdc,
-	0x98, 0x9c, 0xd4, 0xc4, 0x62, 0xb2, 0x8d, 0x71, 0xe1, 0xe2, 0x86, 0x0a, 0xe5, 0xe6, 0x97, 0x51,
-	0x6c, 0x4a, 0x70, 0x6a, 0x49, 0x49, 0x0e, 0xd9, 0xa6, 0xd8, 0x73, 0x71, 0x80, 0x85, 0xdc, 0x53,
-	0x4b, 0x84, 0xc4, 0x90, 0x15, 0x22, 0x62, 0x0c, 0xaf, 0x01, 0x49, 0x6c, 0xe0, 0x84, 0x68, 0x0c,
-	0x08, 0x00, 0x00, 0xff, 0xff, 0x87, 0x1d, 0x1d, 0xa5, 0x97, 0x02, 0x00, 0x00,
+	// 357 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x93, 0x4f, 0x4b, 0xc3, 0x30,
+	0x18, 0xc6, 0xd7, 0x8d, 0xca, 0xfa, 0x76, 0xca, 0xcc, 0x41, 0x6a, 0x51, 0x28, 0x39, 0xed, 0x54,
+	0x61, 0x7a, 0x10, 0x2f, 0x32, 0x70, 0x8e, 0xa2, 0xc2, 0xcc, 0x4e, 0x1e, 0xb3, 0xf9, 0x1e, 0xca,
+	0x42, 0x3b, 0x9b, 0xac, 0xd0, 0x8f, 0xe5, 0x37, 0xf0, 0xa3, 0x49, 0xd3, 0xba, 0x76, 0x7f, 0x0f,
+	0xf3, 0x96, 0xf7, 0xed, 0x93, 0x5f, 0xde, 0xe7, 0x49, 0x0a, 0xb6, 0x54, 0xf1, 0x6c, 0xee, 0x2f,
+	0x92, 0x58, 0xc5, 0x04, 0x74, 0x31, 0xce, 0xd7, 0xf4, 0x15, 0x3a, 0x93, 0xbc, 0x62, 0xf8, 0xb5,
+	0x44, 0xa9, 0x88, 0x0b, 0xed, 0xf7, 0x25, 0x8f, 0x54, 0xa8, 0x32, 0xc7, 0xf0, 0x8c, 0x9e, 0xc9,
+	0x56, 0x35, 0xf1, 0xc0, 0x0e, 0xa2, 0x14, 0x23, 0x15, 0x27, 0x59, 0xf0, 0xe9, 0x34, 0x3d, 0xa3,
+	0x67, 0xb1, 0x7a, 0x8b, 0x06, 0x70, 0x5a, 0xd2, 0xe4, 0x22, 0x8e, 0x24, 0x92, 0x2b, 0xb0, 0x06,
+	0x29, 0x0f, 0x05, 0x9f, 0x0a, 0x2c, 0x79, 0x55, 0x23, 0x3f, 0x8c, 0xa1, 0xc4, 0x24, 0xc5, 0x82,
+	0x66, 0xb2, 0x55, 0x4d, 0x7f, 0x0c, 0x38, 0x5f, 0x63, 0xbd, 0xf1, 0x28, 0x23, 0x63, 0xb0, 0xc3,
+	0xf2, 0xbc, 0x10, 0xa5, 0x63, 0x78, 0xad, 0x9e, 0xdd, 0xf7, 0xfd, 0xca, 0x90, 0xbf, 0xb5, 0xc7,
+	0x0f, 0xaa, 0x0d, 0xc3, 0x48, 0x25, 0x19, 0xab, 0x23, 0xdc, 0x0f, 0xe8, 0x6e, 0x0a, 0x48, 0x17,
+	0x5a, 0x73, 0x2c, 0xfc, 0x5b, 0x2c, 0x5f, 0x92, 0x1b, 0x30, 0x53, 0x2e, 0x96, 0xa8, 0xc7, 0xb4,
+	0xfb, 0x97, 0x7b, 0x4f, 0x64, 0x85, 0xee, 0xa1, 0x79, 0x6f, 0x50, 0x1f, 0x60, 0x84, 0xea, 0x2f,
+	0xd9, 0x8d, 0xf4, 0x8c, 0xed, 0xf4, 0xee, 0xe0, 0xac, 0xd2, 0x6b, 0xbb, 0x14, 0x3a, 0x35, 0x41,
+	0xe1, 0xd7, 0x62, 0x6b, 0xbd, 0xfe, 0x77, 0x0b, 0x4c, 0x3d, 0x02, 0x79, 0x2e, 0xd3, 0x1f, 0x08,
+	0x11, 0xcf, 0xb8, 0x42, 0xe2, 0xec, 0x18, 0x53, 0xc3, 0xdd, 0xfd, 0x06, 0x68, 0x83, 0x0c, 0x57,
+	0x6f, 0x42, 0xdf, 0xc5, 0xff, 0x31, 0x02, 0xb9, 0x3c, 0x1a, 0xf3, 0x04, 0xb6, 0x6e, 0x4d, 0x50,
+	0x29, 0x71, 0x34, 0xe5, 0x11, 0xda, 0xba, 0x35, 0x42, 0x45, 0x2e, 0xea, 0xc2, 0x2a, 0xf1, 0xc3,
+	0x80, 0x97, 0xd2, 0xcd, 0x08, 0x8b, 0xab, 0x71, 0x77, 0x43, 0xf2, 0x6f, 0xee, 0xf5, 0xc1, 0x07,
+	0x49, 0x1b, 0xd3, 0x13, 0xfd, 0x23, 0xde, 0xfe, 0x06, 0x00, 0x00, 0xff, 0xff, 0x9f, 0x17, 0x58,
+	0xf8, 0x97, 0x03, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -201,12 +289,11 @@ type StockClient interface {
 	StockReserve(ctx context.Context, in *StockRequest, opts ...grpc.CallOption) (*StockResponse, error)
 	// reserve stock from available stock
 	StockRelease(ctx context.Context, in *StockRequest, opts ...grpc.CallOption) (*StockResponse, error)
-	// remove stock from available stocks
-	StockRemove(ctx context.Context, in *StockRequest, opts ...grpc.CallOption) (*StockResponse, error)
 	// settle a stock, removes stock from reserved stock
 	StockSettle(ctx context.Context, in *StockRequest, opts ...grpc.CallOption) (*StockResponse, error)
 	// returns amount of available stock, if quantity is provided
 	StockGet(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*StockResponse, error)
+	StockGetMany(ctx context.Context, in *GetRequestMany, opts ...grpc.CallOption) (*StockResponseMany, error)
 }
 
 type stockClient struct {
@@ -244,15 +331,6 @@ func (c *stockClient) StockRelease(ctx context.Context, in *StockRequest, opts .
 	return out, nil
 }
 
-func (c *stockClient) StockRemove(ctx context.Context, in *StockRequest, opts ...grpc.CallOption) (*StockResponse, error) {
-	out := new(StockResponse)
-	err := c.cc.Invoke(ctx, "/stockProto.Stock/StockRemove", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *stockClient) StockSettle(ctx context.Context, in *StockRequest, opts ...grpc.CallOption) (*StockResponse, error) {
 	out := new(StockResponse)
 	err := c.cc.Invoke(ctx, "/stockProto.Stock/StockSettle", in, out, opts...)
@@ -271,6 +349,15 @@ func (c *stockClient) StockGet(ctx context.Context, in *GetRequest, opts ...grpc
 	return out, nil
 }
 
+func (c *stockClient) StockGetMany(ctx context.Context, in *GetRequestMany, opts ...grpc.CallOption) (*StockResponseMany, error) {
+	out := new(StockResponseMany)
+	err := c.cc.Invoke(ctx, "/stockProto.Stock/StockGetMany", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // StockServer is the server API for Stock service.
 type StockServer interface {
 	// add stock to available stocks
@@ -279,12 +366,11 @@ type StockServer interface {
 	StockReserve(context.Context, *StockRequest) (*StockResponse, error)
 	// reserve stock from available stock
 	StockRelease(context.Context, *StockRequest) (*StockResponse, error)
-	// remove stock from available stocks
-	StockRemove(context.Context, *StockRequest) (*StockResponse, error)
 	// settle a stock, removes stock from reserved stock
 	StockSettle(context.Context, *StockRequest) (*StockResponse, error)
 	// returns amount of available stock, if quantity is provided
 	StockGet(context.Context, *GetRequest) (*StockResponse, error)
+	StockGetMany(context.Context, *GetRequestMany) (*StockResponseMany, error)
 }
 
 func RegisterStockServer(s *grpc.Server, srv StockServer) {
@@ -345,24 +431,6 @@ func _Stock_StockRelease_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Stock_StockRemove_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(StockRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(StockServer).StockRemove(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/stockProto.Stock/StockRemove",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(StockServer).StockRemove(ctx, req.(*StockRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Stock_StockSettle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(StockRequest)
 	if err := dec(in); err != nil {
@@ -399,6 +467,24 @@ func _Stock_StockGet_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Stock_StockGetMany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetRequestMany)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(StockServer).StockGetMany(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/stockProto.Stock/StockGetMany",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(StockServer).StockGetMany(ctx, req.(*GetRequestMany))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Stock_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "stockProto.Stock",
 	HandlerType: (*StockServer)(nil),
@@ -416,16 +502,16 @@ var _Stock_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Stock_StockRelease_Handler,
 		},
 		{
-			MethodName: "StockRemove",
-			Handler:    _Stock_StockRemove_Handler,
-		},
-		{
 			MethodName: "StockSettle",
 			Handler:    _Stock_StockSettle_Handler,
 		},
 		{
 			MethodName: "StockGet",
 			Handler:    _Stock_StockGet_Handler,
+		},
+		{
+			MethodName: "StockGetMany",
+			Handler:    _Stock_StockGetMany_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

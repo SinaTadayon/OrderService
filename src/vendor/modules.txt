@@ -42,6 +42,8 @@ github.com/matryer/resync
 # github.com/pierrec/lz4 v2.0.5+incompatible
 github.com/pierrec/lz4
 github.com/pierrec/lz4/internal/xxh32
+# github.com/pkg/errors v0.8.1
+github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
 # github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
@@ -66,11 +68,13 @@ gitlab.faza.io/go-framework/kafkaadapter
 gitlab.faza.io/go-framework/logger
 # gitlab.faza.io/go-framework/mongoadapter v0.0.8
 gitlab.faza.io/go-framework/mongoadapter
+# gitlab.faza.io/protos/cart v0.0.9
+gitlab.faza.io/protos/cart
 # gitlab.faza.io/protos/order v0.0.42
 gitlab.faza.io/protos/order
 # gitlab.faza.io/protos/payment-gateway v0.0.7
 gitlab.faza.io/protos/payment-gateway
-# gitlab.faza.io/protos/stock-proto.git v0.0.3
+# gitlab.faza.io/protos/stock-proto.git v0.0.8
 gitlab.faza.io/protos/stock-proto.git
 # gitlab.faza.io/protos/user v0.0.31
 gitlab.faza.io/protos/user

@@ -1,7 +1,7 @@
 package next_to_step_action
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 )
 
 type ActionEnums int

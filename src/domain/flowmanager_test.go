@@ -1,8 +1,8 @@
 package domain
 
 import (
-	"errors"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/domain/actions/actives"

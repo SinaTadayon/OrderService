@@ -1,7 +1,7 @@
 package notification_action
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 )
 
 type ActionEnums int

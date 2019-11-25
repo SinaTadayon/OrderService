@@ -2,7 +2,7 @@ package scheduler_service
 
 import (
 	"context"
-	"errors"
+	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/domain"

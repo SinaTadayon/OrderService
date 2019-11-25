@@ -1,6 +1,6 @@
 package actions
 
-import "errors"
+import "github.com/pkg/errors"
 
 type ActionType int
 

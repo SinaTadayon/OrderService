@@ -74,6 +74,8 @@ github.com/mattn/go-isatty v0.0.4/go.mod h1:M+lRXTBqGeGNdLjl/ufCoiOlB5xdOkqRJdNx
 github.com/pierrec/lz4 v0.0.0-20190327172049-315a67e90e41/go.mod h1:3/3N9NVKO0jef7pBehbT1qWhCMrIgbYNnFAZCqQ5LRc=
 github.com/pierrec/lz4 v2.0.5+incompatible h1:2xWsjqPFWcplujydGg4WmhC/6fZqK42wMM8aXeqhl0I=
 github.com/pierrec/lz4 v2.0.5+incompatible/go.mod h1:pdkljMzZIN41W+lC3N2tnIh5sFi+IEE17M5jbnwPHcY=
+github.com/pkg/errors v0.8.1 h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=
+github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/profile v1.2.1/go.mod h1:hJw3o1OdXxsrSjjVksARp5W95eeEaEfptyVZyv6JUPA=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
@@ -109,12 +111,14 @@ gitlab.faza.io/go-framework/mongoadapter v0.0.6/go.mod h1:QVQUMgtEeUTTkCNp0S4/wN
 gitlab.faza.io/go-framework/mongoadapter v0.0.7/go.mod h1:8qeTKqVx1WSuEFFoQr+Uyn53u2EtGaT+SKV5YNhMlgc=
 gitlab.faza.io/go-framework/mongoadapter v0.0.8 h1:hWhm7lgKbfAWOQvghVjdvdqOVPk+g+JdDJYRjjXyeac=
 gitlab.faza.io/go-framework/mongoadapter v0.0.8/go.mod h1:cd15CIUT4zvQxlMuG4Mp6d9RyEcyiK5f9HqRy20X/FI=
+gitlab.faza.io/protos/cart v0.0.9 h1:iA92yR5j3VANBgtKlIhWQMvGkZIojFWUExI1WJoDZ4A=
+gitlab.faza.io/protos/cart v0.0.9/go.mod h1:pemvjJkxFsjd629ESQjWKO7ZJZS6ARDU4sCLGprH7NE=
 gitlab.faza.io/protos/order v0.0.42 h1:jG0oJZFbJDdiujm1CWIW5DcpaFW49js25V03bWw5Eu8=
 gitlab.faza.io/protos/order v0.0.42/go.mod h1:mdK2jO7EiUBmd7x86Vp2g/cJ3W63G+q49vo+z7ABS1w=
 gitlab.faza.io/protos/payment-gateway v0.0.7 h1:w8t9EqmS0Ed1473L26B+a8zLJngNQJgJcs35V+MD9QM=
 gitlab.faza.io/protos/payment-gateway v0.0.7/go.mod h1:UERc408Li0bb4ynMXnvJ6PySsgbOws1GvIQzJ5MJkzE=
-gitlab.faza.io/protos/voucherService-proto.git v0.0.3 h1:Git5O0ezejFlYRIN0KnY63vbgXL8xx8b/WFwONNcIn8=
-gitlab.faza.io/protos/voucherService-proto.git v0.0.3/go.mod h1:Gda0ineygX49cKhrjrUyHZv6Q3/lwFU3dU50BEWYCmo=
+gitlab.faza.io/protos/stock-proto.git v0.0.8 h1:TA9/sMQe+acPsu7LmM8zdKV02/0VJUCQntGgnpCvynM=
+gitlab.faza.io/protos/stock-proto.git v0.0.8/go.mod h1:Gda0ineygX49cKhrjrUyHZv6Q3/lwFU3dU50BEWYCmo=
 gitlab.faza.io/protos/user v0.0.31 h1:alpa41ZS+dyrLaH8Cqnc5XcdCIsUJFAChjr3wRK98Ac=
 gitlab.faza.io/protos/user v0.0.31/go.mod h1:w6omD0TOMlJfOKcNTne7hlKN5FUOBPJzexzFCZmoyQY=
 gitlab.faza.io/services/user-app-client v0.0.17 h1:yFLEMSg5mlgfMpnT6GhQ+Uhvgg3W5O4RN+kTSq5EoN8=

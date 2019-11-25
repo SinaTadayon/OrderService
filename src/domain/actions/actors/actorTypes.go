@@ -1,7 +1,7 @@
 package actors
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 )
 
 type ActorType int

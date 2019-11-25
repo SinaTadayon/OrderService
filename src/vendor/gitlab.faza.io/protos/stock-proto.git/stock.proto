@@ -17,6 +17,8 @@ service Stock {
 
     // returns amount of available stock, if quantity is provided
     rpc StockGet (GetRequest) returns (StockResponse) {}
+
+    rpc StockGetMany (GetRequestMany) returns (StockResponseMany) {}
 }
 
 message StockRequest {
@@ -29,6 +31,14 @@ message StockResponse {
     int32 Reserved = 2;
 }
 
+message StockResponseMany {
+    map<string, StockResponse> inventories = 1;
+}
+
 message GetRequest {
     string InventoryId = 1;
+}
+
+message GetRequestMany {
+    repeated string InventoryIds = 1;
 }

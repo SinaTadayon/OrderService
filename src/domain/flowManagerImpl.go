@@ -17,7 +17,7 @@ import (
 	"strconv"
 	"time"
 
-	//"errors"
+	//"github.com/pkg/errors"
 	checkout_action "gitlab.faza.io/order-project/order-service/domain/actions/actors/checkout"
 	checkout_action_state "gitlab.faza.io/order-project/order-service/domain/states/listener/checkout"
 	"gitlab.faza.io/order-project/order-service/infrastructure/promise"

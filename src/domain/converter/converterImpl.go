@@ -1,7 +1,7 @@
 package converter
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	ordersrv "gitlab.faza.io/protos/order"

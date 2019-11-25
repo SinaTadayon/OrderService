@@ -1,6 +1,6 @@
 package events
 
-import "errors"
+import "github.com/pkg/errors"
 
 type EventType int
 

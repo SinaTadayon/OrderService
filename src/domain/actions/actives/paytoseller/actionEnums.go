@@ -1,7 +1,7 @@
 package pay_to_seller_action
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 )
 
 type ActionEnums int
