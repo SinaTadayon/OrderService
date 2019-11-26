@@ -19,11 +19,12 @@ const (
 	defaultDocCount int    = 1024
 )
 
-var errorTotalCountExceeded = errors.New("total count exceeded")
-var errorPageNotAvailable = errors.New("page not available")
-var errorDeleteFailed = errors.New("update deletedAt field failed")
-var errorRemoveFailed = errors.New("remove order failed")
-var errorUpdateFailed = errors.New("update order failed")
+var ErrorTotalCountExceeded = errors.New("total count exceeded")
+var ErrorPageNotAvailable = errors.New("page not available")
+var ErrorDeleteFailed = errors.New("update deletedAt field failed")
+var ErrorRemoveFailed = errors.New("remove order failed")
+var ErrorUpdateFailed = errors.New("update order failed")
+var ErrorVersionUpdateFailed = errors.New("update order version failed")
 
 type iOrderRepositoryImpl struct {
 	mongoAdapter *mongoadapter.Mongo
@@ -33,7 +34,19 @@ func NewOrderRepository(mongoDriver *mongoadapter.Mongo) (IOrderRepository, erro
 
 	_, err := mongoDriver.AddUniqueIndex(databaseName, collectionName, "orderId")
 	if err != nil {
-		logger.Err(err.Error())
+		logger.Err("create orderId index failed, error: %s", err.Error())
+		return nil, err
+	}
+
+	_, err = mongoDriver.AddUniqueIndex(databaseName, collectionName, "packages.pkgId")
+	if err != nil {
+		logger.Err("create packages.pkgId index failed, error: %s", err.Error())
+		return nil, err
+	}
+
+	_, err = mongoDriver.AddUniqueIndex(databaseName, collectionName, "packages.subpackages.items.itemId")
+	if err != nil {
+		logger.Err("create packages.subpackages.items.itemId index failed, error: %s", err.Error())
 		return nil, err
 	}
 
@@ -44,31 +57,34 @@ func (repo iOrderRepositoryImpl) Save(order entities.Order) (*entities.Order, er
 
 	if order.OrderId == 0 {
 		order.OrderId = entities.GenerateOrderId()
-		mapItemIds := make(map[int]int, len(order.Items))
-		for i := 0; i < len(order.Items); i++ {
-			for {
-				random := int(entities.GenerateRandomNumber())
-				if _, ok := mapItemIds[random]; ok {
-					continue
-				}
-				mapItemIds[random] = i
-				break
-			}
-		}
+		mapItemIds := make(map[int]string, 64)
+		mapInventoryIds := make(map[string]int, 64)
 
-		for key, value := range mapItemIds {
-			for index := range order.Items {
-				if index == value {
-					order.Items[index].ItemId = order.OrderId + uint64(key)
-					order.Items[index].CreatedAt = time.Now().UTC()
-					order.Items[index].UpdatedAt = time.Now().UTC()
+		for i := 0; i < len(order.Packages); i++ {
+			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
+				for {
+					random := int(entities.GenerateRandomNumber())
+					if _, ok := mapItemIds[random]; ok {
+						continue
+					}
+					mapItemIds[random] = order.Packages[i].Subpackages[j].Item.InventoryId
+					mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId] = random
 					break
 				}
 			}
 		}
 
+		for i := 0; i < len(order.Packages); i++ {
+			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
+				if value, ok := mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId]; ok {
+					order.Packages[i].Subpackages[j].Id = order.OrderId + uint64(value)
+					order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
+					order.Packages[i].Subpackages[j].UpdatedAt = time.Now().UTC()
+				}
+			}
+		}
+
 		order.CreatedAt = time.Now().UTC()
-		order.UpdatedAt = time.Now().UTC()
 		var insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, &order)
 		if err != nil {
 			if repo.mongoAdapter.IsDupError(err) {
@@ -81,15 +97,45 @@ func (repo iOrderRepositoryImpl) Save(order entities.Order) (*entities.Order, er
 		}
 		order.ID = insertOneResult.InsertedID.(primitive.ObjectID)
 	} else {
-		order.UpdatedAt = time.Now().UTC()
-		var updateResult, err = repo.mongoAdapter.UpdateOne(databaseName, collectionName, bson.D{{"orderId", order.OrderId}, {"deletedAt", nil}},
+		var currentOrder, err = repo.FindById(order.OrderId)
+		if err != nil {
+			return nil, ErrorUpdateFailed
+		}
+
+		//order.UpdatedAt = time.Now().UTC()
+		for i := 0; i < len(order.Packages); i++ {
+			if currentOrder.Packages[i].Version == order.Packages[i].Version {
+				order.Packages[i].Version += 1
+				for j := 0; j < len(order.Packages[i].Subpackages); j++ {
+					if currentOrder.Packages[i].Subpackages[j].Version == order.Packages[i].Subpackages[j].Version {
+						order.Packages[i].Subpackages[j].Version += 1
+					} else {
+						logger.Err("Update order failed, subpackage version obsolete, "+
+							"orderId: %d, subpackage Id: %d, last version: %d, update version: ",
+							order.OrderId, order.Packages[i].Subpackages[j].Id,
+							order.Packages[i].Subpackages[j].Version,
+							currentOrder.Packages[i].Subpackages[j].Version)
+						return nil, ErrorVersionUpdateFailed
+					}
+				}
+			} else {
+				logger.Err("Update order failed, package version obsolete, "+
+					"orderId: %d, package Id: %d, last version: %d, update version: ",
+					order.OrderId, order.Packages[i].Id,
+					order.Packages[i].Version,
+					currentOrder.Packages[i].Version)
+				return nil, ErrorVersionUpdateFailed
+			}
+		}
+
+		updateResult, err := repo.mongoAdapter.UpdateOne(databaseName, collectionName, bson.D{{"orderId", order.OrderId}, {"deletedAt", nil}},
 			bson.D{{"$set", order}})
 		if err != nil {
 			return nil, err
 		}
 
 		if updateResult.ModifiedCount != 1 {
-			return nil, errorUpdateFailed
+			return nil, ErrorUpdateFailed
 		}
 	}
 
@@ -104,32 +150,48 @@ func (repo iOrderRepositoryImpl) Insert(order entities.Order) (*entities.Order, 
 
 	if order.OrderId == 0 {
 		order.OrderId = entities.GenerateOrderId()
-		mapItemIds := make(map[int]int, len(order.Items))
-		for i := 0; i < len(order.Items); i++ {
-			for {
-				random := int(entities.GenerateRandomNumber())
-				if _, ok := mapItemIds[random]; ok {
-					continue
-				}
-				mapItemIds[random] = i
-				break
-			}
-		}
+		mapItemIds := make(map[int]string, 64)
+		mapInventoryIds := make(map[string]int, 64)
 
-		for key, value := range mapItemIds {
-			for index := range order.Items {
-				if index == value {
-					order.Items[index].ItemId = order.OrderId + uint64(key)
-					order.Items[index].CreatedAt = time.Now().UTC()
-					order.Items[index].UpdatedAt = time.Now().UTC()
+		for i := 0; i < len(order.Packages); i++ {
+			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
+				for {
+					random := int(entities.GenerateRandomNumber())
+					if _, ok := mapItemIds[random]; ok {
+						continue
+					}
+					mapItemIds[random] = order.Packages[i].Subpackages[j].Item.InventoryId
+					mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId] = random
 					break
 				}
 			}
 		}
+
+		for i := 0; i < len(order.Packages); i++ {
+			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
+				if value, ok := mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId]; ok {
+					order.Packages[i].Subpackages[j].Id = order.OrderId + uint64(value)
+					order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
+					order.Packages[i].Subpackages[j].UpdatedAt = time.Now().UTC()
+				}
+			}
+		}
+
+		order.CreatedAt = time.Now().UTC()
+		var insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, &order)
+		if err != nil {
+			if repo.mongoAdapter.IsDupError(err) {
+				for repo.mongoAdapter.IsDupError(err) {
+					insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, &order)
+				}
+			} else {
+				return nil, err
+			}
+		}
+		order.ID = insertOneResult.InsertedID.(primitive.ObjectID)
 	}
 
 	order.CreatedAt = time.Now().UTC()
-	order.UpdatedAt = time.Now().UTC()
 	var insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, &order)
 	if err != nil {
 		return nil, err
@@ -243,12 +305,12 @@ func (repo iOrderRepositoryImpl) FindAllWithPage(page, perPage int64) ([]*entiti
 	}
 
 	if availablePages < page {
-		return nil, availablePages, errorPageNotAvailable
+		return nil, availablePages, ErrorPageNotAvailable
 	}
 
 	var offset = (page - 1) * perPage
 	if offset >= totalCount {
-		return nil, availablePages, errorTotalCountExceeded
+		return nil, availablePages, ErrorTotalCountExceeded
 	}
 
 	optionFind := options.Find()
@@ -307,12 +369,12 @@ func (repo iOrderRepositoryImpl) FindAllWithPageAndSort(page, perPage int64, fie
 	}
 
 	if availablePages < page {
-		return nil, availablePages, errorPageNotAvailable
+		return nil, availablePages, ErrorPageNotAvailable
 	}
 
 	var offset = (page - 1) * perPage
 	if offset >= totalCount {
-		return nil, availablePages, errorTotalCountExceeded
+		return nil, availablePages, ErrorTotalCountExceeded
 	}
 
 	optionFind := options.Find()
@@ -463,12 +525,12 @@ func (repo iOrderRepositoryImpl) FindByFilterWithPage(supplier func() interface{
 	}
 
 	if availablePages < page {
-		return nil, availablePages, errorPageNotAvailable
+		return nil, availablePages, ErrorPageNotAvailable
 	}
 
 	var offset = (page - 1) * perPage
 	if offset >= totalCount {
-		return nil, availablePages, errorTotalCountExceeded
+		return nil, availablePages, ErrorTotalCountExceeded
 	}
 
 	optionFind := options.Find()
@@ -522,12 +584,12 @@ func (repo iOrderRepositoryImpl) FindByFilterWithPageAndSort(supplier func() (in
 	}
 
 	if availablePages < page {
-		return nil, availablePages, errorPageNotAvailable
+		return nil, availablePages, ErrorPageNotAvailable
 	}
 
 	var offset = (page - 1) * perPage
 	if offset >= totalCount {
-		return nil, availablePages, errorTotalCountExceeded
+		return nil, availablePages, ErrorTotalCountExceeded
 	}
 
 	optionFind := options.Find()
@@ -598,9 +660,6 @@ func (repo iOrderRepositoryImpl) DeleteById(orderId uint64) (*entities.Order, er
 
 	deletedAt := time.Now().UTC()
 	order.DeletedAt = &deletedAt
-	for index := range order.Items {
-		order.Items[index].DeletedAt = &deletedAt
-	}
 
 	updateResult, err := repo.mongoAdapter.UpdateOne(databaseName, collectionName,
 		bson.D{{"orderId", order.OrderId}, {"deletedAt", nil}},
@@ -610,7 +669,7 @@ func (repo iOrderRepositoryImpl) DeleteById(orderId uint64) (*entities.Order, er
 	}
 
 	if updateResult.ModifiedCount != 1 {
-		return nil, errorDeleteFailed
+		return nil, ErrorDeleteFailed
 	}
 
 	return order, nil
@@ -643,7 +702,7 @@ func (repo iOrderRepositoryImpl) RemoveById(orderId uint64) error {
 	}
 
 	if result.DeletedCount != 1 {
-		return errorRemoveFailed
+		return ErrorRemoveFailed
 	}
 	return nil
 }

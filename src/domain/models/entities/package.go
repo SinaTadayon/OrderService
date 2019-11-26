@@ -2,47 +2,20 @@ package entities
 
 import "time"
 
-type Package struct {
-	PkgId        uint64         `bson:"pkgId"`
+type PackageItem struct {
+	Id           uint64         `bson:"id"`
 	Version      uint64         `bson:"version"`
 	Invoice      PackageInvoice `bson:"invoice"`
 	SellerInfo   SellerInfo     `bson:"sellerInfo"`
 	ShipmentSpec ShipmentSpec   `bson:"shipmentSpec"`
-	Subpackage   []SubPackage   `bson:"subpackage"`
+	Subpackages  []Subpackage   `bson:"subpackages"`
 	Status       string         `bson:"status"`
-	UpdatedAt    time.Time      `bson:"updatedAt"`
-	DeletedAt    *time.Time     `bson:"deletedAt"`
-}
-
-type SubPackage struct {
-	Version         uint64          `bson:"version"`
-	Items           []Item          `bson:"items"`
-	ShipmentDetails ShipmentDetails `bson:"shipmentDetails"`
-	Progress        Progress        `bson:"progress"`
-	Status          string          `bson:"status"`
-	UpdatedAt       time.Time       `bson:"updatedAt"`
-	DeletedAt       *time.Time      `bson:"deletedAt"`
 }
 
 type PackageInvoice struct {
 	Subtotal       uint64 `bson:"subtotal"`
 	Discount       uint64 `bson:"discount"`
 	ShipmentAmount uint64 `bson:"shipmentAmount"`
-}
-
-type ShipmentDetails struct {
-	ShipmentDetail       ShipmentDetail `bson:"ShipmentDetail"`
-	ReturnShipmentDetail ShipmentDetail `bson:"ReturnShipmentDetail"`
-}
-
-type ShipmentDetail struct {
-	CarrierName    string    `bson:"carrierName"`
-	ShippingMethod string    `bson:"shippingMethod"`
-	TrackingNumber string    `bson:"trackingNumber"`
-	Image          string    `bson:"image"`
-	Description    string    `bson:"description"`
-	ShippedDate    time.Time `bson:"shippedDate"`
-	CreatedAt      time.Time `bson:"createdAt"`
 }
 
 // Time unit hours

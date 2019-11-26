@@ -273,7 +273,7 @@ package item_repository
 //						CreatedAt:              time.Now().UTC(),
 //					},
 //				},
-//				Progress: entities.Progress{
+//				Tracking: entities.Tracking{
 //					StepName:  "0.NewOrder",
 //					StepIndex: 0,
 //					//CurrentState: entities.State {
@@ -408,7 +408,7 @@ package item_repository
 //						CreatedAt:              time.Now().UTC(),
 //					},
 //				},
-//				Progress: entities.Progress{
+//				Tracking: entities.Tracking{
 //					StepName:  "0.NewOrder",
 //					StepIndex: 0,
 //					//CurrentState: entities.State{

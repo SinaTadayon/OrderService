@@ -106,40 +106,40 @@ func (nextStep nextToStepActionLauncher) persistOrderState(ctx context.Context, 
 
 func (nextStep nextToStepActionLauncher) doUpdateOrderState(ctx context.Context, order *entities.Order, index int,
 	acceptedAction actions.IEnumAction, result bool, reason string) {
-	//order.Items[index].Progress.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
-	//order.Items[index].Progress.StepName = ctx.Value(global.CtxStepName).(string)
-	//order.Items[index].Progress.StepIndex = ctx.Value(global.CtxStepIndex).(int)
+	//order.Items[index].Tracking.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
+	//order.Items[index].Tracking.StepName = ctx.Value(global.CtxStepName).(string)
+	//order.Items[index].Tracking.StepIndex = ctx.Value(global.CtxStepIndex).(int)
 	//
-	//order.Items[index].Progress.CurrentState.Name = nextStep.Name()
-	//order.Items[index].Progress.CurrentState.Index = nextStep.Index()
-	//order.Items[index].Progress.CurrentState.Type = nextStep.Actions().ActionType().Name()
-	//order.Items[index].Progress.CurrentState.CreatedAt = time.Now().UTC()
-	//order.Items[index].Progress.CurrentState.Result = result
-	//order.Items[index].Progress.CurrentState.Reason = reason
+	//order.Items[index].Tracking.CurrentState.Name = nextStep.Name()
+	//order.Items[index].Tracking.CurrentState.Index = nextStep.Index()
+	//order.Items[index].Tracking.CurrentState.Type = nextStep.Actions().ActionType().Name()
+	//order.Items[index].Tracking.CurrentState.CreatedAt = time.Now().UTC()
+	//order.Items[index].Tracking.CurrentState.Result = result
+	//order.Items[index].Tracking.CurrentState.Reason = reason
 	//
 	//if acceptedAction != nil {
-	//	order.Items[index].Progress.CurrentState.AcceptedAction.Name = acceptedAction.Name()
+	//	order.Items[index].Tracking.CurrentState.AcceptedAction.Name = acceptedAction.Name()
 	//} else {
-	//	order.Items[index].Progress.CurrentState.AcceptedAction.Name = ""
+	//	order.Items[index].Tracking.CurrentState.AcceptedAction.Name = ""
 	//}
 	//
-	//order.Items[index].Progress.CurrentState.AcceptedAction.Type = actives.NextToStepAction.String()
-	//order.Items[index].Progress.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
-	//order.Items[index].Progress.CurrentState.AcceptedAction.Data = nil
-	//order.Items[index].Progress.CurrentState.AcceptedAction.Time = &order.Items[index].Progress.CurrentState.CreatedAt
+	//order.Items[index].Tracking.CurrentState.AcceptedAction.Type = actives.NextToStepAction.String()
+	//order.Items[index].Tracking.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
+	//order.Items[index].Tracking.CurrentState.AcceptedAction.Data = nil
+	//order.Items[index].Tracking.CurrentState.AcceptedAction.Time = &order.Items[index].Tracking.CurrentState.CreatedAt
 	//
-	//order.Items[index].Progress.CurrentState.Actions = []entities.Action{order.Items[index].Progress.CurrentState.AcceptedAction}
+	//order.Items[index].Tracking.CurrentState.Actions = []entities.Action{order.Items[index].Tracking.CurrentState.AcceptedAction}
 	//
 	//stateHistory := entities.StateHistory {
-	//	Name: order.Items[index].Progress.CurrentState.Name,
-	//	Index: order.Items[index].Progress.CurrentState.Index,
-	//	Type: order.Items[index].Progress.CurrentState.Type,
-	//	Action: order.Items[index].Progress.CurrentState.AcceptedAction,
-	//	Result: order.Items[index].Progress.CurrentState.Result,
-	//	Reason: order.Items[index].Progress.CurrentState.Reason,
-	//	CreatedAt:order.Items[index].Progress.CurrentState.CreatedAt,
+	//	Name: order.Items[index].Tracking.CurrentState.Name,
+	//	Index: order.Items[index].Tracking.CurrentState.Index,
+	//	Type: order.Items[index].Tracking.CurrentState.Type,
+	//	Action: order.Items[index].Tracking.CurrentState.AcceptedAction,
+	//	Result: order.Items[index].Tracking.CurrentState.Result,
+	//	Reason: order.Items[index].Tracking.CurrentState.Reason,
+	//	CreatedAt:order.Items[index].Tracking.CurrentState.CreatedAt,
 	//}
 	//
-	//order.Items[index].Progress.StepsHistory[len(order.Items[index].Progress.StepsHistory)].StatesHistory =
-	//	append(order.Items[index].Progress.StepsHistory[len(order.Items[index].Progress.StepsHistory)].StatesHistory, stateHistory)
+	//order.Items[index].Tracking.StepsHistory[len(order.Items[index].Tracking.StepsHistory)].StatesHistory =
+	//	append(order.Items[index].Tracking.StepsHistory[len(order.Items[index].Tracking.StepsHistory)].StatesHistory, stateHistory)
 }

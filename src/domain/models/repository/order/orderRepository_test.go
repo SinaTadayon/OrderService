@@ -15,7 +15,7 @@ import (
 var config *configs.Cfg
 var orderRepository IOrderRepository
 
-func init() {
+func TestMain(m *testing.M) {
 	var err error
 	var path string
 	if os.Getenv("APP_ENV") == "dev" {
@@ -26,8 +26,8 @@ func init() {
 
 	config, err = configs.LoadConfig(path)
 	if err != nil {
-		logger.Err(err.Error())
-		panic("configs.LoadConfig failed, " + err.Error())
+		logger.Err("configs.LoadConfig failed, %s", err.Error())
+		os.Exit(1)
 	}
 
 	// store in mongo
@@ -47,13 +47,19 @@ func init() {
 	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
 	if err != nil {
 		logger.Err("NewOrderRepository Mongo: %v", err.Error())
-		panic("mongo adapter creation failed, " + err.Error())
+		os.Exit(1)
 	}
 
 	orderRepository, err = NewOrderRepository(mongoDriver)
 	if err != nil {
-		panic("create order repository failed")
+		logger.Err("create order repository failed")
+		os.Exit(1)
 	}
+
+	// Running Tests
+	code := m.Run()
+	removeCollection()
+	os.Exit(code)
 }
 
 func TestSaveOrderRepository(t *testing.T) {
@@ -97,7 +103,7 @@ func TestUpdateOrderRepository_Failed(t *testing.T) {
 	order1.BuyerInfo.FirstName = "Siamak"
 	_, err = orderRepository.Save(*order1)
 	assert.Error(t, err)
-	assert.Equal(t, err, errorUpdateFailed)
+	assert.Equal(t, err, ErrorUpdateFailed)
 }
 
 func TestInsertOrderRepository_Success(t *testing.T) {
@@ -186,7 +192,7 @@ func TestFindAllWithPageAndPerPageRepository_failed(t *testing.T) {
 	assert.Nil(t, err)
 	_, _, err = orderRepository.FindAllWithPage(1002, 2000)
 	assert.NotNil(t, err)
-	assert.Equal(t, err, errorPageNotAvailable)
+	assert.Equal(t, err, ErrorPageNotAvailable)
 }
 
 func TestFindAllWithPageAndPerPageAndSortRepository_success(t *testing.T) {
@@ -351,7 +357,7 @@ func TestFindByFilterWithPageAndPerPageRepository_failed(t *testing.T) {
 		return bson.D{{}, {"deletedAt", nil}}
 	}, 20002, 2000)
 	assert.NotNil(t, err)
-	assert.Equal(t, err, errorPageNotAvailable)
+	assert.Equal(t, err, ErrorPageNotAvailable)
 }
 
 func TestFindByFilterWithPageAndPerPageAndSortRepository_success(t *testing.T) {
@@ -465,9 +471,10 @@ func createOrder() entities.Order {
 				PaymentResult:   &paymentResult,
 			}},
 		},
+		Status:    "New",
 		BuyerInfo: buyerInfo,
 		Invoice: entities.Invoice{
-			Total:         75400000,
+			GrandTotal:    75400000,
 			Subtotal:      73000000,
 			Discount:      15600000,
 			Currency:      "IRR",
@@ -475,30 +482,26 @@ func createOrder() entities.Order {
 			PaymentMethod: "IPG",
 			PaymentOption: "APP",
 			Voucher: &entities.Voucher{
-				Amount:  230000,
-				Code:    "Market",
-				Details: nil,
+				Amount: 230000,
+				Code:   "Market",
+				Details: &entities.VoucherDetails{
+					StartDate:        time.Now().UTC(),
+					EndDate:          time.Now().UTC(),
+					Type:             "Value",
+					MaxDiscountValue: 1000,
+					MinBasketValue:   13450,
+				},
 			},
 		},
-		Items: []entities.Item{
+		Packages: []entities.PackageItem{
 			{
-				ItemId:      0,
-				InventoryId: "1111111111",
-				Title:       "Mobile",
-				Brand:       "Nokia",
-				Guaranty:    "Sazegar",
-				Category:    "Electronic",
-				Image:       "",
-				Returnable:  false,
-				DeletedAt:   nil,
-				Attributes: map[string]string{
-					"Quantity":  "0",
-					"Width":     "5cm",
-					"Height":    "7cm",
-					"Length":    "2m",
-					"Weight":    "5kg",
-					"Color":     "Blue",
-					"Materials": "Stone",
+				Id:      129384234,
+				Version: 0,
+				Status:  "NEW",
+				Invoice: entities.PackageInvoice{
+					Subtotal:       2873423,
+					Discount:       9283443,
+					ShipmentAmount: 98734,
 				},
 				SellerInfo: entities.SellerInfo{
 					SellerId: 129384234,
@@ -567,15 +570,8 @@ func createOrder() entities.Order {
 						UpdatedAt: time.Now().UTC(),
 					},
 				},
-				Invoice: entities.ItemInvoice{
-					Unit:             1270000,
-					Original:         7340000,
-					Special:          1000000,
-					SellerCommission: 5334444,
-					Currency:         "IRR",
-				},
 				ShipmentSpec: entities.ShipmentSpec{
-					CarrierNames:   "Post",
+					CarrierNames:   []string{"Post", "Snap"},
 					CarrierProduct: "Post Express",
 					CarrierType:    "Standard",
 					ShippingCost:   1249348,
@@ -586,190 +582,181 @@ func createOrder() entities.Order {
 					ReturnTime:     24,
 					Details:        "no return",
 				},
-				ShipmentDetails: entities.ShipmentDetails{
-					ShipmentDetail: entities.ShipmentDetail{
-						CarrierName:    "Post",
-						TrackingNumber: "545349534958349",
-						Image:          "",
-						Description:    "",
-						CreatedAt:      time.Now().UTC(),
-					},
-					ReturnShipmentDetail: entities.ShipmentDetail{
-						CarrierName:    "Post",
-						TrackingNumber: "545349534958349",
-						Image:          "",
-						Description:    "",
-						CreatedAt:      time.Now().UTC(),
-					},
-				},
-				Progress: entities.Progress{
-					StepName:  "0.NewOrder",
-					StepIndex: 0,
-					//CurrentState: entities.State {
-					//	Name:  "0.New_Order_Process_State",
-					//	Index: 0,
-					//	Type: "LauncherAction",
-					//	Actions: []entities.Action {{
-					//		Name: "Success",
-					//		Type: "NewOrder",
-					//		Base: "Active",
-					//		Data: nil,
-					//		Time: &currentTime,
-					//	}},
-					//	AcceptedAction:entities.Action {
-					//		Name: "Success",
-					//		Type: "NewOrder",
-					//		Base: "Active",
-					//		Data: nil,
-					//		Time: &currentTime,
-					//	},
-					//	Result: false,
-					//	Reason:       "",
-					//	CreatedAt:    time.Now().UTC(),
-					//},
-					CreatedAt: time.Now().UTC(),
-					StepsHistory: []entities.StepHistory{{
-						Name:      "0.NewOrder",
-						Index:     0,
+				Subpackages: []entities.Subpackage{
+					{
+						Id:      0,
+						Version: 0,
+						Item: entities.Item{
+							InventoryId: "1111111111",
+							Title:       "Mobile",
+							Brand:       "Nokia",
+							Guaranty:    "Sazegar",
+							Category:    "Electronic",
+							Image:       "",
+							Returnable:  false,
+							DeletedAt:   nil,
+							Attributes: map[string]string{
+								"Quantity":  "0",
+								"Width":     "5cm",
+								"Height":    "7cm",
+								"Length":    "2m",
+								"Weight":    "5kg",
+								"Color":     "Blue",
+								"Materials": "Stone",
+							},
+							Invoice: entities.ItemInvoice{
+								Unit:              1270000,
+								Original:          7340000,
+								Special:           1000000,
+								Discount:          23000,
+								SellerCommission:  5334444,
+								Currency:          "IRR",
+								ApplicableVoucher: false,
+							},
+						},
+						ShipmentDetails: entities.ShipmentDetails{
+							ShipmentDetail: entities.ShipmentDetail{
+								CarrierName:    "Post",
+								ShippingMethod: "Normal",
+								TrackingNumber: "545349534958349",
+								Image:          "",
+								Description:    "",
+								ShippedDate:    time.Now().UTC(),
+								CreatedAt:      time.Now().UTC(),
+							},
+							ReturnShipmentDetail: entities.ShipmentDetail{
+								CarrierName:    "Post",
+								ShippingMethod: "Normal",
+								TrackingNumber: "545349534958349",
+								Image:          "",
+								Description:    "",
+								ShippedDate:    time.Now().UTC(),
+								CreatedAt:      time.Now().UTC(),
+							},
+						},
+						Tracking: entities.Progress{
+							StepName:  "0.NewOrder",
+							StepIndex: 0,
+							Action: entities.Action{
+								Name:      "BuyerCancel",
+								Type:      "OrderBuyerCancel",
+								Data:      nil,
+								Result:    "Success",
+								Reason:    "",
+								CreatedAt: time.Now().UTC(),
+							},
+							StepsHistory: []entities.StepHistory{
+								{
+									Name:  "1.New",
+									Index: 1,
+									ActionHistory: []entities.Action{
+										{
+											Name:      "BuyerCancel",
+											Type:      "OrderBuyerCancel",
+											Data:      nil,
+											Result:    "Success",
+											Reason:    "",
+											CreatedAt: time.Now().UTC(),
+										},
+									},
+									CreatedAt: time.Now().UTC(),
+									UpdatedAt: time.Now().UTC(),
+								},
+							},
+						},
+						Status:    "New",
 						CreatedAt: time.Now().UTC(),
-						//StatesHistory: []entities.StateHistory{{
-						//	Name:  "0.New_Order_Process_State",
-						//	Index: 0,
-						//	Type: "ListenerAction",
-						//	Action: entities.Action{
-						//		Name:           "Success",
-						//		Type:           "NewOrder",
-						//		Base:           "Active",
-						//		Data:           nil,
-						//		Time: 			&currentTime,
-						//	},
-						//	Result: 	  false,
-						//	Reason:       "",
-						//	CreatedAt:    time.Now().UTC(),
-						//}},
-					}},
-				},
-			},
-			{
-				ItemId:      0,
-				InventoryId: "2222222222",
-				Title:       "Laptop",
-				Brand:       "Lenovo",
-				Guaranty:    "Iranargham",
-				Category:    "Electronic",
-				Image:       "",
-				Returnable:  true,
-				DeletedAt:   nil,
-				Attributes: map[string]string{
-					"Quantity":  "0",
-					"Width":     "5cm",
-					"Height":    "7cm",
-					"Length":    "2m",
-					"Weight":    "5kg",
-					"Color":     "Blue",
-					"Materials": "Stone",
-				},
-				SellerInfo: entities.SellerInfo{
-					SellerId: 2384723083,
-					Profile: &entities.SellerProfile{
-						SellerId:        2384723083,
-						GeneralInfo:     nil,
-						CorporationInfo: nil,
-						IndividualInfo:  nil,
-						ReturnInfo:      nil,
-						ContactPerson:   nil,
-						ShipmentInfo:    nil,
-						FinanceData:     nil,
-						CreatedAt:       time.Now().UTC(),
-						UpdatedAt:       time.Now().UTC(),
+						UpdatedAt: time.Now().UTC(),
 					},
-				},
-				Invoice: entities.ItemInvoice{
-					Unit:             1270000,
-					Original:         7340000,
-					Special:          1000000,
-					SellerCommission: 5334444,
-					Currency:         "IRR",
-				},
-				ShipmentSpec: entities.ShipmentSpec{
-					CarrierNames:   "Post",
-					CarrierProduct: "Post Express",
-					CarrierType:    "Standard",
-					ShippingCost:   1249348,
-					VoucherAmount:  3242344,
-					Currency:       "IRR",
-					ReactionTime:   2,
-					ShippingTime:   8,
-					ReturnTime:     24,
-					Details:        "no return",
-				},
-				ShipmentDetails: entities.ShipmentDetails{
-					ShipmentDetail: entities.ShipmentDetail{
-						CarrierName:    "Post",
-						TrackingNumber: "545349534958349",
-						Image:          "",
-						Description:    "",
-						CreatedAt:      time.Now().UTC(),
-					},
-					ReturnShipmentDetail: entities.ShipmentDetail{
-						CarrierName:    "Post",
-						TrackingNumber: "545349534958349",
-						Image:          "",
-						Description:    "",
-						CreatedAt:      time.Now().UTC(),
-					},
-				},
-				Progress: entities.Progress{
-					StepName:  "0.NewOrder",
-					StepIndex: 0,
-					//CurrentState: entities.State{
-					//	Name:  "0.New_Order_Process_State",
-					//	Index: 0,
-					//	Actions: []entities.Action{{
-					//		Name:           "Success",
-					//		Type:           "NewOrder",
-					//		Base:           "Active",
-					//		Data:           nil,
-					//		Time: 			&currentTime,
-					//	}},
-					//	AcceptedAction: entities.Action{
-					//		Name:           "Success",
-					//		Type:           "NewOrder",
-					//		Base:           "Active",
-					//		Data:           nil,
-					//		Time: 			&currentTime,
-					//	},
-					//	Result: false,
-					//	Reason:       "",
-					//	CreatedAt:    time.Now().UTC(),
-					//},
-					CreatedAt: time.Now().UTC(),
-					StepsHistory: []entities.StepHistory{{
-						Name:      "0.NewOrder",
-						Index:     0,
+					{
+						Id:      0,
+						Version: 0,
+						Item: entities.Item{
+							InventoryId: "2222222222",
+							Title:       "Laptop",
+							Brand:       "Lenovo",
+							Guaranty:    "Iranargham",
+							Category:    "Electronic",
+							Image:       "",
+							Returnable:  true,
+							DeletedAt:   nil,
+							Attributes: map[string]string{
+								"Quantity":  "0",
+								"Width":     "5cm",
+								"Height":    "7cm",
+								"Length":    "2m",
+								"Weight":    "5kg",
+								"Color":     "Blue",
+								"Materials": "Stone",
+							},
+							Invoice: entities.ItemInvoice{
+								Unit:              1270000,
+								Original:          7340000,
+								Special:           1000000,
+								Discount:          2355434,
+								SellerCommission:  5334444,
+								Currency:          "IRR",
+								ApplicableVoucher: true,
+							},
+						},
+						ShipmentDetails: entities.ShipmentDetails{
+							ShipmentDetail: entities.ShipmentDetail{
+								CarrierName:    "Post",
+								ShippingMethod: "Normal",
+								TrackingNumber: "545349534958349",
+								Image:          "",
+								Description:    "",
+								ShippedDate:    time.Now().UTC(),
+								CreatedAt:      time.Now().UTC(),
+							},
+							ReturnShipmentDetail: entities.ShipmentDetail{
+								CarrierName:    "Post",
+								ShippingMethod: "Normal",
+								TrackingNumber: "545349534958349",
+								Image:          "",
+								Description:    "",
+								ShippedDate:    time.Now().UTC(),
+								CreatedAt:      time.Now().UTC(),
+							},
+						},
+						Tracking: entities.Progress{
+							StepName:  "0.NewOrder",
+							StepIndex: 0,
+							Action: entities.Action{
+								Name:      "BuyerCancel",
+								Type:      "OrderBuyerCancel",
+								Data:      nil,
+								Result:    "Success",
+								Reason:    "",
+								CreatedAt: time.Now().UTC(),
+							},
+							StepsHistory: []entities.StepHistory{
+								{
+									Name:  "1.New",
+									Index: 1,
+									ActionHistory: []entities.Action{
+										{
+											Name:      "BuyerCancel",
+											Type:      "OrderBuyerCancel",
+											Data:      nil,
+											Result:    "Success",
+											Reason:    "",
+											CreatedAt: time.Now().UTC(),
+										},
+									},
+									CreatedAt: time.Now().UTC(),
+									UpdatedAt: time.Now().UTC(),
+								},
+							},
+						},
+						Status:    "New",
 						CreatedAt: time.Now().UTC(),
-						//StatesHistory: []entities.StateHistory{{
-						//	Name:  "0.New_Order_Process_State",
-						//	Index: 0,
-						//	Type: "ListenerAction",
-						//	Action: entities.Action{
-						//		Name:           "Success",
-						//		Type:           "NewOrder",
-						//		Base:           "Active",
-						//		Data:           nil,
-						//		Time: 			&currentTime,
-						//	},
-						//
-						//	Result: false,
-						//	Reason:       "",
-						//	CreatedAt:    time.Now().UTC(),
-						//}},
-					}},
+						UpdatedAt: time.Now().UTC(),
+					},
 				},
 			},
 		},
 		CreatedAt: time.Now().UTC(),
-		UpdatedAt: time.Now().UTC(),
 		DeletedAt: nil,
 	}
 

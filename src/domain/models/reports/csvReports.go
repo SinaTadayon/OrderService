@@ -1,4 +1,4 @@
-package entities
+package reports
 
 type BackOfficeExportItems struct {
 	ItemId      uint64

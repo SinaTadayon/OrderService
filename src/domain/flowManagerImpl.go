@@ -9,6 +9,7 @@ import (
 	order_payment_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/orderpayment"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	reports2 "gitlab.faza.io/order-project/order-service/domain/models/reports"
 	order_payment_action_state "gitlab.faza.io/order-project/order-service/domain/states/launcher/orderpayment"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"go.mongodb.org/mongo-driver/bson"
@@ -1398,12 +1399,12 @@ func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSelle
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	reports := make([]*entities.SellerExportOrders, 0, len(orders))
+	reports := make([]*reports2.SellerExportOrders, 0, len(orders))
 
 	for _, order := range orders {
 		for _, item := range order.Items {
 			if item.Status == req.Status {
-				itemReport := &entities.SellerExportOrders{
+				itemReport := &reports2.SellerExportOrders{
 					OrderId:     order.OrderId,
 					ItemId:      item.ItemId,
 					ProductId:   item.InventoryId[0:8],
@@ -1574,12 +1575,12 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	reports := make([]*entities.BackOfficeExportItems, 0, len(orders))
+	reports := make([]*reports2.BackOfficeExportItems, 0, len(orders))
 	sellerProfileMap := make(map[uint64]entities.SellerProfile)
 
 	for _, order := range orders {
 		for _, item := range order.Items {
-			itemReport := &entities.BackOfficeExportItems{
+			itemReport := &reports2.BackOfficeExportItems{
 				ItemId:      item.ItemId,
 				InventoryId: item.InventoryId,
 				ProductId:   item.InventoryId[0:8],

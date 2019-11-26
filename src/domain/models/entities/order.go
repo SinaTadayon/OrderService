@@ -29,7 +29,7 @@ type Order struct {
 	Status         string             `bson:"status"`
 	BuyerInfo      BuyerInfo          `bson:"buyerInfo"`
 	Invoice        Invoice            `bson:"invoice"`
-	Packages       []Package          `bson:"packages"`
+	Packages       []PackageItem      `bson:"packages"`
 	CreatedAt      time.Time          `bson:"createdAt"`
 	DeletedAt      *time.Time         `bson:"deletedAt"`
 }
@@ -78,7 +78,7 @@ type Invoice struct {
 }
 
 type Voucher struct {
-	Amount  uint64          `bson:"amount"`
+	Amount  float64         `bson:"amount"`
 	Code    string          `bson:"code"`
 	Details *VoucherDetails `bson:"details"`
 }
@@ -93,6 +93,35 @@ type VoucherDetails struct {
 	Type             string    `bson:"type"`
 	MaxDiscountValue uint64    `bson:"maxDiscountValue"`
 	MinBasketValue   uint64    `bson:"minBasketValue"`
+}
+
+type PaymentRequest struct {
+	Amount    uint64    `bson:"amount"`
+	Currency  string    `bson:"currency"`
+	Gateway   string    `bson:"gateway"`
+	CreatedAt time.Time `bson:"createdAt"`
+}
+
+type PaymentResponse struct {
+	Result      bool      `bson:"result"`
+	Reason      string    `bson:"reason"`
+	Description string    `bson:"description"`
+	CallBackUrl string    `bson:"callbackUrl"`
+	InvoiceId   int64     `bson:"invoiceId"`
+	PaymentId   string    `bson:"paymentId"`
+	CreatedAt   time.Time `bson:"createdAt"`
+}
+
+type PaymentResult struct {
+	Result      bool      `bson:"result"`
+	Reason      string    `bson:"reason"`
+	PaymentId   string    `bson:"paymentId"`
+	InvoiceId   int64     `bson:"invoiceId"`
+	Amount      uint64    `bson:"amount"`
+	ReqBody     string    `bson:"reqBody"`
+	ResBody     string    `bson:"resBody"`
+	CardNumMask string    `bson:"cardNumMask"`
+	CreatedAt   time.Time `bson:"createdAt"`
 }
 
 func (order Order) IsIdEmpty() bool {

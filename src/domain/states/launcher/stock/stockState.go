@@ -206,36 +206,36 @@ func (stockState stockActionLauncher) persistOrderState(ctx context.Context, ord
 	action actions.IEnumAction, result bool) {
 	//order.UpdatedAt = time.Now().UTC()
 	//for i := 0; i < len(order.Items); i++ {
-	//	order.Items[i].Progress.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
-	//	order.Items[i].Progress.StepName = ctx.Value(global.CtxStepName).(string)
-	//	order.Items[i].Progress.StepIndex = ctx.Value(global.CtxStepIndex).(int)
-	//	order.Items[i].Progress.CurrentState.Name = stockState.Name()
-	//	order.Items[i].Progress.CurrentState.Index = stockState.Index()
-	//	order.Items[i].Progress.CurrentState.Type = stockState.Actions().ActionType().Name()
-	//	order.Items[i].Progress.CurrentState.CreatedAt = time.Now().UTC()
-	//	order.Items[i].Progress.CurrentState.Result = result
-	//	order.Items[i].Progress.CurrentState.Reason = ""
+	//	order.Items[i].Tracking.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
+	//	order.Items[i].Tracking.StepName = ctx.Value(global.CtxStepName).(string)
+	//	order.Items[i].Tracking.StepIndex = ctx.Value(global.CtxStepIndex).(int)
+	//	order.Items[i].Tracking.CurrentState.Name = stockState.Name()
+	//	order.Items[i].Tracking.CurrentState.Index = stockState.Index()
+	//	order.Items[i].Tracking.CurrentState.Type = stockState.Actions().ActionType().Name()
+	//	order.Items[i].Tracking.CurrentState.CreatedAt = time.Now().UTC()
+	//	order.Items[i].Tracking.CurrentState.Result = result
+	//	order.Items[i].Tracking.CurrentState.Reason = ""
 	//
-	//	order.Items[i].Progress.CurrentState.AcceptedAction.Name = action.Name()
-	//	order.Items[i].Progress.CurrentState.AcceptedAction.Type = actives.StockAction.String()
-	//	order.Items[i].Progress.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
-	//	order.Items[i].Progress.CurrentState.AcceptedAction.Data = nil
-	//	order.Items[i].Progress.CurrentState.AcceptedAction.Time = &order.UpdatedAt
+	//	order.Items[i].Tracking.CurrentState.AcceptedAction.Name = action.Name()
+	//	order.Items[i].Tracking.CurrentState.AcceptedAction.Type = actives.StockAction.String()
+	//	order.Items[i].Tracking.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
+	//	order.Items[i].Tracking.CurrentState.AcceptedAction.Data = nil
+	//	order.Items[i].Tracking.CurrentState.AcceptedAction.Time = &order.UpdatedAt
 	//
-	//	order.Items[i].Progress.CurrentState.Actions = []entities.Action{order.Items[i].Progress.CurrentState.AcceptedAction}
+	//	order.Items[i].Tracking.CurrentState.Actions = []entities.Action{order.Items[i].Tracking.CurrentState.AcceptedAction}
 	//
 	//	stateHistory := entities.StateHistory {
-	//		Name: order.Items[i].Progress.CurrentState.Name,
-	//		Index: order.Items[i].Progress.CurrentState.Index,
-	//		Type: order.Items[i].Progress.CurrentState.Type,
-	//		Action: order.Items[i].Progress.CurrentState.AcceptedAction,
-	//		Result: order.Items[i].Progress.CurrentState.Result,
-	//		Reason: order.Items[i].Progress.CurrentState.Reason,
-	//		CreatedAt:order.Items[i].Progress.CurrentState.CreatedAt,
+	//		Name: order.Items[i].Tracking.CurrentState.Name,
+	//		Index: order.Items[i].Tracking.CurrentState.Index,
+	//		Type: order.Items[i].Tracking.CurrentState.Type,
+	//		Action: order.Items[i].Tracking.CurrentState.AcceptedAction,
+	//		Result: order.Items[i].Tracking.CurrentState.Result,
+	//		Reason: order.Items[i].Tracking.CurrentState.Reason,
+	//		CreatedAt:order.Items[i].Tracking.CurrentState.CreatedAt,
 	//	}
 	//
-	//	order.Items[i].Progress.StepsHistory[len(order.Items[i].Progress.StepsHistory)].StatesHistory =
-	//		append(order.Items[i].Progress.StepsHistory[len(order.Items[i].Progress.StepsHistory)].StatesHistory, stateHistory)
+	//	order.Items[i].Tracking.StepsHistory[len(order.Items[i].Tracking.StepsHistory)].StatesHistory =
+	//		append(order.Items[i].Tracking.StepsHistory[len(order.Items[i].Tracking.StepsHistory)].StatesHistory, stateHistory)
 	//}
 	//
 	//orderChecked, err := global.Singletons.OrderRepository.Save(*order)
