@@ -466,7 +466,7 @@ func createOrder() entities.Order {
 			}},
 		},
 		BuyerInfo: buyerInfo,
-		Amount: entities.Amount{
+		Invoice: entities.Invoice{
 			Total:         75400000,
 			Subtotal:      73000000,
 			Discount:      15600000,
@@ -567,7 +567,7 @@ func createOrder() entities.Order {
 						UpdatedAt: time.Now().UTC(),
 					},
 				},
-				Price: entities.Price{
+				Invoice: entities.ItemInvoice{
 					Unit:             1270000,
 					Original:         7340000,
 					Special:          1000000,
@@ -575,7 +575,7 @@ func createOrder() entities.Order {
 					Currency:         "IRR",
 				},
 				ShipmentSpec: entities.ShipmentSpec{
-					CarrierName:    "Post",
+					CarrierNames:   "Post",
 					CarrierProduct: "Post Express",
 					CarrierType:    "Standard",
 					ShippingCost:   1249348,
@@ -587,14 +587,14 @@ func createOrder() entities.Order {
 					Details:        "no return",
 				},
 				ShipmentDetails: entities.ShipmentDetails{
-					SellerShipmentDetail: entities.ShipmentDetail{
+					ShipmentDetail: entities.ShipmentDetail{
 						CarrierName:    "Post",
 						TrackingNumber: "545349534958349",
 						Image:          "",
 						Description:    "",
 						CreatedAt:      time.Now().UTC(),
 					},
-					BuyerReturnShipmentDetail: entities.ShipmentDetail{
+					ReturnShipmentDetail: entities.ShipmentDetail{
 						CarrierName:    "Post",
 						TrackingNumber: "545349534958349",
 						Image:          "",
@@ -603,8 +603,8 @@ func createOrder() entities.Order {
 					},
 				},
 				Progress: entities.Progress{
-					CurrentStepName:  "0.NewOrder",
-					CurrentStepIndex: 0,
+					StepName:  "0.NewOrder",
+					StepIndex: 0,
 					//CurrentState: entities.State {
 					//	Name:  "0.New_Order_Process_State",
 					//	Index: 0,
@@ -684,7 +684,7 @@ func createOrder() entities.Order {
 						UpdatedAt:       time.Now().UTC(),
 					},
 				},
-				Price: entities.Price{
+				Invoice: entities.ItemInvoice{
 					Unit:             1270000,
 					Original:         7340000,
 					Special:          1000000,
@@ -692,7 +692,7 @@ func createOrder() entities.Order {
 					Currency:         "IRR",
 				},
 				ShipmentSpec: entities.ShipmentSpec{
-					CarrierName:    "Post",
+					CarrierNames:   "Post",
 					CarrierProduct: "Post Express",
 					CarrierType:    "Standard",
 					ShippingCost:   1249348,
@@ -704,14 +704,14 @@ func createOrder() entities.Order {
 					Details:        "no return",
 				},
 				ShipmentDetails: entities.ShipmentDetails{
-					SellerShipmentDetail: entities.ShipmentDetail{
+					ShipmentDetail: entities.ShipmentDetail{
 						CarrierName:    "Post",
 						TrackingNumber: "545349534958349",
 						Image:          "",
 						Description:    "",
 						CreatedAt:      time.Now().UTC(),
 					},
-					BuyerReturnShipmentDetail: entities.ShipmentDetail{
+					ReturnShipmentDetail: entities.ShipmentDetail{
 						CarrierName:    "Post",
 						TrackingNumber: "545349534958349",
 						Image:          "",
@@ -720,8 +720,8 @@ func createOrder() entities.Order {
 					},
 				},
 				Progress: entities.Progress{
-					CurrentStepName:  "0.NewOrder",
-					CurrentStepIndex: 0,
+					StepName:  "0.NewOrder",
+					StepIndex: 0,
 					//CurrentState: entities.State{
 					//	Name:  "0.New_Order_Process_State",
 					//	Index: 0,

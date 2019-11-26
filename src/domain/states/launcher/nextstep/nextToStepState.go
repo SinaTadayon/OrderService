@@ -107,8 +107,8 @@ func (nextStep nextToStepActionLauncher) persistOrderState(ctx context.Context, 
 func (nextStep nextToStepActionLauncher) doUpdateOrderState(ctx context.Context, order *entities.Order, index int,
 	acceptedAction actions.IEnumAction, result bool, reason string) {
 	//order.Items[index].Progress.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
-	//order.Items[index].Progress.CurrentStepName = ctx.Value(global.CtxStepName).(string)
-	//order.Items[index].Progress.CurrentStepIndex = ctx.Value(global.CtxStepIndex).(int)
+	//order.Items[index].Progress.StepName = ctx.Value(global.CtxStepName).(string)
+	//order.Items[index].Progress.StepIndex = ctx.Value(global.CtxStepIndex).(int)
 	//
 	//order.Items[index].Progress.CurrentState.Name = nextStep.Name()
 	//order.Items[index].Progress.CurrentState.Index = nextStep.Index()

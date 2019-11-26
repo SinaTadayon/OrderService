@@ -207,8 +207,8 @@ func (stockState stockActionLauncher) persistOrderState(ctx context.Context, ord
 	//order.UpdatedAt = time.Now().UTC()
 	//for i := 0; i < len(order.Items); i++ {
 	//	order.Items[i].Progress.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
-	//	order.Items[i].Progress.CurrentStepName = ctx.Value(global.CtxStepName).(string)
-	//	order.Items[i].Progress.CurrentStepIndex = ctx.Value(global.CtxStepIndex).(int)
+	//	order.Items[i].Progress.StepName = ctx.Value(global.CtxStepName).(string)
+	//	order.Items[i].Progress.StepIndex = ctx.Value(global.CtxStepIndex).(int)
 	//	order.Items[i].Progress.CurrentState.Name = stockState.Name()
 	//	order.Items[i].Progress.CurrentState.Index = stockState.Index()
 	//	order.Items[i].Progress.CurrentState.Type = stockState.Actions().ActionType().Name()

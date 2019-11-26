@@ -507,7 +507,7 @@ func TestPaymentGateway(t *testing.T) {
 
 	newOrder.PaymentService = []entities.PaymentService{{
 		PaymentRequest: &entities.PaymentRequest{
-			Amount:    newOrder.Amount.Total,
+			Amount:    newOrder.Invoice.Total,
 			Currency:  "IRR",
 			Gateway:   "APP",
 			CreatedAt: time.Now().UTC(),
@@ -524,7 +524,7 @@ func TestPaymentGateway(t *testing.T) {
 		OrderID:   strconv.Itoa(int(order.OrderId)),
 		PaymentId: "534545345",
 		InvoiceId: 3434234234,
-		Amount:    int64(order.Amount.Total),
+		Amount:    int64(order.Invoice.Total),
 		ReqBody:   "request test url",
 		ResBody:   "response test url",
 		CardMask:  "293488374****7234",

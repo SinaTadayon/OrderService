@@ -64,7 +64,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 		logger.Audit("Order Received in %s step, orderId: %d, Action: %s", paymentPending.Name(), order.OrderId, PaymentCallbackUrlRequest)
 
 		// handle amount == 0 because of full voucher
-		if order.Amount.Total == 0 && order.Amount.Voucher.Amount > 0 {
+		if order.Invoice.Total == 0 && order.Invoice.Voucher.Amount > 0 {
 			order.PaymentService = []entities.PaymentService{
 				{
 					PaymentRequest: &entities.PaymentRequest{
@@ -76,7 +76,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 
 					PaymentResult: &entities.PaymentResult{
 						Result:      true,
-						Reason:      "Amount paid by voucher",
+						Reason:      "Invoice paid by voucher",
 						PaymentId:   "",
 						InvoiceId:   0,
 						Amount:      0,
@@ -96,17 +96,17 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 				},
 			}
 
-			iPromise := global.Singletons.VoucherService.VoucherSettlement(ctx, order.Amount.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
+			iPromise := global.Singletons.VoucherService.VoucherSettlement(ctx, order.Invoice.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
 			futureData := iPromise.Data()
 			if futureData.Ex != nil {
-				logger.Err("VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Amount.Voucher.Code, futureData.Ex.Error())
+				logger.Err("VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Invoice.Voucher.Code, futureData.Ex.Error())
 				returnChannel := make(chan promise.FutureData, 1)
 				defer close(returnChannel)
 				returnChannel <- promise.FutureData{Data: nil, Ex: futureData.Ex}
 				return promise.NewPromise(returnChannel, 1, 1)
 			}
 
-			logger.Audit("Amount paid by voucher order success, orderId: %d, voucherAmount: %d, voucherCode: %s", order.OrderId, order.Amount.Voucher.Amount, order.Amount.Voucher.Code)
+			logger.Audit("Invoice paid by voucher order success, orderId: %d, voucherAmount: %d, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Amount, order.Invoice.Voucher.Code)
 			paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, steps.InProgressStatus, true)
 			paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, true, steps.InProgressStatus)
 			if err := paymentPending.persistOrder(ctx, &order); err != nil {
@@ -126,9 +126,9 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 		//return orderPaymentState.ActionLauncher(ctx, order, nil, nil)
 
 		paymentRequest := payment_service.PaymentRequest{
-			Amount:   int64(order.Amount.Total),
-			Gateway:  order.Amount.PaymentOption,
-			Currency: order.Amount.Currency,
+			Amount:   int64(order.Invoice.Total),
+			Gateway:  order.Invoice.PaymentOption,
+			Currency: order.Invoice.Currency,
 			OrderId:  order.OrderId,
 		}
 
@@ -217,17 +217,17 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			return paymentPending.Childes()[0].ProcessOrder(ctx, order, nil, nil)
 		}
 
-		if order.Amount.Voucher.Amount > 0 {
-			iPromise := global.Singletons.VoucherService.VoucherSettlement(ctx, order.Amount.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
+		if order.Invoice.Voucher.Amount > 0 {
+			iPromise := global.Singletons.VoucherService.VoucherSettlement(ctx, order.Invoice.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
 			futureData := iPromise.Data()
 			if futureData.Ex != nil {
-				logger.Err("VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Amount.Voucher.Code, futureData.Ex.Error())
+				logger.Err("VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Invoice.Voucher.Code, futureData.Ex.Error())
 				returnChannel := make(chan promise.FutureData, 1)
 				defer close(returnChannel)
 				returnChannel <- promise.FutureData{Data: nil, Ex: futureData.Ex}
 				return promise.NewPromise(returnChannel, 1, 1)
 			}
-			logger.Audit("VoucherSettlement success, orderId: %d, voucherAmount: %d, voucherCode: %s", order.OrderId, order.Amount.Voucher.Amount, order.Amount.Voucher.Code)
+			logger.Audit("VoucherSettlement success, orderId: %d, voucherAmount: %d, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Amount, order.Invoice.Voucher.Code)
 		}
 
 		logger.Audit("PaymentResult of order success, orderId: %d", order.OrderId)
@@ -366,10 +366,10 @@ func (paymentPending paymentPendingStep) doUpdateOrderItemsProgress(ctx context.
 //	}
 //
 //	// Validate amount
-//	errPaymentCallbackUrlRequestAmount := validation.ValidateStruct(&ppr.Amount,
-//		validation.Field(&ppr.Amount.total, validation.Required),
-//		validation.Field(&ppr.Amount.Discount, validation.Required),
-//		validation.Field(&ppr.Amount.Subtotal, validation.Required),
+//	errPaymentCallbackUrlRequestAmount := validation.ValidateStruct(&ppr.Invoice,
+//		validation.Field(&ppr.Invoice.total, validation.Required),
+//		validation.Field(&ppr.Invoice.Discount, validation.Required),
+//		validation.Field(&ppr.Invoice.Subtotal, validation.Required),
 //	)
 //	if errPaymentCallbackUrlRequestAmount != nil {
 //		errValidation = append(errValidation, errPaymentCallbackUrlRequestAmount.Error())
@@ -420,12 +420,12 @@ func (paymentPending paymentPendingStep) doUpdateOrderItemsProgress(ctx context.
 //				errValidation = append(errValidation, errPaymentCallbackUrlRequestItemsSellerAddress.Error())
 //			}
 //
-//			errPaymentCallbackUrlRequestItemsPrice := validation.ValidateStruct(&ppr.Items[i].Price,
-//				validation.Field(&ppr.Items[i].Price.Unit, validation.Required),
-//				validation.Field(&ppr.Items[i].Price.total, validation.Required),
-//				validation.Field(&ppr.Items[i].Price.Subtotal, validation.Required),
-//				validation.Field(&ppr.Items[i].Price.Discount, validation.Required),
-//				validation.Field(&ppr.Items[i].Price.SellerCommission, validation.Required),
+//			errPaymentCallbackUrlRequestItemsPrice := validation.ValidateStruct(&ppr.Items[i].ItemInvoice,
+//				validation.Field(&ppr.Items[i].ItemInvoice.Unit, validation.Required),
+//				validation.Field(&ppr.Items[i].ItemInvoice.total, validation.Required),
+//				validation.Field(&ppr.Items[i].ItemInvoice.Subtotal, validation.Required),
+//				validation.Field(&ppr.Items[i].ItemInvoice.Discount, validation.Required),
+//				validation.Field(&ppr.Items[i].ItemInvoice.SellerCommission, validation.Required),
 //			)
 //			if errPaymentCallbackUrlRequestItemsPrice != nil {
 //				errValidation = append(errValidation, errPaymentCallbackUrlRequestItemsPrice.Error())

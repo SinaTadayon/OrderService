@@ -84,16 +84,16 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 		return nil, errors.New("amount of RequestNewOrder invalid")
 	}
 
-	order.Amount.Total = newOrderDto.Amount.Total
-	order.Amount.Subtotal = newOrderDto.Amount.Subtotal
-	order.Amount.Discount = newOrderDto.Amount.Discount
-	order.Amount.ShipmentTotal = newOrderDto.Amount.ShipmentTotal
-	order.Amount.Currency = newOrderDto.Amount.Currency
-	order.Amount.PaymentMethod = newOrderDto.Amount.PaymentMethod
-	order.Amount.PaymentOption = newOrderDto.Amount.PaymentOption
+	order.Invoice.Total = newOrderDto.Amount.Total
+	order.Invoice.Subtotal = newOrderDto.Amount.Subtotal
+	order.Invoice.Discount = newOrderDto.Amount.Discount
+	order.Invoice.ShipmentTotal = newOrderDto.Amount.ShipmentTotal
+	order.Invoice.Currency = newOrderDto.Amount.Currency
+	order.Invoice.PaymentMethod = newOrderDto.Amount.PaymentMethod
+	order.Invoice.PaymentOption = newOrderDto.Amount.PaymentOption
 
 	if newOrderDto.Amount.Voucher != nil {
-		order.Amount.Voucher = &entities.Voucher{
+		order.Invoice.Voucher = &entities.Voucher{
 			Amount: newOrderDto.Amount.Voucher.Amount,
 			Code:   newOrderDto.Amount.Voucher.Code,
 		}
@@ -129,13 +129,13 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 				return nil, errors.New("item price of RequestNewOrder invalid")
 			}
 
-			newItem.Price.Unit = item.Price.Unit
-			newItem.Price.Total = item.Price.Total
-			newItem.Price.Discount = item.Price.Discount
-			newItem.Price.Original = item.Price.Original
-			newItem.Price.Special = item.Price.Special
-			newItem.Price.SellerCommission = item.Price.SellerCommission
-			newItem.Price.Currency = item.Price.Currency
+			newItem.Invoice.Unit = item.Price.Unit
+			newItem.Invoice.Total = item.Price.Total
+			newItem.Invoice.Discount = item.Price.Discount
+			newItem.Invoice.Original = item.Price.Original
+			newItem.Invoice.Special = item.Price.Special
+			newItem.Invoice.SellerCommission = item.Price.SellerCommission
+			newItem.Invoice.Currency = item.Price.Currency
 
 			if item.Shipment == nil {
 				return nil, errors.New("item shipment of RequestNewOrder invalid")

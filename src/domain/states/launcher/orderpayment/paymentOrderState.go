@@ -65,9 +65,9 @@ func (orderPayment orderPaymentActionLauncher) ActionLauncher(ctx context.Contex
 	}
 
 	paymentRequest := payment_service.PaymentRequest{
-		Amount:   int64(order.Amount.Total),
-		Gateway:  order.Amount.PaymentOption,
-		Currency: order.Amount.Currency,
+		Amount:   int64(order.Invoice.Total),
+		Gateway:  order.Invoice.PaymentOption,
+		Currency: order.Invoice.Currency,
 		OrderId:  order.OrderId,
 	}
 

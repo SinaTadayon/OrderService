@@ -1244,7 +1244,7 @@ func (flowManager iFlowManagerImpl) BackOfficeOrdersListView(ctx context.Context
 			BasketSize:  0,
 			BillTo:      order.BuyerInfo.FirstName + order.BuyerInfo.LastName,
 			ShipTo:      order.BuyerInfo.ShippingAddress.FirstName + order.BuyerInfo.ShippingAddress.LastName,
-			TotalAmount: int64(order.Amount.Total),
+			TotalAmount: int64(order.Invoice.Total),
 			Status:      order.Status,
 			LastUpdated: order.UpdatedAt.Unix(),
 			Actions:     []string{"success", "cancel"},
@@ -1257,8 +1257,8 @@ func (flowManager iFlowManagerImpl) BackOfficeOrdersListView(ctx context.Context
 			}
 		}
 
-		if order.Amount.Voucher != nil {
-			backOfficeOrder.PaidAmount = int64(order.Amount.Total - order.Amount.Voucher.Amount)
+		if order.Invoice.Voucher != nil {
+			backOfficeOrder.PaidAmount = int64(order.Invoice.Total - order.Invoice.Voucher.Amount)
 			backOfficeOrder.Voucher = true
 		} else {
 			backOfficeOrder.Voucher = false
@@ -1303,8 +1303,8 @@ func (flowManager iFlowManagerImpl) BackOfficeOrderDetailView(ctx context.Contex
 		Ip:        order.BuyerInfo.IP,
 		Status:    order.Status,
 		Payment: &message.PaymentInfo{
-			PaymentMethod: order.Amount.PaymentMethod,
-			PaymentOption: order.Amount.PaymentOption,
+			PaymentMethod: order.Invoice.PaymentMethod,
+			PaymentOption: order.Invoice.PaymentOption,
 		},
 		Billing: &message.BillingInfo{
 			BuyerId:    order.BuyerInfo.BuyerId,
@@ -1333,13 +1333,13 @@ func (flowManager iFlowManagerImpl) BackOfficeOrderDetailView(ctx context.Contex
 			Quantity:    item.Quantity,
 			ItemStatus:  item.Status,
 			Price: &message.PriceInfo{
-				Unit:             item.Price.Unit,
-				Total:            item.Price.Total,
-				Original:         item.Price.Original,
-				Special:          item.Price.Special,
-				Discount:         item.Price.Discount,
-				SellerCommission: item.Price.SellerCommission,
-				Currency:         item.Price.Currency,
+				Unit:             item.Invoice.Unit,
+				Total:            item.Invoice.Total,
+				Original:         item.Invoice.Original,
+				Special:          item.Invoice.Special,
+				Discount:         item.Invoice.Discount,
+				SellerCommission: item.Invoice.SellerCommission,
+				Currency:         item.Invoice.Currency,
 			},
 			UpdatedAt: item.UpdatedAt.Unix(),
 			Actions:   []string{"success", "cancel"},
@@ -1408,8 +1408,8 @@ func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSelle
 					ItemId:      item.ItemId,
 					ProductId:   item.InventoryId[0:8],
 					InventoryId: item.InventoryId,
-					PaidPrice:   item.Price.Total,
-					Commission:  item.Price.SellerCommission,
+					PaidPrice:   item.Invoice.Total,
+					Commission:  item.Invoice.SellerCommission,
 					Category:    item.Category,
 					Status:      item.Status,
 				}
@@ -1587,7 +1587,7 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 				BuyerPhone:  order.BuyerInfo.Phone,
 				SellerId:    item.SellerInfo.SellerId,
 				SellerName:  "",
-				Price:       item.Price.Total,
+				Price:       item.Invoice.Total,
 				Status:      item.Status,
 			}
 
@@ -1644,7 +1644,7 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 	csvReports := make([][]string, 0, len(reports))
 	csvHeadLines := []string{
 		"ItemId", "InventoryId", "ProductId", "BuyerId", "BuyerPhone", "SellerId",
-		"SellerName", "Price", "Status", "CreatedAt", "UpdatedAt",
+		"SellerName", "ItemInvoice", "Status", "CreatedAt", "UpdatedAt",
 	}
 
 	csvReports = append(csvReports, csvHeadLines)

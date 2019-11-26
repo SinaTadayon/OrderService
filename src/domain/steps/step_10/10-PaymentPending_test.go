@@ -30,9 +30,9 @@ package payment_pending_step
 //	// buyer finance
 //	pr.Buyer.Finance.Iban = "IR165411211001514313143545"
 //	// amount
-//	pr.Amount.total = 200000
-//	pr.Amount.Discount = 40000
-//	pr.Amount.Subtotal = 160000
+//	pr.Invoice.total = 200000
+//	pr.Invoice.Discount = 40000
+//	pr.Invoice.Subtotal = 160000
 //	// items
 //	pr.Items = append(pr.Items, Item{
 //		Sku:        "aaa000",
@@ -41,7 +41,7 @@ package payment_pending_step
 //		Category: "Electronic/laptop",
 //		Title:      "Asus G503 i7, 256SSD, 32G Ram",
 //		Guaranty:   "ضمانت سلامت کالا",
-//		Price: ItemPrice{
+//		Invoice: ItemPrice{
 //			Unit:             20000,
 //			total:            200000,
 //			Subtotal:          160000,
@@ -88,7 +88,7 @@ package payment_pending_step
 //		Title:      "Asus G503 i7, 256SSD, 32G Ram",
 //		Quantity:   1,
 //		Guaranty:   "صلامت کالا",
-//		Price: ItemPrice{
+//		Invoice: ItemPrice{
 //			total:            300000,
 //			Subtotal:          160000,
 //			Discount:         140000,

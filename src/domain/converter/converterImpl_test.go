@@ -14,7 +14,7 @@ func TestOrderConverter(t *testing.T) {
 	assert.NoError(t, err, "mapping order request to order failed")
 	order, ok := out.(*entities.Order)
 	assert.True(t, ok, "mapping order request to order failed")
-	assert.NotEmpty(t, order.Amount.Total)
+	assert.NotEmpty(t, order.Invoice.Total)
 }
 
 func createRequestNewOrder() *pb.RequestNewOrder {

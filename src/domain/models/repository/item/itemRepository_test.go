@@ -89,7 +89,7 @@ package item_repository
 //	//currentTime := time.Now().UTC()
 //
 //	paymentRequest := entities.PaymentRequest {
-//		Amount:	     	75400000,
+//		Invoice:	     	75400000,
 //		Currency:		"IRR",
 //		Gateway: 		"AAP",
 //		CreatedAt:   	time.Now().UTC(),
@@ -110,7 +110,7 @@ package item_repository
 //		Reason:			"",
 //		PaymentId:      "r3r434ef45d",
 //		InvoiceId:		12345678946,
-//		Amount:    		75400000,
+//		Invoice:    		75400000,
 //		ReqBody:   		"",
 //		ResBody:  		"",
 //		CardNumMask: 	"545498******4553",
@@ -171,7 +171,7 @@ package item_repository
 //			}},
 //		},
 //		BuyerInfo: buyerInfo,
-//		Amount: entities.Amount {
+//		Invoice: entities.Invoice {
 //			Total:         75400000,
 //			Subtotal:      73000000,
 //			Discount:      15600000,
@@ -180,7 +180,7 @@ package item_repository
 //			PaymentMethod: "IPG",
 //			PaymentOption: "APP",
 //			Voucher:		&entities.Voucher{
-//				Amount:  230000,
+//				Invoice:  230000,
 //				Code:    "Market",
 //				Details: nil,
 //			},
@@ -238,7 +238,7 @@ package item_repository
 //						},
 //					},
 //				},
-//				Price: entities.Price{
+//				Invoice: entities.Invoice{
 //					Unit:             1270000,
 //					Original:         7340000,
 //					Special:          1000000,
@@ -246,7 +246,7 @@ package item_repository
 //					Currency:         "IRR",
 //				},
 //				ShipmentSpec: entities.ShipmentSpec {
-//					CarrierName:    "Post",
+//					CarrierNames:    "Post",
 //					CarrierProduct: "Post Express",
 //					CarrierType:    "Standard",
 //					ShippingCost:   1249348,
@@ -258,15 +258,15 @@ package item_repository
 //					Details:        "no return",
 //				},
 //				ShipmentDetails: entities.ShipmentDetails{
-//					SellerShipmentDetail: 	entities.ShipmentDetail{
-//						CarrierName: 		"Post",
+//					ShipmentDetail: 	entities.ShipmentDetail{
+//						CarrierNames: 		"Post",
 //						TrackingNumber:   	"545349534958349",
 //						Image:            	"",
 //						Description:      	"",
 //						CreatedAt:        	time.Now().UTC(),
 //					},
-//					BuyerReturnShipmentDetail: entities.ShipmentDetail{
-//						CarrierName: 			"Post",
+//					ReturnShipmentDetail: entities.ShipmentDetail{
+//						CarrierNames: 			"Post",
 //						TrackingNumber:   		"545349534958349",
 //						Image:                  "",
 //						Description:            "",
@@ -274,8 +274,8 @@ package item_repository
 //					},
 //				},
 //				Progress: entities.Progress{
-//					CurrentStepName:  "0.NewOrder",
-//					CurrentStepIndex: 0,
+//					StepName:  "0.NewOrder",
+//					StepIndex: 0,
 //					//CurrentState: entities.State {
 //					//	Name:  "0.New_Order_Process_State",
 //					//	Index: 0,
@@ -373,7 +373,7 @@ package item_repository
 //						},
 //					},
 //				},
-//				Price: entities.Price{
+//				Invoice: entities.Invoice{
 //					Unit:             1270000,
 //					Original:         7340000,
 //					Special:          1000000,
@@ -381,7 +381,7 @@ package item_repository
 //					Currency:         "IRR",
 //				},
 //				ShipmentSpec: entities.ShipmentSpec{
-//					CarrierName:    "Post",
+//					CarrierNames:    "Post",
 //					CarrierProduct: "Post Express",
 //					CarrierType:    "Standard",
 //					ShippingCost:   1249348,
@@ -393,15 +393,15 @@ package item_repository
 //					Details:        "no return",
 //				},
 //				ShipmentDetails: entities.ShipmentDetails{
-//					SellerShipmentDetail: 	entities.ShipmentDetail{
-//						CarrierName: 		"Post",
+//					ShipmentDetail: 	entities.ShipmentDetail{
+//						CarrierNames: 		"Post",
 //						TrackingNumber:   	"545349534958349",
 //						Image:            	"",
 //						Description:      	"",
 //						CreatedAt:        	time.Now().UTC(),
 //					},
-//					BuyerReturnShipmentDetail: entities.ShipmentDetail{
-//						CarrierName: 			"Post",
+//					ReturnShipmentDetail: entities.ShipmentDetail{
+//						CarrierNames: 			"Post",
 //						TrackingNumber:   		"545349534958349",
 //						Image:                  "",
 //						Description:            "",
@@ -409,8 +409,8 @@ package item_repository
 //					},
 //				},
 //				Progress: entities.Progress{
-//					CurrentStepName:  "0.NewOrder",
-//					CurrentStepIndex: 0,
+//					StepName:  "0.NewOrder",
+//					StepIndex: 0,
 //					//CurrentState: entities.State{
 //					//	Name:  "0.New_Order_Process_State",
 //					//	Index: 0,

@@ -28,10 +28,9 @@ type Order struct {
 	SystemPayment  SystemPayment      `bson:"systemPayment"`
 	Status         string             `bson:"status"`
 	BuyerInfo      BuyerInfo          `bson:"buyerInfo"`
-	Amount         Amount             `bson:"amount"`
-	Items          []Item             `bson:"items"`
+	Invoice        Invoice            `bson:"invoice"`
+	Packages       []Package          `bson:"packages"`
 	CreatedAt      time.Time          `bson:"createdAt"`
-	UpdatedAt      time.Time          `bson:"updatedAt"`
 	DeletedAt      *time.Time         `bson:"deletedAt"`
 }
 
@@ -66,15 +65,16 @@ type PayToMarket struct {
 	PaymentResult   *PaymentResult   `bson:"paymentResult"`
 }
 
-type Amount struct {
-	Total         uint64   `bson:"total"`
-	Subtotal      uint64   `bson:"subtotal"`
-	Discount      uint64   `bson:"discount"`
-	ShipmentTotal uint64   `bson:"shipmentTotal"`
-	Currency      string   `bson:"currency"`
-	PaymentMethod string   `bson:"paymentMethod"`
-	PaymentOption string   `bson:"paymentOption"`
-	Voucher       *Voucher `bson:"voucher"`
+type Invoice struct {
+	GrandTotal    uint64    `bson:"grandTotal"`
+	Subtotal      uint64    `bson:"subtotal"`
+	Discount      uint64    `bson:"discount"`
+	ShipmentTotal uint64    `bson:"shipmentTotal"`
+	Currency      string    `bson:"currency"`
+	PaymentMethod string    `bson:"paymentMethod"`
+	PaymentOption string    `bson:"paymentOption"`
+	Voucher       *Voucher  `bson:"voucher"`
+	CartRule      *CartRule `bson:"cartRule"`
 }
 
 type Voucher struct {
@@ -83,8 +83,16 @@ type Voucher struct {
 	Details *VoucherDetails `bson:"details"`
 }
 
-// TODO will be complete
+type CartRule struct {
+	Amount uint64 `bson:"amount"`
+}
+
 type VoucherDetails struct {
+	StartDate        time.Time `bson:"startDate"`
+	EndDate          time.Time `bson:"endDate"`
+	Type             string    `bson:"type"`
+	MaxDiscountValue uint64    `bson:"maxDiscountValue"`
+	MinBasketValue   uint64    `bson:"minBasketValue"`
 }
 
 func (order Order) IsIdEmpty() bool {
