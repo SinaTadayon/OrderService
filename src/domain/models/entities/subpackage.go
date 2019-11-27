@@ -4,7 +4,9 @@ import "time"
 
 // subpackage id same as itemId
 type Subpackage struct {
-	Id              uint64          `bson:"id"`
+	ItemId          uint64          `bson:"itemId"`
+	SellerId        uint64          `bson:"sellerId"`
+	OrderId         uint64          `bson:"orderId"`
 	Version         uint64          `bson:"version"`
 	Item            Item            `bson:"item"`
 	ShipmentDetails ShipmentDetails `bson:"shipmentDetails"`
@@ -82,9 +84,4 @@ type Action struct {
 	Result    string                 `bson:"result"`
 	Reason    string                 `bson:"reason"`
 	CreatedAt time.Time              `bson:"createdAt"`
-}
-
-type SellerInfo struct {
-	SellerId uint64         `bson:"sellerId"`
-	Profile  *SellerProfile `bson:"profile"`
 }

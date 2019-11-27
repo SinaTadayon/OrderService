@@ -3,10 +3,11 @@ package entities
 import "time"
 
 type PackageItem struct {
-	Id           uint64         `bson:"id"`
+	SellerId     uint64         `bson:"sellerId"`
+	OrderId      uint64         `bson:"orderId"`
 	Version      uint64         `bson:"version"`
 	Invoice      PackageInvoice `bson:"invoice"`
-	SellerInfo   SellerInfo     `bson:"sellerInfo"`
+	SellerInfo   *SellerProfile `bson:"sellerInfo"`
 	ShipmentSpec ShipmentSpec   `bson:"shipmentSpec"`
 	Subpackages  []Subpackage   `bson:"subpackages"`
 	Status       string         `bson:"status"`

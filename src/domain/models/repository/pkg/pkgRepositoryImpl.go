@@ -26,7 +26,7 @@ func NewPkgItemRepository(mongoDriver *mongoadapter.Mongo) (IPkgItemRepository, 
 	return &iPkgItemRepositoryImpl{mongoDriver}, nil
 }
 
-func (repo iPkgItemRepositoryImpl) findAndUpdate(ctx context.Context, orderId uint64, pkgItem *entities.PackageItem) (*entities.PackageItem, error) {
+func (repo iPkgItemRepositoryImpl) findAndUpdate(ctx context.Context, pkgItem *entities.PackageItem) (*entities.PackageItem, error) {
 	pkgItem.UpdatedAt = time.Now().UTC()
 	currentVersion := pkgItem.Version
 	pkgItem.Version += 1
@@ -34,10 +34,10 @@ func (repo iPkgItemRepositoryImpl) findAndUpdate(ctx context.Context, orderId ui
 	opt.SetUpsert(false)
 	singleResult := repo.mongoAdapter.GetConn().Database(databaseName).Collection(collectionName).FindOneAndUpdate(ctx,
 		bson.D{
-			{"orderId", orderId},
+			{"orderId", pkgItem.OrderId},
 			{"packages", bson.D{
 				{"$elemMatch", bson.D{
-					{"id", pkgItem.Id},
+					{"sellerId", pkgItem.SellerId},
 					{"version", currentVersion},
 				}},
 			}},
@@ -61,10 +61,10 @@ func (repo iPkgItemRepositoryImpl) findAndUpdate(ctx context.Context, orderId ui
 	return pkgItem, nil
 }
 
-func (repo iPkgItemRepositoryImpl) Update(ctx context.Context, orderId uint64, pkgItem entities.PackageItem) (*entities.PackageItem, error) {
+func (repo iPkgItemRepositoryImpl) Update(ctx context.Context, pkgItem entities.PackageItem) (*entities.PackageItem, error) {
 
 	pkgItem.UpdatedAt = time.Now().UTC()
-	var updatedPkgItem, err = repo.findAndUpdate(ctx, orderId, &pkgItem)
+	var updatedPkgItem, err = repo.findAndUpdate(ctx, &pkgItem)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +78,7 @@ func (repo iPkgItemRepositoryImpl) FindById(ctx context.Context, orderId uint64,
 	pipeline := []bson.M{
 		{"$match": bson.M{"orderId": orderId, "deletedAt": nil}},
 		{"$unwind": "$packages"},
-		{"$match": bson.M{"packages.id": id}},
+		{"$match": bson.M{"packages.sellerId": id}},
 		{"$project": bson.M{"_id": 0, "packages": 1}},
 		{"$replaceRoot": bson.M{"newRoot": "$packages"}},
 	}
@@ -124,7 +124,7 @@ func (repo iPkgItemRepositoryImpl) FindByFilter(ctx context.Context, supplier fu
 }
 
 func (repo iPkgItemRepositoryImpl) ExistsById(ctx context.Context, orderId uint64, id uint64) (bool, error) {
-	singleResult := repo.mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"orderId", orderId}, {"packages.id", id}, {"deletedAt", nil}})
+	singleResult := repo.mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"orderId", orderId}, {"packages.sellerId", id}, {"deletedAt", nil}})
 	if err := singleResult.Err(); err != nil {
 		if repo.mongoAdapter.NoDocument(err) {
 			return false, nil
@@ -135,7 +135,7 @@ func (repo iPkgItemRepositoryImpl) ExistsById(ctx context.Context, orderId uint6
 }
 
 func (repo iPkgItemRepositoryImpl) Count(ctx context.Context, id uint64) (int64, error) {
-	total, err := repo.mongoAdapter.Count(databaseName, collectionName, bson.D{{"packages.id", id},
+	total, err := repo.mongoAdapter.Count(databaseName, collectionName, bson.D{{"packages.sellerId", id},
 		{"deletedAt", nil}})
 	if err != nil {
 		return 0, errors.Wrap(err, "Count failed")

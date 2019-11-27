@@ -73,7 +73,7 @@ func TestUpdatePkgItemRepository(t *testing.T) {
 
 	ctx, _ := context.WithCancel(context.Background())
 	order.Packages[1].Status = "Payment_Pending"
-	packageItem, err := pkgItemRepo.Update(ctx, order.OrderId, order.Packages[1])
+	packageItem, err := pkgItemRepo.Update(ctx, order.Packages[1])
 	require.Nil(t, err, "pkgItemRepo.Update failed")
 	require.Equal(t, packageItem.Version, uint64(1))
 	require.Equal(t, packageItem.Status, "Payment_Pending")
@@ -85,9 +85,9 @@ func TestFindById(t *testing.T) {
 	require.Nil(t, err, "createOrderAndSave failed")
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
 	ctx, _ := context.WithCancel(context.Background())
-	packageItem, err := pkgItemRepo.FindById(ctx, order.OrderId, order.Packages[1].Id)
+	packageItem, err := pkgItemRepo.FindById(ctx, order.OrderId, order.Packages[1].SellerId)
 	require.Nil(t, err, "pkgItemRepo.FindById failed")
-	require.Equal(t, packageItem.Id, order.Packages[1].Id)
+	require.Equal(t, packageItem.SellerId, order.Packages[1].SellerId)
 	require.Equal(t, packageItem.Version, uint64(0))
 	require.Equal(t, packageItem.Status, "NEW")
 }
@@ -98,7 +98,7 @@ func TestExitsById_Success(t *testing.T) {
 	require.Nil(t, err, "createOrderAndSave failed")
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
 	ctx, _ := context.WithCancel(context.Background())
-	result, err := pkgItemRepo.ExistsById(ctx, order.OrderId, order.Packages[1].Id)
+	result, err := pkgItemRepo.ExistsById(ctx, order.OrderId, order.Packages[1].SellerId)
 	require.Nil(t, err, "pkgItemRepo.ExistsById failed")
 	require.True(t, result)
 }
@@ -120,7 +120,7 @@ func TestCount(t *testing.T) {
 	require.Nil(t, err, "createOrderAndSave failed")
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
 	ctx, _ := context.WithCancel(context.Background())
-	result, err := pkgItemRepo.Count(ctx, order.Packages[0].Id)
+	result, err := pkgItemRepo.Count(ctx, order.Packages[0].SellerId)
 	require.Nil(t, err, "pkgItemRepo.Count failed")
 	require.Equal(t, result, int64(1))
 }
@@ -132,7 +132,7 @@ func TestCountWithFilter(t *testing.T) {
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
 	ctx, _ := context.WithCancel(context.Background())
 	result, err := pkgItemRepo.CountWithFilter(ctx, func() (filter interface{}) {
-		return bson.D{{"packages.id", order.Packages[1].Id},
+		return bson.D{{"packages.sellerId", order.Packages[1].SellerId},
 			{"deletedAt", nil}}
 	})
 	require.Nil(t, err, "pkgItemRepo.CountWithFilter failed")
@@ -149,12 +149,12 @@ func TestFindByFilter(t *testing.T) {
 		return []bson.M{
 			{"$match": bson.M{"orderId": order.OrderId, "deletedAt": nil}},
 			{"$unwind": "$packages"},
-			{"$match": bson.M{"packages.id": order.Packages[0].Id}},
+			{"$match": bson.M{"packages.sellerId": order.Packages[0].SellerId}},
 			{"$project": bson.M{"_id": 0, "packages": 1}},
 			{"$replaceRoot": bson.M{"newRoot": "$packages"}},
 		}
 	})
-	require.Equal(t, packageItem[0].Id, order.Packages[0].Id)
+	require.Equal(t, packageItem[0].SellerId, order.Packages[0].SellerId)
 	require.Equal(t, packageItem[0].Version, uint64(0))
 	require.Equal(t, packageItem[0].Status, "NEW")
 }
@@ -188,9 +188,12 @@ func insert(order *entities.Order) (*entities.Order, error) {
 		}
 
 		for i := 0; i < len(order.Packages); i++ {
+			order.Packages[i].OrderId = order.OrderId
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
 				if value, ok := mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId]; ok {
-					order.Packages[i].Subpackages[j].Id = order.OrderId + uint64(value)
+					order.Packages[i].Subpackages[j].ItemId = order.OrderId + uint64(value)
+					order.Packages[i].Subpackages[j].SellerId = order.Packages[i].SellerId
+					order.Packages[i].Subpackages[j].OrderId = order.OrderId
 					order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
 					order.Packages[i].Subpackages[j].UpdatedAt = time.Now().UTC()
 				}
@@ -334,79 +337,77 @@ func createOrderAndSave() (*entities.Order, error) {
 		},
 		Packages: []entities.PackageItem{
 			{
-				Id:      129384234,
-				Version: 0,
+				SellerId: 129384234,
+				OrderId:  0,
+				Version:  0,
 				Invoice: entities.PackageInvoice{
 					Subtotal:       2873423,
 					Discount:       9283443,
 					ShipmentAmount: 98734,
 				},
-				SellerInfo: entities.SellerInfo{
+				SellerInfo: &entities.SellerProfile{
 					SellerId: 129384234,
-					Profile: &entities.SellerProfile{
-						SellerId: 129384234,
-						GeneralInfo: &entities.GeneralSellerInfo{
-							ShopDisplayName:          "Sazgar",
-							Type:                     "",
-							Email:                    "info@sazgar.com",
-							LandPhone:                "02834709",
-							MobilePhone:              "1836491827346",
-							Website:                  "www.sazgar.com",
-							Province:                 "tehran",
-							City:                     "tehran",
-							Neighborhood:             "joradan",
-							PostalAddress:            "jordan, shaghayegh",
-							PostalCode:               "1254754",
-							IsVATObliged:             false,
-							VATCertificationImageURL: "http://test.faza.io",
-						},
-						CorporationInfo: &entities.CorporateSellerInfo{
-							CompanyRegisteredName:     "avazhang",
-							CompanyRegistrationNumber: "10237128366",
-							CompanyRationalId:         "1823128434",
-							TradeNumber:               "19293712937",
-						},
-						IndividualInfo: &entities.IndividualSellerInfo{
-							FirstName:          "Sazgar",
-							FamilyName:         "Sazgar",
-							NationalId:         "3254534334",
-							NationalIdFrontURL: "http://adkuhfadlf",
-							NationalIdBackURL:  "http://adkuhfadlf",
-						},
-						ReturnInfo: &entities.ReturnInfo{
-							Country:       "Iran",
-							Province:      "Tehran",
-							City:          "Tehran",
-							Neighborhood:  "Tehran",
-							PostalAddress: "joradan",
-							PostalCode:    "28349394332",
-						},
-						ContactPerson: &entities.SellerContactPerson{
-							FirstName:   "Sazgar",
-							FamilyName:  "Sazgar",
-							MobilePhone: "9324729348",
-							Email:       "sazgar@sazgar.com",
-						},
-						ShipmentInfo: &entities.SellerShipmentInfo{
-							SameCity: &entities.PricePlan{
-								Threshold:        934858,
-								BelowPrice:       92384729,
-								ReactionTimeDays: 98293484,
-							},
-							DifferentCity: &entities.PricePlan{
-								Threshold:        934858,
-								BelowPrice:       92384729,
-								ReactionTimeDays: 98293484,
-							},
-						},
-						FinanceData: &entities.SellerFinanceData{
-							Iban:                    "405872058724850",
-							AccountHolderFirstName:  "sazgar",
-							AccountHolderFamilyName: "sazgar",
-						},
-						CreatedAt: time.Now().UTC(),
-						UpdatedAt: time.Now().UTC(),
+					GeneralInfo: &entities.GeneralSellerInfo{
+						ShopDisplayName:          "Sazgar",
+						Type:                     "",
+						Email:                    "info@sazgar.com",
+						LandPhone:                "02834709",
+						MobilePhone:              "1836491827346",
+						Website:                  "www.sazgar.com",
+						Province:                 "tehran",
+						City:                     "tehran",
+						Neighborhood:             "joradan",
+						PostalAddress:            "jordan, shaghayegh",
+						PostalCode:               "1254754",
+						IsVATObliged:             false,
+						VATCertificationImageURL: "http://test.faza.io",
 					},
+					CorporationInfo: &entities.CorporateSellerInfo{
+						CompanyRegisteredName:     "avazhang",
+						CompanyRegistrationNumber: "10237128366",
+						CompanyRationalId:         "1823128434",
+						TradeNumber:               "19293712937",
+					},
+					IndividualInfo: &entities.IndividualSellerInfo{
+						FirstName:          "Sazgar",
+						FamilyName:         "Sazgar",
+						NationalId:         "3254534334",
+						NationalIdFrontURL: "http://adkuhfadlf",
+						NationalIdBackURL:  "http://adkuhfadlf",
+					},
+					ReturnInfo: &entities.ReturnInfo{
+						Country:       "Iran",
+						Province:      "Tehran",
+						City:          "Tehran",
+						Neighborhood:  "Tehran",
+						PostalAddress: "joradan",
+						PostalCode:    "28349394332",
+					},
+					ContactPerson: &entities.SellerContactPerson{
+						FirstName:   "Sazgar",
+						FamilyName:  "Sazgar",
+						MobilePhone: "9324729348",
+						Email:       "sazgar@sazgar.com",
+					},
+					ShipmentInfo: &entities.SellerShipmentInfo{
+						SameCity: &entities.PricePlan{
+							Threshold:        934858,
+							BelowPrice:       92384729,
+							ReactionTimeDays: 98293484,
+						},
+						DifferentCity: &entities.PricePlan{
+							Threshold:        934858,
+							BelowPrice:       92384729,
+							ReactionTimeDays: 98293484,
+						},
+					},
+					FinanceData: &entities.SellerFinanceData{
+						Iban:                    "405872058724850",
+						AccountHolderFirstName:  "sazgar",
+						AccountHolderFamilyName: "sazgar",
+					},
+					CreatedAt: time.Now().UTC(),
+					UpdatedAt: time.Now().UTC(),
 				},
 				ShipmentSpec: entities.ShipmentSpec{
 					CarrierNames:   []string{"Post", "Snap"},
@@ -422,8 +423,10 @@ func createOrderAndSave() (*entities.Order, error) {
 				},
 				Subpackages: []entities.Subpackage{
 					{
-						Id:      0,
-						Version: 0,
+						ItemId:   0,
+						SellerId: 129384234,
+						OrderId:  0,
+						Version:  0,
 						Item: entities.Item{
 							InventoryId: "1111111111",
 							Title:       "Mobile",
@@ -509,8 +512,10 @@ func createOrderAndSave() (*entities.Order, error) {
 						DeletedAt: nil,
 					},
 					{
-						Id:      0,
-						Version: 0,
+						ItemId:   0,
+						SellerId: 129384234,
+						OrderId:  0,
+						Version:  0,
 						Item: entities.Item{
 							InventoryId: "2222222222",
 							Title:       "Laptop",
@@ -601,79 +606,77 @@ func createOrderAndSave() (*entities.Order, error) {
 				DeletedAt: nil,
 			},
 			{
-				Id:      99988887777,
-				Version: 0,
+				SellerId: 99988887777,
+				OrderId:  0,
+				Version:  0,
 				Invoice: entities.PackageInvoice{
 					Subtotal:       2873423,
 					Discount:       9283443,
 					ShipmentAmount: 98734,
 				},
-				SellerInfo: entities.SellerInfo{
+				SellerInfo: &entities.SellerProfile{
 					SellerId: 99988887777,
-					Profile: &entities.SellerProfile{
-						SellerId: 99988887777,
-						GeneralInfo: &entities.GeneralSellerInfo{
-							ShopDisplayName:          "Sazgar",
-							Type:                     "",
-							Email:                    "info@sazgar.com",
-							LandPhone:                "02834709",
-							MobilePhone:              "1836491827346",
-							Website:                  "www.sazgar.com",
-							Province:                 "tehran",
-							City:                     "tehran",
-							Neighborhood:             "joradan",
-							PostalAddress:            "jordan, shaghayegh",
-							PostalCode:               "1254754",
-							IsVATObliged:             false,
-							VATCertificationImageURL: "http://test.faza.io",
-						},
-						CorporationInfo: &entities.CorporateSellerInfo{
-							CompanyRegisteredName:     "avazhang",
-							CompanyRegistrationNumber: "10237128366",
-							CompanyRationalId:         "1823128434",
-							TradeNumber:               "19293712937",
-						},
-						IndividualInfo: &entities.IndividualSellerInfo{
-							FirstName:          "Sazgar",
-							FamilyName:         "Sazgar",
-							NationalId:         "3254534334",
-							NationalIdFrontURL: "http://adkuhfadlf",
-							NationalIdBackURL:  "http://adkuhfadlf",
-						},
-						ReturnInfo: &entities.ReturnInfo{
-							Country:       "Iran",
-							Province:      "Tehran",
-							City:          "Tehran",
-							Neighborhood:  "Tehran",
-							PostalAddress: "joradan",
-							PostalCode:    "28349394332",
-						},
-						ContactPerson: &entities.SellerContactPerson{
-							FirstName:   "Sazgar",
-							FamilyName:  "Sazgar",
-							MobilePhone: "9324729348",
-							Email:       "sazgar@sazgar.com",
-						},
-						ShipmentInfo: &entities.SellerShipmentInfo{
-							SameCity: &entities.PricePlan{
-								Threshold:        934858,
-								BelowPrice:       92384729,
-								ReactionTimeDays: 98293484,
-							},
-							DifferentCity: &entities.PricePlan{
-								Threshold:        934858,
-								BelowPrice:       92384729,
-								ReactionTimeDays: 98293484,
-							},
-						},
-						FinanceData: &entities.SellerFinanceData{
-							Iban:                    "405872058724850",
-							AccountHolderFirstName:  "sazgar",
-							AccountHolderFamilyName: "sazgar",
-						},
-						CreatedAt: time.Now().UTC(),
-						UpdatedAt: time.Now().UTC(),
+					GeneralInfo: &entities.GeneralSellerInfo{
+						ShopDisplayName:          "Sazgar",
+						Type:                     "",
+						Email:                    "info@sazgar.com",
+						LandPhone:                "02834709",
+						MobilePhone:              "1836491827346",
+						Website:                  "www.sazgar.com",
+						Province:                 "tehran",
+						City:                     "tehran",
+						Neighborhood:             "joradan",
+						PostalAddress:            "jordan, shaghayegh",
+						PostalCode:               "1254754",
+						IsVATObliged:             false,
+						VATCertificationImageURL: "http://test.faza.io",
 					},
+					CorporationInfo: &entities.CorporateSellerInfo{
+						CompanyRegisteredName:     "avazhang",
+						CompanyRegistrationNumber: "10237128366",
+						CompanyRationalId:         "1823128434",
+						TradeNumber:               "19293712937",
+					},
+					IndividualInfo: &entities.IndividualSellerInfo{
+						FirstName:          "Sazgar",
+						FamilyName:         "Sazgar",
+						NationalId:         "3254534334",
+						NationalIdFrontURL: "http://adkuhfadlf",
+						NationalIdBackURL:  "http://adkuhfadlf",
+					},
+					ReturnInfo: &entities.ReturnInfo{
+						Country:       "Iran",
+						Province:      "Tehran",
+						City:          "Tehran",
+						Neighborhood:  "Tehran",
+						PostalAddress: "joradan",
+						PostalCode:    "28349394332",
+					},
+					ContactPerson: &entities.SellerContactPerson{
+						FirstName:   "Sazgar",
+						FamilyName:  "Sazgar",
+						MobilePhone: "9324729348",
+						Email:       "sazgar@sazgar.com",
+					},
+					ShipmentInfo: &entities.SellerShipmentInfo{
+						SameCity: &entities.PricePlan{
+							Threshold:        934858,
+							BelowPrice:       92384729,
+							ReactionTimeDays: 98293484,
+						},
+						DifferentCity: &entities.PricePlan{
+							Threshold:        934858,
+							BelowPrice:       92384729,
+							ReactionTimeDays: 98293484,
+						},
+					},
+					FinanceData: &entities.SellerFinanceData{
+						Iban:                    "405872058724850",
+						AccountHolderFirstName:  "sazgar",
+						AccountHolderFamilyName: "sazgar",
+					},
+					CreatedAt: time.Now().UTC(),
+					UpdatedAt: time.Now().UTC(),
 				},
 				ShipmentSpec: entities.ShipmentSpec{
 					CarrierNames:   []string{"Post", "Snap"},
@@ -689,8 +692,10 @@ func createOrderAndSave() (*entities.Order, error) {
 				},
 				Subpackages: []entities.Subpackage{
 					{
-						Id:      0,
-						Version: 0,
+						ItemId:   0,
+						SellerId: 99988887777,
+						OrderId:  0,
+						Version:  0,
 						Item: entities.Item{
 							InventoryId: "55555555555",
 							Title:       "Mobile",
@@ -776,8 +781,10 @@ func createOrderAndSave() (*entities.Order, error) {
 						DeletedAt: nil,
 					},
 					{
-						Id:      0,
-						Version: 0,
+						ItemId:   0,
+						SellerId: 99988887777,
+						OrderId:  0,
+						Version:  0,
 						Item: entities.Item{
 							InventoryId: "3333333333",
 							Title:       "Laptop",
