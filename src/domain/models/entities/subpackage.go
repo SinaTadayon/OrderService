@@ -12,7 +12,7 @@ type Subpackage struct {
 	Status          string          `bson:"status"`
 	CreatedAt       time.Time       `bson:"createdAt"`
 	UpdatedAt       time.Time       `bson:"updatedAt"`
-	//DeletedAt       *time.Time      `bson:"deletedAt"`
+	DeletedAt       *time.Time      `bson:"deletedAt"`
 }
 
 type ShipmentDetails struct {
@@ -40,8 +40,6 @@ type Item struct {
 	Returnable  bool              `bson:"returnable"`
 	Quantity    int32             `bson:"quantity"`
 	Attributes  map[string]string `bson:"attributes"`
-	CreatedAt   time.Time         `bson:"createdAt"`
-	DeletedAt   *time.Time        `bson:"deletedAt"`
 	Invoice     ItemInvoice       `bson:"invoice"`
 }
 
@@ -54,4 +52,39 @@ type ItemInvoice struct {
 	SellerCommission  float32 `bson:"sellerCommission"`
 	Currency          string  `bson:"currency"`
 	ApplicableVoucher bool    `bson:"applicableVoucher"`
+}
+
+type Progress struct {
+	StepName     string        `bson:"stepName"`
+	StepIndex    int           `bson:"stepIndex"`
+	Action       Action        `bson:"action"`
+	StepsHistory []StepHistory `bson:"stepsHistory"`
+}
+
+type StepHistory struct {
+	Name          string    `bson:"name"`
+	Index         int       `bson:"index"`
+	ActionHistory []Action  `bson:"actionHistory"`
+	CreatedAt     time.Time `bson:"createdAt"`
+	UpdatedAt     time.Time `bson:"updatedAt"`
+}
+
+/*
+ Action sample:
+	Name: ApprovedAction
+	Type: SellerInfoActor
+	Data: "sample data"
+*/
+type Action struct {
+	Name      string                 `bson:"name"`
+	Type      string                 `bson:"type"`
+	Data      map[string]interface{} `bson:"data"`
+	Result    string                 `bson:"result"`
+	Reason    string                 `bson:"reason"`
+	CreatedAt time.Time              `bson:"createdAt"`
+}
+
+type SellerInfo struct {
+	SellerId uint64         `bson:"sellerId"`
+	Profile  *SellerProfile `bson:"profile"`
 }

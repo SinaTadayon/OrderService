@@ -10,6 +10,8 @@ type PackageItem struct {
 	ShipmentSpec ShipmentSpec   `bson:"shipmentSpec"`
 	Subpackages  []Subpackage   `bson:"subpackages"`
 	Status       string         `bson:"status"`
+	UpdatedAt    time.Time      `bson:"updatedAt"`
+	DeletedAt    *time.Time     `bson:"deletedAt"`
 }
 
 type PackageInvoice struct {
@@ -30,39 +32,4 @@ type ShipmentSpec struct {
 	ShippingTime   int32    `bson:"shippingTime"`
 	ReturnTime     int32    `bson:"returnTime"`
 	Details        string   `bson:"Details"`
-}
-
-type Progress struct {
-	StepName     string        `bson:"stepName"`
-	StepIndex    int           `bson:"stepIndex"`
-	Action       Action        `bson:"action"`
-	StepsHistory []StepHistory `bson:"stepsHistory"`
-}
-
-type StepHistory struct {
-	Name          string    `bson:"name"`
-	Index         int       `bson:"index"`
-	ActionHistory []Action  `bson:"actionHistory"`
-	CreatedAt     time.Time `bson:"createdAt"`
-	UpdatedAt     time.Time `bson:"updatedAt"`
-}
-
-/*
- Action sample:
-	Name: ApprovedAction
-	Type: SellerInfoActor
-	Data: "sample data"
-*/
-type Action struct {
-	Name      string                 `bson:"name"`
-	Type      string                 `bson:"type"`
-	Data      map[string]interface{} `bson:"data"`
-	Result    string                 `bson:"result"`
-	Reason    string                 `bson:"reason"`
-	CreatedAt time.Time              `bson:"createdAt"`
-}
-
-type SellerInfo struct {
-	SellerId uint64         `bson:"sellerId"`
-	Profile  *SellerProfile `bson:"profile"`
 }

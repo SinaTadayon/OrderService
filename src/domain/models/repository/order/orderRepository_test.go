@@ -12,7 +12,6 @@ import (
 	"time"
 )
 
-var config *configs.Cfg
 var orderRepository IOrderRepository
 
 func TestMain(m *testing.M) {
@@ -24,7 +23,7 @@ func TestMain(m *testing.M) {
 		path = ""
 	}
 
-	config, err = configs.LoadConfig(path)
+	config, err := configs.LoadConfig(path)
 	if err != nil {
 		logger.Err("configs.LoadConfig failed, %s", err.Error())
 		os.Exit(1)
