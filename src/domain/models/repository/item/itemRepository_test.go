@@ -257,7 +257,7 @@ package item_repository
 //					ReturnTime:     24,
 //					Details:        "no return",
 //				},
-//				ShipmentDetails: entities.ShipmentDetails{
+//				Shipments: entities.Shipments{
 //					ShipmentDetail: 	entities.ShipmentDetail{
 //						CarrierNames: 		"Post",
 //						TrackingNumber:   	"545349534958349",
@@ -274,8 +274,8 @@ package item_repository
 //					},
 //				},
 //				Tracking: entities.Tracking{
-//					StepName:  "0.NewOrder",
-//					StepIndex: 0,
+//					StateName:  "0.NewOrder",
+//					StateIndex: 0,
 //					//CurrentState: entities.State {
 //					//	Name:  "0.New_Order_Process_State",
 //					//	Index: 0,
@@ -299,7 +299,7 @@ package item_repository
 //					//	CreatedAt:    time.Now().UTC(),
 //					//},
 //					CreatedAt: time.Now().UTC(),
-//					StepsHistory: []entities.StepHistory{{
+//					StatesHistory: []entities.StepHistory{{
 //						Name:      "0.NewOrder",
 //						Index:     0,
 //						CreatedAt: time.Now().UTC(),
@@ -392,7 +392,7 @@ package item_repository
 //					ReturnTime:     24,
 //					Details:        "no return",
 //				},
-//				ShipmentDetails: entities.ShipmentDetails{
+//				Shipments: entities.Shipments{
 //					ShipmentDetail: 	entities.ShipmentDetail{
 //						CarrierNames: 		"Post",
 //						TrackingNumber:   	"545349534958349",
@@ -409,8 +409,8 @@ package item_repository
 //					},
 //				},
 //				Tracking: entities.Tracking{
-//					StepName:  "0.NewOrder",
-//					StepIndex: 0,
+//					StateName:  "0.NewOrder",
+//					StateIndex: 0,
 //					//CurrentState: entities.State{
 //					//	Name:  "0.New_Order_Process_State",
 //					//	Index: 0,
@@ -433,7 +433,7 @@ package item_repository
 //					//	CreatedAt:    time.Now().UTC(),
 //					//},
 //					CreatedAt: time.Now().UTC(),
-//					StepsHistory: []entities.StepHistory{{
+//					StatesHistory: []entities.StepHistory{{
 //						Name:      "0.NewOrder",
 //						Index:     0,
 //						CreatedAt: time.Now().UTC(),

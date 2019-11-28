@@ -222,15 +222,15 @@ func createOrder() entities.Order {
 					ReturnTime:     24,
 					Details:        "no return",
 				},
-				ShipmentDetails: entities.ShipmentDetails{
-					ShipmentDetail: entities.ShipmentDetail{
+				ShipmentDetails: entities.Shipment{
+					ShipmentDetail: entities.ShippingDetail{
 						CarrierName:    "Post",
 						TrackingNumber: "545349534958349",
 						Image:          "",
 						Description:    "",
 						CreatedAt:      time.Now().UTC(),
 					},
-					ReturnShipmentDetail: entities.ShipmentDetail{
+					ReturnShipmentDetail: entities.ShippingDetail{
 						CarrierName:    "Post",
 						TrackingNumber: "545349534958349",
 						Image:          "",
@@ -239,8 +239,8 @@ func createOrder() entities.Order {
 					},
 				},
 				Progress: entities.Progress{
-					StepName:  "0.NewOrder",
-					StepIndex: 0,
+					StateName:  "0.NewOrder",
+					StateIndex: 0,
 					//CurrentState: entities.State {
 					//	Name:  "0.New_Order_Process_State",
 					//	Index: 0,
@@ -264,7 +264,7 @@ func createOrder() entities.Order {
 					//	CreatedAt:    time.Now().UTC(),
 					//},
 					CreatedAt: time.Now().UTC(),
-					StepsHistory: []entities.StepHistory{{
+					StatesHistory: []entities.StateHistory{{
 						Name:      "0.NewOrder",
 						Index:     0,
 						CreatedAt: time.Now().UTC(),
@@ -392,15 +392,15 @@ func createOrder() entities.Order {
 					ReturnTime:     24,
 					Details:        "no return",
 				},
-				ShipmentDetails: entities.ShipmentDetails{
-					ShipmentDetail: entities.ShipmentDetail{
+				ShipmentDetails: entities.Shipment{
+					ShipmentDetail: entities.ShippingDetail{
 						CarrierName:    "Post",
 						TrackingNumber: "545349534958349",
 						Image:          "",
 						Description:    "",
 						CreatedAt:      time.Now().UTC(),
 					},
-					ReturnShipmentDetail: entities.ShipmentDetail{
+					ReturnShipmentDetail: entities.ShippingDetail{
 						CarrierName:    "Post",
 						TrackingNumber: "545349534958349",
 						Image:          "",
@@ -409,8 +409,8 @@ func createOrder() entities.Order {
 					},
 				},
 				Progress: entities.Progress{
-					StepName:  "0.NewOrder",
-					StepIndex: 0,
+					StateName:  "0.NewOrder",
+					StateIndex: 0,
 					//CurrentState: entities.State{
 					//	Name:  "0.New_Order_Process_State",
 					//	Index: 0,
@@ -433,7 +433,7 @@ func createOrder() entities.Order {
 					//	CreatedAt:    time.Now().UTC(),
 					//},
 					CreatedAt: time.Now().UTC(),
-					StepsHistory: []entities.StepHistory{{
+					StatesHistory: []entities.StateHistory{{
 						Name:      "0.NewOrder",
 						Index:     0,
 						CreatedAt: time.Now().UTC(),

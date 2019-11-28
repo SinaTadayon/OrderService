@@ -1,10 +1,7 @@
-package pkg_repository
+package subpackage
 
 import (
 	"context"
-	"strconv"
-
-	//"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/go-framework/mongoadapter"
@@ -13,11 +10,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 )
 
-var pkgItemRepo IPkgItemRepository
+var subPkgRepo ISubpackageRepository
 var mongoAdapter *mongoadapter.Mongo
 
 func TestMain(m *testing.M) {
@@ -50,11 +48,11 @@ func TestMain(m *testing.M) {
 
 	mongoAdapter, err = mongoadapter.NewMongo(mongoConf)
 	if err != nil {
-		logger.Err("IPkgItemRepository Mongo: %v", err.Error())
+		logger.Err("ISubpackageRepository Mongo: %v", err.Error())
 		os.Exit(1)
 	}
 
-	pkgItemRepo = NewPkgItemRepository(mongoAdapter)
+	subPkgRepo = NewSubPkgRepository(mongoAdapter)
 
 	// Running Tests
 	code := m.Run()
@@ -62,32 +60,228 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestUpdatePkgItemRepository(t *testing.T) {
-
+func TestSave(t *testing.T) {
 	defer removeCollection()
 	order, err := createOrderAndSave()
 	require.Nil(t, err, "createOrderAndSave failed")
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
-
 	ctx, _ := context.WithCancel(context.Background())
-	order.Packages[1].Status = "Payment_Pending"
-	packageItem, err := pkgItemRepo.Update(ctx, order.Packages[1])
-	require.Nil(t, err, "pkgItemRepo.Update failed")
-	require.Equal(t, uint64(1), packageItem.Version)
-	require.Equal(t, "Payment_Pending", packageItem.Status)
+	newSubPkg := order.Packages[0].Subpackages[1].DeepCopy()
+	newSubPkg.ItemId = 0
+	err = subPkgRepo.Save(ctx, newSubPkg)
+	require.Nil(t, err)
+	updateOrder, err := getOrder(order.OrderId)
+	require.Nil(t, err)
+	require.Equal(t, 3, len(updateOrder.Packages[0].Subpackages))
 }
 
-func TestFindById(t *testing.T) {
+func TestUpdate(t *testing.T) {
 	defer removeCollection()
 	order, err := createOrderAndSave()
 	require.Nil(t, err, "createOrderAndSave failed")
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
 	ctx, _ := context.WithCancel(context.Background())
-	packageItem, err := pkgItemRepo.FindById(ctx, order.OrderId, order.Packages[1].SellerId)
-	require.Nil(t, err, "pkgItemRepo.FindById failed")
-	require.Equal(t, order.Packages[1].SellerId, packageItem.SellerId)
-	require.Equal(t, uint64(0), packageItem.Version)
-	require.Equal(t, "NEW", packageItem.Status)
+	order.Packages[0].Subpackages[0].Status = "Payment_Pending"
+	_, err = subPkgRepo.Update(ctx, order.Packages[0].Subpackages[0])
+	require.Nil(t, err)
+	updateOrder, err := getOrder(order.OrderId)
+	require.Nil(t, err)
+	require.Equal(t, "Payment_Pending", updateOrder.Packages[0].Subpackages[0].Status)
+	require.Equal(t, uint64(1), updateOrder.Packages[0].Subpackages[0].Version)
+	require.Equal(t, "New", updateOrder.Packages[0].Subpackages[1].Status)
+	require.Equal(t, uint64(0), updateOrder.Packages[0].Subpackages[1].Version)
+	require.Equal(t, "New", updateOrder.Packages[1].Subpackages[0].Status)
+	require.Equal(t, uint64(0), updateOrder.Packages[1].Subpackages[0].Version)
+	require.Equal(t, "New", updateOrder.Packages[1].Subpackages[1].Status)
+	require.Equal(t, uint64(0), updateOrder.Packages[1].Subpackages[1].Version)
+}
+
+func TestFindByOrderAndItemId(t *testing.T) {
+	defer removeCollection()
+	order, err := createOrderAndSave()
+	require.Nil(t, err, "createOrderAndSave failed")
+	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
+	ctx, _ := context.WithCancel(context.Background())
+	subPkg, err := subPkgRepo.FindByOrderAndItemId(ctx, order.OrderId, order.Packages[1].Subpackages[1].ItemId)
+	require.Nil(t, err)
+	require.Equal(t, order.Packages[1].Subpackages[1].ItemId, subPkg.ItemId)
+}
+
+func TestFindByOrderAndSellerId(t *testing.T) {
+	defer removeCollection()
+	order, err := createOrderAndSave()
+	require.Nil(t, err, "createOrderAndSave failed")
+	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
+	defer removeCollection()
+	ctx, _ := context.WithCancel(context.Background())
+	subPkgList, err := subPkgRepo.FindByOrderAndSellerId(ctx, order.OrderId, order.Packages[1].SellerId)
+	require.Nil(t, err)
+	require.Equal(t, order.Packages[1].SellerId, subPkgList[0].SellerId)
+	require.Equal(t, 2, len(subPkgList))
+}
+
+func TestFindAll(t *testing.T) {
+	defer removeCollection()
+	order, err := createOrderAndSave()
+	require.Nil(t, err, "createOrderAndSave failed")
+	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
+	order, err = createOrderAndSave()
+	require.Nil(t, err, "createOrderAndSave failed")
+	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
+	defer removeCollection()
+	ctx, _ := context.WithCancel(context.Background())
+	subPkgList, err := subPkgRepo.FindAll(ctx, order.Packages[1].SellerId)
+	require.Nil(t, err)
+	require.Equal(t, order.Packages[1].SellerId, subPkgList[0].SellerId)
+	require.Equal(t, order.Packages[1].SellerId, subPkgList[1].SellerId)
+	require.Equal(t, 4, len(subPkgList))
+}
+
+func TestFindAllWithSort(t *testing.T) {
+	defer removeCollection()
+	order := createOrder()
+	firstTime := time.Now().UTC().Add(time.Duration(1 * time.Hour))
+	order.Packages[0].Subpackages[0].CreatedAt = firstTime
+	order.Packages[0].Subpackages[1].CreatedAt = time.Now().UTC().Add(time.Duration(1 * time.Minute))
+	_, err := insertWithoutChangeTime(order)
+	require.Nil(t, err, "insert order failed")
+	require.NotEmpty(t, order.OrderId, "insert order failed, order id not generated")
+
+	order = createOrder()
+	secondTime := time.Now().UTC().Add(time.Duration(3 * time.Minute))
+	order.Packages[0].Subpackages[0].CreatedAt = secondTime
+	_, err = insertWithoutChangeTime(order)
+	require.Nil(t, err, "insert order failed")
+	require.NotEmpty(t, order.OrderId, "insert order failed, order id not generated")
+
+	defer removeCollection()
+	ctx, _ := context.WithCancel(context.Background())
+	subPkgList, err := subPkgRepo.FindAllWithSort(ctx, order.Packages[0].SellerId, "createdAt", -1)
+	require.Nil(t, err)
+	require.Equal(t, 4, len(subPkgList))
+	require.Equal(t, firstTime.Unix(), subPkgList[0].CreatedAt.Unix())
+	require.Equal(t, secondTime.Unix(), subPkgList[1].CreatedAt.Unix())
+}
+
+func TestFindAllWithPage(t *testing.T) {
+	defer removeCollection()
+	order, err := createOrderAndSave()
+	require.Nil(t, err, "createOrderAndSave failed")
+	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
+	order, err = createOrderAndSave()
+	require.Nil(t, err, "createOrderAndSave failed")
+	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
+	order, err = createOrderAndSave()
+	require.Nil(t, err, "createOrderAndSave failed")
+	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
+	defer removeCollection()
+	ctx, _ := context.WithCancel(context.Background())
+	subPkgList, totalPage, err := subPkgRepo.FindAllWithPage(ctx, order.Packages[1].SellerId, 1, 2)
+	require.Nil(t, err)
+	require.Equal(t, order.Packages[1].SellerId, subPkgList[0].SellerId)
+	require.Equal(t, order.Packages[1].SellerId, subPkgList[1].SellerId)
+	require.Equal(t, 2, len(subPkgList))
+	require.Equal(t, int64(3), totalPage)
+}
+
+func TestFindAllWithPageAndSort(t *testing.T) {
+	defer removeCollection()
+	order := createOrder()
+	firstTime := time.Now().UTC().Add(time.Duration(1 * time.Hour))
+	order.Packages[0].Subpackages[0].CreatedAt = firstTime
+	order.Packages[0].Subpackages[1].CreatedAt = time.Now().UTC().Add(time.Duration(1 * time.Minute))
+	_, err := insertWithoutChangeTime(order)
+	require.Nil(t, err, "insert order failed")
+	require.NotEmpty(t, order.OrderId, "insert order failed, order id not generated")
+
+	order = createOrder()
+	secondTime := time.Now().UTC().Add(time.Duration(3 * time.Minute))
+	order.Packages[0].Subpackages[0].CreatedAt = secondTime
+	_, err = insertWithoutChangeTime(order)
+	require.Nil(t, err, "insert order failed")
+	require.NotEmpty(t, order.OrderId, "insert order failed, order id not generated")
+
+	order, err = createOrderAndSave()
+	require.Nil(t, err, "createOrderAndSave failed")
+	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
+
+	defer removeCollection()
+	ctx, _ := context.WithCancel(context.Background())
+	subPkgList, totalPage, err := subPkgRepo.FindAllWithPageAndSort(ctx, order.Packages[0].SellerId, 1, 2, "createdAt", -1)
+	require.Nil(t, err)
+	require.Equal(t, 2, len(subPkgList))
+	require.Equal(t, int64(3), totalPage)
+	require.Equal(t, firstTime.Unix(), subPkgList[0].CreatedAt.Unix())
+	require.Equal(t, secondTime.Unix(), subPkgList[1].CreatedAt.Unix())
+}
+
+func TestFindByFilter(t *testing.T) {
+	defer removeCollection()
+	order, err := createOrderAndSave()
+	require.Nil(t, err, "createOrderAndSave failed")
+	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
+	order, err = createOrderAndSave()
+	require.Nil(t, err, "createOrderAndSave failed")
+	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
+	defer removeCollection()
+	ctx, _ := context.WithCancel(context.Background())
+	totalPipeline := []bson.M{
+		{"$match": bson.M{"packages.sellerId": order.Packages[0].SellerId, "packages.deletedAt": nil}},
+		{"$project": bson.M{"subSize": bson.M{"$size": "$packages.subpackages"}}},
+		{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
+		{"$project": bson.M{"_id": 0, "count": 1}},
+	}
+	pipeline := []bson.M{
+		{"$match": bson.M{"packages.sellerId": order.Packages[0].SellerId, "packages.deletedAt": nil}},
+		{"$unwind": "$packages"},
+		{"$match": bson.M{"packages.sellerId": order.Packages[0].SellerId, "packages.deletedAt": nil}},
+		{"$project": bson.M{"_id": 0, "packages.subpackages": 1}},
+		{"$unwind": "$packages.subpackages"},
+		{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+		{"$replaceRoot": bson.M{"newRoot": "$subpackages"}},
+	}
+
+	subPkgList, err := subPkgRepo.FindByFilter(ctx, func() (filter interface{}) { return totalPipeline }, func() (filter interface{}) { return pipeline })
+	require.Nil(t, err)
+	require.Equal(t, order.Packages[0].SellerId, subPkgList[0].SellerId)
+	require.Equal(t, order.Packages[0].SellerId, subPkgList[1].SellerId)
+	require.Equal(t, 4, len(subPkgList))
+}
+
+func TestFindByFilterWithPage(t *testing.T) {
+	defer removeCollection()
+	order, err := createOrderAndSave()
+	require.Nil(t, err, "createOrderAndSave failed")
+	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
+	order, err = createOrderAndSave()
+	require.Nil(t, err, "createOrderAndSave failed")
+	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
+	defer removeCollection()
+	ctx, _ := context.WithCancel(context.Background())
+	totalPipeline := []bson.M{
+		{"$match": bson.M{"packages.sellerId": order.Packages[0].SellerId, "packages.deletedAt": nil}},
+		{"$project": bson.M{"subSize": bson.M{"$size": "$packages.subpackages"}}},
+		{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
+		{"$project": bson.M{"_id": 0, "count": 1}},
+	}
+
+	pipeline := []bson.M{
+		{"$match": bson.M{"packages.sellerId": order.Packages[0].SellerId, "packages.deletedAt": nil}},
+		{"$unwind": "$packages"},
+		{"$match": bson.M{"packages.sellerId": order.Packages[0].SellerId, "packages.deletedAt": nil}},
+		{"$project": bson.M{"_id": 0, "packages.subpackages": 1}},
+		{"$unwind": "$packages.subpackages"},
+		{"$skip": 0},
+		{"$limit": 2},
+		{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+		{"$replaceRoot": bson.M{"newRoot": "$subpackages"}},
+	}
+	subPkgList, totalPages, err := subPkgRepo.FindByFilterWithPage(ctx, func() (filter interface{}) { return totalPipeline }, func() (filter interface{}) { return pipeline }, 1, 2)
+	require.Nil(t, err)
+	require.Equal(t, order.Packages[0].SellerId, subPkgList[0].SellerId)
+	require.Equal(t, order.Packages[0].SellerId, subPkgList[1].SellerId)
+	require.Equal(t, 2, len(subPkgList))
+	require.Equal(t, int64(2), totalPages)
 }
 
 func TestExitsById_Success(t *testing.T) {
@@ -96,65 +290,9 @@ func TestExitsById_Success(t *testing.T) {
 	require.Nil(t, err, "createOrderAndSave failed")
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
 	ctx, _ := context.WithCancel(context.Background())
-	result, err := pkgItemRepo.ExistsById(ctx, order.OrderId, order.Packages[1].SellerId)
-	require.Nil(t, err, "pkgItemRepo.ExistsById failed")
+	result, err := subPkgRepo.ExistsById(ctx, order.Packages[1].Subpackages[0].ItemId)
+	require.Nil(t, err, "subPkgRepo.ExistsById failed")
 	require.True(t, result)
-}
-
-func TestExitsById_Failed(t *testing.T) {
-	defer removeCollection()
-	order, err := createOrderAndSave()
-	require.Nil(t, err, "createOrderAndSave failed")
-	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
-	ctx, _ := context.WithCancel(context.Background())
-	result, err := pkgItemRepo.ExistsById(ctx, order.OrderId, 1235356)
-	require.Nil(t, err, "pkgItemRepo.ExistsById failed")
-	require.False(t, result)
-}
-
-func TestCount(t *testing.T) {
-	defer removeCollection()
-	order, err := createOrderAndSave()
-	require.Nil(t, err, "createOrderAndSave failed")
-	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
-	ctx, _ := context.WithCancel(context.Background())
-	result, err := pkgItemRepo.Count(ctx, order.Packages[0].SellerId)
-	require.Nil(t, err, "pkgItemRepo.Count failed")
-	require.Equal(t, int64(1), result)
-}
-
-func TestCountWithFilter(t *testing.T) {
-	defer removeCollection()
-	order, err := createOrderAndSave()
-	require.Nil(t, err, "createOrderAndSave failed")
-	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
-	ctx, _ := context.WithCancel(context.Background())
-	result, err := pkgItemRepo.CountWithFilter(ctx, func() (filter interface{}) {
-		return bson.D{{"packages.sellerId", order.Packages[1].SellerId},
-			{"deletedAt", nil}}
-	})
-	require.Nil(t, err, "pkgItemRepo.CountWithFilter failed")
-	require.Equal(t, int64(1), result)
-}
-
-func TestFindByFilter(t *testing.T) {
-	defer removeCollection()
-	order, err := createOrderAndSave()
-	require.Nil(t, err, "createOrderAndSave failed")
-	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
-	ctx, _ := context.WithCancel(context.Background())
-	packageItem, err := pkgItemRepo.FindByFilter(ctx, func() (filter interface{}) {
-		return []bson.M{
-			{"$match": bson.M{"orderId": order.OrderId, "deletedAt": nil}},
-			{"$unwind": "$packages"},
-			{"$match": bson.M{"packages.sellerId": order.Packages[0].SellerId}},
-			{"$project": bson.M{"_id": 0, "packages": 1}},
-			{"$replaceRoot": bson.M{"newRoot": "$packages"}},
-		}
-	})
-	require.Equal(t, order.Packages[0].SellerId, packageItem[0].SellerId)
-	require.Equal(t, uint64(0), packageItem[0].Version)
-	require.Equal(t, "NEW", packageItem[0].Status)
 }
 
 func removeCollection() {
@@ -220,7 +358,67 @@ func insert(order *entities.Order) (*entities.Order, error) {
 	return order, nil
 }
 
+func insertWithoutChangeTime(order *entities.Order) (*entities.Order, error) {
+
+	if order.OrderId == 0 {
+		order.OrderId = entities.GenerateOrderId()
+		mapItemIds := make(map[int]string, 64)
+		mapInventoryIds := make(map[string]string, 64)
+
+		for i := 0; i < len(order.Packages); i++ {
+			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
+				for {
+					random := int(entities.GenerateRandomNumber())
+					if _, ok := mapItemIds[random]; ok {
+						continue
+					}
+					mapItemIds[random] = order.Packages[i].Subpackages[j].Item.InventoryId
+					mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId] = strconv.Itoa(random)
+					break
+				}
+			}
+		}
+
+		for i := 0; i < len(order.Packages); i++ {
+			order.Packages[i].OrderId = order.OrderId
+			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
+				if value, ok := mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId]; ok {
+					itemId, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + value)
+					order.Packages[i].Subpackages[j].ItemId = uint64(itemId)
+					order.Packages[i].Subpackages[j].SellerId = order.Packages[i].SellerId
+					order.Packages[i].Subpackages[j].OrderId = order.OrderId
+				}
+			}
+		}
+
+		order.CreatedAt = time.Now().UTC()
+		var insertOneResult, err = mongoAdapter.InsertOne(databaseName, collectionName, &order)
+		if err != nil {
+			if mongoAdapter.IsDupError(err) {
+				for mongoAdapter.IsDupError(err) {
+					insertOneResult, err = mongoAdapter.InsertOne(databaseName, collectionName, &order)
+				}
+			} else {
+				return nil, err
+			}
+		}
+		order.ID = insertOneResult.InsertedID.(primitive.ObjectID)
+	} else {
+		order.CreatedAt = time.Now().UTC()
+		var insertOneResult, err = mongoAdapter.InsertOne(databaseName, collectionName, &order)
+		if err != nil {
+			return nil, err
+		}
+		order.ID = insertOneResult.InsertedID.(primitive.ObjectID)
+	}
+	return order, nil
+}
+
 func createOrderAndSave() (*entities.Order, error) {
+	return insert(createOrder())
+}
+
+func createOrder() *entities.Order {
 
 	paymentRequest := entities.PaymentRequest{
 		Amount:    75400000,
@@ -875,5 +1073,19 @@ func createOrderAndSave() (*entities.Order, error) {
 		DeletedAt: nil,
 	}
 
-	return insert(&newOrder)
+	return &newOrder
+}
+
+func getOrder(orderId uint64) (*entities.Order, error) {
+	var order entities.Order
+	singleResult := mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"orderId", orderId}, {"deletedAt", nil}})
+	if err := singleResult.Err(); err != nil {
+		return nil, err
+	}
+
+	if err := singleResult.Decode(&order); err != nil {
+		return nil, err
+	}
+
+	return &order, nil
 }

@@ -436,7 +436,7 @@ func (paymentPending paymentPendingStep) doUpdateOrderItemsProgress(ctx context.
 //				validation.Field(&ppr.Items[i].Shipment.ReactionTime, validation.Required),
 //				validation.Field(&ppr.Items[i].Shipment.ShippingTime, validation.Required),
 //				validation.Field(&ppr.Items[i].Shipment.ReturnTime, validation.Required),
-//				validation.Field(&ppr.Items[i].Shipment.ShipmentDetail, validation.Required),
+//				validation.Field(&ppr.Items[i].Shipment.ShippingDetail, validation.Required),
 //			)
 //			if errPaymentCallbackUrlRequestItemsShipment != nil {
 //				errValidation = append(errValidation, errPaymentCallbackUrlRequestItemsShipment.Error())

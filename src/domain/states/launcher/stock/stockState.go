@@ -207,8 +207,8 @@ func (stockState stockActionLauncher) persistOrderState(ctx context.Context, ord
 	//order.UpdatedAt = time.Now().UTC()
 	//for i := 0; i < len(order.Items); i++ {
 	//	order.Items[i].Tracking.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
-	//	order.Items[i].Tracking.StepName = ctx.Value(global.CtxStepName).(string)
-	//	order.Items[i].Tracking.StepIndex = ctx.Value(global.CtxStepIndex).(int)
+	//	order.Items[i].Tracking.StateName = ctx.Value(global.CtxStepName).(string)
+	//	order.Items[i].Tracking.StateIndex = ctx.Value(global.CtxStepIndex).(int)
 	//	order.Items[i].Tracking.CurrentState.Name = stockState.Name()
 	//	order.Items[i].Tracking.CurrentState.Index = stockState.Index()
 	//	order.Items[i].Tracking.CurrentState.Type = stockState.Actions().ActionType().Name()
@@ -234,8 +234,8 @@ func (stockState stockActionLauncher) persistOrderState(ctx context.Context, ord
 	//		CreatedAt:order.Items[i].Tracking.CurrentState.CreatedAt,
 	//	}
 	//
-	//	order.Items[i].Tracking.StepsHistory[len(order.Items[i].Tracking.StepsHistory)].StatesHistory =
-	//		append(order.Items[i].Tracking.StepsHistory[len(order.Items[i].Tracking.StepsHistory)].StatesHistory, stateHistory)
+	//	order.Items[i].Tracking.StatesHistory[len(order.Items[i].Tracking.StatesHistory)].StatesHistory =
+	//		append(order.Items[i].Tracking.StatesHistory[len(order.Items[i].Tracking.StatesHistory)].StatesHistory, stateHistory)
 	//}
 	//
 	//orderChecked, err := global.Singletons.OrderRepository.Save(*order)

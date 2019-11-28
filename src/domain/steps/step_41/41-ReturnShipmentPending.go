@@ -57,9 +57,9 @@ func (returnShipmentPending returnShipmentPendingStep) ProcessOrder(ctx context.
 //}
 //
 //func ReturnShipmentDetailAction(ppr PaymentPendingRequest, req *pb.ReturnShipmentDetailRequest) error {
-//	ppr.ShipmentDetail.ReturnShipmentDetail.ShipmentProvider = req.GetShipmentProvider()
-//	ppr.ShipmentDetail.ReturnShipmentDetail.Description = req.GetDescription()
-//	ppr.ShipmentDetail.ReturnShipmentDetail.ShipmentTrackingNumber = req.GetShipmentTrackingNumber()
+//	ppr.ShippingDetail.ReturnShipmentDetail.ShipmentProvider = req.GetShipmentProvider()
+//	ppr.ShippingDetail.ReturnShipmentDetail.Description = req.GetDescription()
+//	ppr.ShippingDetail.ReturnShipmentDetail.ShipmentTrackingNumber = req.GetShipmentTrackingNumber()
 //
 //	err := main.MoveOrderToNewState("buyer", "", main.ReturnShipped, "return-shipped", ppr)
 //	if err != nil {

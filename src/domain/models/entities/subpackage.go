@@ -4,25 +4,25 @@ import "time"
 
 // subpackage id same as itemId
 type Subpackage struct {
-	ItemId          uint64          `bson:"itemId"`
-	SellerId        uint64          `bson:"sellerId"`
-	OrderId         uint64          `bson:"orderId"`
-	Version         uint64          `bson:"version"`
-	Item            Item            `bson:"item"`
-	ShipmentDetails ShipmentDetails `bson:"shipmentDetails"`
-	Tracking        Progress        `bson:"tracking"`
-	Status          string          `bson:"status"`
-	CreatedAt       time.Time       `bson:"createdAt"`
-	UpdatedAt       time.Time       `bson:"updatedAt"`
-	DeletedAt       *time.Time      `bson:"deletedAt"`
+	ItemId    uint64     `bson:"itemId"`
+	SellerId  uint64     `bson:"sellerId"`
+	OrderId   uint64     `bson:"orderId"`
+	Version   uint64     `bson:"version"`
+	Item      Item       `bson:"item"`
+	Shipments *Shipment  `bson:"shipments"`
+	Tracking  Progress   `bson:"tracking"`
+	Status    string     `bson:"status"`
+	CreatedAt time.Time  `bson:"createdAt"`
+	UpdatedAt time.Time  `bson:"updatedAt"`
+	DeletedAt *time.Time `bson:"deletedAt"`
 }
 
-type ShipmentDetails struct {
-	ShipmentDetail       ShipmentDetail `bson:"ShipmentDetail"`
-	ReturnShipmentDetail ShipmentDetail `bson:"ReturnShipmentDetail"`
+type Shipment struct {
+	ShipmentDetail       *ShippingDetail `bson:"shipmentDetail"`
+	ReturnShipmentDetail *ShippingDetail `bson:"returnShipmentDetail"`
 }
 
-type ShipmentDetail struct {
+type ShippingDetail struct {
 	CarrierName    string    `bson:"carrierName"`
 	ShippingMethod string    `bson:"shippingMethod"`
 	TrackingNumber string    `bson:"trackingNumber"`
@@ -57,13 +57,13 @@ type ItemInvoice struct {
 }
 
 type Progress struct {
-	StepName     string        `bson:"stepName"`
-	StepIndex    int           `bson:"stepIndex"`
-	Action       Action        `bson:"action"`
-	StepsHistory []StepHistory `bson:"stepsHistory"`
+	StateName     string         `bson:"stateName"`
+	StateIndex    int            `bson:"stateIndex"`
+	Action        Action         `bson:"action"`
+	StatesHistory []StateHistory `bson:"statesHistory"`
 }
 
-type StepHistory struct {
+type StateHistory struct {
 	Name          string    `bson:"name"`
 	Index         int       `bson:"index"`
 	ActionHistory []Action  `bson:"actionHistory"`
@@ -84,4 +84,64 @@ type Action struct {
 	Result    string                 `bson:"result"`
 	Reason    string                 `bson:"reason"`
 	CreatedAt time.Time              `bson:"createdAt"`
+}
+
+func (subpackage Subpackage) DeepCopy() *Subpackage {
+	var subPkg = Subpackage{
+		ItemId:    subpackage.ItemId,
+		SellerId:  subpackage.SellerId,
+		OrderId:   subpackage.OrderId,
+		Version:   subpackage.Version,
+		Status:    subpackage.Status,
+		Item:      subpackage.Item,
+		CreatedAt: subpackage.CreatedAt,
+		UpdatedAt: subpackage.UpdatedAt,
+		DeletedAt: subpackage.DeletedAt,
+	}
+
+	if subpackage.Shipments != nil {
+		subPkg.Shipments = &Shipment{}
+		if subpackage.Shipments.ShipmentDetail != nil {
+			subPkg.Shipments.ShipmentDetail = &ShippingDetail{
+				CarrierName:    subpackage.Shipments.ShipmentDetail.CarrierName,
+				ShippingMethod: subpackage.Shipments.ShipmentDetail.ShippingMethod,
+				TrackingNumber: subpackage.Shipments.ShipmentDetail.TrackingNumber,
+				Image:          subpackage.Shipments.ShipmentDetail.Image,
+				Description:    subpackage.Shipments.ShipmentDetail.Description,
+				ShippedDate:    subpackage.Shipments.ShipmentDetail.ShippedDate,
+				CreatedAt:      subpackage.Shipments.ShipmentDetail.CreatedAt,
+			}
+		}
+
+		if subpackage.Shipments.ReturnShipmentDetail != nil {
+			subPkg.Shipments.ReturnShipmentDetail = &ShippingDetail{
+				CarrierName:    subpackage.Shipments.ReturnShipmentDetail.CarrierName,
+				ShippingMethod: subpackage.Shipments.ReturnShipmentDetail.ShippingMethod,
+				TrackingNumber: subpackage.Shipments.ReturnShipmentDetail.TrackingNumber,
+				Image:          subpackage.Shipments.ReturnShipmentDetail.Image,
+				Description:    subpackage.Shipments.ReturnShipmentDetail.Description,
+				ShippedDate:    subpackage.Shipments.ReturnShipmentDetail.ShippedDate,
+				CreatedAt:      subpackage.Shipments.ReturnShipmentDetail.CreatedAt,
+			}
+		}
+	}
+
+	subPkg.Tracking = Progress{
+		StateName:  subpackage.Tracking.StateName,
+		StateIndex: subpackage.Tracking.StateIndex,
+		Action:     subpackage.Tracking.Action,
+	}
+
+	if subpackage.Tracking.StatesHistory != nil {
+		subPkg.Tracking.StatesHistory = make([]StateHistory, 0, len(subpackage.Tracking.StatesHistory))
+		for _, state := range subpackage.Tracking.StatesHistory {
+			var newState StateHistory
+			newState.ActionHistory = make([]Action, 0, len(state.ActionHistory))
+			for _, action := range state.ActionHistory {
+				newState.ActionHistory = append(newState.ActionHistory, action)
+			}
+			subPkg.Tracking.StatesHistory = append(subPkg.Tracking.StatesHistory, state)
+		}
+	}
+	return &subPkg
 }

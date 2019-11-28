@@ -107,8 +107,8 @@ func (nextStep nextToStepActionLauncher) persistOrderState(ctx context.Context, 
 func (nextStep nextToStepActionLauncher) doUpdateOrderState(ctx context.Context, order *entities.Order, index int,
 	acceptedAction actions.IEnumAction, result bool, reason string) {
 	//order.Items[index].Tracking.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
-	//order.Items[index].Tracking.StepName = ctx.Value(global.CtxStepName).(string)
-	//order.Items[index].Tracking.StepIndex = ctx.Value(global.CtxStepIndex).(int)
+	//order.Items[index].Tracking.StateName = ctx.Value(global.CtxStepName).(string)
+	//order.Items[index].Tracking.StateIndex = ctx.Value(global.CtxStepIndex).(int)
 	//
 	//order.Items[index].Tracking.CurrentState.Name = nextStep.Name()
 	//order.Items[index].Tracking.CurrentState.Index = nextStep.Index()
@@ -140,6 +140,6 @@ func (nextStep nextToStepActionLauncher) doUpdateOrderState(ctx context.Context,
 	//	CreatedAt:order.Items[index].Tracking.CurrentState.CreatedAt,
 	//}
 	//
-	//order.Items[index].Tracking.StepsHistory[len(order.Items[index].Tracking.StepsHistory)].StatesHistory =
-	//	append(order.Items[index].Tracking.StepsHistory[len(order.Items[index].Tracking.StepsHistory)].StatesHistory, stateHistory)
+	//order.Items[index].Tracking.StatesHistory[len(order.Items[index].Tracking.StatesHistory)].StatesHistory =
+	//	append(order.Items[index].Tracking.StatesHistory[len(order.Items[index].Tracking.StatesHistory)].StatesHistory, stateHistory)
 }

@@ -144,6 +144,6 @@ func (notificationState notificationActionLauncher) doUpdateOrderState(ctx conte
 	//	CreatedAt:order.Items[index].Tracking.CurrentState.CreatedAt,
 	//}
 	//
-	//order.Items[index].Tracking.StepsHistory[len(order.Items[index].Tracking.StepsHistory)].StatesHistory =
-	//	append(order.Items[index].Tracking.StepsHistory[len(order.Items[index].Tracking.StepsHistory)].StatesHistory, stateHistory)
+	//order.Items[index].Tracking.StatesHistory[len(order.Items[index].Tracking.StatesHistory)].StatesHistory =
+	//	append(order.Items[index].Tracking.StatesHistory[len(order.Items[index].Tracking.StatesHistory)].StatesHistory, stateHistory)
 }

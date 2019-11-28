@@ -231,7 +231,7 @@ func (shipmentPending shipmentPendingStep) updateOrderItemsProgress(ctx context.
 				if order.Items[i].ItemId == id {
 					findFlag = true
 					if req != nil {
-						order.Items[i].ShipmentDetails.SellerShipmentDetail = entities.ShipmentDetail{
+						order.Items[i].ShipmentDetails.SellerShipmentDetail = entities.ShippingDetail{
 							TrackingNumber: req.Success.TrackingId,
 							ShippingMethod: req.Success.ShipmentMethod,
 						}
@@ -299,9 +299,9 @@ func (shipmentPending shipmentPendingStep) doUpdateOrderItemsProgress(ctx contex
 //)
 //
 //func ShipmentPendingEnteredDetail(ppr PaymentPendingRequest, req *OrderService.ShipmentDetailRequest) error {
-//	ppr.ShipmentDetail.ShipmentDetail.ShipmentProvider = req.ShipmentProvider
-//	ppr.ShipmentDetail.ShipmentDetail.ShipmentTrackingNumber = req.ShipmentTrackingNumber
-//	ppr.ShipmentDetail.ShipmentDetail.Description = req.GetDescription()
+//	ppr.ShippingDetail.ShippingDetail.ShipmentProvider = req.ShipmentProvider
+//	ppr.ShippingDetail.ShippingDetail.ShipmentTrackingNumber = req.ShipmentTrackingNumber
+//	ppr.ShippingDetail.ShippingDetail.Description = req.GetDescription()
 //	err := main.MoveOrderToNewState("seller", "", main.Shipped, "shipped", ppr)
 //	if err != nil {
 //		return err

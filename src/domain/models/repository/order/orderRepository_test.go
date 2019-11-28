@@ -2,7 +2,7 @@ package order_repository
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/configs"
@@ -64,30 +64,32 @@ func TestMain(m *testing.M) {
 
 func TestSaveOrderRepository(t *testing.T) {
 
-	//defer removeCollection()
+	defer removeCollection()
 	order := createOrder()
 	//res, _ := json.Marshal(order)
 	//logger.Audit("order model: %s",res)
-	order1, err := orderRepository.Save(order)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
+	ctx, _ := context.WithCancel(context.Background())
+	order1, err := orderRepository.Save(ctx, *order)
+	require.Nil(t, err, "orderRepository.Save failed")
+	require.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
 }
 
 func TestUpdateOrderRepository(t *testing.T) {
 
 	defer removeCollection()
 	order := createOrder()
-	order1, err := orderRepository.Save(order)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
+	ctx, _ := context.WithCancel(context.Background())
+	order1, err := orderRepository.Save(ctx, *order)
+	require.Nil(t, err, "orderRepository.Save failed")
+	require.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
 
 	order1.BuyerInfo.FirstName = "Siamak"
 	order1.BuyerInfo.LastName = "Marjoeee"
 
-	order2, err := orderRepository.Save(*order1)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.Equal(t, "Siamak", order2.BuyerInfo.FirstName)
-	assert.Equal(t, "Marjoeee", order2.BuyerInfo.LastName)
+	order2, err := orderRepository.Save(ctx, *order1)
+	require.Nil(t, err, "orderRepository.Save failed")
+	require.Equal(t, order2.BuyerInfo.FirstName, "Siamak")
+	require.Equal(t, order2.BuyerInfo.LastName, "Marjoeee")
 }
 
 func TestUpdateOrderRepository_Failed(t *testing.T) {
@@ -96,189 +98,204 @@ func TestUpdateOrderRepository_Failed(t *testing.T) {
 	order := createOrder()
 	timeTmp := time.Now().UTC()
 	order.DeletedAt = &timeTmp
-	order1, err := orderRepository.Save(order)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
+	ctx, _ := context.WithCancel(context.Background())
+	order1, err := orderRepository.Save(ctx, *order)
+	require.Nil(t, err, "orderRepository.Save failed")
+	require.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
 
 	order1.BuyerInfo.FirstName = "Siamak"
-	_, err = orderRepository.Save(*order1)
-	assert.Error(t, err)
-	assert.Equal(t, err, ErrorUpdateFailed)
+	_, err = orderRepository.Save(ctx, *order1)
+	require.Error(t, err)
+	require.Equal(t, ErrorUpdateFailed, err)
 }
 
 func TestInsertOrderRepository_Success(t *testing.T) {
 	//defer removeCollection()
 	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
+	ctx, _ := context.WithCancel(context.Background())
+	err := orderRepository.Insert(ctx, order)
+	require.Nil(t, err, "orderRepository.Save failed")
+	require.NotEmpty(t, order.OrderId, "orderRepository.Save failed, order id not generated")
 }
 
 func TestInsertOrderRepository_Failed(t *testing.T) {
 	defer removeCollection()
 	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
-	_, err1 := orderRepository.Insert(*order1)
-	assert.NotNil(t, err1)
+	ctx, _ := context.WithCancel(context.Background())
+	err := orderRepository.Insert(ctx, order)
+	require.Nil(t, err, "orderRepository.Save failed")
+	require.NotEmpty(t, order.OrderId, "orderRepository.Save failed, order id not generated")
+	err1 := orderRepository.Insert(ctx, order)
+	require.NotNil(t, err1)
 }
 
 func TestFindAllOrderRepository(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 
-	orders, err := orderRepository.FindAll()
-	assert.Nil(t, err)
-	assert.Equal(t, len(orders), 3)
+	orders, err := orderRepository.FindAll(ctx)
+	require.Nil(t, err)
+	require.Equal(t, len(orders), 3)
 }
 
 func TestFindAllWithSortOrderRepository(t *testing.T) {
+
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
 	order.BuyerInfo.FirstName = "AAAA"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 
-	orders, err := orderRepository.FindAllWithSort("buyerInfo.firstName", 1)
-	assert.Nil(t, err)
-	assert.Equal(t, orders[0].BuyerInfo.FirstName, "AAAA")
+	orders, err := orderRepository.FindAllWithSort(ctx, "buyerInfo.firstName", 1)
+	require.Nil(t, err)
+	require.Equal(t, orders[0].BuyerInfo.FirstName, "AAAA")
 }
 
 func TestFindAllWithPageAndPerPageRepository_success(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	orders, _, err := orderRepository.FindAllWithPage(2, 2)
-	assert.Nil(t, err)
-	assert.Equal(t, len(orders), 1)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
+	orders, _, err := orderRepository.FindAllWithPage(ctx, 2, 2)
+	require.Nil(t, err)
+	require.Equal(t, 1, len(orders))
 }
 
 func TestFindAllWithPageAndPerPageRepository_failed(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	_, _, err = orderRepository.FindAllWithPage(1002, 2000)
-	assert.NotNil(t, err)
-	assert.Equal(t, err, ErrorPageNotAvailable)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
+	_, _, err = orderRepository.FindAllWithPage(ctx, 1002, 2000)
+	require.NotNil(t, err)
+	require.Equal(t, ErrorPageNotAvailable, err)
 }
 
 func TestFindAllWithPageAndPerPageAndSortRepository_success(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
 	order.BuyerInfo.FirstName = "AAAA"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 
-	orders, _, err := orderRepository.FindAllWithPageAndSort(1, 2, "buyerInfo.firstName", 1)
-	assert.Nil(t, err)
-	assert.Equal(t, len(orders), 2)
-	assert.Equal(t, orders[0].BuyerInfo.FirstName, "AAAA")
+	orders, _, err := orderRepository.FindAllWithPageAndSort(ctx, 1, 2, "buyerInfo.firstName", 1)
+	require.Nil(t, err)
+	require.Equal(t, 2, len(orders))
+	require.Equal(t, "AAAA", orders[0].BuyerInfo.FirstName)
 }
 
 func TestFindByIdRepository(t *testing.T) {
 	defer removeCollection()
 	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err)
-	_, err1 := orderRepository.FindById(order1.OrderId)
-	assert.Nil(t, err1)
+	ctx, _ := context.WithCancel(context.Background())
+	err := orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
+	_, err1 := orderRepository.FindById(ctx, order.OrderId)
+	require.Nil(t, err1)
 }
 
 func TestExistsByIdRepository(t *testing.T) {
 	defer removeCollection()
 	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err)
-	res, err1 := orderRepository.ExistsById(order1.OrderId)
-	assert.Nil(t, err1)
-	assert.Equal(t, res, true)
+	ctx, _ := context.WithCancel(context.Background())
+	err := orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
+	res, err1 := orderRepository.ExistsById(ctx, order.OrderId)
+	require.Nil(t, err1)
+	require.Equal(t, true, res)
 }
 
 func TestCountRepository(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 
-	total, err := orderRepository.Count()
-	assert.Nil(t, err)
-	assert.Equal(t, total, int64(2))
+	total, err := orderRepository.Count(ctx)
+	require.Nil(t, err)
+	require.Equal(t, int64(2), total)
 }
 
 func TestDeleteOrderRepository(t *testing.T) {
 	defer removeCollection()
 	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order1, err1 := orderRepository.Delete(*order1)
-	assert.Nil(t, err1)
-	assert.NotNil(t, order1.DeletedAt)
+	ctx, _ := context.WithCancel(context.Background())
+	err := orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
+	order1, err1 := orderRepository.Delete(ctx, *order)
+	require.Nil(t, err1)
+	require.NotNil(t, order1.DeletedAt)
 }
 
 func TestDeleteAllRepository(t *testing.T) {
 	defer removeCollection()
-	var order entities.Order
+	var order *entities.Order
 	order = createOrder()
-	_, err := orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	err := orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	err = orderRepository.DeleteAll()
-	assert.Nil(t, err)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
+	err = orderRepository.DeleteAll(ctx)
+	require.Nil(t, err)
 }
 
 func TestRemoveOrderRepository(t *testing.T) {
 	defer removeCollection()
 	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err)
-	err = orderRepository.Remove(*order1)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	err := orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
+	err = orderRepository.Remove(ctx, *order)
+	require.Nil(t, err)
 }
 
 func TestFindByFilterRepository(t *testing.T) {
@@ -286,100 +303,107 @@ func TestFindByFilterRepository(t *testing.T) {
 	var err error
 	order := createOrder()
 	order.BuyerInfo.FirstName = "Reza"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
 	order.BuyerInfo.FirstName = "Hosein"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 
-	orders, err := orderRepository.FindByFilter(func() interface{} {
+	orders, err := orderRepository.FindByFilter(ctx, func() interface{} {
 		return bson.D{{"buyerInfo.firstName", "Reza"}, {"deletedAt", nil}}
 	})
 
-	assert.Nil(t, err)
-	assert.Equal(t, orders[0].BuyerInfo.FirstName, "Reza")
+	require.Nil(t, err)
+	require.Equal(t, "Reza", orders[0].BuyerInfo.FirstName)
 }
 
 func TestFindByFilterWithSortOrderRepository(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
 	order.BuyerInfo.FirstName = "AAAA"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 
-	orders, err := orderRepository.FindByFilterWithSort(func() (interface{}, string, int) {
+	orders, err := orderRepository.FindByFilterWithSort(ctx, func() (interface{}, string, int) {
 		return bson.D{{"buyerInfo.firstName", "AAAA"}, {"deletedAt", nil}}, "buyerInfo.firstName", 1
 	})
-	assert.Nil(t, err)
-	assert.Equal(t, orders[0].BuyerInfo.FirstName, "AAAA")
+	require.Nil(t, err)
+	require.Equal(t, "AAAA", orders[0].BuyerInfo.FirstName)
 }
 
 func TestFindByFilterWithPageAndPerPageRepository_success(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	orders, _, err := orderRepository.FindByFilterWithPage(func() interface{} {
+	order.BuyerInfo.FirstName = "AAAA"
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
+	orders, _, err := orderRepository.FindByFilterWithPage(ctx, func() interface{} {
 		return bson.D{{}, {"deletedAt", nil}}
 	}, 2, 2)
-	assert.Nil(t, err)
-	assert.Equal(t, len(orders), 1)
+	require.Nil(t, err)
+	require.Equal(t, 1, len(orders))
 }
 
 func TestFindByFilterWithPageAndPerPageRepository_failed(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	_, _, err = orderRepository.FindByFilterWithPage(func() interface{} {
+	order.BuyerInfo.FirstName = "AAAA"
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
+	_, _, err = orderRepository.FindByFilterWithPage(ctx, func() interface{} {
 		return bson.D{{}, {"deletedAt", nil}}
 	}, 20002, 2000)
-	assert.NotNil(t, err)
-	assert.Equal(t, err, ErrorPageNotAvailable)
+	require.NotNil(t, err)
+	require.Equal(t, err, ErrorPageNotAvailable)
 }
 
 func TestFindByFilterWithPageAndPerPageAndSortRepository_success(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 	order = createOrder()
 	order.BuyerInfo.FirstName = "AAAA"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	err = orderRepository.Insert(ctx, order)
+	require.Nil(t, err)
 
-	orders, _, err := orderRepository.FindByFilterWithPageAndSort(func() (interface{}, string, int) {
+	orders, _, err := orderRepository.FindByFilterWithPageAndSort(ctx, func() (interface{}, string, int) {
 		return bson.D{{}, {"deletedAt", nil}}, "buyerInfo.firstName", 1
 	}, 1, 2)
-	assert.Nil(t, err)
-	assert.Equal(t, len(orders), 2)
-	assert.Equal(t, orders[0].BuyerInfo.FirstName, "AAAA")
+	require.Nil(t, err)
+	require.Equal(t, 2, len(orders))
+	require.Equal(t, "AAAA", orders[0].BuyerInfo.FirstName)
 }
 
 func removeCollection() {
@@ -621,8 +645,8 @@ func createOrder() *entities.Order {
 								ApplicableVoucher: false,
 							},
 						},
-						ShipmentDetails: entities.ShipmentDetails{
-							ShipmentDetail: entities.ShipmentDetail{
+						Shipments: &entities.Shipment{
+							ShipmentDetail: &entities.ShippingDetail{
 								CarrierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
@@ -631,7 +655,7 @@ func createOrder() *entities.Order {
 								ShippedDate:    time.Now().UTC(),
 								CreatedAt:      time.Now().UTC(),
 							},
-							ReturnShipmentDetail: entities.ShipmentDetail{
+							ReturnShipmentDetail: &entities.ShippingDetail{
 								CarrierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
@@ -642,8 +666,8 @@ func createOrder() *entities.Order {
 							},
 						},
 						Tracking: entities.Progress{
-							StepName:  "0.NewOrder",
-							StepIndex: 0,
+							StateName:  "0.NewOrder",
+							StateIndex: 0,
 							Action: entities.Action{
 								Name:      "BuyerCancel",
 								Type:      "OrderBuyerCancel",
@@ -652,7 +676,7 @@ func createOrder() *entities.Order {
 								Reason:    "",
 								CreatedAt: time.Now().UTC(),
 							},
-							StepsHistory: []entities.StepHistory{
+							StatesHistory: []entities.StateHistory{
 								{
 									Name:  "1.New",
 									Index: 1,
@@ -710,8 +734,8 @@ func createOrder() *entities.Order {
 								ApplicableVoucher: true,
 							},
 						},
-						ShipmentDetails: entities.ShipmentDetails{
-							ShipmentDetail: entities.ShipmentDetail{
+						Shipments: &entities.Shipment{
+							ShipmentDetail: &entities.ShippingDetail{
 								CarrierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
@@ -720,7 +744,7 @@ func createOrder() *entities.Order {
 								ShippedDate:    time.Now().UTC(),
 								CreatedAt:      time.Now().UTC(),
 							},
-							ReturnShipmentDetail: entities.ShipmentDetail{
+							ReturnShipmentDetail: &entities.ShippingDetail{
 								CarrierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
@@ -731,8 +755,8 @@ func createOrder() *entities.Order {
 							},
 						},
 						Tracking: entities.Progress{
-							StepName:  "0.NewOrder",
-							StepIndex: 0,
+							StateName:  "0.NewOrder",
+							StateIndex: 0,
 							Action: entities.Action{
 								Name:      "BuyerCancel",
 								Type:      "OrderBuyerCancel",
@@ -741,7 +765,7 @@ func createOrder() *entities.Order {
 								Reason:    "",
 								CreatedAt: time.Now().UTC(),
 							},
-							StepsHistory: []entities.StepHistory{
+							StatesHistory: []entities.StateHistory{
 								{
 									Name:  "1.New",
 									Index: 1,
@@ -890,8 +914,8 @@ func createOrder() *entities.Order {
 								ApplicableVoucher: false,
 							},
 						},
-						ShipmentDetails: entities.ShipmentDetails{
-							ShipmentDetail: entities.ShipmentDetail{
+						Shipments: &entities.Shipment{
+							ShipmentDetail: &entities.ShippingDetail{
 								CarrierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
@@ -900,7 +924,7 @@ func createOrder() *entities.Order {
 								ShippedDate:    time.Now().UTC(),
 								CreatedAt:      time.Now().UTC(),
 							},
-							ReturnShipmentDetail: entities.ShipmentDetail{
+							ReturnShipmentDetail: &entities.ShippingDetail{
 								CarrierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
@@ -911,8 +935,8 @@ func createOrder() *entities.Order {
 							},
 						},
 						Tracking: entities.Progress{
-							StepName:  "0.NewOrder",
-							StepIndex: 0,
+							StateName:  "0.NewOrder",
+							StateIndex: 0,
 							Action: entities.Action{
 								Name:      "BuyerCancel",
 								Type:      "OrderBuyerCancel",
@@ -921,7 +945,7 @@ func createOrder() *entities.Order {
 								Reason:    "",
 								CreatedAt: time.Now().UTC(),
 							},
-							StepsHistory: []entities.StepHistory{
+							StatesHistory: []entities.StateHistory{
 								{
 									Name:  "1.New",
 									Index: 1,
@@ -978,8 +1002,8 @@ func createOrder() *entities.Order {
 								ApplicableVoucher: true,
 							},
 						},
-						ShipmentDetails: entities.ShipmentDetails{
-							ShipmentDetail: entities.ShipmentDetail{
+						Shipments: &entities.Shipment{
+							ShipmentDetail: &entities.ShippingDetail{
 								CarrierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
@@ -988,7 +1012,7 @@ func createOrder() *entities.Order {
 								ShippedDate:    time.Now().UTC(),
 								CreatedAt:      time.Now().UTC(),
 							},
-							ReturnShipmentDetail: entities.ShipmentDetail{
+							ReturnShipmentDetail: &entities.ShippingDetail{
 								CarrierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
@@ -999,8 +1023,8 @@ func createOrder() *entities.Order {
 							},
 						},
 						Tracking: entities.Progress{
-							StepName:  "0.NewOrder",
-							StepIndex: 0,
+							StateName:  "0.NewOrder",
+							StateIndex: 0,
 							Action: entities.Action{
 								Name:      "BuyerCancel",
 								Type:      "OrderBuyerCancel",
@@ -1009,7 +1033,7 @@ func createOrder() *entities.Order {
 								Reason:    "",
 								CreatedAt: time.Now().UTC(),
 							},
-							StepsHistory: []entities.StepHistory{
+							StatesHistory: []entities.StateHistory{
 								{
 									Name:  "1.New",
 									Index: 1,

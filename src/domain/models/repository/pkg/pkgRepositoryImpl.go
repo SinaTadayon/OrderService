@@ -22,8 +22,8 @@ type iPkgItemRepositoryImpl struct {
 	mongoAdapter *mongoadapter.Mongo
 }
 
-func NewPkgItemRepository(mongoDriver *mongoadapter.Mongo) (IPkgItemRepository, error) {
-	return &iPkgItemRepositoryImpl{mongoDriver}, nil
+func NewPkgItemRepository(mongoDriver *mongoadapter.Mongo) IPkgItemRepository {
+	return &iPkgItemRepositoryImpl{mongoDriver}
 }
 
 func (repo iPkgItemRepositoryImpl) findAndUpdate(ctx context.Context, pkgItem *entities.PackageItem) (*entities.PackageItem, error) {

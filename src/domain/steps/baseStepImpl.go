@@ -152,7 +152,7 @@ func (base BaseStepImpl) doUpdateOrderStep(ctx context.Context, order *entities.
 	order.Items[index].Progress.CurrentStepName = base.Name()
 	order.Items[index].Progress.CurrentStepIndex = base.Index()
 
-	stepHistory := entities.StepHistory{
+	stepHistory := entities.StateHistory{
 		Name:      base.Name(),
 		Index:     base.Index(),
 		CreatedAt: order.Items[index].Progress.CreatedAt,
@@ -160,7 +160,7 @@ func (base BaseStepImpl) doUpdateOrderStep(ctx context.Context, order *entities.
 	}
 
 	if order.Items[index].Progress.StepsHistory == nil || len(order.Items[index].Progress.StepsHistory) == 0 {
-		order.Items[index].Progress.StepsHistory = make([]entities.StepHistory, 0, 5)
+		order.Items[index].Progress.StepsHistory = make([]entities.StateHistory, 0, 5)
 	}
 
 	order.Items[index].Progress.StepsHistory = append(order.Items[index].Progress.StepsHistory, stepHistory)

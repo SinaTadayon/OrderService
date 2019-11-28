@@ -323,7 +323,7 @@ func doUpdateOrderStep(order *entities.Order, index int, stepName string, stepIn
 	order.Items[index].Progress.CurrentStepName = stepName
 	order.Items[index].Progress.CurrentStepIndex = stepIndex
 
-	stepHistory := entities.StepHistory{
+	stepHistory := entities.StateHistory{
 		Name:      stepName,
 		Index:     stepIndex,
 		CreatedAt: order.Items[index].Progress.CreatedAt,
@@ -331,7 +331,7 @@ func doUpdateOrderStep(order *entities.Order, index int, stepName string, stepIn
 	}
 
 	if order.Items[index].Progress.StepsHistory == nil || len(order.Items[index].Progress.StepsHistory) == 0 {
-		order.Items[index].Progress.StepsHistory = make([]entities.StepHistory, 0, 5)
+		order.Items[index].Progress.StepsHistory = make([]entities.StateHistory, 0, 5)
 	}
 
 	order.Items[index].Progress.StepsHistory = append(order.Items[index].Progress.StepsHistory, stepHistory)

@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"strconv"
 	"time"
 )
 
@@ -58,7 +59,7 @@ func (repo iOrderRepositoryImpl) Save(ctx context.Context, order entities.Order)
 	if order.OrderId == 0 {
 		order.OrderId = entities.GenerateOrderId()
 		mapItemIds := make(map[int]string, 64)
-		mapInventoryIds := make(map[string]int, 64)
+		mapInventoryIds := make(map[string]string, 64)
 
 		for i := 0; i < len(order.Packages); i++ {
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
@@ -68,7 +69,7 @@ func (repo iOrderRepositoryImpl) Save(ctx context.Context, order entities.Order)
 						continue
 					}
 					mapItemIds[random] = order.Packages[i].Subpackages[j].Item.InventoryId
-					mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId] = random
+					mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId] = strconv.Itoa(random)
 					break
 				}
 			}
@@ -78,7 +79,8 @@ func (repo iOrderRepositoryImpl) Save(ctx context.Context, order entities.Order)
 			order.Packages[i].OrderId = order.OrderId
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
 				if value, ok := mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId]; ok {
-					order.Packages[i].Subpackages[j].ItemId = order.OrderId + uint64(value)
+					itemId, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + value)
+					order.Packages[i].Subpackages[j].ItemId = uint64(itemId)
 					order.Packages[i].Subpackages[j].SellerId = order.Packages[i].SellerId
 					order.Packages[i].Subpackages[j].OrderId = order.OrderId
 					order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
@@ -114,7 +116,7 @@ func (repo iOrderRepositoryImpl) Save(ctx context.Context, order entities.Order)
 						order.Packages[i].Subpackages[j].Version += 1
 					} else {
 						logger.Err("Update order failed, subpackage version obsolete, "+
-							"orderId: %d, itemId: %d, last version: %d, update version: ",
+							"orderId: %d, itemId: %d, last version: %d, update version: %d",
 							order.OrderId, order.Packages[i].Subpackages[j].ItemId,
 							order.Packages[i].Subpackages[j].Version,
 							currentOrder.Packages[i].Subpackages[j].Version)
@@ -123,7 +125,7 @@ func (repo iOrderRepositoryImpl) Save(ctx context.Context, order entities.Order)
 				}
 			} else {
 				logger.Err("Update order failed, package version obsolete, "+
-					"orderId: %d, sellerId: %d, last version: %d, update version: ",
+					"orderId: %d, sellerId: %d, last version: %d, update version: %d",
 					order.OrderId, order.Packages[i].SellerId,
 					order.Packages[i].Version,
 					currentOrder.Packages[i].Version)
@@ -154,7 +156,7 @@ func (repo iOrderRepositoryImpl) Insert(ctx context.Context, order *entities.Ord
 	if order.OrderId == 0 {
 		order.OrderId = entities.GenerateOrderId()
 		mapItemIds := make(map[int]string, 64)
-		mapInventoryIds := make(map[string]int, 64)
+		mapInventoryIds := make(map[string]string, 64)
 
 		for i := 0; i < len(order.Packages); i++ {
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
@@ -164,7 +166,7 @@ func (repo iOrderRepositoryImpl) Insert(ctx context.Context, order *entities.Ord
 						continue
 					}
 					mapItemIds[random] = order.Packages[i].Subpackages[j].Item.InventoryId
-					mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId] = random
+					mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId] = strconv.Itoa(random)
 					break
 				}
 			}
@@ -174,7 +176,8 @@ func (repo iOrderRepositoryImpl) Insert(ctx context.Context, order *entities.Ord
 			order.Packages[i].OrderId = order.OrderId
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
 				if value, ok := mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId]; ok {
-					order.Packages[i].Subpackages[j].ItemId = order.OrderId + uint64(value)
+					itemId, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + value)
+					order.Packages[i].Subpackages[j].ItemId = uint64(itemId)
 					order.Packages[i].Subpackages[j].SellerId = order.Packages[i].SellerId
 					order.Packages[i].Subpackages[j].OrderId = order.OrderId
 					order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
@@ -695,7 +698,7 @@ func (repo iOrderRepositoryImpl) DeleteAllWithOrders(ctx context.Context, orders
 	panic("implementation required")
 }
 
-// TODO items.$.deleteAt must be checked if nil
+// TODO cascade delete in packages and subpackages
 func (repo iOrderRepositoryImpl) DeleteAll(ctx context.Context) error {
 	_, err := repo.mongoAdapter.UpdateMany(databaseName, collectionName,
 		bson.D{{"deletedAt", nil}},
