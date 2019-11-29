@@ -10,9 +10,9 @@ type IOrderRepository interface {
 
 	SaveAll(ctx context.Context, orders []entities.Order) ([]*entities.Order, error)
 
-	Insert(ctx context.Context, order *entities.Order) error
+	Insert(ctx context.Context, order entities.Order) (*entities.Order, error)
 
-	InsertAll(ctx context.Context, orders []*entities.Order) error
+	InsertAll(ctx context.Context, orders []entities.Order) ([]*entities.Order, error)
 
 	FindAll(ctx context.Context) ([]*entities.Order, error)
 

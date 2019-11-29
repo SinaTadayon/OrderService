@@ -11,6 +11,7 @@ type PackageItem struct {
 	ShipmentSpec ShipmentSpec   `bson:"shipmentSpec"`
 	Subpackages  []Subpackage   `bson:"subpackages"`
 	Status       string         `bson:"status"`
+	CreatedAt    time.Time      `bson:"createdAt"`
 	UpdatedAt    time.Time      `bson:"updatedAt"`
 	DeletedAt    *time.Time     `bson:"deletedAt"`
 }

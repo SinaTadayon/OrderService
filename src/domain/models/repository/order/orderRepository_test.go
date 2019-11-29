@@ -113,7 +113,7 @@ func TestInsertOrderRepository_Success(t *testing.T) {
 	//defer removeCollection()
 	order := createOrder()
 	ctx, _ := context.WithCancel(context.Background())
-	err := orderRepository.Insert(ctx, order)
+	order, err := orderRepository.Insert(ctx, *order)
 	require.Nil(t, err, "orderRepository.Save failed")
 	require.NotEmpty(t, order.OrderId, "orderRepository.Save failed, order id not generated")
 }
@@ -122,10 +122,10 @@ func TestInsertOrderRepository_Failed(t *testing.T) {
 	defer removeCollection()
 	order := createOrder()
 	ctx, _ := context.WithCancel(context.Background())
-	err := orderRepository.Insert(ctx, order)
+	order, err := orderRepository.Insert(ctx, *order)
 	require.Nil(t, err, "orderRepository.Save failed")
 	require.NotEmpty(t, order.OrderId, "orderRepository.Save failed, order id not generated")
-	err1 := orderRepository.Insert(ctx, order)
+	_, err1 := orderRepository.Insert(ctx, *order)
 	require.NotNil(t, err1)
 }
 
@@ -134,18 +134,18 @@ func TestFindAllOrderRepository(t *testing.T) {
 	var err error
 	order := createOrder()
 	ctx, _ := context.WithCancel(context.Background())
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 
 	orders, err := orderRepository.FindAll(ctx)
 	require.Nil(t, err)
-	require.Equal(t, len(orders), 3)
+	require.Equal(t, 3, len(orders))
 }
 
 func TestFindAllWithSortOrderRepository(t *testing.T) {
@@ -154,14 +154,14 @@ func TestFindAllWithSortOrderRepository(t *testing.T) {
 	var err error
 	order := createOrder()
 	ctx, _ := context.WithCancel(context.Background())
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
 	order.BuyerInfo.FirstName = "AAAA"
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 
 	orders, err := orderRepository.FindAllWithSort(ctx, "buyerInfo.firstName", 1)
@@ -174,13 +174,13 @@ func TestFindAllWithPageAndPerPageRepository_success(t *testing.T) {
 	var err error
 	order := createOrder()
 	ctx, _ := context.WithCancel(context.Background())
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	orders, _, err := orderRepository.FindAllWithPage(ctx, 2, 2)
 	require.Nil(t, err)
@@ -192,13 +192,13 @@ func TestFindAllWithPageAndPerPageRepository_failed(t *testing.T) {
 	var err error
 	order := createOrder()
 	ctx, _ := context.WithCancel(context.Background())
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	_, _, err = orderRepository.FindAllWithPage(ctx, 1002, 2000)
 	require.NotNil(t, err)
@@ -210,14 +210,14 @@ func TestFindAllWithPageAndPerPageAndSortRepository_success(t *testing.T) {
 	var err error
 	order := createOrder()
 	ctx, _ := context.WithCancel(context.Background())
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
 	order.BuyerInfo.FirstName = "AAAA"
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 
 	orders, _, err := orderRepository.FindAllWithPageAndSort(ctx, 1, 2, "buyerInfo.firstName", 1)
@@ -230,7 +230,7 @@ func TestFindByIdRepository(t *testing.T) {
 	defer removeCollection()
 	order := createOrder()
 	ctx, _ := context.WithCancel(context.Background())
-	err := orderRepository.Insert(ctx, order)
+	order, err := orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	_, err1 := orderRepository.FindById(ctx, order.OrderId)
 	require.Nil(t, err1)
@@ -240,7 +240,7 @@ func TestExistsByIdRepository(t *testing.T) {
 	defer removeCollection()
 	order := createOrder()
 	ctx, _ := context.WithCancel(context.Background())
-	err := orderRepository.Insert(ctx, order)
+	order, err := orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	res, err1 := orderRepository.ExistsById(ctx, order.OrderId)
 	require.Nil(t, err1)
@@ -252,10 +252,10 @@ func TestCountRepository(t *testing.T) {
 	var err error
 	order := createOrder()
 	ctx, _ := context.WithCancel(context.Background())
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 
 	total, err := orderRepository.Count(ctx)
@@ -267,7 +267,7 @@ func TestDeleteOrderRepository(t *testing.T) {
 	defer removeCollection()
 	order := createOrder()
 	ctx, _ := context.WithCancel(context.Background())
-	err := orderRepository.Insert(ctx, order)
+	order, err := orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order1, err1 := orderRepository.Delete(ctx, *order)
 	require.Nil(t, err1)
@@ -279,10 +279,10 @@ func TestDeleteAllRepository(t *testing.T) {
 	var order *entities.Order
 	order = createOrder()
 	ctx, _ := context.WithCancel(context.Background())
-	err := orderRepository.Insert(ctx, order)
+	_, err := orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	err = orderRepository.DeleteAll(ctx)
 	require.Nil(t, err)
@@ -292,7 +292,7 @@ func TestRemoveOrderRepository(t *testing.T) {
 	defer removeCollection()
 	order := createOrder()
 	ctx, _ := context.WithCancel(context.Background())
-	err := orderRepository.Insert(ctx, order)
+	order, err := orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	err = orderRepository.Remove(ctx, *order)
 	require.Nil(t, err)
@@ -304,11 +304,11 @@ func TestFindByFilterRepository(t *testing.T) {
 	order := createOrder()
 	order.BuyerInfo.FirstName = "Reza"
 	ctx, _ := context.WithCancel(context.Background())
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
 	order.BuyerInfo.FirstName = "Hosein"
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 
 	orders, err := orderRepository.FindByFilter(ctx, func() interface{} {
@@ -324,14 +324,14 @@ func TestFindByFilterWithSortOrderRepository(t *testing.T) {
 	var err error
 	order := createOrder()
 	ctx, _ := context.WithCancel(context.Background())
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
 	order.BuyerInfo.FirstName = "AAAA"
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 
 	orders, err := orderRepository.FindByFilterWithSort(ctx, func() (interface{}, string, int) {
@@ -346,14 +346,14 @@ func TestFindByFilterWithPageAndPerPageRepository_success(t *testing.T) {
 	var err error
 	order := createOrder()
 	ctx, _ := context.WithCancel(context.Background())
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
 	order.BuyerInfo.FirstName = "AAAA"
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	orders, _, err := orderRepository.FindByFilterWithPage(ctx, func() interface{} {
 		return bson.D{{}, {"deletedAt", nil}}
@@ -367,14 +367,14 @@ func TestFindByFilterWithPageAndPerPageRepository_failed(t *testing.T) {
 	var err error
 	order := createOrder()
 	ctx, _ := context.WithCancel(context.Background())
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
 	order.BuyerInfo.FirstName = "AAAA"
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	_, _, err = orderRepository.FindByFilterWithPage(ctx, func() interface{} {
 		return bson.D{{}, {"deletedAt", nil}}
@@ -388,14 +388,14 @@ func TestFindByFilterWithPageAndPerPageAndSortRepository_success(t *testing.T) {
 	var err error
 	order := createOrder()
 	ctx, _ := context.WithCancel(context.Background())
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 	order = createOrder()
 	order.BuyerInfo.FirstName = "AAAA"
-	err = orderRepository.Insert(ctx, order)
+	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
 
 	orders, _, err := orderRepository.FindByFilterWithPageAndSort(ctx, func() (interface{}, string, int) {
@@ -791,6 +791,7 @@ func createOrder() *entities.Order {
 					},
 				},
 				Status:    "NEW",
+				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
 				DeletedAt: nil,
 			},
@@ -1059,11 +1060,13 @@ func createOrder() *entities.Order {
 					},
 				},
 				Status:    "NEW",
+				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
 				DeletedAt: nil,
 			},
 		},
 		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
 		DeletedAt: nil,
 	}
 

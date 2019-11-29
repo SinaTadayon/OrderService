@@ -220,7 +220,7 @@ func insert(order *entities.Order) (*entities.Order, error) {
 	return order, nil
 }
 
-func createOrderAndSave() (*entities.Order, error) {
+func createOrder() *entities.Order {
 
 	paymentRequest := entities.PaymentRequest{
 		Amount:    75400000,
@@ -599,6 +599,7 @@ func createOrderAndSave() (*entities.Order, error) {
 					},
 				},
 				Status:    "NEW",
+				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
 				DeletedAt: nil,
 			},
@@ -867,13 +868,19 @@ func createOrderAndSave() (*entities.Order, error) {
 					},
 				},
 				Status:    "NEW",
+				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
 				DeletedAt: nil,
 			},
 		},
 		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
 		DeletedAt: nil,
 	}
 
-	return insert(&newOrder)
+	return &newOrder
+}
+
+func createOrderAndSave() (*entities.Order, error) {
+	return insert(createOrder())
 }

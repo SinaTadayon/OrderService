@@ -31,6 +31,7 @@ type Order struct {
 	Invoice        Invoice            `bson:"invoice"`
 	Packages       []PackageItem      `bson:"packages"`
 	CreatedAt      time.Time          `bson:"createdAt"`
+	UpdatedAt      time.Time          `bson:"updatedAt"`
 	DeletedAt      *time.Time         `bson:"deletedAt"`
 }
 

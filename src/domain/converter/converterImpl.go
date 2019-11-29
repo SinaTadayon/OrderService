@@ -6,6 +6,12 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	ordersrv "gitlab.faza.io/protos/order"
 	"strconv"
+	"time"
+)
+
+const (
+	// ISO8601 standard time format
+	ISO8601 = "2006-01-02T15:04:05-0700"
 )
 
 type iConverterImpl struct {
@@ -38,11 +44,11 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	var order entities.Order
 
 	if newOrderDto.Buyer == nil {
-		return nil, errors.New("buyer of RequestNewOrder invalid")
+		return nil, errors.New("Buyer of RequestNewOrder invalid")
 	}
 
-	if newOrderDto.Items == nil || len(newOrderDto.Items) == 0 {
-		return nil, errors.New("items of RequestNewOrder empty")
+	if newOrderDto.Packages == nil || len(newOrderDto.Packages) == 0 {
+		return nil, errors.New("Packages of RequestNewOrder empty")
 	}
 
 	order.BuyerInfo.BuyerId = newOrderDto.Buyer.BuyerId
@@ -80,80 +86,122 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	order.BuyerInfo.ShippingAddress.ZipCode = newOrderDto.Buyer.ShippingAddress.ZipCode
 	setOrderLocation(newOrderDto.Buyer.ShippingAddress.Lat, newOrderDto.Buyer.ShippingAddress.Long, &order)
 
-	if newOrderDto.Amount == nil {
-		return nil, errors.New("amount of RequestNewOrder invalid")
+	if newOrderDto.Invoice == nil {
+		return nil, errors.New("invoice of RequestNewOrder invalid")
 	}
 
-	order.Invoice.Total = newOrderDto.Amount.Total
-	order.Invoice.Subtotal = newOrderDto.Amount.Subtotal
-	order.Invoice.Discount = newOrderDto.Amount.Discount
-	order.Invoice.ShipmentTotal = newOrderDto.Amount.ShipmentTotal
-	order.Invoice.Currency = newOrderDto.Amount.Currency
-	order.Invoice.PaymentMethod = newOrderDto.Amount.PaymentMethod
-	order.Invoice.PaymentOption = newOrderDto.Amount.PaymentOption
+	order.Invoice.GrandTotal = newOrderDto.Invoice.GrandTotal
+	order.Invoice.Subtotal = newOrderDto.Invoice.Subtotal
+	order.Invoice.Discount = newOrderDto.Invoice.Discount
+	order.Invoice.ShipmentTotal = newOrderDto.Invoice.ShipmentTotal
+	order.Invoice.Currency = newOrderDto.Invoice.Currency
+	order.Invoice.PaymentMethod = newOrderDto.Invoice.PaymentMethod
+	order.Invoice.PaymentOption = newOrderDto.Invoice.PaymentOption
 
-	if newOrderDto.Amount.Voucher != nil {
+	if newOrderDto.Invoice.Voucher != nil {
 		order.Invoice.Voucher = &entities.Voucher{
-			Amount: newOrderDto.Amount.Voucher.Amount,
-			Code:   newOrderDto.Amount.Voucher.Code,
+			Amount: float64(newOrderDto.Invoice.Voucher.Amount),
+			Code:   newOrderDto.Invoice.Voucher.Code,
 		}
-		// TODO implement voucher details
+
+		if newOrderDto.Invoice.Voucher.Details != nil {
+			order.Invoice.Voucher.Details = &entities.VoucherDetails{
+				Type:             newOrderDto.Invoice.Voucher.Details.Type,
+				MaxDiscountValue: newOrderDto.Invoice.Voucher.Details.MaxDiscountValue,
+				MinBasketValue:   newOrderDto.Invoice.Voucher.Details.MinBasketValue,
+			}
+
+			temp, err := time.Parse(ISO8601, newOrderDto.Invoice.Voucher.Details.StartDate)
+			if err != nil {
+				return nil, errors.New("Voucher startDate Invalid")
+			}
+			order.Invoice.Voucher.Details.StartDate = temp
+
+			temp, err = time.Parse(ISO8601, newOrderDto.Invoice.Voucher.Details.EndDate)
+			if err != nil {
+				return nil, errors.New("Voucher endDate Invalid")
+			}
+			order.Invoice.Voucher.Details.EndDate = temp
+		}
 	}
 
-	order.Items = make([]entities.Item, 0, len(newOrderDto.Items))
+	order.Packages = make([]entities.PackageItem, 0, len(newOrderDto.Packages))
+	for _, pkgDto := range newOrderDto.Packages {
 
-	for _, item := range newOrderDto.Items {
-		if len(item.InventoryId) == 0 {
-			return nil, errors.New("inventoryId of RequestNewOrder invalid")
+		if pkgDto.SellerId <= 0 {
+			return nil, errors.New("SellerId of RequestNewOrder invalid")
 		}
 
-		if item.Quantity <= 0 {
-			return nil, errors.New("item Count of RequestNewOrder invalid")
+		if pkgDto.Invoice == nil {
+			return nil, errors.New("Invoice of RequestNewOrder is nil")
 		}
 
-		for i := 0; i < int(item.Quantity); i++ {
-			var newItem = entities.Item{}
-			newItem.SellerInfo.SellerId = item.SellerId
-			newItem.InventoryId = item.InventoryId
-			newItem.Title = item.Title
-			newItem.Brand = item.Brand
-			newItem.Guaranty = item.Guaranty
-			newItem.Category = item.Category
-			newItem.Image = item.Image
-			newItem.Quantity = item.Quantity
-			newItem.Returnable = item.Returnable
+		if pkgDto.Shipment == nil {
+			return nil, errors.New("Shipment of RequestNewOrder is nil")
+		}
 
-			newItem.Attributes = item.Attributes
+		if pkgDto.Items == nil || len(pkgDto.Items) == 0 {
+			return nil, errors.New("Items of RequestNewOrder is empty")
+		}
 
-			if item.Price == nil {
-				return nil, errors.New("item price of RequestNewOrder invalid")
+		var pkgItem = entities.PackageItem{
+			SellerId: pkgDto.SellerId,
+			Invoice: entities.PackageInvoice{
+				Subtotal:       pkgDto.Invoice.Subtotal,
+				Discount:       pkgDto.Invoice.Discount,
+				ShipmentAmount: pkgDto.Invoice.ShipmentAmount,
+			},
+			ShipmentSpec: entities.ShipmentSpec{
+				CarrierNames:   pkgDto.Shipment.CarrierNames,
+				CarrierProduct: pkgDto.Shipment.CarrierProduct,
+				CarrierType:    pkgDto.Shipment.CarrierType,
+				ShippingCost:   pkgDto.Shipment.ShippingCost,
+				VoucherAmount:  pkgDto.Shipment.VoucherAmount,
+				Currency:       pkgDto.Shipment.Currency,
+				ReactionTime:   pkgDto.Shipment.ReactionTime,
+				ShippingTime:   pkgDto.Shipment.ReturnTime,
+				ReturnTime:     pkgDto.Shipment.ReturnTime,
+				Details:        pkgDto.Shipment.Details,
+			},
+		}
+
+		pkgItem.Subpackages = make([]entities.Subpackage, 0, len(pkgDto.Items))
+		for _, itemDto := range pkgDto.Items {
+			if len(itemDto.InventoryId) == 0 {
+				return nil, errors.New("InventoryId of RequestNewOrder invalid")
 			}
 
-			newItem.Invoice.Unit = item.Price.Unit
-			newItem.Invoice.Total = item.Price.Total
-			newItem.Invoice.Discount = item.Price.Discount
-			newItem.Invoice.Original = item.Price.Original
-			newItem.Invoice.Special = item.Price.Special
-			newItem.Invoice.SellerCommission = item.Price.SellerCommission
-			newItem.Invoice.Currency = item.Price.Currency
-
-			if item.Shipment == nil {
-				return nil, errors.New("item shipment of RequestNewOrder invalid")
+			if itemDto.Quantity <= 0 {
+				return nil, errors.New("Item Quantity of RequestNewOrder invalid")
 			}
 
-			newItem.ShipmentSpec.CarrierName = item.Shipment.CarrierName
-			newItem.ShipmentSpec.CarrierProduct = item.Shipment.CarrierProduct
-			newItem.ShipmentSpec.CarrierType = item.Shipment.CarrierType
-			newItem.ShipmentSpec.ShippingCost = item.Shipment.ShippingCost
-			newItem.ShipmentSpec.VoucherAmount = item.Shipment.VoucherAmount
-			newItem.ShipmentSpec.Currency = item.Shipment.Currency
-			newItem.ShipmentSpec.ReactionTime = item.Shipment.ReactionTime
-			newItem.ShipmentSpec.ShippingTime = item.Shipment.ShippingTime
-			newItem.ShipmentSpec.ReturnTime = item.Shipment.ReturnTime
-			newItem.ShipmentSpec.Details = item.Shipment.Details
-
-			order.Items = append(order.Items, newItem)
+			var subpackage = entities.Subpackage{
+				SellerId: pkgDto.SellerId,
+				Item: entities.Item{
+					InventoryId: itemDto.InventoryId,
+					Title:       itemDto.Title,
+					Brand:       itemDto.Brand,
+					Guaranty:    itemDto.Guaranty,
+					Category:    itemDto.Category,
+					Image:       itemDto.Image,
+					Returnable:  itemDto.Returnable,
+					Quantity:    itemDto.Quantity,
+					Attributes:  itemDto.Attributes,
+					Invoice: entities.ItemInvoice{
+						Unit:              itemDto.Invoice.Unit,
+						Total:             itemDto.Invoice.Total,
+						Original:          itemDto.Invoice.Original,
+						Special:           itemDto.Invoice.Special,
+						Discount:          itemDto.Invoice.Discount,
+						SellerCommission:  itemDto.Invoice.SellerCommission,
+						Currency:          itemDto.Invoice.Currency,
+						ApplicableVoucher: newOrderDto.Invoice.Voucher != nil && newOrderDto.Invoice.Voucher.Amount > 0,
+					},
+				},
+			}
+			pkgItem.Subpackages = append(pkgItem.Subpackages, subpackage)
 		}
+		order.Packages = append(order.Packages, pkgItem)
 	}
 
 	return &order, nil

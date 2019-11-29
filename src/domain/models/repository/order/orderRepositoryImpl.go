@@ -39,13 +39,13 @@ func NewOrderRepository(mongoDriver *mongoadapter.Mongo) (IOrderRepository, erro
 		return nil, err
 	}
 
-	_, err = mongoDriver.AddUniqueIndex(databaseName, collectionName, "packages.pkgId")
+	_, err = mongoDriver.AddTextV3Index(databaseName, collectionName, "packages.pkgId")
 	if err != nil {
 		logger.Err("create packages.pkgId index failed, error: %s", err.Error())
 		return nil, err
 	}
 
-	_, err = mongoDriver.AddUniqueIndex(databaseName, collectionName, "packages.subpackages.items.itemId")
+	_, err = mongoDriver.AddUniqueIndex(databaseName, collectionName, "packages.subpackages.itemId")
 	if err != nil {
 		logger.Err("create packages.subpackages.items.itemId index failed, error: %s", err.Error())
 		return nil, err
@@ -54,60 +54,71 @@ func NewOrderRepository(mongoDriver *mongoadapter.Mongo) (IOrderRepository, erro
 	return &iOrderRepositoryImpl{mongoDriver}, nil
 }
 
+func (repo iOrderRepositoryImpl) generateAndSetId(ctx context.Context, order entities.Order) *entities.Order {
+	order.OrderId = entities.GenerateOrderId()
+	mapItemIds := make(map[int]string, 64)
+	mapInventoryIds := make(map[string]string, 64)
+
+	for i := 0; i < len(order.Packages); i++ {
+		for j := 0; j < len(order.Packages[i].Subpackages); j++ {
+			for {
+				random := int(entities.GenerateRandomNumber())
+				if _, ok := mapItemIds[random]; ok {
+					continue
+				}
+				mapItemIds[random] = order.Packages[i].Subpackages[j].Item.InventoryId
+				mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId] = strconv.Itoa(random)
+				break
+			}
+		}
+	}
+
+	order.CreatedAt = time.Now().UTC()
+	order.UpdatedAt = time.Now().UTC()
+	for i := 0; i < len(order.Packages); i++ {
+		order.Packages[i].OrderId = order.OrderId
+		order.Packages[i].CreatedAt = time.Now().UTC()
+		order.Packages[i].UpdatedAt = time.Now().UTC()
+		for j := 0; j < len(order.Packages[i].Subpackages); j++ {
+			if value, ok := mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId]; ok {
+				itemId, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + value)
+				order.Packages[i].Subpackages[j].ItemId = uint64(itemId)
+				order.Packages[i].Subpackages[j].SellerId = order.Packages[i].SellerId
+				order.Packages[i].Subpackages[j].OrderId = order.OrderId
+				order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
+				order.Packages[i].Subpackages[j].UpdatedAt = time.Now().UTC()
+			}
+		}
+	}
+
+	return &order
+}
+
 func (repo iOrderRepositoryImpl) Save(ctx context.Context, order entities.Order) (*entities.Order, error) {
 
 	if order.OrderId == 0 {
-		order.OrderId = entities.GenerateOrderId()
-		mapItemIds := make(map[int]string, 64)
-		mapInventoryIds := make(map[string]string, 64)
-
-		for i := 0; i < len(order.Packages); i++ {
-			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-				for {
-					random := int(entities.GenerateRandomNumber())
-					if _, ok := mapItemIds[random]; ok {
-						continue
-					}
-					mapItemIds[random] = order.Packages[i].Subpackages[j].Item.InventoryId
-					mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId] = strconv.Itoa(random)
-					break
+		var newOrder *entities.Order
+		for {
+			newOrder = repo.generateAndSetId(ctx, order)
+			var insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, newOrder)
+			if err != nil {
+				if repo.mongoAdapter.IsDupError(err) {
+					continue
+				} else {
+					return nil, errors.Wrap(err, "Save Order Failed")
 				}
 			}
+			newOrder.ID = insertOneResult.InsertedID.(primitive.ObjectID)
+			break
 		}
-
-		for i := 0; i < len(order.Packages); i++ {
-			order.Packages[i].OrderId = order.OrderId
-			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-				if value, ok := mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId]; ok {
-					itemId, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + value)
-					order.Packages[i].Subpackages[j].ItemId = uint64(itemId)
-					order.Packages[i].Subpackages[j].SellerId = order.Packages[i].SellerId
-					order.Packages[i].Subpackages[j].OrderId = order.OrderId
-					order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
-					order.Packages[i].Subpackages[j].UpdatedAt = time.Now().UTC()
-				}
-			}
-		}
-
-		order.CreatedAt = time.Now().UTC()
-		var insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, &order)
-		if err != nil {
-			if repo.mongoAdapter.IsDupError(err) {
-				for repo.mongoAdapter.IsDupError(err) {
-					insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, &order)
-				}
-			} else {
-				return nil, errors.Wrap(err, "Save Order Failed")
-			}
-		}
-		order.ID = insertOneResult.InsertedID.(primitive.ObjectID)
+		return newOrder, nil
 	} else {
 		var currentOrder, err = repo.FindById(ctx, order.OrderId)
 		if err != nil {
 			return nil, ErrorUpdateFailed
 		}
 
-		//order.UpdatedAt = time.Now().UTC()
+		order.UpdatedAt = time.Now().UTC()
 		for i := 0; i < len(order.Packages); i++ {
 			if currentOrder.Packages[i].Version == order.Packages[i].Version {
 				order.Packages[i].Version += 1
@@ -151,65 +162,35 @@ func (repo iOrderRepositoryImpl) SaveAll(ctx context.Context, orders []entities.
 	panic("implementation required")
 }
 
-func (repo iOrderRepositoryImpl) Insert(ctx context.Context, order *entities.Order) error {
+func (repo iOrderRepositoryImpl) Insert(ctx context.Context, order entities.Order) (*entities.Order, error) {
 
 	if order.OrderId == 0 {
-		order.OrderId = entities.GenerateOrderId()
-		mapItemIds := make(map[int]string, 64)
-		mapInventoryIds := make(map[string]string, 64)
-
-		for i := 0; i < len(order.Packages); i++ {
-			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-				for {
-					random := int(entities.GenerateRandomNumber())
-					if _, ok := mapItemIds[random]; ok {
-						continue
-					}
-					mapItemIds[random] = order.Packages[i].Subpackages[j].Item.InventoryId
-					mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId] = strconv.Itoa(random)
-					break
+		var newOrder *entities.Order
+		for {
+			newOrder = repo.generateAndSetId(ctx, order)
+			var insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, newOrder)
+			if err != nil {
+				if repo.mongoAdapter.IsDupError(err) {
+					continue
+				} else {
+					return nil, errors.Wrap(err, "Insert Order Failed")
 				}
 			}
+			newOrder.ID = insertOneResult.InsertedID.(primitive.ObjectID)
+			break
 		}
-
-		for i := 0; i < len(order.Packages); i++ {
-			order.Packages[i].OrderId = order.OrderId
-			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-				if value, ok := mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId]; ok {
-					itemId, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + value)
-					order.Packages[i].Subpackages[j].ItemId = uint64(itemId)
-					order.Packages[i].Subpackages[j].SellerId = order.Packages[i].SellerId
-					order.Packages[i].Subpackages[j].OrderId = order.OrderId
-					order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
-					order.Packages[i].Subpackages[j].UpdatedAt = time.Now().UTC()
-				}
-			}
-		}
-
-		order.CreatedAt = time.Now().UTC()
-		var insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, &order)
-		if err != nil {
-			if repo.mongoAdapter.IsDupError(err) {
-				for repo.mongoAdapter.IsDupError(err) {
-					insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, &order)
-				}
-			} else {
-				return errors.Wrap(err, "Insert Order Failed")
-			}
-		}
-		order.ID = insertOneResult.InsertedID.(primitive.ObjectID)
+		return newOrder, nil
 	} else {
-		order.CreatedAt = time.Now().UTC()
 		var insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, &order)
 		if err != nil {
-			return errors.Wrap(err, "Insert Order Failed")
+			return nil, errors.Wrap(err, "Insert Order Failed")
 		}
 		order.ID = insertOneResult.InsertedID.(primitive.ObjectID)
 	}
-	return nil
+	return &order, nil
 }
 
-func (repo iOrderRepositoryImpl) InsertAll(ctx context.Context, entities []*entities.Order) error {
+func (repo iOrderRepositoryImpl) InsertAll(ctx context.Context, orders []entities.Order) ([]*entities.Order, error) {
 	panic("implementation required")
 }
 

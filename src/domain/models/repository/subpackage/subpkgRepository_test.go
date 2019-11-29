@@ -797,6 +797,7 @@ func createOrder() *entities.Order {
 					},
 				},
 				Status:    "NEW",
+				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
 				DeletedAt: nil,
 			},
@@ -1065,11 +1066,13 @@ func createOrder() *entities.Order {
 					},
 				},
 				Status:    "NEW",
+				CreatedAt: time.Now().UTC(),
 				UpdatedAt: time.Now().UTC(),
 				DeletedAt: nil,
 			},
 		},
 		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
 		DeletedAt: nil,
 	}
 
