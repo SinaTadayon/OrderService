@@ -176,7 +176,7 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 	default:
 	}
 
-	var expiredOrderMap = make(map[uint64]map[uint64]*events.SchedulerEvent, 64)
+	var expiredOrderMap = make(map[uint64]map[uint64]*events.ISchedulerEvent, 64)
 
 	// iterate through all documents
 	for cursor.Next(ctx) {
@@ -193,12 +193,12 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 				if schedulerEvent, isFindSeller := sellerMap[fetchData.SellerId]; isFindSeller {
 					schedulerEvent.ItemsId = append(schedulerEvent.ItemsId, fetchData.ItemId)
 				} else {
-					newEvent := &events.SchedulerEvent{
+					newEvent := &events.ISchedulerEvent{
 						OrderId:    fetchData.OrderId,
 						SellerId:   fetchData.SellerId,
 						ItemsId:    nil,
-						StepIndex:  fetchData.StepIndex,
-						ActionName: fetchData.ActionHistory[0].ActionName,
+						StateIndex: fetchData.StepIndex,
+						Action:     fetchData.ActionHistory[0].ActionName,
 					}
 
 					newEvent.ItemsId = make([]uint64, 0, 16)
@@ -206,18 +206,18 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 					expiredOrderMap[fetchData.OrderId][fetchData.SellerId] = newEvent
 				}
 			} else {
-				newEvent := &events.SchedulerEvent{
+				newEvent := &events.ISchedulerEvent{
 					OrderId:    fetchData.OrderId,
 					SellerId:   fetchData.SellerId,
 					ItemsId:    nil,
-					StepIndex:  fetchData.StepIndex,
-					ActionName: fetchData.ActionHistory[0].ActionName,
+					StateIndex: fetchData.StepIndex,
+					Action:     fetchData.ActionHistory[0].ActionName,
 				}
 
 				newEvent.ItemsId = make([]uint64, 0, 16)
 				newEvent.ItemsId = append(newEvent.ItemsId, fetchData.ItemId)
 
-				expiredOrderMap[fetchData.OrderId] = make(map[uint64]*events.SchedulerEvent, 16)
+				expiredOrderMap[fetchData.OrderId] = make(map[uint64]*events.ISchedulerEvent, 16)
 				expiredOrderMap[fetchData.OrderId][fetchData.SellerId] = newEvent
 			}
 		}

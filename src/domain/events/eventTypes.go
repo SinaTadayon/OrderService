@@ -4,43 +4,70 @@ import "github.com/pkg/errors"
 
 type EventType int
 
-var actorTypeStrings = []string{"ActorEvent", "ActiveEvent"}
+var eventTypeStrings = []string{
+	"Payment",
+	"Operator",
+	"Seller",
+	"Buyer",
+	"Scheduler",
+	"Stock",
+	"Notification",
+	"System",
+}
 
 const (
-	ActorEvent EventType = iota
-	ActiveEvent
+	Payment EventType = iota
+	Operator
+	Seller
+	Buyer
+	Scheduler
+	Stock
+	Notification
+	System
 )
 
-func (activeType EventType) Name() string {
-	return activeType.String()
+func (eventType EventType) Name() string {
+	return eventType.String()
 }
 
-func (activeType EventType) Ordinal() int {
-	if activeType < ActorEvent || activeType > ActiveEvent {
+func (eventType EventType) Ordinal() int {
+	if eventType < Payment || eventType > Payment {
 		return -1
 	}
-	return int(activeType)
+	return int(eventType)
 }
 
-func (activeType EventType) Values() []string {
-	return actorTypeStrings
+func (eventType EventType) Values() []string {
+	return eventTypeStrings
 }
 
-func (activeType EventType) String() string {
-	if activeType < ActorEvent || activeType > ActiveEvent {
+func (eventType EventType) String() string {
+	if eventType < Payment || eventType > Payment {
 		return ""
 	}
 
-	return actorTypeStrings[activeType]
+	return eventTypeStrings[eventType]
 }
 
-func FromString(actorType string) (EventType, error) {
-	switch actorType {
-	case "ActorEvent":
-		return ActorEvent, nil
-	case "ActiveEvent":
-		return ActiveEvent, nil
+func FromString(eventType string) (EventType, error) {
+	switch eventType {
+	case "Payment":
+		return Payment, nil
+	case "Operator":
+		return Operator, nil
+	case "Seller":
+		return Seller, nil
+	case "Buyer":
+		return Buyer, nil
+	case "Scheduler":
+		return Scheduler, nil
+	case "Stock":
+		return Stock, nil
+	case "Notification":
+		return Notification, nil
+	case "System":
+		return System, nil
 	default:
-		return -1, errors.New("invalid actorType string")
+		return -1, errors.New("invalid eventType string")
 	}
 }

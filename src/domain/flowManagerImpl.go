@@ -6,7 +6,6 @@ import (
 	"fmt"
 	ptime "github.com/yaa110/go-persian-calendar"
 	"gitlab.faza.io/go-framework/logger"
-	order_payment_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/orderpayment"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	reports2 "gitlab.faza.io/order-project/order-service/domain/models/reports"
@@ -29,13 +28,6 @@ import (
 	//"github.com/golang/protobuf/ptypes"
 	//"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	finalize_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/finalize"
-	manual_payment_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/manualpayment"
-	next_to_step_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/nextstep"
-	pay_to_buyer_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/paytobuyer"
-	pay_to_market_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/paytomarket"
-	pay_to_seller_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/paytoseller"
-	retry_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/retry"
 	buyer_action "gitlab.faza.io/order-project/order-service/domain/actions/buyer"
 	notification_action "gitlab.faza.io/order-project/order-service/domain/actions/notification"
 	operator_action "gitlab.faza.io/order-project/order-service/domain/actions/operator"
@@ -73,13 +65,6 @@ import (
 	return_shipment_success_step "gitlab.faza.io/order-project/order-service/domain/states/state_55"
 	pay_to_buyer_step "gitlab.faza.io/order-project/order-service/domain/states/state_80"
 	pay_to_seller_step "gitlab.faza.io/order-project/order-service/domain/states/state_90"
-	pay_to_buyer_success_step "gitlab.faza.io/order-project/order-service/domain/states/step_81"
-	pay_to_buyer_failed_step "gitlab.faza.io/order-project/order-service/domain/states/step_82"
-	pay_to_seller_success_step "gitlab.faza.io/order-project/order-service/domain/states/step_91"
-	pay_to_seller_failed_step "gitlab.faza.io/order-project/order-service/domain/states/step_92"
-	pay_to_market_step "gitlab.faza.io/order-project/order-service/domain/states/step_93"
-	pay_to_market_success_step "gitlab.faza.io/order-project/order-service/domain/states/step_94"
-	pay_to_market_failed_step "gitlab.faza.io/order-project/order-service/domain/states/step_95"
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
 	finalize_state "gitlab.faza.io/order-project/order-service/domain/states_old/launcher/finalize"
 	manual_payment_state "gitlab.faza.io/order-project/order-service/domain/states_old/launcher/manualpayment"
@@ -1751,7 +1736,7 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 	return promise.NewPromise(returnChannel, 1, 1)
 }
 
-func (flowManager iFlowManagerImpl) SchedulerEvents(event events.SchedulerEvent) {
+func (flowManager iFlowManagerImpl) SchedulerEvents(event events.ISchedulerEvent) {
 	order, err := global.Singletons.OrderRepository.FindById(event.OrderId)
 	if err != nil {
 		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, schedulerEvent: %v, error: %s",
@@ -1768,13 +1753,13 @@ func (flowManager iFlowManagerImpl) SchedulerEvents(event events.SchedulerEvent)
 
 	ctx, _ := context.WithCancel(context.Background())
 
-	if event.ActionName == "ApprovalPending" {
+	if event.Action == "ApprovalPending" {
 		flowManager.indexStepsMap[20].ProcessOrder(ctx, *order, event.ItemsId, "actionExpired")
 
-	} else if event.ActionName == "SellerShipmentPending" {
+	} else if event.Action == "SellerShipmentPending" {
 		flowManager.indexStepsMap[30].ProcessOrder(ctx, *order, event.ItemsId, "actionExpired")
 
-	} else if event.ActionName == "ShipmentDeliveredPending" {
+	} else if event.Action == "ShipmentDeliveredPending" {
 		flowManager.indexStepsMap[32].ProcessOrder(ctx, *order, event.ItemsId, "actionApproved")
 	}
 

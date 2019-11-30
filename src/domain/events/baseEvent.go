@@ -6,12 +6,11 @@ import (
 
 type BaseEventImpl struct {
 	eventType EventType
-	data      interface{}
 	timestamp time.Time
 }
 
-func NewBaseEventImpl(eventType EventType, data interface{}, timestamp time.Time) *BaseEventImpl {
-	return &BaseEventImpl{eventType, data, timestamp}
+func NewBaseEventImpl(eventType EventType, timestamp time.Time) *BaseEventImpl {
+	return &BaseEventImpl{eventType, timestamp}
 }
 
 func (baseEvent BaseEventImpl) SetTimestamp(time time.Time) {
@@ -22,18 +21,10 @@ func (baseEvent BaseEventImpl) SetEventType(event EventType) {
 	baseEvent.eventType = event
 }
 
-func (baseEvent BaseEventImpl) SetData(data interface{}) {
-	baseEvent.data = data
-}
-
 func (baseEvent BaseEventImpl) Timestamp() time.Time {
 	return baseEvent.timestamp
 }
 
 func (baseEvent BaseEventImpl) EventType() EventType {
 	return baseEvent.eventType
-}
-
-func (baseEvent BaseEventImpl) Data() interface{} {
-	return baseEvent.data
 }

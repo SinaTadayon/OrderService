@@ -19,5 +19,5 @@ type IFlowManager interface {
 	BackOfficeOrderDetailView(ctx context.Context, req *message.RequestIdentifier) promise.IPromise
 	SellerReportOrders(req *message.RequestSellerReportOrders, srv message.OrderService_SellerReportOrdersServer) promise.IPromise
 	BackOfficeReportOrderItems(req *message.RequestBackOfficeReportOrderItems, srv message.OrderService_BackOfficeReportOrderItemsServer) promise.IPromise
-	SchedulerEvents(event events.SchedulerEvent)
+	SchedulerEvents(event events.ISchedulerEvent)
 }
