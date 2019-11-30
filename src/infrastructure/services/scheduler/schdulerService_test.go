@@ -10,7 +10,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/converter"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	order_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/order"
-	"gitlab.faza.io/order-project/order-service/domain/steps"
+	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	pb "gitlab.faza.io/protos/order"
@@ -327,7 +327,7 @@ func TestSchedulerSellerApprovalPending(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "20.Seller_Approval_Pending", 20)
-	updateOrderItemsProgress(newOrder, nil, "ApprovalPending", true, steps.InProgressStatus)
+	updateOrderItemsProgress(newOrder, nil, "ApprovalPending", true, states.InProgressStatus)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -358,7 +358,7 @@ func TestSchedulerSellerShipmentPending(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
-	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, steps.InProgressStatus)
+	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, states.InProgressStatus)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -389,7 +389,7 @@ func TestSchedulerShipmentDeliveredPending(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "32.Shipment_Delivered", 32)
-	updateOrderItemsProgress(newOrder, nil, "ShipmentDeliveredPending", true, steps.InProgressStatus)
+	updateOrderItemsProgress(newOrder, nil, "ShipmentDeliveredPending", true, states.InProgressStatus)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 

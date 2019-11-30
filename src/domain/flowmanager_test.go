@@ -8,8 +8,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/actions/actives"
 	"gitlab.faza.io/order-project/order-service/domain/actions/actors"
 	"gitlab.faza.io/order-project/order-service/domain/states"
-	next_to_step_state "gitlab.faza.io/order-project/order-service/domain/states/launcher/nextstep"
-	"gitlab.faza.io/order-project/order-service/domain/steps"
+	"gitlab.faza.io/order-project/order-service/domain/states_old"
+	next_to_step_state "gitlab.faza.io/order-project/order-service/domain/states_old/launcher/nextstep"
 	"strconv"
 	"testing"
 )
@@ -17,8 +17,8 @@ import (
 func TestFlowManagerSteps(t *testing.T) {
 
 	flowManager := iFlowManagerImpl{}
-	flowManager.nameStepsMap = make(map[string]steps.IStep, 64)
-	flowManager.indexStepsMap = make(map[int]steps.IStep, 64)
+	flowManager.nameStepsMap = make(map[string]states.IStep, 64)
+	flowManager.indexStepsMap = make(map[int]states.IStep, 64)
 
 	assert.Nil(t, flowManager.setupFlowManager())
 
@@ -179,7 +179,7 @@ func TestFlowManagerSteps(t *testing.T) {
 	//}
 }
 
-func traversState(states []states.IState) {
+func traversState(states []states_old.IState) {
 	for _, state := range states {
 		fmt.Printf("################################################\n")
 		fmt.Printf("************* => state.Name(): %s\n", state.Name())
@@ -207,7 +207,7 @@ func traversState(states []states.IState) {
 	}
 }
 
-func stepValidation(step steps.IStep, checkIndex int, checkName string, childesIndex []int) error {
+func stepValidation(step states.IStep, checkIndex int, checkName string, childesIndex []int) error {
 	if checkIndex != step.Index() {
 		return errors.New(step.Name() + " index invalid")
 	}

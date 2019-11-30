@@ -1,13 +1,23 @@
 package states
 
 import (
-	"gitlab.faza.io/order-project/order-service/domain/actions"
+	"context"
+	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	message "gitlab.faza.io/protos/order"
 )
 
-type IState interface {
+const (
+	NewStatus        = "NEW"
+	InProgressStatus = "IN_PROGRESS"
+	ClosedStatus     = "CLOSED"
+)
+
+type IStep interface {
 	Name() string
 	Index() int
-	Childes() []IState
-	Parents() []IState
-	Actions() actions.IAction
+	Childes() []IStep
+	Parents() []IStep
+	ProcessMessage(ctx context.Context, request *message.MessageRequest) promise.IPromise
+	ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise
 }
