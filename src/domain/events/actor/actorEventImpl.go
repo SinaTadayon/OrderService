@@ -1,6 +1,7 @@
 package actor_event
 
 import (
+	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/domain/actions/actors"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
@@ -9,17 +10,17 @@ import (
 
 type iActorEventImpl struct {
 	*events.BaseEventImpl
-	actor   actors.ActorType
+	actor   actions.ActionType
 	action  actors.IActorAction
 	order   entities.Order
 	itemsId []uint64
 }
 
-func NewActorEvent(actor actors.ActorType, action actors.IActorAction, order entities.Order, itemsId []uint64, data interface{}, timestamp time.Time) IActorEvent {
+func NewActorEvent(actor actions.ActionType, action actors.IActorAction, order entities.Order, itemsId []uint64, data interface{}, timestamp time.Time) IActorEvent {
 	return &iActorEventImpl{events.NewBaseEventImpl(events.ActorEvent, data, timestamp), actor, action, order, itemsId}
 }
 
-func (actorEvent iActorEventImpl) ActorType() actors.ActorType {
+func (actorEvent iActorEventImpl) ActorType() actions.ActionType {
 	return actorEvent.actor
 }
 

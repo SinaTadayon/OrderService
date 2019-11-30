@@ -189,7 +189,7 @@ func traversState(states []states_old.IState) {
 		if state.Actions().ActionType() == actions.ActorAction {
 			actorAction := state.Actions().(actors.IActorAction)
 			fmt.Printf("************* => actor type: %s\n", actorAction.ActorType())
-			fmt.Printf("************* => actor enum actions: %s\n", actorAction.ActionEnums())
+			fmt.Printf("************* => actor enum actions: %s\n", actorAction.ActionEnum())
 		} else {
 			activeAction := state.Actions().(actives.IActiveAction)
 			fmt.Printf("************* => active type: %s\n", activeAction.ActiveType())

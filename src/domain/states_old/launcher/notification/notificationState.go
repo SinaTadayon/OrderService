@@ -5,7 +5,7 @@ import (
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/domain/actions/actives"
-	notification_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/notification"
+	notification_action "gitlab.faza.io/order-project/order-service/domain/actions/notification"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
 	"gitlab.faza.io/order-project/order-service/domain/states_old/launcher"
@@ -48,14 +48,14 @@ func (notificationState notificationActionLauncher) ActionLauncher(ctx context.C
 	returnChannel := make(chan promise.FutureData, 1)
 	defer close(returnChannel)
 	for _, action := range notificationState.Actions().(actives.IActiveAction).ActionEnums() {
-		if action == notification_action.OperatorNotificationAction {
+		if action == notification_action.OperatorNotification {
 			notificationState.persistOrderState(ctx, &order, itemsId, action, true, "")
 			//returnChannel <- promise.FutureData{Data:promise.FutureData{}, Ex:nil}
 			break
-		} else if action == notification_action.BuyerNotificationAction {
+		} else if action == notification_action.BuyerNotification {
 			notificationState.persistOrderState(ctx, &order, itemsId, action, true, "")
 			break
-		} else if action == notification_action.SellerNotificationAction {
+		} else if action == notification_action.SellerNotification {
 			notificationState.persistOrderState(ctx, &order, itemsId, action, true, "")
 			break
 			//returnChannel <- promise.FutureData{Data:promise.FutureData{}, Ex:nil}

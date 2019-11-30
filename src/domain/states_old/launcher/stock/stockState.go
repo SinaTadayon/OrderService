@@ -6,7 +6,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/domain/actions/actives"
 	finalize_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/finalize"
-	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/actives/stock"
+	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/stock"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
 	"gitlab.faza.io/order-project/order-service/domain/states_old/launcher"
@@ -47,13 +47,13 @@ func (stockState stockActionLauncher) ActionLauncher(ctx context.Context, order 
 
 	var iPromise promise.IPromise
 	for _, action := range stockState.Actions().(actives.IActiveAction).ActionEnums() {
-		if action == stock_action.ReservedAction {
+		if action == stock_action.Reserve {
 			iPromise = stockState.doReservedAction(ctx, &order, itemsId)
 			break
-		} else if action == stock_action.ReleasedAction {
+		} else if action == stock_action.Release {
 			iPromise = stockState.doReleasedAction(ctx, &order, itemsId)
 			break
-		} else if action == stock_action.SettlementAction {
+		} else if action == stock_action.Settlement {
 			iPromise = stockState.doSettlementAction(ctx, &order, itemsId)
 			break
 		} else if action == stock_action.FailedAction {
@@ -93,10 +93,10 @@ func (stockState stockActionLauncher) doReservedAction(ctx context.Context, orde
 		}
 	}
 
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, itemsId, stock_action.ReservedAction.Name())
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, itemsId, stock_action.Reserve.Name())
 	futureData := iPromise.Data()
 	if futureData == nil {
-		stockState.persistOrderState(ctx, order, stock_action.ReservedAction, false)
+		stockState.persistOrderState(ctx, order, stock_action.Reserve, false)
 		logger.Err("StockService promise channel has been closed, order: %v", order)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
@@ -108,8 +108,8 @@ func (stockState stockActionLauncher) doReservedAction(ctx context.Context, orde
 	}
 
 	if futureData.Ex != nil {
-		logger.Err("Reserved stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
-		stockState.persistOrderState(ctx, order, stock_action.ReservedAction, false)
+		logger.Err("Reserve stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
+		stockState.persistOrderState(ctx, order, stock_action.Reserve, false)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
@@ -119,8 +119,8 @@ func (stockState stockActionLauncher) doReservedAction(ctx context.Context, orde
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	stockState.persistOrderState(ctx, order, stock_action.ReservedAction, true)
-	return nextToStepState.ActionLauncher(ctx, *order, nil, stock_action.ReservedAction)
+	stockState.persistOrderState(ctx, order, stock_action.Reserve, true)
+	return nextToStepState.ActionLauncher(ctx, *order, nil, stock_action.Reserve)
 }
 
 func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, order *entities.Order, itemsId []uint64) promise.IPromise {
@@ -167,10 +167,10 @@ func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, orde
 		}
 	}
 
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, itemsId, stock_action.ReleasedAction.Name())
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, itemsId, stock_action.Release.Name())
 	futureData := iPromise.Data()
 	if futureData == nil {
-		stockState.persistOrderState(ctx, order, stock_action.ReleasedAction, false)
+		stockState.persistOrderState(ctx, order, stock_action.Release, false)
 		logger.Err("StockService promise channel has been closed, order: %v", order)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
@@ -182,8 +182,8 @@ func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, orde
 	}
 
 	if futureData.Ex != nil {
-		logger.Err("Reserved stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
-		stockState.persistOrderState(ctx, order, stock_action.ReleasedAction, false)
+		logger.Err("Reserve stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
+		stockState.persistOrderState(ctx, order, stock_action.Release, false)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
@@ -193,7 +193,7 @@ func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, orde
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	stockState.persistOrderState(ctx, order, stock_action.ReleasedAction, true)
+	stockState.persistOrderState(ctx, order, stock_action.Release, true)
 	return notificationState.ActionLauncher(ctx, *order, itemsId, nil)
 }
 

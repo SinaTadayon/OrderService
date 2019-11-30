@@ -3,7 +3,6 @@ package operator_action_state
 import (
 	"context"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	"gitlab.faza.io/order-project/order-service/domain/actions/actors"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
 	listener_state "gitlab.faza.io/order-project/order-service/domain/states_old/listener"
@@ -11,7 +10,7 @@ import (
 )
 
 const (
-	actorType        = actors.OperatorActor
+	actorType        = actions.Operator
 	stateName string = "Operator_Action_State"
 )
 

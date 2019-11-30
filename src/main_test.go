@@ -425,7 +425,7 @@ func reservedStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) err
 	if _, err := global.Singletons.StockService.GetStockClient().StockReserve(ctx, &request); err != nil {
 		return err
 	} else {
-		logger.Audit("Reserved Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+		logger.Audit("Reserve Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
 	}
 
 	request = stockProto.StockRequest{
@@ -436,7 +436,7 @@ func reservedStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) err
 	if _, err := global.Singletons.StockService.GetStockClient().StockReserve(ctx, &request); err != nil {
 		return err
 	} else {
-		logger.Audit("Reserved Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+		logger.Audit("Reserve Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
 	}
 
 	return nil

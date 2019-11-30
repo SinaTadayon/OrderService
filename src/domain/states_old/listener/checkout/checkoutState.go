@@ -4,8 +4,7 @@ import (
 	"context"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	"gitlab.faza.io/order-project/order-service/domain/actions/actors"
-	checkout_action "gitlab.faza.io/order-project/order-service/domain/actions/actors/checkout"
+	checkout_action "gitlab.faza.io/order-project/order-service/domain/actions/checkout"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	actor_event "gitlab.faza.io/order-project/order-service/domain/events/actor"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
@@ -19,7 +18,7 @@ import (
 )
 
 const (
-	actorType        = actors.CheckoutActor
+	actorType        = actions.Checkout
 	stateName string = "Checkout_Action_State"
 )
 
@@ -68,15 +67,15 @@ func (checkoutActionState checkoutActionListener) ActionListener(ctx context.Con
 	// TODO checking type and result cast
 	actorEvent := event.(actor_event.IActorEvent)
 
-	if actorEvent.ActorType() != actors.CheckoutActor {
-		logger.Err("Received actorType of event is not CheckoutActor, event: %v", event)
+	if actorEvent.ActorType() != actions.Checkout {
+		logger.Err("Received actorType of event is not Checkout, event: %v", event)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
 		return promise.NewPromise(returnChannel, 1, 1)
 	}
 
-	if actorEvent.ActorAction().ActionEnums()[0] != checkout_action.NewOrderAction {
+	if actorEvent.ActorAction().ActionEnum()[0] != checkout_action.NewOrderAction {
 		logger.Err("Received actorAction of event is not NewOrderAction, event: %v", event)
 		returnChannel := make(chan promise.FutureData, 1)
 		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
@@ -109,7 +108,7 @@ func (checkoutActionState checkoutActionListener) updateOrderStates(ctx context.
 	//	newOrder.Items[i].Tracking.CurrentState.Reason = ""
 	//
 	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.Name = checkout_action.NewOrderAction.String()
-	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.Type = actors.CheckoutActor.String()
+	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.Type = actors.Checkout.String()
 	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.Base = actions.ActorAction.String()
 	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.Data = nil
 	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.Time = &timestamp

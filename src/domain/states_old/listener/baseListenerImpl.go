@@ -2,7 +2,6 @@ package listener_state
 
 import (
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	"gitlab.faza.io/order-project/order-service/domain/actions/actors"
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
 	"strconv"
 )
@@ -13,11 +12,11 @@ type BaseListenerImpl struct {
 	childes   []states_old.IState
 	parents   []states_old.IState
 	action    actions.IAction
-	actorType actors.ActorType
+	actorType actions.ActionType
 }
 
 func NewBaseListener(name string, index int, childes, parents []states_old.IState,
-	action actions.IAction, actorType actors.ActorType) *BaseListenerImpl {
+	action actions.IAction, actorType actions.ActionType) *BaseListenerImpl {
 	return &BaseListenerImpl{name, index, childes, parents,
 		action, actorType}
 }
@@ -62,7 +61,7 @@ func (listener BaseListenerImpl) Actions() actions.IAction {
 	return listener.action
 }
 
-func (listener BaseListenerImpl) ActorType() actors.ActorType {
+func (listener BaseListenerImpl) ActorType() actions.ActionType {
 	return listener.actorType
 }
 

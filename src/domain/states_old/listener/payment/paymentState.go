@@ -4,8 +4,7 @@ import (
 	"context"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	"gitlab.faza.io/order-project/order-service/domain/actions/actors"
-	payment_action "gitlab.faza.io/order-project/order-service/domain/actions/actors/payment"
+	payment_action "gitlab.faza.io/order-project/order-service/domain/actions/payment"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	active_event "gitlab.faza.io/order-project/order-service/domain/events/active"
 	actor_event "gitlab.faza.io/order-project/order-service/domain/events/actor"
@@ -20,7 +19,7 @@ import (
 )
 
 const (
-	actorType        = actors.PaymentActor
+	actorType        = actions.Payment
 	stateName string = "Payment_Action_State"
 )
 
@@ -91,17 +90,17 @@ func (paymentAction paymentActionListener) ActionListener(ctx context.Context, e
 		}
 
 		if paymentResult.Result == true {
-			paymentAction.persistOrderState(ctx, &order, actorEvent.ItemsId(), payment_action.SuccessAction, true, "", &paymentResult)
+			paymentAction.persistOrderState(ctx, &order, actorEvent.ItemsId(), payment_action.Success, true, "", &paymentResult)
 			go func() {
-				nextToStepState.ActionLauncher(ctx, order, actorEvent.ItemsId(), payment_action.SuccessAction)
+				nextToStepState.ActionLauncher(ctx, order, actorEvent.ItemsId(), payment_action.Success)
 			}()
 			returnChannel := make(chan promise.FutureData, 1)
 			defer close(returnChannel)
 			returnChannel <- promise.FutureData{Data: actorEvent.Data(), Ex: nil}
 			return promise.NewPromise(returnChannel, 1, 1)
 		} else {
-			paymentAction.persistOrderState(ctx, &order, actorEvent.ItemsId(), payment_action.FailedAction, false, "", &paymentResult)
-			return nextToStepState.ActionLauncher(ctx, order, actorEvent.ItemsId(), payment_action.FailedAction)
+			paymentAction.persistOrderState(ctx, &order, actorEvent.ItemsId(), payment_action.Fail, false, "", &paymentResult)
+			return nextToStepState.ActionLauncher(ctx, order, actorEvent.ItemsId(), payment_action.Fail)
 		}
 	}
 }
@@ -146,7 +145,7 @@ func (paymentAction paymentActionListener) doUpdateOrderState(ctx context.Contex
 	//	order.Items[index].Tracking.CurrentState.AcceptedAction.Name = ""
 	//}
 	//
-	//order.Items[index].Tracking.CurrentState.AcceptedAction.Type = actors.PaymentActor.String()
+	//order.Items[index].Tracking.CurrentState.AcceptedAction.Type = actors.Payment.String()
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Base = actions.ActorAction.String()
 	//// TODO implement stringfy paymentResult
 	//if paymentResult != nil {
