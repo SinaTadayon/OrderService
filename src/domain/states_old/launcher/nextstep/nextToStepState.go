@@ -21,20 +21,20 @@ const (
 
 type nextToStepActionLauncher struct {
 	*launcher_state.BaseLauncherImpl
-	actionStepMap map[actions.IEnumAction]states.IStep
+	actionStepMap map[actions.IEnumAction]states.IState
 }
 
-func New(index int, childes, parents []states_old.IState, actions actions.IAction, actionStepMap map[actions.IEnumAction]states.IStep) launcher_state.ILauncherState {
+func New(index int, childes, parents []states_old.IState, actions actions.IAction, actionStepMap map[actions.IEnumAction]states.IState) launcher_state.ILauncherState {
 	return &nextToStepActionLauncher{launcher_state.NewBaseLauncher(stateName, index, childes, parents,
 		actions, activeType), actionStepMap}
 }
 
-func NewOf(name string, index int, childes, parents []states_old.IState, actions actions.IAction, actionStepMap map[actions.IEnumAction]states.IStep) launcher_state.ILauncherState {
+func NewOf(name string, index int, childes, parents []states_old.IState, actions actions.IAction, actionStepMap map[actions.IEnumAction]states.IState) launcher_state.ILauncherState {
 	return &nextToStepActionLauncher{launcher_state.NewBaseLauncher(name, index, childes, parents,
 		actions, activeType), actionStepMap}
 }
 
-func NewFrom(base *launcher_state.BaseLauncherImpl, actionStepMap map[actions.IEnumAction]states.IStep) launcher_state.ILauncherState {
+func NewFrom(base *launcher_state.BaseLauncherImpl, actionStepMap map[actions.IEnumAction]states.IState) launcher_state.ILauncherState {
 	return &nextToStepActionLauncher{base, actionStepMap}
 }
 
@@ -42,7 +42,7 @@ func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) la
 	panic("implementation required")
 }
 
-func (nextStep nextToStepActionLauncher) ActionStepMap() map[actions.IEnumAction]states.IStep {
+func (nextStep nextToStepActionLauncher) ActionStepMap() map[actions.IEnumAction]states.IState {
 	return nextStep.actionStepMap
 }
 

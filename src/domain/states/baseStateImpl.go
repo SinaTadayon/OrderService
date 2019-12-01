@@ -25,52 +25,45 @@ const (
 	ValidationError = 422
 )
 
-type BaseStepImpl struct {
-	name      string
-	index     int
-	childes   []IStep
-	parents   []IStep
-	states    []states_old.IState
-	statesMap map[int]states_old.IState
-	configs   map[string]interface{}
+type BaseStateImpl struct {
+	name    string
+	index   int
+	childes []IState
+	parents []IState
+	configs map[string]interface{}
 }
 
-func NewBaseStep(name string, index int, childes, parents []IStep, stateList []states_old.IState) *BaseStepImpl {
+func NewBaseStep(name string, index int, childes, parents []IState) *BaseStateImpl {
+	return &BaseStateImpl{name, index,
+		childes, parents, make(map[string]interface{}, 4)}
+}
+
+func NewBaseStepWithConfig(name string, index int, childes, parents []IState, stateList []states_old.IState, configs map[string]interface{}) *BaseStateImpl {
 	statesMap := make(map[int]states_old.IState, len(stateList))
 	for i, v := range stateList {
 		statesMap[int(i)] = v
 	}
-	return &BaseStepImpl{name, index,
-		childes, parents, stateList,
-		statesMap, make(map[string]interface{}, 4)}
-}
-
-func NewBaseStepWithConfig(name string, index int, childes, parents []IStep, stateList []states_old.IState, configs map[string]interface{}) *BaseStepImpl {
-	statesMap := make(map[int]states_old.IState, len(stateList))
-	for i, v := range stateList {
-		statesMap[int(i)] = v
-	}
-	return &BaseStepImpl{name, index, childes, parents,
+	return &BaseStateImpl{name, index, childes, parents,
 		stateList, statesMap, configs}
 }
 
-func (base *BaseStepImpl) SetName(name string) {
+func (base *BaseStateImpl) SetName(name string) {
 	base.name = name
 }
 
-func (base *BaseStepImpl) SetIndex(index int) {
+func (base *BaseStateImpl) SetIndex(index int) {
 	base.index = index
 }
 
-func (base *BaseStepImpl) SetChildes(iSteps []IStep) {
+func (base *BaseStateImpl) SetChildes(iSteps []IState) {
 	base.childes = iSteps
 }
 
-func (base *BaseStepImpl) SetParents(iSteps []IStep) {
+func (base *BaseStateImpl) SetParents(iSteps []IState) {
 	base.parents = iSteps
 }
 
-func (base *BaseStepImpl) SetStates(statesList ...states_old.IState) {
+func (base *BaseStateImpl) SetStates(statesList ...states_old.IState) {
 	base.states = statesList
 	statesMap := make(map[int]states_old.IState, len(statesList))
 	for i, v := range statesList {
@@ -80,43 +73,43 @@ func (base *BaseStepImpl) SetStates(statesList ...states_old.IState) {
 	base.statesMap = statesMap
 }
 
-func (base BaseStepImpl) Name() string {
+func (base BaseStateImpl) Name() string {
 	return base.String()
 }
 
-func (base BaseStepImpl) Index() int {
+func (base BaseStateImpl) Index() int {
 	return base.index
 }
 
-func (base BaseStepImpl) Childes() []IStep {
+func (base BaseStateImpl) Childes() []IState {
 	return base.childes
 }
 
-func (base BaseStepImpl) Parents() []IStep {
+func (base BaseStateImpl) Parents() []IState {
 	return base.parents
 }
 
-func (base BaseStepImpl) States() []states_old.IState {
+func (base BaseStateImpl) States() []states_old.IState {
 	return base.states
 }
 
-func (base BaseStepImpl) StatesMap() map[int]states_old.IState {
+func (base BaseStateImpl) StatesMap() map[int]states_old.IState {
 	return base.statesMap
 }
 
-func (base *BaseStepImpl) BaseStep() *BaseStepImpl {
+func (base *BaseStateImpl) BaseState() *BaseStateImpl {
 	return base
 }
 
-func (base *BaseStepImpl) GetConfigs() map[string]interface{} {
+func (base *BaseStateImpl) GetConfigs() map[string]interface{} {
 	return base.configs
 }
 
-func (base BaseStepImpl) String() string {
+func (base BaseStateImpl) String() string {
 	return strconv.Itoa(base.index) + "." + base.name
 }
 
-func (base BaseStepImpl) UpdateAllOrderStatus(ctx context.Context, order *entities.Order, itemsId []uint64, orderStatus string, isUpdateOnlyOrderStatus bool) {
+func (base BaseStateImpl) UpdateAllOrderStatus(ctx context.Context, order *entities.Order, itemsId []uint64, orderStatus string, isUpdateOnlyOrderStatus bool) {
 
 	if isUpdateOnlyOrderStatus == true {
 		order.UpdatedAt = time.Now().UTC()
@@ -147,7 +140,7 @@ func (base BaseStepImpl) UpdateAllOrderStatus(ctx context.Context, order *entiti
 	}
 }
 
-func (base BaseStepImpl) doUpdateOrderStep(ctx context.Context, order *entities.Order, index int) {
+func (base BaseStateImpl) doUpdateOrderStep(ctx context.Context, order *entities.Order, index int) {
 	order.Items[index].Progress.CreatedAt = time.Now().UTC()
 	order.Items[index].Progress.CurrentStepName = base.Name()
 	order.Items[index].Progress.CurrentStepIndex = base.Index()

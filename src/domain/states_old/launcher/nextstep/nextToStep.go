@@ -6,5 +6,5 @@ import (
 )
 
 type INextToStep interface {
-	ActionStepMap() map[actions.IEnumAction]states.IStep
+	ActionStepMap() map[actions.IEnumAction]states.IState
 }

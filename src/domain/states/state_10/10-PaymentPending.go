@@ -24,22 +24,22 @@ const (
 )
 
 type paymentPendingStep struct {
-	*states.BaseStepImpl
+	*states.BaseStateImpl
 }
 
-func New(childes, parents []states.IStep, states ...states_old.IState) states.IStep {
+func New(childes, parents []states.IState, states ...states_old.IState) states.IState {
 	return &paymentPendingStep{states.NewBaseStep(stepName, stepIndex, childes, parents, states)}
 }
 
-func NewOf(name string, index int, childes, parents []states.IStep, states ...states_old.IState) states.IStep {
+func NewOf(name string, index int, childes, parents []states.IState, states ...states_old.IState) states.IState {
 	return &paymentPendingStep{states.NewBaseStep(name, index, childes, parents, states)}
 }
 
-func NewFrom(base *states.BaseStepImpl) states.IStep {
+func NewFrom(base *states.BaseStateImpl) states.IState {
 	return &paymentPendingStep{base}
 }
 
-func NewValueOf(base *states.BaseStepImpl, params ...interface{}) states.IStep {
+func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState {
 	panic("implementation required")
 }
 

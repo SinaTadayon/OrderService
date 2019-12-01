@@ -13,11 +13,11 @@ const (
 	ClosedStatus     = "CLOSED"
 )
 
-type IStep interface {
+type IState interface {
 	Name() string
 	Index() int
-	Childes() []IStep
-	Parents() []IStep
+	Childes() []IState
+	Parents() []IState
 	ProcessMessage(ctx context.Context, request *message.MessageRequest) promise.IPromise
 	ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise
 }

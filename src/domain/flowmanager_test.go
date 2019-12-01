@@ -17,8 +17,8 @@ import (
 func TestFlowManagerSteps(t *testing.T) {
 
 	flowManager := iFlowManagerImpl{}
-	flowManager.nameStepsMap = make(map[string]states.IStep, 64)
-	flowManager.indexStepsMap = make(map[int]states.IStep, 64)
+	flowManager.nameStepsMap = make(map[string]states.IState, 64)
+	flowManager.indexStepsMap = make(map[int]states.IState, 64)
 
 	assert.Nil(t, flowManager.setupFlowManager())
 
@@ -207,7 +207,7 @@ func traversState(states []states_old.IState) {
 	}
 }
 
-func stepValidation(step states.IStep, checkIndex int, checkName string, childesIndex []int) error {
+func stepValidation(step states.IState, checkIndex int, checkName string, childesIndex []int) error {
 	if checkIndex != step.Index() {
 		return errors.New(step.Name() + " index invalid")
 	}
