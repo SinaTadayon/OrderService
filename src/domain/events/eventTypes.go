@@ -26,11 +26,11 @@ const (
 	System
 )
 
-func (eventType EventType) Name() string {
+func (eventType EventType) ActionName() string {
 	return eventType.String()
 }
 
-func (eventType EventType) Ordinal() int {
+func (eventType EventType) ActionOrdinal() int {
 	if eventType < Payment || eventType > Payment {
 		return -1
 	}

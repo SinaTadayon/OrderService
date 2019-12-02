@@ -93,7 +93,7 @@ func (stockState stockActionLauncher) doReservedAction(ctx context.Context, orde
 		}
 	}
 
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, itemsId, stock_action.Reserve.Name())
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, itemsId, stock_action.Reserve.ActionName())
 	futureData := iPromise.Data()
 	if futureData == nil {
 		stockState.persistOrderState(ctx, order, stock_action.Reserve, false)
@@ -167,7 +167,7 @@ func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, orde
 		}
 	}
 
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, itemsId, stock_action.Release.Name())
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, itemsId, stock_action.Release.ActionName())
 	futureData := iPromise.Data()
 	if futureData == nil {
 		stockState.persistOrderState(ctx, order, stock_action.Release, false)
@@ -209,14 +209,14 @@ func (stockState stockActionLauncher) persistOrderState(ctx context.Context, ord
 	//	order.Items[i].Tracking.CreatedAt = ctx.Value(global.CtxStepTimestamp).(time.Time)
 	//	order.Items[i].Tracking.StateName = ctx.Value(global.CtxStepName).(string)
 	//	order.Items[i].Tracking.StateIndex = ctx.Value(global.CtxStepIndex).(int)
-	//	order.Items[i].Tracking.CurrentState.Name = stockState.Name()
+	//	order.Items[i].Tracking.CurrentState.ActionName = stockState.ActionName()
 	//	order.Items[i].Tracking.CurrentState.Index = stockState.Index()
-	//	order.Items[i].Tracking.CurrentState.Type = stockState.Actions().ActionType().Name()
+	//	order.Items[i].Tracking.CurrentState.Type = stockState.Actions().ActionType().ActionName()
 	//	order.Items[i].Tracking.CurrentState.CreatedAt = time.Now().UTC()
 	//	order.Items[i].Tracking.CurrentState.Result = result
 	//	order.Items[i].Tracking.CurrentState.Reason = ""
 	//
-	//	order.Items[i].Tracking.CurrentState.AcceptedAction.Name = action.Name()
+	//	order.Items[i].Tracking.CurrentState.AcceptedAction.ActionName = action.ActionName()
 	//	order.Items[i].Tracking.CurrentState.AcceptedAction.Type = actives.StockAction.String()
 	//	order.Items[i].Tracking.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
 	//	order.Items[i].Tracking.CurrentState.AcceptedAction.Data = nil
@@ -225,7 +225,7 @@ func (stockState stockActionLauncher) persistOrderState(ctx context.Context, ord
 	//	order.Items[i].Tracking.CurrentState.Actions = []entities.Action{order.Items[i].Tracking.CurrentState.AcceptedAction}
 	//
 	//	stateHistory := entities.StateHistory {
-	//		Name: order.Items[i].Tracking.CurrentState.Name,
+	//		ActionName: order.Items[i].Tracking.CurrentState.ActionName,
 	//		Index: order.Items[i].Tracking.CurrentState.Index,
 	//		Type: order.Items[i].Tracking.CurrentState.Type,
 	//		Action: order.Items[i].Tracking.CurrentState.AcceptedAction,

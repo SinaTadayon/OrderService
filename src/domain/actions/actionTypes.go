@@ -28,11 +28,11 @@ const (
 	System
 )
 
-func (actorType ActionType) Name() string {
+func (actorType ActionType) ActionName() string {
 	return actorType.String()
 }
 
-func (actorType ActionType) Ordinal() int {
+func (actorType ActionType) ActionOrdinal() int {
 	if actorType < Payment || actorType > System {
 		return -1
 	}

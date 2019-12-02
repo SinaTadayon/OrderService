@@ -16,11 +16,11 @@ const (
 	BuyerNotification
 )
 
-func (action ActionEnums) Name() string {
+func (action ActionEnums) ActionName() string {
 	return action.String()
 }
 
-func (action ActionEnums) Ordinal() int {
+func (action ActionEnums) ActionOrdinal() int {
 	if action < SellerNotification || action > BuyerNotification {
 		return -1
 	}

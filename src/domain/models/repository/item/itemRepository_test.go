@@ -277,18 +277,18 @@ package item_repository
 //					StateName:  "0.NewOrder",
 //					StateIndex: 0,
 //					//CurrentState: entities.State {
-//					//	Name:  "0.New_Order_Process_State",
+//					//	ActionName:  "0.New_Order_Process_State",
 //					//	Index: 0,
 //					//	Type: "LauncherAction",
 //					//	Actions: []entities.Action {{
-//					//		Name: "Success",
+//					//		ActionName: "Success",
 //					//		Type: "NewOrder",
 //					//		Base: "Active",
 //					//		Data: nil,
 //					//		Time: &currentTime,
 //					//	}},
 //					//	AcceptedAction:entities.Action {
-//					//		Name: "Success",
+//					//		ActionName: "Success",
 //					//		Type: "NewOrder",
 //					//		Base: "Active",
 //					//		Data: nil,
@@ -300,15 +300,15 @@ package item_repository
 //					//},
 //					CreatedAt: time.Now().UTC(),
 //					StatesHistory: []entities.StepHistory{{
-//						Name:      "0.NewOrder",
+//						ActionName:      "0.NewOrder",
 //						Index:     0,
 //						CreatedAt: time.Now().UTC(),
 //						//StatesHistory: []entities.StateHistory{{
-//						//	Name:  "0.New_Order_Process_State",
+//						//	ActionName:  "0.New_Order_Process_State",
 //						//	Index: 0,
 //						//	Type: "ListenerAction",
 //						//	Action: entities.Action{
-//						//		Name:           "Success",
+//						//		ActionName:           "Success",
 //						//		Type:           "NewOrder",
 //						//		Base:           "Active",
 //						//		Data:           nil,
@@ -412,17 +412,17 @@ package item_repository
 //					StateName:  "0.NewOrder",
 //					StateIndex: 0,
 //					//CurrentState: entities.State{
-//					//	Name:  "0.New_Order_Process_State",
+//					//	ActionName:  "0.New_Order_Process_State",
 //					//	Index: 0,
 //					//	Actions: []entities.Action{{
-//					//		Name:           "Success",
+//					//		ActionName:           "Success",
 //					//		Type:           "NewOrder",
 //					//		Base:           "Active",
 //					//		Data:           nil,
 //					//		Time: 			&currentTime,
 //					//	}},
 //					//	AcceptedAction: entities.Action{
-//					//		Name:           "Success",
+//					//		ActionName:           "Success",
 //					//		Type:           "NewOrder",
 //					//		Base:           "Active",
 //					//		Data:           nil,
@@ -434,15 +434,15 @@ package item_repository
 //					//},
 //					CreatedAt: time.Now().UTC(),
 //					StatesHistory: []entities.StepHistory{{
-//						Name:      "0.NewOrder",
+//						ActionName:      "0.NewOrder",
 //						Index:     0,
 //						CreatedAt: time.Now().UTC(),
 //						//StatesHistory: []entities.StateHistory{{
-//						//	Name:  "0.New_Order_Process_State",
+//						//	ActionName:  "0.New_Order_Process_State",
 //						//	Index: 0,
 //						//	Type: "ListenerAction",
 //						//	Action: entities.Action{
-//						//		Name:           "Success",
+//						//		ActionName:           "Success",
 //						//		Type:           "NewOrder",
 //						//		Base:           "Active",
 //						//		Data:           nil,

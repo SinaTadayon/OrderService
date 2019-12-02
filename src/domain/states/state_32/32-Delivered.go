@@ -116,7 +116,7 @@ func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context,
 	//		return shipmentDelivered.Childes()[0].ProcessOrder(ctx, order, itemsId, nil)
 	//	}
 	//
-	//	logger.Err("%s step received invalid action, order: %v, action: %s", shipmentDelivered.Name(), order, req.Action)
+	//	logger.Err("%s step received invalid action, order: %v, action: %s", shipmentDelivered.ActionName(), order, req.Action)
 	//	returnChannel := make(chan promise.FutureData, 1)
 	//	defer close(returnChannel)
 	//	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}

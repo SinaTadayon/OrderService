@@ -47,7 +47,7 @@ func (paymentSuccess paymentSuccessStep) ProcessMessage(ctx context.Context, req
 func (paymentSuccess paymentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 	//nextToStepState, ok := paymentSuccess.Childes()[2].(launcher_state.ILauncherState)
 	//if ok != true || nextToStepState.ActiveType() != actives.StockAction {
-	//	logger.Err("nextToStepState doesn't exist in index 2 of %s Childes() , order: %v", paymentSuccess.Name(), order)
+	//	logger.Err("nextToStepState doesn't exist in index 2 of %s Childes() , order: %v", paymentSuccess.ActionName(), order)
 	//	returnChannel := make(chan promise.FutureData, 1)
 	//	defer close(returnChannel)
 	//	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}

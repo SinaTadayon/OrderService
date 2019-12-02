@@ -178,6 +178,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 			var subpackage = entities.Subpackage{
 				SellerId: pkgDto.SellerId,
 				Item: entities.Item{
+					SKU:		 itemDto.Sku
 					InventoryId: itemDto.InventoryId,
 					Title:       itemDto.Title,
 					Brand:       itemDto.Brand,

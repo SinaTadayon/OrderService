@@ -46,7 +46,7 @@ func (paymentFailed paymentFailedStep) ProcessMessage(ctx context.Context, reque
 func (paymentFailed paymentFailedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
 	//stockState, ok := paymentFailed.Childes()[0].(launcher_state.ILauncherState)
 	//if ok != true || stockState.ActiveType() != actives.StockAction {
-	//	logger.Err("stock state doesn't exist in index 0 of %s statesMap , order: %v", paymentFailed.Name(), order)
+	//	logger.Err("stock state doesn't exist in index 0 of %s statesMap , order: %v", paymentFailed.ActionName(), order)
 	//	returnChannel := make(chan promise.FutureData, 1)
 	//	defer close(returnChannel)
 	//	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}

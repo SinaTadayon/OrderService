@@ -28,11 +28,11 @@ const (
 	EnterShipmentDetails
 )
 
-func (action ActionEnums) Name() string {
+func (action ActionEnums) ActionName() string {
 	return action.String()
 }
 
-func (action ActionEnums) Ordinal() int {
+func (action ActionEnums) ActionOrdinal() int {
 	if action < Approve || action > EnterShipmentDetails {
 		return -1
 	}

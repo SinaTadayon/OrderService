@@ -16,11 +16,11 @@ const (
 	Fail
 )
 
-func (action ActionEnums) Name() string {
+func (action ActionEnums) ActionName() string {
 	return action.String()
 }
 
-func (action ActionEnums) Ordinal() int {
+func (action ActionEnums) ActionOrdinal() int {
 	if action < Success || action > Fail {
 		return -1
 	}

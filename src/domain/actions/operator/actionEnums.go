@@ -24,11 +24,11 @@ const (
 	CancelReturn
 )
 
-func (action ActionEnums) Name() string {
+func (action ActionEnums) ActionName() string {
 	return action.String()
 }
 
-func (action ActionEnums) Ordinal() int {
+func (action ActionEnums) ActionOrdinal() int {
 	if action < Delay || action > CancelReturn {
 		return -1
 	}

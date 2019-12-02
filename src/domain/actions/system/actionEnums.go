@@ -13,11 +13,11 @@ const (
 	CombineActorsAction
 )
 
-func (action ActionEnums) Name() string {
+func (action ActionEnums) ActionName() string {
 	return action.String()
 }
 
-func (action ActionEnums) Ordinal() int {
+func (action ActionEnums) ActionOrdinal() int {
 	if action < ComposeActorsAction || action > CombineActorsAction {
 		return -1
 	}

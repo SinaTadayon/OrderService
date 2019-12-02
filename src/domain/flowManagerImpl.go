@@ -267,7 +267,7 @@ func (flowManager *iFlowManagerImpl) createStep93(baseStep93 states.IBaseStep) {
 
 	// add to flowManager maps
 	//flowManager.indexStepsMap[step93.Index()] = step93
-	//flowManager.nameStepsMap[step93.Name()] = step93
+	//flowManager.nameStepsMap[step93.ActionName()] = step93
 }
 
 func (flowManager *iFlowManagerImpl) createStep91() {
@@ -347,7 +347,7 @@ func (flowManager *iFlowManagerImpl) createStep90(baseStep90 states.IBaseStep) {
 
 	// add to flowManager maps
 	//flowManager.indexStepsMap[step90.Index()] = step90
-	//flowManager.nameStepsMap[step90.Name()] = step90
+	//flowManager.nameStepsMap[step90.ActionName()] = step90
 }
 
 func (flowManager *iFlowManagerImpl) createStep81() {
@@ -421,7 +421,7 @@ func (flowManager *iFlowManagerImpl) createStep80(baseStep80 states.IBaseStep) {
 
 	// add to flowManager maps
 	//flowManager.indexStepsMap[step93.Index()] = step93
-	//flowManager.nameStepsMap[step93.Name()] = step93
+	//flowManager.nameStepsMap[step93.ActionName()] = step93
 }
 
 func (flowManager *iFlowManagerImpl) createStep55() {
@@ -1342,7 +1342,7 @@ func (flowManager iFlowManagerImpl) BackOfficeOrderDetailView(ctx context.Contex
 		}
 
 		//lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
-		//itemInfo.StepStatus = lastAction.Name
+		//itemInfo.StepStatus = lastAction.ActionName
 
 		response.Items = append(response.Items, itemInfo)
 	}

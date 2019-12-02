@@ -174,17 +174,17 @@ func (orderPayment orderPaymentActionLauncher) persistOrderState(ctx context.Con
 func (orderPayment orderPaymentActionLauncher) doUpdateOrderState(ctx context.Context, order *entities.Order, index int,
 	acceptedAction actions.IEnumAction, result bool, reason string, paymentResponse *payment_service.PaymentResponse) {
 
-	//order.Items[index].Tracking.CurrentState.Name = orderPayment.Name()
+	//order.Items[index].Tracking.CurrentState.ActionName = orderPayment.ActionName()
 	//order.Items[index].Tracking.CurrentState.Index = orderPayment.Index()
-	//order.Items[index].Tracking.CurrentState.Type = orderPayment.Actions().ActionType().Name()
+	//order.Items[index].Tracking.CurrentState.Type = orderPayment.Actions().ActionType().ActionName()
 	//order.Items[index].Tracking.CurrentState.CreatedAt = time.Now().UTC()
 	//order.Items[index].Tracking.CurrentState.Result = result
 	//order.Items[index].Tracking.CurrentState.Reason = reason
 	//
 	//if acceptedAction != nil {
-	//	order.Items[index].Tracking.CurrentState.AcceptedAction.Name = acceptedAction.Name()
+	//	order.Items[index].Tracking.CurrentState.AcceptedAction.ActionName = acceptedAction.ActionName()
 	//} else {
-	//	order.Items[index].Tracking.CurrentState.AcceptedAction.Name = ""
+	//	order.Items[index].Tracking.CurrentState.AcceptedAction.ActionName = ""
 	//}
 	//
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Type = actives.OrderPaymentAction.String()
@@ -195,7 +195,7 @@ func (orderPayment orderPaymentActionLauncher) doUpdateOrderState(ctx context.Co
 	//order.Items[index].Tracking.CurrentState.Actions = []entities.Action{order.Items[index].Tracking.CurrentState.AcceptedAction}
 	//
 	//stateHistory := entities.StateHistory {
-	//	Name: order.Items[index].Tracking.CurrentState.Name,
+	//	ActionName: order.Items[index].Tracking.CurrentState.ActionName,
 	//	Index: order.Items[index].Tracking.CurrentState.Index,
 	//	Type: order.Items[index].Tracking.CurrentState.Type,
 	//	Action: order.Items[index].Tracking.CurrentState.AcceptedAction,

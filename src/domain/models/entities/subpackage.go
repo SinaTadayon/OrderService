@@ -8,10 +8,11 @@ type Subpackage struct {
 	SellerId  uint64     `bson:"sellerId"`
 	OrderId   uint64     `bson:"orderId"`
 	Version   uint64     `bson:"version"`
-	Item      Item       `bson:"item"`
+	Item      []Item     `bson:"item"`
 	Shipments *Shipment  `bson:"shipments"`
 	Tracking  Progress   `bson:"tracking"`
 	Status    string     `bson:"status"`
+	Reasons   []string   `bson:"reasons"`
 	CreatedAt time.Time  `bson:"createdAt"`
 	UpdatedAt time.Time  `bson:"updatedAt"`
 	DeletedAt *time.Time `bson:"deletedAt"`
@@ -33,6 +34,7 @@ type ShippingDetail struct {
 }
 
 type Item struct {
+	SKU         string            `bson:"sku"`
 	InventoryId string            `bson:"inventoryId"`
 	Title       string            `bson:"title"`
 	Brand       string            `bson:"brand"`
@@ -73,7 +75,7 @@ type StateHistory struct {
 
 /*
  Action sample:
-	Name: ApprovedAction
+	ActionName: ApprovedAction
 	Type: SellerInfoActor
 	Data: "sample data"
 */
@@ -82,7 +84,7 @@ type Action struct {
 	Type      string                 `bson:"type"`
 	Data      map[string]interface{} `bson:"data"`
 	Result    string                 `bson:"result"`
-	Reason    string                 `bson:"reason"`
+	Reasons   []string               `bson:"reasons"`
 	CreatedAt time.Time              `bson:"createdAt"`
 }
 

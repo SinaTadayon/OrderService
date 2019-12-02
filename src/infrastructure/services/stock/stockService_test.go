@@ -242,18 +242,18 @@ func createOrder() entities.Order {
 					StateName:  "0.NewOrder",
 					StateIndex: 0,
 					//CurrentState: entities.State {
-					//	Name:  "0.New_Order_Process_State",
+					//	ActionName:  "0.New_Order_Process_State",
 					//	Index: 0,
 					//	Type: "LauncherAction",
 					//	Actions: []entities.Action {{
-					//		Name: "Success",
+					//		ActionName: "Success",
 					//		Type: "NewOrder",
 					//		Base: "Active",
 					//		Data: nil,
 					//		Time: &currentTime,
 					//	}},
 					//	AcceptedAction:entities.Action {
-					//		Name: "Success",
+					//		ActionName: "Success",
 					//		Type: "NewOrder",
 					//		Base: "Active",
 					//		Data: nil,
@@ -269,11 +269,11 @@ func createOrder() entities.Order {
 						Index:     0,
 						CreatedAt: time.Now().UTC(),
 						//StatesHistory: []entities.StateHistory{{
-						//	Name:  "0.New_Order_Process_State",
+						//	ActionName:  "0.New_Order_Process_State",
 						//	Index: 0,
 						//	Type: "ListenerAction",
 						//	Action: entities.Action{
-						//		Name:           "Success",
+						//		ActionName:           "Success",
 						//		Type:           "NewOrder",
 						//		Base:           "Active",
 						//		Data:           nil,
@@ -412,17 +412,17 @@ func createOrder() entities.Order {
 					StateName:  "0.NewOrder",
 					StateIndex: 0,
 					//CurrentState: entities.State{
-					//	Name:  "0.New_Order_Process_State",
+					//	ActionName:  "0.New_Order_Process_State",
 					//	Index: 0,
 					//	Actions: []entities.Action{{
-					//		Name:           "Success",
+					//		ActionName:           "Success",
 					//		Type:           "NewOrder",
 					//		Base:           "Active",
 					//		Data:           nil,
 					//		Time: 			&currentTime,
 					//	}},
 					//	AcceptedAction: entities.Action{
-					//		Name:           "Success",
+					//		ActionName:           "Success",
 					//		Type:           "NewOrder",
 					//		Base:           "Active",
 					//		Data:           nil,
@@ -438,11 +438,11 @@ func createOrder() entities.Order {
 						Index:     0,
 						CreatedAt: time.Now().UTC(),
 						//StatesHistory: []entities.StateHistory{{
-						//	Name:  "0.New_Order_Process_State",
+						//	ActionName:  "0.New_Order_Process_State",
 						//	Index: 0,
 						//	Type: "ListenerAction",
 						//	Action: entities.Action{
-						//		Name:           "Success",
+						//		ActionName:           "Success",
 						//		Type:           "NewOrder",
 						//		Base:           "Active",
 						//		Data:           nil,

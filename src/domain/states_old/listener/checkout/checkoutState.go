@@ -100,14 +100,14 @@ func (checkoutActionState checkoutActionListener) ActionListener(ctx context.Con
 
 func (checkoutActionState checkoutActionListener) updateOrderStates(ctx context.Context, newOrder *entities.Order, timestamp time.Time) {
 	//for i := 0; i < len(newOrder.Items); i++ {
-	//	newOrder.Items[i].Tracking.CurrentState.Name = checkoutActionState.Name()
+	//	newOrder.Items[i].Tracking.CurrentState.ActionName = checkoutActionState.ActionName()
 	//	newOrder.Items[i].Tracking.CurrentState.Index = checkoutActionState.Index()
-	//	newOrder.Items[i].Tracking.CurrentState.Type = checkoutActionState.Actions().ActionType().Name()
+	//	newOrder.Items[i].Tracking.CurrentState.Type = checkoutActionState.Actions().ActionType().ActionName()
 	//	newOrder.Items[i].Tracking.CurrentState.CreatedAt = time.Now().UTC()
 	//	newOrder.Items[i].Tracking.CurrentState.Result = true
 	//	newOrder.Items[i].Tracking.CurrentState.Reason = ""
 	//
-	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.Name = checkout_action.NewOrderAction.String()
+	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.ActionName = checkout_action.NewOrderAction.String()
 	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.Type = actors.Checkout.String()
 	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.Base = actions.ActorAction.String()
 	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.Data = nil
@@ -116,7 +116,7 @@ func (checkoutActionState checkoutActionListener) updateOrderStates(ctx context.
 	//	newOrder.Items[i].Tracking.CurrentState.Actions = []entities.Action{newOrder.Items[i].Tracking.CurrentState.AcceptedAction}
 	//
 	//	stateHistory := entities.StateHistory {
-	//		Name: newOrder.Items[i].Tracking.CurrentState.Name,
+	//		ActionName: newOrder.Items[i].Tracking.CurrentState.ActionName,
 	//		Index: newOrder.Items[i].Tracking.CurrentState.Index,
 	//		Type: newOrder.Items[i].Tracking.CurrentState.Type,
 	//		Action: newOrder.Items[i].Tracking.CurrentState.AcceptedAction,

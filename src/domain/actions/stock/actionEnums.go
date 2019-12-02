@@ -18,11 +18,11 @@ const (
 	Settlement
 )
 
-func (action ActionEnums) Name() string {
+func (action ActionEnums) ActionName() string {
 	return action.String()
 }
 
-func (action ActionEnums) Ordinal() int {
+func (action ActionEnums) ActionOrdinal() int {
 	if action < Reserve || action > Settlement {
 		return -1
 	}

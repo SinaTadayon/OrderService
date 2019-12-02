@@ -171,7 +171,7 @@ func TestFlowManagerSteps(t *testing.T) {
 	//for _, k := range keys {
 	//	step := flowManager.GetIndexStepsMap()[k]
 	//	fmt.Printf("\n\n$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n")
-	//	fmt.Printf("step.Name(): %s\nstep.Index(): %d\n", step.Name(), step.Index())
+	//	fmt.Printf("step.ActionName(): %s\nstep.Index(): %d\n", step.ActionName(), step.Index())
 	//	fmt.Printf("step.Childes(): %s\n", step.Childes())
 	//	fmt.Printf("step.Parents(): %s\n", step.Parents())
 	//	fmt.Printf("step.States(): %s\n", step.States())
@@ -182,7 +182,7 @@ func TestFlowManagerSteps(t *testing.T) {
 func traversState(states []states_old.IState) {
 	for _, state := range states {
 		fmt.Printf("################################################\n")
-		fmt.Printf("************* => state.Name(): %s\n", state.Name())
+		fmt.Printf("************* => state.ActionName(): %s\n", state.Name())
 		fmt.Printf("************* => state.Index(): %d\n", state.Index())
 		fmt.Printf("************* => state.Action Type: %s\n", state.Actions().ActionType())
 
