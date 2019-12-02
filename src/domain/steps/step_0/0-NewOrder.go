@@ -85,6 +85,31 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	//	return promise.NewPromise(returnChannel, 1, 1)
 	//}
 
+	//for _, item := range newOrder.Items {
+	//	userCtx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	//	ipromise := global.Singletons.UserService.GetSellerProfile(userCtx, strconv.Itoa(int(item.SellerInfo.SellerId)))
+	//	futureData := ipromise.Data()
+	//	if futureData.Ex != nil {
+	//		logger.Err("ProcessMessage() => get NewOrder sellerProfile failed, order: %v, sellerId: %d",
+	//			newOrder, item.SellerInfo.SellerId)
+	//		returnChannel := make(chan promise.FutureData, 1)
+	//		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.BadRequest, Reason: "Received requestNewOrder invalid"}}
+	//		defer close(returnChannel)
+	//		return promise.NewPromise(returnChannel, 1, 1)
+	//	}
+	//
+	//	sellerInfo, ok := futureData.Data.(entities.SellerProfile)
+	//	if ok != true {
+	//		logger.Err("ProcessMessage() => get NewOrder sellerProfile invalid, order: %v, sellerId: %d",
+	//			newOrder, item.SellerInfo.SellerId)
+	//		returnChannel := make(chan promise.FutureData, 1)
+	//		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.BadRequest, Reason: "Received requestNewOrder invalid"}}
+	//		defer close(returnChannel)
+	//		return promise.NewPromise(returnChannel, 1, 1)
+	//	}
+	//	item.SellerInfo.Profile = &sellerInfo
+	//}
+
 	newOrderProcessing.UpdateAllOrderStatus(ctx, newOrder, nil, steps.NewStatus, false)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	if err != nil {

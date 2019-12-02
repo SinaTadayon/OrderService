@@ -153,7 +153,7 @@ func init() {
 		global.Singletons.VoucherService = voucher_service.NewVoucherService(App.Config.VoucherService.Address, App.Config.VoucherService.Port)
 	}
 
-	global.Singletons.NotifyService = notify_service.NewNotificationService()
+	global.Singletons.NotifyService = notify_service.NewNotificationService(App.Config.NotifyService.Address, App.Config.NotifyService.Port)
 	global.Singletons.UserService = user_service.NewUserService(App.Config.UserService.Address, App.Config.UserService.Port)
 	App.schedulerService = scheduler_service.NewScheduler(mongoDriver, App.flowManager)
 

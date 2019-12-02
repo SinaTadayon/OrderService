@@ -21,6 +21,7 @@ services:
       - paymentservice
       - userservice
       - voucherservice
+      - notificationservice
 
 #  payment_success:
 #    image: ${TAG}
@@ -182,6 +183,20 @@ services:
     depends_on:
       - mongo
       - redis
+
+  notificationservice:
+    image: registry.faza.io/notification-app/notification-app:staging
+    restart: always
+    ports:
+      - 9099:9099
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - PORT=9099
+      - APP_ENV=dev
+    env_file:
+      - ./src/.env
+
 
   redis:
     image: registry.faza.io/redis:5.0
