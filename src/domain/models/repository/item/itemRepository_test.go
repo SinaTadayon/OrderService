@@ -185,7 +185,7 @@ package item_repository
 //				Details: nil,
 //			},
 //		},
-//		Items: []entities.Item{
+//		Items: []entities.Items{
 //			{
 //				ItemId:      "",
 //				InventoryId: "1111111111",

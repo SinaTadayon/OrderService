@@ -8,11 +8,10 @@ type Subpackage struct {
 	SellerId  uint64     `bson:"sellerId"`
 	OrderId   uint64     `bson:"orderId"`
 	Version   uint64     `bson:"version"`
-	Item      []Item     `bson:"item"`
+	Items     []Item     `bson:"item"`
 	Shipments *Shipment  `bson:"shipments"`
 	Tracking  Progress   `bson:"tracking"`
 	Status    string     `bson:"status"`
-	Reasons   []string   `bson:"reasons"`
 	CreatedAt time.Time  `bson:"createdAt"`
 	UpdatedAt time.Time  `bson:"updatedAt"`
 	DeletedAt *time.Time `bson:"deletedAt"`
@@ -43,6 +42,7 @@ type Item struct {
 	Image       string            `bson:"image"`
 	Returnable  bool              `bson:"returnable"`
 	Quantity    int32             `bson:"quantity"`
+	Reasons     []string          `bson:"reasons"`
 	Attributes  map[string]string `bson:"attributes"`
 	Invoice     ItemInvoice       `bson:"invoice"`
 }
@@ -95,7 +95,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 		OrderId:   subpackage.OrderId,
 		Version:   subpackage.Version,
 		Status:    subpackage.Status,
-		Item:      subpackage.Item,
+		Items:     subpackage.Items,
 		CreatedAt: subpackage.CreatedAt,
 		UpdatedAt: subpackage.UpdatedAt,
 		DeletedAt: subpackage.DeletedAt,

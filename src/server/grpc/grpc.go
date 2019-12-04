@@ -198,7 +198,7 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	//return &response, nil
 
 	//logger.Audit("Req Order Id: %v", req.GetOrderId())
-	//logger.Audit("Req Item Id: %v", req.GetItemId())
+	//logger.Audit("Req Items Id: %v", req.GetItemId())
 	//logger.Audit("Req timestamp: %v", req.GetTime())
 	//logger.Audit("Req Meta Page: %v", req.GetMeta().GetPage())
 	//logger.Audit("Req Meta PerPage %v", req.GetMeta().GetPerPage())

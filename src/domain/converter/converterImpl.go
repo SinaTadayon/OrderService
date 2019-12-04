@@ -172,12 +172,12 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 			}
 
 			if itemDto.Quantity <= 0 {
-				return nil, errors.New("Item Quantity of RequestNewOrder invalid")
+				return nil, errors.New("Items Quantity of RequestNewOrder invalid")
 			}
 
 			var subpackage = entities.Subpackage{
 				SellerId: pkgDto.SellerId,
-				Item: entities.Item{
+				Items: entities.Item{
 					SKU:		 itemDto.Sku
 					InventoryId: itemDto.InventoryId,
 					Title:       itemDto.Title,

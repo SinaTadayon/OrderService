@@ -56,22 +56,7 @@ func NewOrderRepository(mongoDriver *mongoadapter.Mongo) (IOrderRepository, erro
 
 func (repo iOrderRepositoryImpl) generateAndSetId(ctx context.Context, order entities.Order) *entities.Order {
 	order.OrderId = entities.GenerateOrderId()
-	mapItemIds := make(map[int]string, 64)
-	mapInventoryIds := make(map[string]string, 64)
-
-	for i := 0; i < len(order.Packages); i++ {
-		for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-			for {
-				random := int(entities.GenerateRandomNumber())
-				if _, ok := mapItemIds[random]; ok {
-					continue
-				}
-				mapItemIds[random] = order.Packages[i].Subpackages[j].Item.InventoryId
-				mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId] = strconv.Itoa(random)
-				break
-			}
-		}
-	}
+	mapItemIds := make(map[int]uint64, 64)
 
 	order.CreatedAt = time.Now().UTC()
 	order.UpdatedAt = time.Now().UTC()
@@ -80,13 +65,19 @@ func (repo iOrderRepositoryImpl) generateAndSetId(ctx context.Context, order ent
 		order.Packages[i].CreatedAt = time.Now().UTC()
 		order.Packages[i].UpdatedAt = time.Now().UTC()
 		for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-			if value, ok := mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId]; ok {
-				itemId, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + value)
+			for {
+				random := int(entities.GenerateRandomNumber())
+				if _, ok := mapItemIds[random]; ok {
+					continue
+				}
+				mapItemIds[random] = order.Packages[i].SellerId
+				itemId, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + strconv.Itoa(random))
 				order.Packages[i].Subpackages[j].ItemId = uint64(itemId)
 				order.Packages[i].Subpackages[j].SellerId = order.Packages[i].SellerId
 				order.Packages[i].Subpackages[j].OrderId = order.OrderId
 				order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
 				order.Packages[i].Subpackages[j].UpdatedAt = time.Now().UTC()
+				break
 			}
 		}
 	}

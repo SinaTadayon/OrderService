@@ -304,33 +304,24 @@ func insert(order *entities.Order) (*entities.Order, error) {
 
 	if order.OrderId == 0 {
 		order.OrderId = entities.GenerateOrderId()
-		mapItemIds := make(map[int]string, 64)
-		mapInventoryIds := make(map[string]string, 64)
+		mapItemIds := make(map[int]uint64, 64)
 
 		for i := 0; i < len(order.Packages); i++ {
+			order.Packages[i].OrderId = order.OrderId
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
 				for {
 					random := int(entities.GenerateRandomNumber())
 					if _, ok := mapItemIds[random]; ok {
 						continue
 					}
-					mapItemIds[random] = order.Packages[i].Subpackages[j].Item.InventoryId
-					mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId] = strconv.Itoa(random)
-					break
-				}
-			}
-		}
-
-		for i := 0; i < len(order.Packages); i++ {
-			order.Packages[i].OrderId = order.OrderId
-			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-				if value, ok := mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId]; ok {
-					itemId, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + value)
+					mapItemIds[random] = order.Packages[i].SellerId
+					itemId, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + strconv.Itoa(random))
 					order.Packages[i].Subpackages[j].ItemId = uint64(itemId)
 					order.Packages[i].Subpackages[j].SellerId = order.Packages[i].SellerId
 					order.Packages[i].Subpackages[j].OrderId = order.OrderId
 					order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
 					order.Packages[i].Subpackages[j].UpdatedAt = time.Now().UTC()
+					break
 				}
 			}
 		}
@@ -362,31 +353,22 @@ func insertWithoutChangeTime(order *entities.Order) (*entities.Order, error) {
 
 	if order.OrderId == 0 {
 		order.OrderId = entities.GenerateOrderId()
-		mapItemIds := make(map[int]string, 64)
-		mapInventoryIds := make(map[string]string, 64)
+		mapItemIds := make(map[int]uint64, 64)
 
 		for i := 0; i < len(order.Packages); i++ {
+			order.Packages[i].OrderId = order.OrderId
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
 				for {
 					random := int(entities.GenerateRandomNumber())
 					if _, ok := mapItemIds[random]; ok {
 						continue
 					}
-					mapItemIds[random] = order.Packages[i].Subpackages[j].Item.InventoryId
-					mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId] = strconv.Itoa(random)
-					break
-				}
-			}
-		}
-
-		for i := 0; i < len(order.Packages); i++ {
-			order.Packages[i].OrderId = order.OrderId
-			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-				if value, ok := mapInventoryIds[order.Packages[i].Subpackages[j].Item.InventoryId]; ok {
-					itemId, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + value)
+					mapItemIds[random] = order.Packages[i].SellerId
+					itemId, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + strconv.Itoa(random))
 					order.Packages[i].Subpackages[j].ItemId = uint64(itemId)
 					order.Packages[i].Subpackages[j].SellerId = order.Packages[i].SellerId
 					order.Packages[i].Subpackages[j].OrderId = order.OrderId
+					break
 				}
 			}
 		}
@@ -622,33 +604,68 @@ func createOrder() *entities.Order {
 						SellerId: 129384234,
 						OrderId:  0,
 						Version:  0,
-						Item: entities.Item{
-							InventoryId: "1111111111",
-							Title:       "Mobile",
-							Brand:       "Nokia",
-							Guaranty:    "Sazegar",
-							Category:    "Electronic",
-							Image:       "",
-							Quantity:    5,
-							Returnable:  false,
-							Attributes: map[string]string{
-								"Quantity":  "0",
-								"Width":     "5cm",
-								"Height":    "7cm",
-								"Length":    "2m",
-								"Weight":    "5kg",
-								"Color":     "Blue",
-								"Materials": "Stone",
+						Items: []entities.Item{
+							{
+								SKU:         "yt545-34",
+								InventoryId: "1111111111",
+								Title:       "Mobile",
+								Brand:       "Nokia",
+								Guaranty:    "Sazegar",
+								Category:    "Electronic",
+								Image:       "",
+								Returnable:  false,
+								Quantity:    5,
+								Reasons:     nil,
+								Attributes: map[string]string{
+									"Quantity":  "0",
+									"Width":     "5cm",
+									"Height":    "7cm",
+									"Length":    "2m",
+									"Weight":    "5kg",
+									"Color":     "Blue",
+									"Materials": "Stone",
+								},
+								Invoice: entities.ItemInvoice{
+									Unit:              1270000,
+									Total:             7450000,
+									Original:          1270000,
+									Special:           1000000,
+									Discount:          23000,
+									SellerCommission:  5334444,
+									Currency:          "IRR",
+									ApplicableVoucher: false,
+								},
 							},
-							Invoice: entities.ItemInvoice{
-								Unit:              1270000,
-								Total:             7450000,
-								Original:          1270000,
-								Special:           1000000,
-								Discount:          23000,
-								SellerCommission:  5334444,
-								Currency:          "IRR",
-								ApplicableVoucher: false,
+							{
+								SKU:         "ye-564634",
+								InventoryId: "11111999999",
+								Title:       "TV",
+								Brand:       "Nokia",
+								Guaranty:    "Sazegar",
+								Category:    "Electronic",
+								Image:       "",
+								Returnable:  false,
+								Quantity:    2,
+								Reasons:     nil,
+								Attributes: map[string]string{
+									"Quantity":  "2",
+									"Width":     "120cm",
+									"Height":    "110cm",
+									"Length":    "2m",
+									"Weight":    "5kg",
+									"Color":     "Blue",
+									"Materials": "Stone",
+								},
+								Invoice: entities.ItemInvoice{
+									Unit:              3270000,
+									Total:             87450000,
+									Original:          21270000,
+									Special:           10000000,
+									Discount:          230000,
+									SellerCommission:  5334444,
+									Currency:          "IRR",
+									ApplicableVoucher: false,
+								},
 							},
 						},
 						Shipments: &entities.Shipment{
@@ -679,7 +696,7 @@ func createOrder() *entities.Order {
 								Type:      "OrderBuyerCancel",
 								Data:      nil,
 								Result:    "Success",
-								Reason:    "",
+								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
 							},
 							StatesHistory: []entities.StateHistory{
@@ -692,7 +709,7 @@ func createOrder() *entities.Order {
 											Type:      "OrderBuyerCancel",
 											Data:      nil,
 											Result:    "Success",
-											Reason:    "",
+											Reasons:   nil,
 											CreatedAt: time.Now().UTC(),
 										},
 									},
@@ -711,33 +728,68 @@ func createOrder() *entities.Order {
 						SellerId: 129384234,
 						OrderId:  0,
 						Version:  0,
-						Item: entities.Item{
-							InventoryId: "2222222222",
-							Title:       "Laptop",
-							Brand:       "Lenovo",
-							Guaranty:    "Iranargham",
-							Category:    "Electronic",
-							Image:       "",
-							Quantity:    5,
-							Returnable:  true,
-							Attributes: map[string]string{
-								"Quantity":  "0",
-								"Width":     "5cm",
-								"Height":    "7cm",
-								"Length":    "2m",
-								"Weight":    "5kg",
-								"Color":     "Blue",
-								"Materials": "Stone",
+						Items: []entities.Item{
+							{
+								SKU:         "gd534-34344",
+								InventoryId: "2222222222",
+								Title:       "Laptop",
+								Brand:       "Lenovo",
+								Guaranty:    "Iranargham",
+								Category:    "Electronic",
+								Image:       "",
+								Returnable:  true,
+								Quantity:    5,
+								Reasons:     nil,
+								Attributes: map[string]string{
+									"Quantity":  "0",
+									"Width":     "5cm",
+									"Height":    "7cm",
+									"Length":    "2m",
+									"Weight":    "5kg",
+									"Color":     "Blue",
+									"Materials": "Stone",
+								},
+								Invoice: entities.ItemInvoice{
+									Unit:              1270000,
+									Total:             8750000,
+									Original:          1270000,
+									Special:           1000000,
+									Discount:          2355434,
+									SellerCommission:  5334444,
+									Currency:          "IRR",
+									ApplicableVoucher: true,
+								},
 							},
-							Invoice: entities.ItemInvoice{
-								Unit:              1270000,
-								Total:             8750000,
-								Original:          1270000,
-								Special:           1000000,
-								Discount:          2355434,
-								SellerCommission:  5334444,
-								Currency:          "IRR",
-								ApplicableVoucher: true,
+							{
+								SKU:         "5645-yer434",
+								InventoryId: "22222888888",
+								Title:       "AllInOne",
+								Brand:       "Lazada",
+								Guaranty:    "Iranargham",
+								Category:    "Electronic",
+								Image:       "",
+								Returnable:  true,
+								Quantity:    2,
+								Reasons:     nil,
+								Attributes: map[string]string{
+									"Quantity":  "2",
+									"Width":     "5cm",
+									"Height":    "7cm",
+									"Length":    "2m",
+									"Weight":    "5kg",
+									"Color":     "Blue",
+									"Materials": "Stone",
+								},
+								Invoice: entities.ItemInvoice{
+									Unit:              3270000,
+									Total:             12750000,
+									Original:          2270000,
+									Special:           100000,
+									Discount:          2355434,
+									SellerCommission:  5334444,
+									Currency:          "IRR",
+									ApplicableVoucher: true,
+								},
 							},
 						},
 						Shipments: &entities.Shipment{
@@ -768,7 +820,7 @@ func createOrder() *entities.Order {
 								Type:      "OrderBuyerCancel",
 								Data:      nil,
 								Result:    "Success",
-								Reason:    "",
+								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
 							},
 							StatesHistory: []entities.StateHistory{
@@ -781,7 +833,7 @@ func createOrder() *entities.Order {
 											Type:      "OrderBuyerCancel",
 											Data:      nil,
 											Result:    "Success",
-											Reason:    "",
+											Reasons:   nil,
 											CreatedAt: time.Now().UTC(),
 										},
 									},
@@ -892,33 +944,68 @@ func createOrder() *entities.Order {
 						SellerId: 99988887777,
 						OrderId:  0,
 						Version:  0,
-						Item: entities.Item{
-							InventoryId: "55555555555",
-							Title:       "Mobile",
-							Brand:       "Nokia",
-							Guaranty:    "Sazegar",
-							Category:    "Electronic",
-							Image:       "",
-							Quantity:    5,
-							Returnable:  false,
-							Attributes: map[string]string{
-								"Quantity":  "0",
-								"Width":     "5cm",
-								"Height":    "7cm",
-								"Length":    "2m",
-								"Weight":    "5kg",
-								"Color":     "Blue",
-								"Materials": "Stone",
+						Items: []entities.Item{
+							{
+								SKU:         "trrer-5343fdf",
+								InventoryId: "55555555555",
+								Title:       "Mobile",
+								Brand:       "Nokia",
+								Guaranty:    "Sazegar",
+								Category:    "Electronic",
+								Image:       "",
+								Returnable:  false,
+								Quantity:    5,
+								Reasons:     nil,
+								Attributes: map[string]string{
+									"Quantity":  "0",
+									"Width":     "5cm",
+									"Height":    "7cm",
+									"Length":    "2m",
+									"Weight":    "5kg",
+									"Color":     "Blue",
+									"Materials": "Stone",
+								},
+								Invoice: entities.ItemInvoice{
+									Unit:              1270000,
+									Total:             7340000,
+									Original:          1270000,
+									Special:           1000000,
+									Discount:          23000,
+									SellerCommission:  5334444,
+									Currency:          "IRR",
+									ApplicableVoucher: false,
+								},
 							},
-							Invoice: entities.ItemInvoice{
-								Unit:              1270000,
-								Total:             7340000,
-								Original:          1270000,
-								Special:           1000000,
-								Discount:          23000,
-								SellerCommission:  5334444,
-								Currency:          "IRR",
-								ApplicableVoucher: false,
+							{
+								SKU:         "uer5434-5343",
+								InventoryId: "555554444444",
+								Title:       "MobileMini",
+								Brand:       "Mac",
+								Guaranty:    "Sazegar",
+								Category:    "Electronic",
+								Image:       "",
+								Returnable:  false,
+								Quantity:    3,
+								Reasons:     nil,
+								Attributes: map[string]string{
+									"Quantity":  "3",
+									"Width":     "5cm",
+									"Height":    "7cm",
+									"Length":    "2m",
+									"Weight":    "5kg",
+									"Color":     "Blue",
+									"Materials": "Stone",
+								},
+								Invoice: entities.ItemInvoice{
+									Unit:              2270000,
+									Total:             6340000,
+									Original:          4270000,
+									Special:           100000,
+									Discount:          2343000,
+									SellerCommission:  533444,
+									Currency:          "IRR",
+									ApplicableVoucher: false,
+								},
 							},
 						},
 						Shipments: &entities.Shipment{
@@ -949,7 +1036,7 @@ func createOrder() *entities.Order {
 								Type:      "OrderBuyerCancel",
 								Data:      nil,
 								Result:    "Success",
-								Reason:    "",
+								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
 							},
 							StatesHistory: []entities.StateHistory{
@@ -962,7 +1049,7 @@ func createOrder() *entities.Order {
 											Type:      "OrderBuyerCancel",
 											Data:      nil,
 											Result:    "Success",
-											Reason:    "",
+											Reasons:   nil,
 											CreatedAt: time.Now().UTC(),
 										},
 									},
@@ -981,32 +1068,68 @@ func createOrder() *entities.Order {
 						SellerId: 99988887777,
 						OrderId:  0,
 						Version:  0,
-						Item: entities.Item{
-							InventoryId: "3333333333",
-							Title:       "Laptop",
-							Brand:       "Lenovo",
-							Guaranty:    "Iranargham",
-							Category:    "Electronic",
-							Image:       "",
-							Returnable:  true,
-							Attributes: map[string]string{
-								"Quantity":  "0",
-								"Width":     "5cm",
-								"Height":    "7cm",
-								"Length":    "2m",
-								"Weight":    "5kg",
-								"Color":     "Blue",
-								"Materials": "Stone",
+						Items: []entities.Item{
+							{
+								SKU:         "5456",
+								InventoryId: "3333333333333",
+								Title:       "PC",
+								Brand:       "HP",
+								Guaranty:    "Iranargham",
+								Category:    "Electronic",
+								Image:       "",
+								Returnable:  true,
+								Quantity:    3,
+								Reasons:     nil,
+								Attributes: map[string]string{
+									"Quantity":  "3",
+									"Width":     "5cm",
+									"Height":    "7cm",
+									"Length":    "2m",
+									"Weight":    "5kg",
+									"Color":     "Blue",
+									"Materials": "Stone",
+								},
+								Invoice: entities.ItemInvoice{
+									Unit:              1270000,
+									Total:             5646700,
+									Original:          7340000,
+									Special:           1000000,
+									Discount:          2355434,
+									SellerCommission:  5334444,
+									Currency:          "IRR",
+									ApplicableVoucher: true,
+								},
 							},
-							Invoice: entities.ItemInvoice{
-								Unit:              1270000,
-								Total:             5646700,
-								Original:          7340000,
-								Special:           1000000,
-								Discount:          2355434,
-								SellerCommission:  5334444,
-								Currency:          "IRR",
-								ApplicableVoucher: true,
+							{
+								SKU:         "uet-54634",
+								InventoryId: "33333666666",
+								Title:       "ZeroClient",
+								Brand:       "Lardan",
+								Guaranty:    "Iranargham",
+								Category:    "Electronic",
+								Image:       "",
+								Returnable:  true,
+								Quantity:    3,
+								Reasons:     nil,
+								Attributes: map[string]string{
+									"Quantity":  "3",
+									"Width":     "5cm",
+									"Height":    "7cm",
+									"Length":    "2m",
+									"Weight":    "5kg",
+									"Color":     "Blue",
+									"Materials": "Stone",
+								},
+								Invoice: entities.ItemInvoice{
+									Unit:              7270000,
+									Total:             4646700,
+									Original:          2340000,
+									Special:           1000000,
+									Discount:          45355434,
+									SellerCommission:  5334444,
+									Currency:          "IRR",
+									ApplicableVoucher: true,
+								},
 							},
 						},
 						Shipments: &entities.Shipment{
@@ -1037,7 +1160,7 @@ func createOrder() *entities.Order {
 								Type:      "OrderBuyerCancel",
 								Data:      nil,
 								Result:    "Success",
-								Reason:    "",
+								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
 							},
 							StatesHistory: []entities.StateHistory{
@@ -1050,7 +1173,7 @@ func createOrder() *entities.Order {
 											Type:      "OrderBuyerCancel",
 											Data:      nil,
 											Result:    "Success",
-											Reason:    "",
+											Reasons:   nil,
 											CreatedAt: time.Now().UTC(),
 										},
 									},
