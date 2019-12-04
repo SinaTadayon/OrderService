@@ -2,6 +2,7 @@ package notification_action
 
 import (
 	"github.com/pkg/errors"
+	"gitlab.faza.io/order-project/order-service/domain/actions"
 )
 
 type ActionEnums int
@@ -40,13 +41,13 @@ func (action ActionEnums) String() string {
 	return actionStrings[action]
 }
 
-func FromString(actionEnums string) (ActionEnums, error) {
+func (action ActionEnums) FromString(actionEnums string) actions.IEnumAction {
 	switch actionEnums {
 	case "SellerNotification":
-		return SellerNotification, nil
+		return SellerNotification
 	case "BuyerNotification":
-		return BuyerNotification, nil
+		return BuyerNotification
 	default:
-		return -1, errors.New("invalid actionEnums string")
+		return nil
 	}
 }

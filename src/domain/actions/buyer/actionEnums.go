@@ -1,13 +1,13 @@
 package buyer_action
 
 import (
-	"github.com/pkg/errors"
+	"gitlab.faza.io/order-project/order-service/domain/actions"
 )
 
 type ActionEnums int
 
 var actionStrings = []string{
-	"Delay",
+	"DeliveryDelay",
 	"Cancel",
 	"SubmitReturnRequest",
 	"CancelReturn",
@@ -15,7 +15,7 @@ var actionStrings = []string{
 }
 
 const (
-	Delay ActionEnums = iota
+	DeliveryDelay ActionEnums = iota
 	Cancel
 	SubmitReturnRequest
 	CancelReturn
@@ -27,7 +27,7 @@ func (action ActionEnums) ActionName() string {
 }
 
 func (action ActionEnums) ActionOrdinal() int {
-	if action < Delay || action > EnterShipmentDetails {
+	if action < DeliveryDelay || action > EnterShipmentDetails {
 		return -1
 	}
 
@@ -39,27 +39,27 @@ func (action ActionEnums) Values() []string {
 }
 
 func (action ActionEnums) String() string {
-	if action < Delay || action > EnterShipmentDetails {
+	if action < DeliveryDelay || action > EnterShipmentDetails {
 		return ""
 	}
 
 	return actionStrings[action]
 }
 
-func FromString(actionEnums string) (ActionEnums, error) {
+func (action ActionEnums) FromString(actionEnums string) actions.IEnumAction {
 	switch actionEnums {
-	case "Delay":
-		return Delay, nil
+	case "DeliveryDelay":
+		return DeliveryDelay
 	case "Cancel":
-		return Cancel, nil
+		return Cancel
 	case "SubmitReturnRequest":
-		return SubmitReturnRequest, nil
+		return SubmitReturnRequest
 	case "CancelReturn":
-		return CancelReturn, nil
+		return CancelReturn
 	case "EnterShipmentDetails":
-		return EnterShipmentDetails, nil
+		return EnterShipmentDetails
 
 	default:
-		return -1, errors.New("invalid actionEnums string")
+		return nil
 	}
 }

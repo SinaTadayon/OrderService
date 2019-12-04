@@ -1,8 +1,6 @@
 package stock_action
 
-import (
-	"github.com/pkg/errors"
-)
+import "gitlab.faza.io/order-project/order-service/domain/actions"
 
 type ActionEnums int
 
@@ -18,39 +16,39 @@ const (
 	Settlement
 )
 
-func (action ActionEnums) ActionName() string {
-	return action.String()
+func (actionEnum ActionEnums) ActionName() string {
+	return actionEnum.String()
 }
 
-func (action ActionEnums) ActionOrdinal() int {
-	if action < Reserve || action > Settlement {
+func (actionEnum ActionEnums) ActionOrdinal() int {
+	if actionEnum < Reserve || actionEnum > Settlement {
 		return -1
 	}
 
-	return int(action)
+	return int(actionEnum)
 }
 
-func (action ActionEnums) Values() []string {
+func (actionEnum ActionEnums) Values() []string {
 	return actionStrings
 }
 
-func (action ActionEnums) String() string {
-	if action < Reserve || action > Settlement {
+func (actionEnum ActionEnums) String() string {
+	if actionEnum < Reserve || actionEnum > Settlement {
 		return ""
 	}
 
-	return actionStrings[action]
+	return actionStrings[actionEnum]
 }
 
-func FromString(actionEnums string) (ActionEnums, error) {
-	switch actionEnums {
+func (actionEnum ActionEnums) FromString(action string) actions.IEnumAction {
+	switch action {
 	case "Reserve":
-		return Reserve, nil
+		return Reserve
 	case "Release":
-		return Release, nil
+		return Release
 	case "Settlement":
-		return Settlement, nil
+		return Settlement
 	default:
-		return -1, errors.New("invalid actionEnums string")
+		return nil
 	}
 }

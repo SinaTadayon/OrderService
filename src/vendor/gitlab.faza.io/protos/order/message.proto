@@ -25,7 +25,7 @@ message MessageResponse {
 //}
 
 message MetaFilter {
-    string name = 1;
+    string type = 1;
     string opt = 2;
     string value = 3;
 }
@@ -38,18 +38,29 @@ message MetaSorts {
 message RequestMetadata {
     uint64 userId = 1;
     string userType = 2;
-    uint32 page = 3;
-    uint32 perPage = 4;
-    repeated MetaSorts sorts = 5;
-    repeated MetaFilter filters = 6;
+    uint64 orderId = 3;
+    uint64 itemId = 4;
+    uint32 page = 5;
+    uint32 perPage = 6;
+    string ipAddress = 7;
+    MetaAction action = 8;
+    repeated MetaSorts sorts = 9;
+    repeated MetaFilter filters = 10;
+}
+
+message MetaAction {
+    string actionType = 1;
+    string actionState = 2;
 }
 
 message MessageRequest {
-    string requestName = 1;
-    string requestType = 2;
-    google.protobuf.Timestamp time = 3;
-    RequestMetadata meta = 4;
-    google.protobuf.Any Data = 5;
+    string Name = 1;
+    string Type = 2;
+    string ADT = 3;
+    string Method = 4;
+    google.protobuf.Timestamp time = 5;
+    RequestMetadata meta = 6;
+    google.protobuf.Any Data = 7;
 }
 
 message ErrorDetail {
@@ -61,17 +72,9 @@ message ValidationErr {
     string desc = 2;
 }
 
-// general
-message actionRequest {
-    string orderId = 1;
-    string state = 2;
-    string action = 3;
-    google.protobuf.Any data = 4;
-}
-
 message actionResponse {
-    string orderId = 1;
-    string itemId = 2;
+    uint64 orderId = 1;
+    uint64 itemId = 2;
 }
 
 /////////////////////////////////////////////////////////////
@@ -135,12 +138,15 @@ message SellerOrderDetail {
 message SellerOrderReturnList {
     message ItemOrderList {
         uint64 orderId = 1;
-        string orderRequestTimestamp = 2;
-        string returnRequestTimestamp = 3;
-        uint64 amount = 4;
-        string title = 5;
-        string brand = 6;
-        int32 quantity = 7;
+        uint64 itemId = 2;
+        string sku = 3;
+        string inventoryId = 4;
+        string orderRequestTimestamp = 5;
+        string returnRequestTimestamp = 6;
+        uint64 amount = 7;
+        string title = 8;
+        string brand = 9;
+        int32 quantity = 10;
         message ShipmentAddress {
             string firstName = 1;
             string lastName = 2;
@@ -150,17 +156,18 @@ message SellerOrderReturnList {
             string province = 6;
             string neighbourhood = 7;
         }
-        ShipmentAddress address = 8;
+        ShipmentAddress address = 11;
     };
     repeated ItemOrderList items = 1;
 }
 
 message SellerOrderReturnDetail {
     uint64 orderId = 1;
-    uint64 amount = 2 ;
-    string status = 3 ;
-    string orderRequestTimestamp = 4;
-    string returnRequestTimestamp = 5;
+    uint64 itemId = 2;
+    uint64 amount = 3;
+    string status = 4;
+    string orderRequestTimestamp = 5;
+    string returnRequestTimestamp = 6;
     message ShipmentAddress {
         string firstName = 1;
         string lastName = 2;
@@ -175,7 +182,7 @@ message SellerOrderReturnDetail {
         string long = 11;
         string zipCode = 12;
     }
-    ShipmentAddress address = 6;
+    ShipmentAddress address = 7;
 
     message ItemDetail {
         string sku = 1;
@@ -200,16 +207,16 @@ message SellerOrderReturnDetail {
         Invoice invoice = 11;
     }
 
-    repeated ItemDetail items = 7;
+    repeated ItemDetail items = 8;
 }
 
 message SellerApprovalPendingAction {
     message Item {
         string  inventoryId = 1;
         int32   quantity = 2;
+        repeated string reasons = 3;
     }
     repeated Item items = 1;
-    repeated string reasons = 2;
 }
 
 message SellerShipmentPendingAction {
@@ -224,11 +231,10 @@ message SellerShipmentPendingAction {
 message SellerReturnRequestAction {
     message Item {
         string  inventoryId = 1;
+        repeated string reasons = 2;
     }
     repeated Item items = 1;
-    string reasons = 2;
 }
-
 
 /////////////////////////////////////////////////////////////
 // buyer messages
@@ -298,7 +304,7 @@ message BuyerOrderAction {
     message Item {
         string  inventoryId = 1;
         int32   quantity = 2;
-        string reasons = 3;
+        repeated string reasons = 3;
     }
     repeated Item items = 1;
 }

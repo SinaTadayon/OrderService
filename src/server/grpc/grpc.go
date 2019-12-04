@@ -3,6 +3,12 @@ package grpc_server
 import (
 	"context"
 	"fmt"
+	"gitlab.faza.io/order-project/order-service/domain/actions"
+	buyer_action "gitlab.faza.io/order-project/order-service/domain/actions/buyer"
+	operator_action "gitlab.faza.io/order-project/order-service/domain/actions/operator"
+	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
+	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
+	"gitlab.faza.io/order-project/order-service/domain/states"
 	"strconv"
 	"time"
 
@@ -28,6 +34,91 @@ import (
 	"google.golang.org/grpc"
 )
 
+type RequestADT string
+type RequestType string
+type RequestName string
+type UserType string
+type SortDirection string
+type FilterType string
+type FilterValue string
+type ActionType string
+type Action string
+
+const (
+	OrderStateFilter       FilterType = "OrderState"
+	OrderReturnStateFilter FilterType = "OrderReturnState"
+)
+
+const (
+	ApprovalPendingFilter       FilterValue = "ApprovalPending"
+	ShipmentPendingFilter       FilterValue = "ShipmentPending"
+	DeliveredFilter             FilterValue = "Delivered"
+	DeliveryFailedFilter        FilterValue = "DeliveryFailed"
+	ReturnRequestPendingFilter  FilterValue = "ReturnRequestPending"
+	ReturnShipmentPendingFilter FilterValue = "ReturnShipmentPending"
+	ReturnDeliveredFilter       FilterValue = "ReturnDelivered"
+	ReturnDeliveryFailedFilter  FilterValue = "ReturnDeliveryFailed"
+)
+
+const (
+	ApprovalPendingActionState       ActionType = "ApprovalPending"
+	ShipmentPendingActionState       ActionType = "ShipmentPending"
+	ShippedActionState               ActionType = "Shipped"
+	DeliveredActionState             ActionType = "Delivered"
+	ReturnRequestPendingActionState  ActionType = "ReturnRequestPending"
+	ReturnShipmentPendingActionState ActionType = "ReturnShipmentPending"
+	ReturnShippedActionState         ActionType = "ReturnShipped"
+	ReturnDeliveredActionState       ActionType = "ReturnDelivered"
+)
+
+const (
+	DeliveryDelayAction        Action = "DeliveryDelay"
+	SubmitReturnRequestAction  Action = "SubmitReturnRequest"
+	EnterShipmentDetailsAction Action = "EnterShipmentDetails"
+	DeliverAction              Action = "Deliver"
+	DeliveryFailAction         Action = "DeliveryFail"
+	ApproveAction              Action = "Approve"
+	RejectAction               Action = "Reject"
+	CancelAction               Action = "Cancel"
+	AcceptReturnAction         Action = "AcceptReturn"
+	CancelReturnAction         Action = "CancelReturn"
+	RejectReturnAction         Action = "RejectReturn"
+)
+
+const (
+	DataReqType   RequestType = "Data"
+	ActionReqType RequestType = "Action"
+)
+
+const (
+	ListType   RequestADT = "List"
+	SingleType RequestADT = "Single"
+)
+
+const (
+	OperatorUser UserType = "Operator"
+	SellerUser   UserType = "Seller"
+	BuyerUser    UserType = "Buyer"
+)
+
+const (
+	SellerOrderList         RequestName = "SellerOrderList"
+	SellerOrderDetail       RequestName = "SellerOrderDetail"
+	SellerOrderReturnList   RequestName = "SellerOrderReturnList"
+	SellerOrderReturnDetail RequestName = "SellerOrderReturnDetail"
+
+	BuyerOrderList          RequestName = "BuyerOrderList"
+	BuyerOrderDetail        RequestName = "BuyerOrderDetail"
+	BuyerReturnOrderReports RequestName = "BuyerReturnOrderReports"
+	BuyerReturnOrderList    RequestName = "BuyerReturnOrderList"
+	BuyerReturnOrderDetail  RequestName = "BuyerReturnOrderDetail"
+)
+
+const (
+	ASC  SortDirection = "ASC"
+	DESC SortDirection = "DESC"
+)
+
 const (
 	// ISO8601 standard time format
 	ISO8601 = "2006-01-02T15:04:05-0700"
@@ -36,32 +127,75 @@ const (
 type Server struct {
 	pb.UnimplementedOrderServiceServer
 	pg.UnimplementedBankResultHookServer
-	flowManager domain.IFlowManager
-	address     string
-	port        uint16
+	flowManager  domain.IFlowManager
+	address      string
+	port         uint16
+	filterStates map[FilterValue][]states.IEnumState
+	actionStates map[ActionType][]actions.IEnumAction
 }
 
 func NewServer(address string, port uint16, flowManager domain.IFlowManager) Server {
-	return Server{flowManager: flowManager, address: address, port: port}
+	filterStatesMap := make(map[FilterValue][]states.IEnumState, 8)
+	filterStatesMap[ApprovalPendingFilter] = []states.IEnumState{states.SellerApprovalPending}
+	filterStatesMap[ShipmentPendingFilter] = []states.IEnumState{states.ShipmentPending}
+	filterStatesMap[DeliveredFilter] = []states.IEnumState{states.Shipped, states.DeliveryPending,
+		states.DeliveryDelayed, states.Delivered}
+	filterStatesMap[DeliveryFailedFilter] = []states.IEnumState{states.DeliveryFailed}
+	filterStatesMap[ReturnRequestPendingFilter] = []states.IEnumState{states.ReturnRequestPending}
+	filterStatesMap[ReturnShipmentPendingFilter] = []states.IEnumState{states.ReturnShipmentPending}
+	filterStatesMap[ReturnDeliveredFilter] = []states.IEnumState{states.ReturnShipped, states.ReturnDeliveryPending,
+		states.ReturnDeliveryDelayed, states.ReturnDelivered}
+	filterStatesMap[ReturnDeliveryFailedFilter] = []states.IEnumState{states.ReturnDeliveryFailed}
+
+	actionStateMap := make(map[ActionType][]actions.IEnumAction, 8)
+	actionStateMap[ApprovalPendingActionState] = []actions.IEnumAction{seller_action.Approve, seller_action.Reject, buyer_action.Cancel}
+	actionStateMap[ShipmentPendingActionState] = []actions.IEnumAction{seller_action.EnterShipmentDetails, seller_action.Cancel, buyer_action.Cancel}
+	actionStateMap[ShippedActionState] = []actions.IEnumAction{buyer_action.DeliveryDelay, operator_action.Deliver}
+	actionStateMap[DeliveredActionState] = []actions.IEnumAction{buyer_action.SubmitReturnRequest}
+	actionStateMap[ReturnRequestPendingActionState] = []actions.IEnumAction{buyer_action.CancelReturn, seller_action.RejectReturn, seller_action.AcceptReturn}
+	actionStateMap[ReturnShipmentPendingActionState] = []actions.IEnumAction{buyer_action.EnterShipmentDetails}
+	actionStateMap[ReturnShippedActionState] = []actions.IEnumAction{seller_action.Deliver, seller_action.DeliveryFail}
+	actionStateMap[ReturnDeliveredActionState] = []actions.IEnumAction{seller_action.RejectReturn, seller_action.AcceptReturn}
+
+	return Server{flowManager: flowManager, address: address, port: port, filterStates: filterStatesMap, actionStates: actionStateMap}
 }
 
-func (server *Server) OrderRequestsHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
+func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
 
-	flowManagerCtx, _ := context.WithTimeout(context.Background(), 3*time.Second)
-	promiseHandler := server.flowManager.MessageHandler(flowManagerCtx, req)
-	futureData := <-promiseHandler.Channel()
-	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
-		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
+	if err != nil {
+		logger.Err("RequestHandler() => UserService.AuthenticateContextToken failed, error: %s ", err)
+		return nil, status.Error(codes.Code(promise.Forbidden), "User Not Authorized")
 	}
 
-	response, ok := futureData.Data.(pb.MessageResponse)
-	if ok != true {
-		logger.Err("received data of futureData invalid, type: %T, value, %v", futureData.Data, futureData.Data)
-		return nil, status.Error(500, "Unknown Error")
+	// TODO check acl
+	if uint64(userAcl.User().UserID) != req.Meta.UserId {
+		logger.Err("RequestHandler() => UserId mismatch with token userId, error: %s ", err)
+		return nil, status.Error(codes.Code(promise.InternalError), "User Not Authorized")
 	}
 
-	return &response, nil
+	reqType := RequestType(req.Type)
+	if reqType == DataReqType {
+		return server.requestDataHandler(ctx, req)
+	} else {
+		return server.requestActionHandler(ctx, req)
+	}
+
+	//flowManagerCtx, _ := context.WithTimeout(context.Background(), 3*time.Second)
+	//promiseHandler := server.flowManager.MessageHandler(flowManagerCtx, req)
+	//futureData := <-promiseHandler.Channel()
+	//if futureData.Ex != nil {
+	//	futureErr := futureData.Ex.(promise.FutureError)
+	//	return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+	//}
+	//
+	//response, ok := futureData.Data.(pb.MessageResponse)
+	//if ok != true {
+	//	logger.Err("received data of futureData invalid, type: %T, value, %v", futureData.Data, futureData.Data)
+	//	return nil, status.Error(500, "Unknown Error")
+	//}
+	//
+	//return &response, nil
 
 	//logger.Audit("Req Order Id: %v", req.GetOrderId())
 	//logger.Audit("Req Item Id: %v", req.GetItemId())
@@ -137,6 +271,140 @@ func (server *Server) OrderRequestsHandler(ctx context.Context, req *pb.MessageR
 	//}
 	//
 	//return &message.Response{}, st.Err()
+}
+
+func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
+	reqName := RequestName(req.Name)
+	userType := UserType(req.Meta.UserType)
+	reqADT := RequestADT(req.ADT)
+
+	var filterType FilterType
+	var filterValue FilterValue
+	var sortName string
+	var sortDirection SortDirection
+	if req.Meta.Filters != nil {
+		filterType = FilterType(req.Meta.Filters[0].Type)
+		filterValue = FilterValue(req.Meta.Filters[0].Value)
+	}
+
+	if req.Meta.Sorts != nil {
+		sortName = req.Meta.Sorts[0].Name
+		sortDirection = SortDirection(req.Meta.Sorts[0].Direction)
+	}
+
+	if reqName == SellerOrderList && filterType != OrderStateFilter {
+		logger.Err("requestDataHandler() => request name %s mismatch with %s filter, request: %v", reqName, filterType, req)
+		return nil, status.Error(codes.Code(promise.BadRequest), "Mismatch Request name with filter")
+	}
+
+	if (reqName == SellerOrderReturnList || reqName == BuyerReturnOrderList) && filterType != OrderReturnStateFilter {
+		logger.Err("requestDataHandler() => request name %s mismatch with %s filterType, request: %v", reqName, filterType, req)
+		return nil, status.Error(codes.Code(promise.BadRequest), "Mismatch Request name with filterType")
+	}
+
+	if userType == SellerUser && (reqName != SellerOrderList || reqName != SellerOrderDetail ||
+		reqName != SellerOrderReturnList || reqName != SellerOrderReturnDetail) {
+		logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
+		return nil, status.Error(codes.Code(promise.BadRequest), "Mismatch Request name with RequestName")
+	}
+
+	if userType == BuyerUser && (reqName != BuyerOrderList || reqName != BuyerOrderDetail ||
+		reqName != BuyerReturnOrderReports || reqName != BuyerReturnOrderList || reqName != BuyerReturnOrderDetail) {
+		logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
+		return nil, status.Error(codes.Code(promise.BadRequest), "Mismatch Request name with RequestName")
+	}
+
+	if req.Meta.OrderId > 0 && reqADT != SingleType {
+		logger.Err("requestDataHandler() => %s orderId mismatch with %s requestADT, request: %v", userType, reqADT, req)
+		return nil, status.Error(codes.Code(promise.BadRequest), "Mismatch Request name with RequestADT")
+	}
+
+	switch reqName {
+	case SellerOrderList:
+		return server.sellerOrderListHandler(req.Meta.UserId, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+	case SellerOrderDetail:
+		return server.sellerOrderDetailHandler(req.Meta.UserId, req.Meta.OrderId, req.Meta.ItemId)
+	case SellerOrderReturnList:
+		return server.sellerOrderReturnListHandler(req.Meta.UserId, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+	case SellerOrderReturnDetail:
+		return server.sellerOrderReturnDetailHandler(req.Meta.UserId, req.Meta.OrderId, req.Meta.ItemId)
+	case BuyerOrderList:
+		return server.buyerOrderListHandler(req.Meta.UserId, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+	case BuyerOrderDetail:
+		return server.buyerOrderDetailHandler(req.Meta.UserId, req.Meta.OrderId, req.Meta.ItemId)
+	case BuyerReturnOrderReports:
+		return server.buyerReturnOrderReportsHandler(req.Meta.UserId, req.Meta.OrderId, req.Meta.ItemId)
+	case BuyerReturnOrderList:
+		return server.buyerReturnOrderListHandler(req.Meta.UserId, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+	case BuyerReturnOrderDetail:
+		return server.buyerReturnOrderDetailHandler(req.Meta.UserId, req.Meta.OrderId, req.Meta.ItemId)
+	}
+
+	return nil, status.Error(codes.Code(promise.BadRequest), "Invalid Request")
+}
+
+func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
+	actionType := ActionType(req.Meta.Action.ActionType)
+	var actorAction actions.IEnumAction
+
+	actionEnums, ok := server.actionStates[actionType]
+	if !ok {
+		logger.Err("requestActionHandler() => %s actionType not supported, request: %v", actionType, req)
+		return nil, status.Error(codes.Code(promise.BadRequest), "ActionType Invalid")
+	}
+
+	for _, actionEnum := range actionEnums {
+		if actionEnum.ActionName() == req.Meta.Action.ActionState {
+			actorAction = actionEnum.FromString(req.Meta.Action.ActionState)
+			break
+		}
+	}
+
+	if actorAction == nil {
+		logger.Err("requestActionHandler() => %s action invalid, request: %v", req.Meta.Action.Action, req)
+		return nil, status.Error(codes.Code(promise.BadRequest), "Action Invalid")
+	}
+
+}
+
+func (server *Server) sellerOrderListHandler(userId uint64, filter FilterValue, page, perPage uint32,
+	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
+
+}
+
+func (server *Server) sellerOrderDetailHandler(userId, orderId, itemId uint64) (*pb.MessageResponse, error) {
+
+}
+
+func (server *Server) sellerOrderReturnListHandler(userId uint64, filter FilterValue, page, perPage uint32,
+	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
+
+}
+
+func (server *Server) sellerOrderReturnDetailHandler(userId, orderId, itemId uint64) (*pb.MessageResponse, error) {
+
+}
+
+func (server *Server) buyerOrderListHandler(userId uint64, filter FilterValue, page, perPage uint32,
+	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
+
+}
+
+func (server *Server) buyerOrderDetailHandler(userId, orderId, itemId uint64) (*pb.MessageResponse, error) {
+
+}
+
+func (server *Server) buyerReturnOrderReportsHandler(userId, orderId, itemId uint64) (*pb.MessageResponse, error) {
+
+}
+
+func (server *Server) buyerReturnOrderListHandler(userId uint64, filter FilterValue, page, perPage uint32,
+	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
+
+}
+
+func (server *Server) buyerReturnOrderDetailHandler(userId, orderId, itemId uint64) (*pb.MessageResponse, error) {
+
 }
 
 func (server *Server) PaymentGatewayHook(ctx context.Context, req *pg.PaygateHookRequest) (*pg.PaygateHookResponse, error) {

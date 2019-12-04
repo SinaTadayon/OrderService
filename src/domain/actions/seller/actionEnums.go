@@ -2,6 +2,7 @@ package seller_action
 
 import (
 	"github.com/pkg/errors"
+	"gitlab.faza.io/order-project/order-service/domain/actions"
 )
 
 type ActionEnums int
@@ -14,6 +15,7 @@ var actionStrings = []string{
 	"CancelReturn",
 	"RejectReturn",
 	"Deliver",
+	"DeliveryFail",
 	"EnterShipmentDetails",
 }
 
@@ -25,52 +27,55 @@ const (
 	CancelReturn
 	RejectReturn
 	Deliver
+	DeliveryFail
 	EnterShipmentDetails
 )
 
-func (action ActionEnums) ActionName() string {
-	return action.String()
+func (actionEnum ActionEnums) ActionName() string {
+	return actionEnum.String()
 }
 
-func (action ActionEnums) ActionOrdinal() int {
-	if action < Approve || action > EnterShipmentDetails {
+func (actionEnum ActionEnums) ActionOrdinal() int {
+	if actionEnum < Approve || actionEnum > EnterShipmentDetails {
 		return -1
 	}
 
-	return int(action)
+	return int(actionEnum)
 }
 
-func (action ActionEnums) Values() []string {
+func (actionEnum ActionEnums) Values() []string {
 	return actionStrings
 }
 
-func (action ActionEnums) String() string {
-	if action < Approve || action > EnterShipmentDetails {
+func (actionEnum ActionEnums) String() string {
+	if actionEnum < Approve || actionEnum > EnterShipmentDetails {
 		return ""
 	}
 
-	return actionStrings[action]
+	return actionStrings[actionEnum]
 }
 
-func FromString(action string) (ActionEnums, error) {
+func (actionEnum ActionEnums) FromString(action string) actions.IEnumAction {
 	switch action {
 	case "Approve":
-		return Approve, nil
+		return Approve
 	case "Reject":
-		return Reject, nil
+		return Reject
 	case "Cancel":
-		return Cancel, nil
+		return Cancel
 	case "Deliver":
-		return Deliver, nil
+		return Deliver
+	case "DeliveryFail":
+		return DeliveryFail
 	case "AcceptReturn":
-		return AcceptReturn, nil
+		return AcceptReturn
 	case "CancelReturn":
-		return CancelReturn, nil
+		return CancelReturn
 	case "RejectReturn":
-		return RejectReturn, nil
+		return RejectReturn
 	case "EnterShipmentDetails":
-		return EnterShipmentDetails, nil
+		return EnterShipmentDetails
 	default:
-		return -1, errors.New("invalid actorActionImpl string")
+		return nil
 	}
 }

@@ -2,6 +2,7 @@ package payment_action
 
 import (
 	"github.com/pkg/errors"
+	"gitlab.faza.io/order-project/order-service/domain/actions"
 )
 
 type ActionEnums int
@@ -16,37 +17,37 @@ const (
 	Fail
 )
 
-func (action ActionEnums) ActionName() string {
-	return action.String()
+func (actionEnum ActionEnums) ActionName() string {
+	return actionEnum.String()
 }
 
-func (action ActionEnums) ActionOrdinal() int {
-	if action < Success || action > Fail {
+func (actionEnum ActionEnums) ActionOrdinal() int {
+	if actionEnum < Success || actionEnum > Fail {
 		return -1
 	}
 
-	return int(action)
+	return int(actionEnum)
 }
 
-func (action ActionEnums) Values() []string {
+func (actionEnum ActionEnums) Values() []string {
 	return actionStrings
 }
 
-func (action ActionEnums) String() string {
-	if action < Success || action > Fail {
+func (actionEnum ActionEnums) String() string {
+	if actionEnum < Success || actionEnum > Fail {
 		return ""
 	}
 
-	return actionStrings[action]
+	return actionStrings[actionEnum]
 }
 
-func FromString(action string) (ActionEnums, error) {
+func (actionEnum ActionEnums) FromString(action string) actions.IEnumAction {
 	switch action {
 	case "Success":
-		return Success, nil
+		return Success
 	case "Fail":
-		return Fail, nil
+		return Fail
 	default:
-		return -1, errors.New("invalid actionEnums string")
+		return nil
 	}
 }

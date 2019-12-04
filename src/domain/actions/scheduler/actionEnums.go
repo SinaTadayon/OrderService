@@ -1,7 +1,7 @@
 package scheduler_action
 
 import (
-	"github.com/pkg/errors"
+	"gitlab.faza.io/order-project/order-service/domain/actions"
 )
 
 type ActionEnums int
@@ -9,9 +9,9 @@ type ActionEnums int
 var actionStrings = []string{
 	"Cancel",
 	"Close",
-	"Delay",
+	"DeliveryDelay",
 	"Deliver",
-	"Pending",
+	"DeliveryPending",
 	"RejectReturn",
 	"AcceptReturn",
 }
@@ -19,54 +19,54 @@ var actionStrings = []string{
 const (
 	Cancel ActionEnums = iota
 	Close
-	Delay
+	DeliveryDelay
 	Deliver
-	Pending
+	DeliveryPending
 	RejectReturn
 	AcceptReturn
 )
 
-func (action ActionEnums) ActionName() string {
-	return action.String()
+func (actionEnum ActionEnums) ActionName() string {
+	return actionEnum.String()
 }
 
-func (action ActionEnums) ActionOrdinal() int {
-	if action < Cancel || action > AcceptReturn {
+func (actionEnum ActionEnums) ActionOrdinal() int {
+	if actionEnum < Cancel || actionEnum > AcceptReturn {
 		return -1
 	}
 
-	return int(action)
+	return int(actionEnum)
 }
 
-func (action ActionEnums) Values() []string {
+func (actionEnum ActionEnums) Values() []string {
 	return actionStrings
 }
 
-func (action ActionEnums) String() string {
-	if action < Cancel || action > AcceptReturn {
+func (actionEnum ActionEnums) String() string {
+	if actionEnum < Cancel || actionEnum > AcceptReturn {
 		return ""
 	}
 
-	return actionStrings[action]
+	return actionStrings[actionEnum]
 }
 
-func FromString(action string) (ActionEnums, error) {
+func (actionEnum ActionEnums) FromString(action string) actions.IEnumAction {
 	switch action {
 	case "Cancel":
-		return Cancel, nil
+		return Cancel
 	case "Close":
-		return Close, nil
-	case "Delay":
-		return Delay, nil
-	case "Pending":
-		return Pending, nil
+		return Close
+	case "DeliveryDelay":
+		return DeliveryDelay
+	case "DeliveryPending":
+		return DeliveryPending
 	case "Deliver":
-		return Deliver, nil
+		return Deliver
 	case "RejectReturn":
-		return RejectReturn, nil
+		return RejectReturn
 	case "AcceptReturn":
-		return AcceptReturn, nil
+		return AcceptReturn
 	default:
-		return -1, errors.New("invalid actionEnums string")
+		return nil
 	}
 }

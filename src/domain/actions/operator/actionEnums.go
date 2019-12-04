@@ -1,13 +1,13 @@
 package operator_action
 
 import (
-	"github.com/pkg/errors"
+	"gitlab.faza.io/order-project/order-service/domain/actions"
 )
 
 type ActionEnums int
 
 var actionStrings = []string{
-	"Delay",
+	"DeliveryDelay",
 	"Deliver",
 	"DeliveryFail",
 	"AcceptReturn",
@@ -16,7 +16,7 @@ var actionStrings = []string{
 }
 
 const (
-	Delay ActionEnums = iota
+	DeliveryDelay ActionEnums = iota
 	Deliver
 	DeliveryFail
 	AcceptReturn
@@ -24,45 +24,45 @@ const (
 	CancelReturn
 )
 
-func (action ActionEnums) ActionName() string {
-	return action.String()
+func (actionEnum ActionEnums) ActionName() string {
+	return actionEnum.String()
 }
 
-func (action ActionEnums) ActionOrdinal() int {
-	if action < Delay || action > CancelReturn {
+func (actionEnum ActionEnums) ActionOrdinal() int {
+	if actionEnum < DeliveryDelay || actionEnum > CancelReturn {
 		return -1
 	}
 
-	return int(action)
+	return int(actionEnum)
 }
 
-func (action ActionEnums) Values() []string {
+func (actionEnum ActionEnums) Values() []string {
 	return actionStrings
 }
 
-func (action ActionEnums) String() string {
-	if action < Delay || action > CancelReturn {
+func (actionEnum ActionEnums) String() string {
+	if actionEnum < DeliveryDelay || actionEnum > CancelReturn {
 		return ""
 	}
 
-	return actionStrings[action]
+	return actionStrings[actionEnum]
 }
 
-func FromString(action string) (ActionEnums, error) {
+func (actionEnum ActionEnums) FromString(action string) actions.IEnumAction {
 	switch action {
-	case "Delay":
-		return Delay, nil
+	case "DeliveryDelay":
+		return DeliveryDelay
 	case "Deliver":
-		return Deliver, nil
+		return Deliver
 	case "DeliveryFail":
-		return DeliveryFail, nil
+		return DeliveryFail
 	case "AcceptReturn":
-		return AcceptReturn, nil
+		return AcceptReturn
 	case "RejectReturn":
-		return RejectReturn, nil
+		return RejectReturn
 	case "CancelReturn":
-		return CancelReturn, nil
+		return CancelReturn
 	default:
-		return -1, errors.New("invalid actionEnums string")
+		return nil
 	}
 }

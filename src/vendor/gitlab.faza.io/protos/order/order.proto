@@ -6,7 +6,7 @@ import "message.proto";
 import "google/protobuf/any.proto";
 
 service OrderService {
-    rpc OrderRequestsHandler (MessageRequest) returns (MessageResponse);
+    rpc RequestHandler (MessageRequest) returns (MessageResponse);
 
     rpc NewOrder (RequestNewOrder) returns (ResponseNewOrder);
     rpc SellerFindAllItems (RequestIdentifier) returns (ResponseSellerFindAllItems);
