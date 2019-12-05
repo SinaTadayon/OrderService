@@ -47,12 +47,12 @@ func (shipmentRejectedBySeller shipmentRejectedBySellerStep) ProcessOrder(ctx co
 	logger.Audit("shipmentRejectedBySeller step, orderId: %d", order.OrderId)
 
 	if len(order.Items) == len(itemsId) {
-		shipmentRejectedBySeller.UpdateAllOrderStatus(ctx, &order, itemsId, states.ClosedStatus, false)
+		shipmentRejectedBySeller.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderClosedStatus, false)
 	} else {
-		shipmentRejectedBySeller.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, false)
+		shipmentRejectedBySeller.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, false)
 	}
 
-	shipmentRejectedBySeller.updateOrderItemsProgress(ctx, &order, itemsId, RejectedBySeller, true, states.ClosedStatus)
+	shipmentRejectedBySeller.updateOrderItemsProgress(ctx, &order, itemsId, RejectedBySeller, true, states.OrderClosedStatus)
 	if err := shipmentRejectedBySeller.persistOrder(ctx, &order); err != nil {
 		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)

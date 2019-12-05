@@ -256,7 +256,7 @@ func doUpdateOrderStep(order *entities.Order, index int, stepName string, stepIn
 		Name:      stepName,
 		Index:     stepIndex,
 		CreatedAt: order.Items[index].Progress.CreatedAt,
-		//ActionHistory: make([]entities.Action, 0, 1),
+		//ActionHistory: make([]entities.Actions, 0, 1),
 	}
 
 	if order.Items[index].Progress.StepsHistory == nil || len(order.Items[index].Progress.StepsHistory) == 0 {
@@ -327,7 +327,7 @@ func TestSchedulerSellerApprovalPending(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "20.Seller_Approval_Pending", 20)
-	updateOrderItemsProgress(newOrder, nil, "ApprovalPending", true, states.InProgressStatus)
+	updateOrderItemsProgress(newOrder, nil, "ApprovalPending", true, states.OrderInProgressStatus)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -358,7 +358,7 @@ func TestSchedulerSellerShipmentPending(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
-	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, states.InProgressStatus)
+	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, states.OrderInProgressStatus)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -389,7 +389,7 @@ func TestSchedulerShipmentDeliveredPending(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "32.Shipment_Delivered", 32)
-	updateOrderItemsProgress(newOrder, nil, "ShipmentDeliveredPending", true, states.InProgressStatus)
+	updateOrderItemsProgress(newOrder, nil, "ShipmentDeliveredPending", true, states.OrderInProgressStatus)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -416,7 +416,7 @@ func TestSchedulerShipmentDeliveredPending(t *testing.T) {
 //	data := []ScheduleModel {
 //		{
 //			Step:   "32.Shipment_Delivered",
-//			Action: "ShipmentDeliveredPending",
+//			Actions: "ShipmentDeliveredPending",
 //		},
 //	}
 //

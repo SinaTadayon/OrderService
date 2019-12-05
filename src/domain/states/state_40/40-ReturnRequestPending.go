@@ -46,23 +46,23 @@ func (shipmentSuccess shipmentSuccessStep) ProcessMessage(ctx context.Context, r
 func (shipmentSuccess shipmentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
 
 	logger.Audit("shipmentSuccess step, orderId: %d", order.OrderId)
-	shipmentSuccess.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, false)
+	shipmentSuccess.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, false)
 
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, itemsId, StockSettlement)
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, nil, StockSettlement)
 	futureData := iPromise.Get()
 	if futureData == nil {
-		shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, StockSettlement, false, states.ClosedStatus)
+		shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, StockSettlement, false, states.OrderClosedStatus)
 		if err := shipmentSuccess.persistOrder(ctx, &order); err != nil {
 		}
 		logger.Err("StockService future channel has been closed, order: %d", order.OrderId)
 	} else if futureData.Ex != nil {
-		shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, StockSettlement, false, states.ClosedStatus)
+		shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, StockSettlement, false, states.OrderClosedStatus)
 		if err := shipmentSuccess.persistOrder(ctx, &order); err != nil {
 		}
 		logger.Err("Settlement stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
 	}
 
-	shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, ShipmentSuccess, true, states.InProgressStatus)
+	shipmentSuccess.updateOrderItemsProgress(ctx, &order, itemsId, ShipmentSuccess, true, states.OrderInProgressStatus)
 	if err := shipmentSuccess.persistOrder(ctx, &order); err != nil {
 		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)

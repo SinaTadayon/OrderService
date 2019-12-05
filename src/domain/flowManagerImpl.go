@@ -85,13 +85,13 @@ import (
 )
 
 type iFlowManagerImpl struct {
-	nameStepsMap  map[string]states.IStep
-	indexStepsMap map[int]states.IStep
+	nameStepsMap  map[string]states.IState
+	indexStepsMap map[int]states.IState
 }
 
 func NewFlowManager() (IFlowManager, error) {
-	nameStepsMap := make(map[string]states.IStep, 64)
-	indexStepsMap := make(map[int]states.IStep, 64)
+	nameStepsMap := make(map[string]states.IState, 64)
+	indexStepsMap := make(map[int]states.IState, 64)
 
 	iFlowManagerImpl := &iFlowManagerImpl{nameStepsMap, indexStepsMap}
 	if err := iFlowManagerImpl.setupFlowManager(); err != nil {
@@ -101,36 +101,22 @@ func NewFlowManager() (IFlowManager, error) {
 	return iFlowManagerImpl, nil
 }
 
-func (flowManager *iFlowManagerImpl) GetNameStepsMap() map[string]states.IStep {
+func (flowManager *iFlowManagerImpl) GetNameStepsMap() map[string]states.IState {
 	return flowManager.nameStepsMap
 }
 
-func (flowManager *iFlowManagerImpl) GetIndexStepsMap() map[int]states.IStep {
+func (flowManager *iFlowManagerImpl) GetIndexStepsMap() map[int]states.IState {
 	return flowManager.indexStepsMap
 }
 
 func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	var emptyState []states_old.IState
-	var emptyStep []states.IStep
-
-	//////////////////////////////////////////////////////////////////
-	// Pay To Market
-	// create empty step93 that required for step95
-	step93 := pay_to_market_step.New(emptyStep, emptyStep, emptyState...)
-	baseStep93 := step93.(states.IBaseStep)
-
-	// add to flowManager maps
-	flowManager.indexStepsMap[step93.Index()] = step93
-	flowManager.nameStepsMap[step93.Name()] = step93
-
-	flowManager.createStep94()
-	flowManager.createStep95()
-	flowManager.createStep93(baseStep93)
+	var emptyStep []states.IState
 
 	//////////////////////////////////////////////////////////////////
 	// Pay To SellerInfo
 	// create empty step90 which is required for step92
-	step90 := pay_to_seller_step.New(emptyStep, emptyStep, emptyState...)
+	step90 := state_90.New(emptyStep, emptyStep, emptyState...)
 	baseStep90 := step90.(states.IBaseStep)
 
 	// add to flowManager maps
@@ -204,11 +190,11 @@ func (flowManager *iFlowManagerImpl) createStep94() {
 	var emptyState []states_old.IState
 	var emptyStep []states.IStep
 
-	// Create Finalize State
+	// Create Finalize Status
 	finalizeState := finalize_state.New(1, emptyState, emptyState,
 		finalize_action.NewOf(finalize_action.MarketFinalizeAction))
 
-	// Create Notification State
+	// Create Notification Status
 	notificationState := notification_state.New(0, []states_old.IState{finalizeState}, emptyState,
 		notification_action.NewOf(notification_action.MarketNotificationAction))
 	step94 := pay_to_market_success_step.New(emptyStep, emptyStep, notificationState, finalizeState)
@@ -283,7 +269,7 @@ func (flowManager *iFlowManagerImpl) createStep91() {
 	nextToStep93 := next_to_step_state.New(1, emptyState, emptyState,
 		next_to_step_action.NewOf(next_to_step_action.NextToStepAction), actionStepMap)
 
-	// Create Notification State
+	// Create Notification Status
 	notificationState := notification_state.New(0, []states_old.IState{nextToStep93}, emptyState,
 		notification_action.NewOf(notification_action.SellerNotificationAction))
 
@@ -354,11 +340,11 @@ func (flowManager *iFlowManagerImpl) createStep81() {
 	var emptyState []states_old.IState
 	var emptyStep []states.IStep
 
-	// Create Finalize State
+	// Create Finalize Status
 	finalizeState := finalize_state.New(1, emptyState, emptyState,
 		finalize_action.NewOf(finalize_action.BuyerFinalizeAction))
 
-	// Create Notification State
+	// Create Notification Status
 	notificationState := notification_state.New(0, []states_old.IState{finalizeState}, emptyState,
 		notification_action.NewOf(notification_action.BuyerNotificationAction))
 	step81 := pay_to_buyer_success_step.New(emptyStep, emptyStep, notificationState, finalizeState)
@@ -953,11 +939,11 @@ func (flowManager *iFlowManagerImpl) createStep12() {
 	var emptyState []states_old.IState
 	var emptyStep []states.IStep
 
-	// Create Finalize State
+	// Create Finalize Status
 	finalizeState := finalize_state.New(2, emptyState, emptyState,
 		finalize_action.NewOf(finalize_action.PaymentFailedFinalizeAction))
 
-	// Create Notification State
+	// Create Notification Status
 	notificationState := notification_state.New(1, []states_old.IState{finalizeState}, emptyState,
 		notification_action.NewOf(notification_action.BuyerNotificationAction))
 
@@ -999,7 +985,7 @@ func (flowManager *iFlowManagerImpl) createStep1() {
 	var emptyState []states_old.IState
 	var emptyStep []states.IStep
 
-	// Create Finalize State
+	// Create Finalize Status
 	finalizeState := finalize_state.New(1, emptyState, emptyState,
 		finalize_action.NewOf(finalize_action.OrderFailedFinalizeAction))
 
@@ -1040,6 +1026,105 @@ func (flowManager iFlowManagerImpl) MessageHandler(ctx context.Context, req *mes
 
 	step0 := flowManager.indexStepsMap[0]
 	return step0.ProcessMessage(ctx, req)
+
+	//var requestNewOrder pb.RequestNewOrder
+	//if err := ptypes.UnmarshalAny(request.Data, &requestNewOrder); err != nil {
+	//	logger.Err("Could not unmarshal requestNewOrder from anything field, error: %s, request: %v", err, request)
+	//	returnChannel := make(chan future.IDataFuture, 1)
+	//	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.BadRequest, Reason: "Invalid requestNewOrder"}}
+	//	close(returnChannel)
+	//	return future.NewFuture(returnChannel, 1, 1)
+	//}
+
+	//timestamp, err := ptypes.Timestamp(request.Time)
+	//if err != nil {
+	//	logger.Err("timestamp of requestNewOrder invalid, error: %s, requestNewOrder: %v", err, requestNewOrder)
+	//	returnChannel := make(chan future.IDataFuture, 1)
+	//	returnChannel <- future.IDataFuture{Get:nil, Ex:future.FutureError{Code: future.BadRequest, Reason:"Invalid Request Timestamp"}}
+	//	defer close(returnChannel)
+	//	return future.NewFuture(returnChannel, 1, 1)
+	//}
+
+	//value, err := global.Singletons.Converter.Map(requestNewOrder, entities.Order{})
+	//if err != nil {
+	//	logger.Err("Converter.Map requestNewOrder to order object failed, error: %s, requestNewOrder: %v", err, requestNewOrder)
+	//	returnChannel := make(chan future.IDataFuture, 1)
+	//	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.BadRequest, Reason: "Received requestNewOrder invalid"}}
+	//	defer close(returnChannel)
+	//	return future.NewFuture(returnChannel, 1, 1)
+	//}
+	//
+	//state := value.(*entities.Order)
+	//newOrderEvent := actor_event.NewActorEvent(actors.CheckoutActor, checkout_action.NewOf(checkout_action.NewOrderAction),
+	//	state, nil, nil, timestamp)
+	//
+	//checkoutState, ok := state.StatesMap()[0].(listener_state.IListenerState)
+	//if ok != true || checkoutState.ActorType() != actors.CheckoutActor {
+	//	logger.Err("checkout state doesn't exist in index 0 of statesMap, requestNewOrder: %v", requestNewOrder)
+	//	returnChannel := make(chan future.IDataFuture, 1)
+	//	returnChannel <- future.IDataFuture{Get:nil, Ex:future.FutureError{Code: future.InternalError, Reason:"Unknown Error"}}
+	//	defer close(returnChannel)
+	//	return future.NewFuture(returnChannel, 1, 1)
+	//}
+
+	//state.UpdateAllOrderStatus(ctx, state, nil, states.OrderNewStatus, false)
+	//order, err := global.Singletons.OrderRepository.Save(*state)
+	//if err != nil {
+	//	logger.Err("Save NewOrder Step Failed, error: %s, order: %v", err, state)
+	//	returnChannel := make(chan future.IDataFuture, 1)
+	//	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+	//	defer close(returnChannel)
+	//	return future.NewFuture(returnChannel, 1, 1)
+	//}
+
+	//iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, nil, StockReserved)
+	//futureData := iPromise.Get()
+	//if futureData == nil {
+	//	state.UpdateAllOrderStatus(ctx, order, nil, states.OrderClosedStatus, true)
+	//	state.updateOrderItemsProgress(ctx, order, nil, StockReserved, false, states.OrderClosedStatus)
+	//	if err := state.persistOrder(ctx, order); err != nil {
+	//	}
+	//	logger.Err("StockService future channel has been closed, order: %v", order)
+	//	returnChannel := make(chan future.IDataFuture, 1)
+	//	defer close(returnChannel)
+	//	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+	//	go func() {
+	//		state.Childes()[0].ProcessOrder(ctx, *order, nil, nil)
+	//	}()
+	//	return future.NewFuture(returnChannel, 1, 1)
+	//}
+	//
+	//if futureData.Ex != nil {
+	//	state.UpdateAllOrderStatus(ctx, order, nil, states.OrderClosedStatus, true)
+	//	state.updateOrderItemsProgress(ctx, order, nil, StockReserved, false, states.OrderClosedStatus)
+	//	if err := state.persistOrder(ctx, order); err != nil {
+	//	}
+	//	logger.Err("Reserved stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
+	//	returnChannel := make(chan future.IDataFuture, 1)
+	//	defer close(returnChannel)
+	//	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+	//	go func() {
+	//		state.Childes()[0].ProcessOrder(ctx, *order, nil, nil)
+	//	}()
+	//	return future.NewFuture(returnChannel, 1, 1)
+	//}
+	//
+	//state.updateOrderItemsProgress(ctx, order, nil, StockReserved, true, states.OrderNewStatus)
+	//if err := state.persistOrder(ctx, order); err != nil {
+	//	state.releasedStock(ctx, order)
+	//	returnChannel := make(chan future.IDataFuture, 1)
+	//	defer close(returnChannel)
+	//	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+	//
+	//	go func() {
+	//		state.Childes()[0].ProcessOrder(ctx, *order, nil, nil)
+	//	}()
+	//
+	//	return future.NewFuture(returnChannel, 1, 1)
+	//}
+	//
+	//return state.Childes()[1].ProcessOrder(ctx, *order, nil, "PaymentCallbackUrlRequest")
+	////return checkoutState.ActionListener(ctx, newOrderEvent, nil)
 
 	// TODO must be implement
 	//}
@@ -1290,7 +1375,7 @@ func (flowManager iFlowManagerImpl) BackOfficeOrderDetailView(ctx context.Contex
 		Status:    order.Status,
 		Payment: &message.PaymentInfo{
 			PaymentMethod: order.Invoice.PaymentMethod,
-			PaymentOption: order.Invoice.PaymentOption,
+			PaymentOption: order.Invoice.PaymentGateway,
 		},
 		Billing: &message.BillingInfo{
 			BuyerId:    order.BuyerInfo.BuyerId,
@@ -1338,7 +1423,7 @@ func (flowManager iFlowManagerImpl) BackOfficeOrderDetailView(ctx context.Contex
 			itemInfo.StepStatus = lastAction.Name
 		} else {
 			itemInfo.StepStatus = "none"
-			logger.Audit("BackOfficeOrderDetailView() => Action History is nil, orderId: %d, itemId: %d", order.OrderId, item.ItemId)
+			logger.Audit("BackOfficeOrderDetailView() => Actions History is nil, orderId: %d, itemId: %d", order.OrderId, item.ItemId)
 		}
 
 		//lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]

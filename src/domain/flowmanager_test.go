@@ -184,7 +184,7 @@ func traversState(states []states_old.IState) {
 		fmt.Printf("################################################\n")
 		fmt.Printf("************* => state.ActionName(): %s\n", state.Name())
 		fmt.Printf("************* => state.Index(): %d\n", state.Index())
-		fmt.Printf("************* => state.Action Type: %s\n", state.Actions().ActionType())
+		fmt.Printf("************* => state.Actions Type: %s\n", state.Actions().ActionType())
 
 		if state.Actions().ActionType() == actions.ActorAction {
 			actorAction := state.Actions().(actors.IActorAction)

@@ -4,13 +4,28 @@ import (
 	"context"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
-	"gitlab.faza.io/order-project/order-service/infrastructure/future"
+)
+
+type OrderStatus string
+type PackageStatus string
+type ActionResult string
+
+const (
+	OrderNewStatus        OrderStatus = "NEW"
+	OrderInProgressStatus OrderStatus = "IN_PROGRESS"
+	OrderClosedStatus     OrderStatus = "CLOSED"
 )
 
 const (
-	NewStatus        = "NEW"
-	InProgressStatus = "IN_PROGRESS"
-	ClosedStatus     = "CLOSED"
+	PackageNewStatus        PackageStatus = "NEW"
+	PackageInProgressStatus PackageStatus = "IN_PROGRESS"
+	PackageClosedStatus     PackageStatus = "CLOSED"
+)
+
+const (
+	ActionSuccess ActionResult = "Success"
+	ActionFail    ActionResult = "Fail"
+	ActionCancel  ActionResult = "Cancel"
 )
 
 type IState interface {
@@ -19,6 +34,7 @@ type IState interface {
 	Childes() []IState
 	Parents() []IState
 	Actions() []actions.IAction
-	Process(ctx context.Context, frame frame.IFrame) future.IFuture
+	IsActionValid(actions.IAction) bool
+	Process(ctx context.Context, frame frame.IFrame)
 	//ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture
 }

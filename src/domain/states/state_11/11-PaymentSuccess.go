@@ -53,9 +53,9 @@ func (paymentSuccess paymentSuccessStep) ProcessOrder(ctx context.Context, order
 	//	returnChannel <- future.IDataFuture{Get:nil, Ex:future.FutureError{Code: future.InternalError, Reason:"Unknown Error"}}
 	//	return future.NewFuture(returnChannel, 1, 1)
 	//}
-	logger.Audit("Order Received in %s step, orderId: %d, Action: %s", paymentSuccess.Name(), order.OrderId, PaymentSuccess)
-	paymentSuccess.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, false)
-	paymentSuccess.updateOrderItemsProgress(ctx, &order, nil, PaymentSuccess, true, states.InProgressStatus)
+	logger.Audit("Order Received in %s step, orderId: %d, Actions: %s", paymentSuccess.Name(), order.OrderId, PaymentSuccess)
+	paymentSuccess.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, false)
+	paymentSuccess.updateOrderItemsProgress(ctx, &order, nil, PaymentSuccess, true, states.OrderInProgressStatus)
 	if err := paymentSuccess.persistOrder(ctx, &order); err != nil {
 		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)

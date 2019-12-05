@@ -13,9 +13,21 @@ func Factory() Builder {
 	return *builder
 }
 
-func FactoryOf(frame IFrame, header IFrameHeader, body IFrameBody) Builder {
+func FactoryOf(frame IFrame) Builder {
 	builder := &Builder{}
-	builder.initBuilder(frame, header, body)
+	builder.initBuilder(frame, nil, nil)
+	return *builder
+}
+
+func FactoryFromHeader(header IFrameHeader) Builder {
+	builder := &Builder{}
+	builder.initBuilder(nil, header, nil)
+	return *builder
+}
+
+func FactoryFromBody(body IFrameBody) Builder {
+	builder := &Builder{}
+	builder.initBuilder(nil, nil, body)
 	return *builder
 }
 

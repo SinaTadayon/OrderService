@@ -96,7 +96,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	order.Invoice.ShipmentTotal = newOrderDto.Invoice.ShipmentTotal
 	order.Invoice.Currency = newOrderDto.Invoice.Currency
 	order.Invoice.PaymentMethod = newOrderDto.Invoice.PaymentMethod
-	order.Invoice.PaymentOption = newOrderDto.Invoice.PaymentOption
+	order.Invoice.PaymentGateway = newOrderDto.Invoice.PaymentOption
 
 	if newOrderDto.Invoice.Voucher != nil {
 		order.Invoice.Voucher = &entities.Voucher{

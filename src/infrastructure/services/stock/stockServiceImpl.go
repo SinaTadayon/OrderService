@@ -3,8 +3,10 @@ package stock_service
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
-	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	"gitlab.faza.io/order-project/order-service/domain/actions"
+	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/stock"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	stockProto "gitlab.faza.io/protos/stock-proto.git"
 	"google.golang.org/grpc"
@@ -48,135 +50,82 @@ func (stock *iStockServiceImpl) GetStockClient() stockProto.StockClient {
 	return stock.stockService
 }
 
-func (stock *iStockServiceImpl) SingleStockAction(ctx context.Context, inventoryId string, count int, action string) future.IFuture {
-	//if action == stock_action.ReservedAction {
-	//	panic("must be implement")
-	//} else if action == stock_action.ReleasedAction {
-	//	panic("must be implement")
-	//} else if action == stock_action.SettlementAction {
-	//	panic("must be implement")
-	//}
-	//return nil
-
-	if action == "StockReserved" {
-		panic("must be implement")
-	} else if action == "StockReleased" {
-		panic("must be implement")
-	} else if action == "StockSettlement" {
-		panic("must be implement")
-	}
+func (stock *iStockServiceImpl) SingleStockAction(ctx context.Context, inventoryId string, count int, action actions.IAction) future.IFuture {
 	return nil
 }
 
-func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order entities.Order, itemsId []uint64, action string) future.IFuture {
-	//if action == stock_action.ReservedAction {
-	//	panic("must be implement")
-	//} else if action == stock_action.ReleasedAction {
-	//	panic("must be implement")
-	//} else if action == stock_action.SettlementAction {
-	//	panic("must be implement")
-	//}
-	//return nil
-
-	//returnChannel := make(chan future.IDataFuture, 1)
-	//defer close(returnChannel)
-	//returnChannel <- future.IDataFuture{Get:nil, Ex:nil}
-	//return future.NewFuture(returnChannel, 1, 1)
+func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, inventories map[string]int, action actions.IAction) future.IFuture {
 	if err := stock.ConnectToStockService(); err != nil {
-		returnChannel := make(chan future.IDataFuture, 1)
-		defer close(returnChannel)
-		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{
-			Code: future.InternalError, Reason: "Unknown Error"}}
-		return future.NewFuture(returnChannel, 1, 1)
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "ConnectToStockService failed")).
+			BuildAndSend()
 	}
 
-	var itemStocks map[string]int
-	if itemsId != nil && len(itemsId) > 0 {
-		itemStocks = make(map[string]int, len(itemsId))
-		for _, id := range itemsId {
-			for i := 0; i < len(order.Items); i++ {
-				if order.Items[i].ItemId == id {
-					if _, ok := itemStocks[order.Items[i].InventoryId]; !ok {
-						itemStocks[order.Items[i].InventoryId] = int(order.Items[i].Quantity)
-					}
-				}
-			}
-		}
-	} else {
-		itemStocks = make(map[string]int, len(order.Items))
-		for i := 0; i < len(order.Items); i++ {
-			if _, ok := itemStocks[order.Items[i].InventoryId]; !ok {
-				itemStocks[order.Items[i].InventoryId] = int(order.Items[i].Quantity)
-			}
-		}
-	}
-
-	if action == "StockReserved" {
+	if action.ActionEnum() == stock_action.Reserve {
 		//var err error
-		reservedStock := make(map[string]int, len(itemStocks))
-		for inventoryId, quantity := range itemStocks {
+		reservedStock := make(map[string]int, len(inventories))
+		for inventoryId, quantity := range inventories {
 			ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 			request := &stockProto.StockRequest{
 				Quantity:    int32(quantity),
 				InventoryId: inventoryId,
 			}
 			if response, err := stock.stockService.StockReserve(ctx, request); err != nil {
-				logger.Err("Stock reserved failed, orderId: %d, inventoryId %s with quantity %d, error: %s", order.OrderId, inventoryId, quantity, err)
-				return stock.rollbackReservedStocks(ctx, &order, reservedStock)
+				logger.Err("Stock reserved failed, inventoryId %s with quantity %d, error: %s", inventoryId, quantity, err)
+				return stock.rollbackReservedStocks(ctx, reservedStock, err)
 			} else {
-				logger.Audit("StockReserved success, orderId: %d, inventoryId: %s,  available: %d, reserved: %d",
-					order.OrderId, inventoryId, response.Available, response.Reserved)
-				reservedStock[inventoryId] = quantity
+				logger.Audit("StockReserved success, inventoryId: %s,  available: %d, reserved: %d",
+					inventoryId, response.Available, response.Reserved)
+				reservedStock[inventoryId] = int(quantity)
 			}
 		}
-	} else if action == "StockReleased" {
-		//var err error
-		releaseStock := make(map[string]int, len(itemStocks))
-		for inventoryId, quantity := range itemStocks {
+	} else if action.ActionEnum() == stock_action.Release {
+		var err error
+		for inventoryId, quantity := range inventories {
 			ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 			request := &stockProto.StockRequest{
 				Quantity:    int32(quantity),
 				InventoryId: inventoryId,
 			}
-			//response , err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId:request.InventoryId})
-			//logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
-
-			if _, err := stock.stockService.StockRelease(ctx, request); err != nil {
-				logger.Err("Stock release failed, orderId: %d, inventoryId %s with quantity %d, error: %s", order.OrderId, inventoryId, quantity, err)
-				return stock.rollbackSettlementStocks(ctx, &order, releaseStock)
-			} else {
-				releaseStock[inventoryId] = quantity
+			if _, err = stock.stockService.StockRelease(ctx, request); err != nil {
+				logger.Err("Stock release failed, inventoryId %s with quantity %d, error: %s", inventoryId, quantity, err)
 			}
 		}
 
-	} else if action == "StockSettlement" {
+		if err != nil {
+			return future.Factory().SetCapacity(1).
+				SetError(future.NotAccepted, "Stock Release Failed", errors.Wrap(err, "")).
+				BuildAndSend()
+		}
+
+	} else if action.ActionEnum() == stock_action.Settlement {
 		var err error
-		settlementStock := make(map[string]int, len(itemStocks))
-		for inventoryId, quantity := range itemStocks {
+		for inventoryId, quantity := range inventories {
 			ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 			request := &stockProto.StockRequest{
 				Quantity:    int32(quantity),
 				InventoryId: inventoryId,
 			}
 			if _, err = stock.stockService.StockSettle(ctx, request); err != nil {
-				logger.Err("stockService.StockSettle failed, orderId: %d, inventoryId: %s, quantity: %d, error: %s",
-					order.OrderId, request.InventoryId, request.Quantity, err)
-
-				return stock.rollbackSettlementStocks(ctx, &order, settlementStock)
-			} else {
-				settlementStock[inventoryId] = quantity
+				logger.Err("stockService.StockSettle failed, inventoryId: %s, quantity: %d, error: %s",
+					request.InventoryId, request.Quantity, err)
 			}
+		}
+
+		if err != nil {
+			return future.Factory().SetCapacity(1).
+				SetError(future.NotAccepted, "Stock Settlement Failed", errors.Wrap(err, "")).
+				BuildAndSend()
 		}
 	}
 
-	returnChannel := make(chan future.IDataFuture, 1)
-	defer close(returnChannel)
-	returnChannel <- future.IDataFuture{Data: nil, Ex: nil}
-	return future.NewFuture(returnChannel, 1, 1)
+	return future.Factory().SetCapacity(1).
+		SetError(future.InternalError, "Unknown Error", errors.New("Invalid Action")).
+		BuildAndSend()
 }
 
-func (stock *iStockServiceImpl) rollbackReservedStocks(ctx context.Context, order *entities.Order, reservedStock map[string]int) future.IFuture {
-	logger.Audit("rollbackReservedStocks, orderId: %d", order.OrderId)
+func (stock *iStockServiceImpl) rollbackReservedStocks(ctx context.Context, reservedStock map[string]int, err error) future.IFuture {
+	logger.Audit("rollbackReservedStock . . .")
 	for inventoryId, quantity := range reservedStock {
 		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 		request := &stockProto.StockRequest{
@@ -185,41 +134,13 @@ func (stock *iStockServiceImpl) rollbackReservedStocks(ctx context.Context, orde
 		}
 
 		if _, err := stock.stockService.StockRelease(ctx, request); err != nil {
-			logger.Err("stockService.StockRelease failed, orderId: %d, inventoryId %s with quantity %d",
-				order.OrderId, inventoryId, quantity)
+			logger.Err("stockService.StockRelease failed, inventoryId %s with quantity %d", inventoryId, quantity)
 		} else {
 			reservedStock[inventoryId] = quantity
 		}
 	}
 
-	returnChannel := make(chan future.IDataFuture, 1)
-	defer close(returnChannel)
-	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{
-		Code: future.NotAccepted, Reason: "Stock Reserved Failed"}}
-	return future.NewFuture(returnChannel, 1, 1)
-}
-
-func (stock *iStockServiceImpl) rollbackSettlementStocks(ctx context.Context, order *entities.Order, reservedStock map[string]int) future.IFuture {
-
-	//logger.Audit("rollbackSettlementStocks, orderId: %s", order.OrderId)
-	//for inventoryId, quantity := range reservedStock {
-	//	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	//	request := &stockProto.StockRequest{
-	//		Quantity:    int32(quantity),
-	//		InventoryId: inventoryId,
-	//	}
-	//
-	//	if _ ,err := stock.stockService.(ctx, request); err != nil {
-	//		logger.Err("stockService.StockRelease failed, orderId: %s, inventoryId %s with quantity %d",
-	//			order.OrderId, inventoryId, quantity)
-	//	} else {
-	//		reservedStock[inventoryId] = quantity
-	//	}
-	//}
-
-	returnChannel := make(chan future.IDataFuture, 1)
-	defer close(returnChannel)
-	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{
-		Code: future.InternalError, Reason: "Unknown Error"}}
-	return future.NewFuture(returnChannel, 1, 1)
+	return future.Factory().SetCapacity(1).
+		SetError(future.NotAccepted, "Stock Reserved Failed", errors.Wrap(err, "")).
+		BuildAndSend()
 }

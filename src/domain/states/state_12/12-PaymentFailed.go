@@ -56,8 +56,8 @@ func (paymentFailed paymentFailedStep) ProcessOrder(ctx context.Context, order e
 	//paymentFailed.UpdateAllOrderStatus(ctx, &order, itemsId, "CLOSED", true)
 	//return stockState.ActionLauncher(ctx, order, itemsId, nil)
 
-	paymentFailed.UpdateAllOrderStatus(ctx, &order, itemsId, states.ClosedStatus, false)
-	paymentFailed.updateOrderItemsProgress(ctx, &order, itemsId, PaymentFailed, true, states.ClosedStatus)
+	paymentFailed.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderClosedStatus, false)
+	paymentFailed.updateOrderItemsProgress(ctx, &order, itemsId, PaymentFailed, true, states.OrderClosedStatus)
 	if err := paymentFailed.persistOrder(ctx, &order); err != nil {
 	}
 	returnChannel := make(chan future.IDataFuture, 1)

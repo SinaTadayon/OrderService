@@ -61,7 +61,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 	paymentAction := param.(string)
 
 	if paymentAction == PaymentCallbackUrlRequest {
-		logger.Audit("Order Received in %s step, orderId: %d, Action: %s", paymentPending.Name(), order.OrderId, PaymentCallbackUrlRequest)
+		logger.Audit("Order Received in %s step, orderId: %d, Actions: %s", paymentPending.Name(), order.OrderId, PaymentCallbackUrlRequest)
 
 		// handle amount == 0 because of full voucher
 		if order.Invoice.Total == 0 && order.Invoice.Voucher.Amount > 0 {
@@ -107,8 +107,8 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			}
 
 			logger.Audit("Invoice paid by voucher order success, orderId: %d, voucherAmount: %d, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Amount, order.Invoice.Voucher.Code)
-			paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, true)
-			paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, true, states.InProgressStatus)
+			paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, true)
+			paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, true, states.OrderInProgressStatus)
 			if err := paymentPending.persistOrder(ctx, &order); err != nil {
 			}
 
@@ -122,12 +122,12 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			return future.NewFuture(returnChannel, 1, 1)
 		}
 
-		paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.NewStatus, false)
+		paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderNewStatus, false)
 		//return orderPaymentState.ActionLauncher(ctx, order, nil, nil)
 
 		paymentRequest := payment_service.PaymentRequest{
 			Amount:   int64(order.Invoice.Total),
-			Gateway:  order.Invoice.PaymentOption,
+			Gateway:  order.Invoice.PaymentGateway,
 			Currency: order.Invoice.Currency,
 			OrderId:  order.OrderId,
 		}
@@ -152,8 +152,8 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 				CreatedAt: time.Now().UTC(),
 			}
 
-			paymentPending.UpdateAllOrderStatus(ctx, &order, nil, states.ClosedStatus, true)
-			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, false, states.ClosedStatus)
+			paymentPending.UpdateAllOrderStatus(ctx, &order, nil, states.OrderClosedStatus, true)
+			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, false, states.OrderClosedStatus)
 			paymentPending.releasedStock(ctx, &order)
 			if err := paymentPending.persistOrder(ctx, &order); err != nil {
 			}
@@ -172,8 +172,8 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 				CreatedAt: time.Now().UTC(),
 			}
 
-			paymentPending.UpdateAllOrderStatus(ctx, &order, nil, states.ClosedStatus, true)
-			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, false, states.ClosedStatus)
+			paymentPending.UpdateAllOrderStatus(ctx, &order, nil, states.OrderClosedStatus, true)
+			paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, false, states.OrderClosedStatus)
 			paymentPending.releasedStock(ctx, &order)
 			if err := paymentPending.persistOrder(ctx, &order); err != nil {
 			}
@@ -196,7 +196,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			CreatedAt:   time.Now().UTC(),
 		}
 
-		paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, true, states.NewStatus)
+		paymentPending.updateOrderItemsProgress(ctx, &order, nil, PaymentCallbackUrlRequest, true, states.OrderNewStatus)
 		if err := paymentPending.persistOrder(ctx, &order); err != nil {
 		}
 
@@ -206,11 +206,11 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 		return future.NewFuture(returnChannel, 1, 1)
 
 	} else if paymentAction == OrderPayment {
-		logger.Audit("Order Received in %s step, orderId: %d, Action: %s", paymentPending.Name(), order.OrderId, OrderPayment)
+		logger.Audit("Order Received in %s step, orderId: %d, Actions: %s", paymentPending.Name(), order.OrderId, OrderPayment)
 		if order.PaymentService[0].PaymentResult.Result == false {
 			logger.Audit("PaymentResult of order failed, orderId: %d", order.OrderId)
-			paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, false, states.ClosedStatus)
-			paymentPending.UpdateAllOrderStatus(ctx, &order, nil, states.ClosedStatus, true)
+			paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, false, states.OrderClosedStatus)
+			paymentPending.UpdateAllOrderStatus(ctx, &order, nil, states.OrderClosedStatus, true)
 			paymentPending.releasedStock(ctx, &order)
 			if err := paymentPending.persistOrder(ctx, &order); err != nil {
 			}
@@ -231,8 +231,8 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 		}
 
 		logger.Audit("PaymentResult of order success, orderId: %d", order.OrderId)
-		paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, true)
-		paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, true, states.InProgressStatus)
+		paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, true)
+		paymentPending.updateOrderItemsProgress(ctx, &order, nil, OrderPayment, true, states.OrderInProgressStatus)
 		if err := paymentPending.persistOrder(ctx, &order); err != nil {
 		}
 		return paymentPending.Childes()[1].ProcessOrder(ctx, order, nil, nil)
@@ -249,21 +249,21 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 }
 
 func (paymentPending paymentPendingStep) releasedStock(ctx context.Context, order *entities.Order) {
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, nil, StockReleased)
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, nil, StockReleased)
 	futureData := iPromise.Get()
 	if futureData == nil {
-		paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, states.ClosedStatus)
+		paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, states.OrderClosedStatus)
 		logger.Err("StockService future channel has been closed, step: %s, orderId: %d", paymentPending.Name(), order.OrderId)
 		return
 	}
 
 	if futureData.Ex != nil {
-		paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, states.ClosedStatus)
+		paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, states.OrderClosedStatus)
 		logger.Err("Reserved stock from stockService failed, step: %s, orderId: %d, error: %s", paymentPending.Name(), order.OrderId, futureData.Ex.Error())
 		return
 	}
 
-	paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, true, states.ClosedStatus)
+	paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, true, states.OrderClosedStatus)
 	logger.Audit("Reserved stock from stockService success, step: %s, orderId: %d", paymentPending.Name(), order.OrderId)
 }
 
@@ -355,7 +355,7 @@ func (paymentPending paymentPendingStep) doUpdateOrderItemsProgress(ctx context.
 //	// Validate Buyer address
 //	errPaymentCallbackUrlRequestBuyerAddress := validation.ValidateStruct(&ppr.Buyer.Address,
 //		validation.Field(&ppr.Buyer.Address.Address, validation.Required),
-//		validation.Field(&ppr.Buyer.Address.State, validation.Required),
+//		validation.Field(&ppr.Buyer.Address.Status, validation.Required),
 //		validation.Field(&ppr.Buyer.Address.City, validation.Required),
 //		validation.Field(&ppr.Buyer.Address.Country, validation.Required),
 //		validation.Field(&ppr.Buyer.Address.ZipCode, validation.Required),
@@ -412,7 +412,7 @@ func (paymentPending paymentPendingStep) doUpdateOrderItemsProgress(ctx context.
 //				validation.Field(&ppr.Items[i].SellerInfo.Address.Address, validation.Required),
 //				validation.Field(&ppr.Items[i].SellerInfo.Address.Phone, validation.Required),
 //				validation.Field(&ppr.Items[i].SellerInfo.Address.Country, validation.Required),
-//				validation.Field(&ppr.Items[i].SellerInfo.Address.State, validation.Required),
+//				validation.Field(&ppr.Items[i].SellerInfo.Address.Status, validation.Required),
 //				validation.Field(&ppr.Items[i].SellerInfo.Address.City, validation.Required),
 //				validation.Field(&ppr.Items[i].SellerInfo.Address.ZipCode, validation.Required),
 //			)

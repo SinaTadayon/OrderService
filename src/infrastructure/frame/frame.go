@@ -10,6 +10,7 @@ const (
 	HeaderItemId      HeaderEnum = "ITEM_ID"
 	HeaderIPAddress   HeaderEnum = "IP_ADDRESS"
 	HeaderInventoryId HeaderEnum = "INVENTORY_ID"
+	HeaderFuture      HeaderEnum = "Future"
 )
 
 type IFrame interface {

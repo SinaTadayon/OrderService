@@ -327,7 +327,7 @@ func doUpdateOrderStep(order *entities.Order, index int, stepName string, stepIn
 		Name:      stepName,
 		Index:     stepIndex,
 		CreatedAt: order.Items[index].Progress.CreatedAt,
-		//ActionHistory: make([]entities.Action, 0, 1),
+		//ActionHistory: make([]entities.Actions, 0, 1),
 	}
 
 	if order.Items[index].Progress.StepsHistory == nil || len(order.Items[index].Progress.StepsHistory) == 0 {
@@ -514,7 +514,7 @@ func TestPaymentGateway(t *testing.T) {
 		},
 	}}
 
-	updateOrderStatus(newOrder, nil, states.NewStatus, false, "0.New_Order", 0)
+	updateOrderStatus(newOrder, nil, states.OrderNewStatus, false, "0.New_Order", 0)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -556,8 +556,8 @@ func TestOperatorShipmentPending_Success(t *testing.T) {
 	assert.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
-	updateOrderStatus(newOrder, nil, states.InProgressStatus, false, "32.Shipment_Delivered", 32)
-	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, states.InProgressStatus)
+	updateOrderStatus(newOrder, nil, states.OrderInProgressStatus, false, "32.Shipment_Delivered", 32)
+	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, states.OrderInProgressStatus)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -609,7 +609,7 @@ func TestOperatorShipmentPending_Failed(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "32.Shipment_Delivered", 32)
-	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, states.InProgressStatus)
+	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, states.OrderInProgressStatus)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -663,7 +663,7 @@ func TestSellerApprovalPending_Success(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "20.Seller_Approval_Pending", 20)
-	updateOrderItemsProgress(newOrder, nil, "ApprovalPending", true, states.InProgressStatus)
+	updateOrderItemsProgress(newOrder, nil, "ApprovalPending", true, states.OrderInProgressStatus)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -721,7 +721,7 @@ func TestSellerApprovalPending_Failed(t *testing.T) {
 	assert.Nil(t, err, "save failed")
 
 	updateOrderStatus(order, nil, "IN_PROGRESS", false, "20.Seller_Approval_Pending", 20)
-	updateOrderItemsProgress(order, nil, "ApprovalPending", true, states.InProgressStatus)
+	updateOrderItemsProgress(order, nil, "ApprovalPending", true, states.OrderInProgressStatus)
 	_, err = global.Singletons.OrderRepository.Save(*order)
 	assert.Nil(t, err, "save failed")
 
@@ -778,7 +778,7 @@ func TestShipmentPending_Success(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
-	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, states.InProgressStatus)
+	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, states.OrderInProgressStatus)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -835,7 +835,7 @@ func TestShipmentPending_Failed(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
-	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, states.InProgressStatus)
+	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, states.OrderInProgressStatus)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -885,7 +885,7 @@ func TestSellerFindAllItems(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
-	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.InProgressStatus)
+	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.OrderInProgressStatus)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -918,7 +918,7 @@ func TestBuyerFindAllOrders(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
-	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.InProgressStatus)
+	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.OrderInProgressStatus)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -952,7 +952,7 @@ func TestBackOfficeOrdersListView(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
-	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.InProgressStatus)
+	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.OrderInProgressStatus)
 	_, err = global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -964,7 +964,7 @@ func TestBackOfficeOrdersListView(t *testing.T) {
 	newOrder2 := value2.(*entities.Order)
 
 	updateOrderStatus(newOrder2, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
-	updateOrderItemsProgress(newOrder2, nil, "Shipped", true, states.InProgressStatus)
+	updateOrderItemsProgress(newOrder2, nil, "Shipped", true, states.OrderInProgressStatus)
 	_, err = global.Singletons.OrderRepository.Save(*newOrder2)
 	assert.Nil(t, err2, "save failed")
 
@@ -976,7 +976,7 @@ func TestBackOfficeOrdersListView(t *testing.T) {
 	newOrder1 := value1.(*entities.Order)
 
 	updateOrderStatus(newOrder1, nil, "IN_PROGRESS", false, "20.Seller_Approval_Pending", 20)
-	updateOrderItemsProgress(newOrder1, nil, "Approved", true, states.InProgressStatus)
+	updateOrderItemsProgress(newOrder1, nil, "Approved", true, states.OrderInProgressStatus)
 	_, err = global.Singletons.OrderRepository.Save(*newOrder1)
 	assert.Nil(t, err1, "save failed")
 
@@ -988,7 +988,7 @@ func TestBackOfficeOrdersListView(t *testing.T) {
 	newOrder3 := value3.(*entities.Order)
 
 	updateOrderStatus(newOrder3, nil, "IN_PROGRESS", false, "20.Seller_Approval_Pending", 20)
-	updateOrderItemsProgress(newOrder3, nil, "Approved", true, states.InProgressStatus)
+	updateOrderItemsProgress(newOrder3, nil, "Approved", true, states.OrderInProgressStatus)
 	_, err = global.Singletons.OrderRepository.Save(*newOrder3)
 	assert.Nil(t, err3, "save failed")
 
@@ -1024,7 +1024,7 @@ func TestBackOfficeOrderDetailView(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
-	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.InProgressStatus)
+	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.OrderInProgressStatus)
 	newOrder, err = global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
@@ -1057,7 +1057,7 @@ func TestSellerReportOrders(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
-	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.InProgressStatus)
+	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.OrderInProgressStatus)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 	defer removeCollection()
@@ -1109,7 +1109,7 @@ func TestBackOfficeReportOrderItems(t *testing.T) {
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
-	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.InProgressStatus)
+	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.OrderInProgressStatus)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 	defer removeCollection()

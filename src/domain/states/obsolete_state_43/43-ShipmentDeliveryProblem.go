@@ -52,7 +52,7 @@ func (shipmentDeliveryProblem shipmentDeliveryProblemStep) ProcessOrder(ctx cont
 	//returnChannel <- future.IDataFuture{Get:nil, Ex:nil}
 	//return future.NewFuture(returnChannel, 1, 1)
 
-	logger.Audit("Order Received in %s step, orderId: %d, Action: %s", shipmentDeliveryProblem.Name(), order.OrderId, "shipmentDelivered")
+	logger.Audit("Order Received in %s step, orderId: %d, Actions: %s", shipmentDeliveryProblem.Name(), order.OrderId, "shipmentDelivered")
 	req, ok := param.(*message.RequestBackOfficeOrderAction)
 	if ok != true {
 		logger.Err("param not a message.RequestBackOfficeOrderAction type , order: %v", order)
@@ -66,18 +66,18 @@ func (shipmentDeliveryProblem shipmentDeliveryProblemStep) ProcessOrder(ctx cont
 		logger.Err("%s step received invalid action, order: %v, action: %s", shipmentDeliveryProblem.Name(), order, req.Action)
 		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.NotAccepted, Reason: "Action Expired"}}
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.NotAccepted, Reason: "Actions Expired"}}
 		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	if req.Action == "success" {
 		if len(order.Items) == len(itemsId) {
-			shipmentDeliveryProblem.UpdateAllOrderStatus(ctx, &order, itemsId, states.ClosedStatus, false)
+			shipmentDeliveryProblem.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderClosedStatus, false)
 		} else {
-			shipmentDeliveryProblem.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, false)
+			shipmentDeliveryProblem.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, false)
 		}
 
-		shipmentDeliveryProblem.updateOrderItemsProgress(ctx, &order, itemsId, req, states.ClosedStatus)
+		shipmentDeliveryProblem.updateOrderItemsProgress(ctx, &order, itemsId, req, states.OrderClosedStatus)
 		if err := shipmentDeliveryProblem.persistOrder(ctx, &order); err != nil {
 			returnChannel := make(chan future.IDataFuture, 1)
 			defer close(returnChannel)
@@ -87,7 +87,7 @@ func (shipmentDeliveryProblem shipmentDeliveryProblemStep) ProcessOrder(ctx cont
 		return shipmentDeliveryProblem.Childes()[0].ProcessOrder(ctx, order, itemsId, nil)
 	} else if req.Action == "cancel" {
 
-		iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, itemsId, StockReleased)
+		iPromise := global.Singletons.StockService.BatchStockActions(ctx, nil, StockReleased)
 		futureData := iPromise.Get()
 		if futureData == nil {
 			if err := shipmentDeliveryProblem.persistOrder(ctx, &order); err != nil {
@@ -104,11 +104,11 @@ func (shipmentDeliveryProblem shipmentDeliveryProblemStep) ProcessOrder(ctx cont
 		}
 
 		if len(order.Items) == len(itemsId) {
-			shipmentDeliveryProblem.UpdateAllOrderStatus(ctx, &order, itemsId, states.ClosedStatus, false)
+			shipmentDeliveryProblem.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderClosedStatus, false)
 		} else {
-			shipmentDeliveryProblem.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, false)
+			shipmentDeliveryProblem.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, false)
 		}
-		shipmentDeliveryProblem.updateOrderItemsProgress(ctx, &order, itemsId, req, states.ClosedStatus)
+		shipmentDeliveryProblem.updateOrderItemsProgress(ctx, &order, itemsId, req, states.OrderClosedStatus)
 		if err := shipmentDeliveryProblem.persistOrder(ctx, &order); err != nil {
 			returnChannel := make(chan future.IDataFuture, 1)
 			defer close(returnChannel)

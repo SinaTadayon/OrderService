@@ -126,7 +126,7 @@ func (paymentAction paymentActionListener) persistOrderState(ctx context.Context
 	}
 
 	if _, err := global.Singletons.OrderRepository.Save(*order); err != nil {
-		logger.Err("Save orderPayment State Failed, error: %s, order: %v", err, order)
+		logger.Err("Save orderPayment Status Failed, error: %s, order: %v", err, order)
 	}
 }
 
@@ -155,18 +155,18 @@ func (paymentAction paymentActionListener) doUpdateOrderState(ctx context.Contex
 	//}
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Time = &order.Items[index].Tracking.CurrentState.CreatedAt
 	//
-	//order.Items[index].Tracking.CurrentState.Actions = []entities.Action{order.Items[index].Tracking.CurrentState.AcceptedAction}
+	//order.Items[index].Tracking.CurrentState.Actions = []entities.Actions{order.Items[index].Tracking.CurrentState.AcceptedAction}
 	//
 	//stateHistory := entities.StateHistory {
 	//	ActionName: order.Items[index].Tracking.CurrentState.ActionName,
 	//	Index: order.Items[index].Tracking.CurrentState.Index,
 	//	Type: order.Items[index].Tracking.CurrentState.Type,
-	//	Action: order.Items[index].Tracking.CurrentState.AcceptedAction,
+	//	Actions: order.Items[index].Tracking.CurrentState.AcceptedAction,
 	//	Result: order.Items[index].Tracking.CurrentState.Result,
 	//	Reason: order.Items[index].Tracking.CurrentState.Reason,
 	//	CreatedAt:order.Items[index].Tracking.CurrentState.CreatedAt,
 	//}
 	//
-	//order.Items[index].Tracking.StatesHistory[len(order.Items[index].Tracking.StatesHistory)].StatesHistory =
-	//	append(order.Items[index].Tracking.StatesHistory[len(order.Items[index].Tracking.StatesHistory)].StatesHistory, stateHistory)
+	//order.Items[index].Tracking.States[len(order.Items[index].Tracking.States)].States =
+	//	append(order.Items[index].Tracking.States[len(order.Items[index].Tracking.States)].States, stateHistory)
 }

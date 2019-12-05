@@ -47,12 +47,12 @@ func (payToSeller payToSellerStep) ProcessOrder(ctx context.Context, order entit
 	logger.Audit("Pay to Seller step, orderId: %d", order.OrderId)
 
 	if len(order.Items) == len(itemsId) {
-		payToSeller.UpdateAllOrderStatus(ctx, &order, itemsId, states.ClosedStatus, false)
+		payToSeller.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderClosedStatus, false)
 	} else {
-		payToSeller.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, false)
+		payToSeller.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, false)
 	}
 
-	payToSeller.updateOrderItemsProgress(ctx, &order, itemsId, Delivered, true, states.ClosedStatus)
+	payToSeller.updateOrderItemsProgress(ctx, &order, itemsId, Delivered, true, states.OrderClosedStatus)
 	if err := payToSeller.persistOrder(ctx, &order); err != nil {
 		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)

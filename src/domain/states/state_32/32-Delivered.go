@@ -46,9 +46,9 @@ func (shipmentDelivered shipmentDeliveredStep) ProcessMessage(ctx context.Contex
 func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
 
 	if param == nil {
-		logger.Audit("Order Received in %s step, orderId: %d, Action: %s", shipmentDelivered.Name(), order.OrderId, ShipmentDeliveredPending)
-		shipmentDelivered.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, false)
-		shipmentDelivered.updateOrderItemsProgress(ctx, &order, itemsId, ShipmentDeliveredPending, true, "", true, states.InProgressStatus)
+		logger.Audit("Order Received in %s step, orderId: %d, Actions: %s", shipmentDelivered.Name(), order.OrderId, ShipmentDeliveredPending)
+		shipmentDelivered.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, false)
+		shipmentDelivered.updateOrderItemsProgress(ctx, &order, itemsId, ShipmentDeliveredPending, true, "", true, states.OrderInProgressStatus)
 		if err := shipmentDelivered.persistOrder(ctx, &order); err != nil {
 			returnChannel := make(chan future.IDataFuture, 1)
 			defer close(returnChannel)
@@ -60,9 +60,9 @@ func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context,
 		returnChannel <- future.IDataFuture{Data: nil, Ex: nil}
 		return future.NewFuture(returnChannel, 1, 1)
 	} else if param == "actionApproved" {
-		logger.Audit("Order Received in %s step, orderId: %d, Action: %s", shipmentDelivered.Name(), order.OrderId, AutoApprovedShipmentDelivered)
-		shipmentDelivered.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, false)
-		shipmentDelivered.updateOrderItemsProgress(ctx, &order, itemsId, AutoApprovedShipmentDelivered, true, "", true, states.InProgressStatus)
+		logger.Audit("Order Received in %s step, orderId: %d, Actions: %s", shipmentDelivered.Name(), order.OrderId, AutoApprovedShipmentDelivered)
+		shipmentDelivered.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, false)
+		shipmentDelivered.updateOrderItemsProgress(ctx, &order, itemsId, AutoApprovedShipmentDelivered, true, "", true, states.OrderInProgressStatus)
 		if err := shipmentDelivered.persistOrder(ctx, &order); err != nil {
 			returnChannel := make(chan future.IDataFuture, 1)
 			defer close(returnChannel)
@@ -73,7 +73,7 @@ func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context,
 		return shipmentDelivered.Childes()[2].ProcessOrder(ctx, order, itemsId, nil)
 	}
 
-	logger.Audit("invalid action, Order Received in %s step, orderId: %d, Action: %s", shipmentDelivered.Name(), order.OrderId, param)
+	logger.Audit("invalid action, Order Received in %s step, orderId: %d, Actions: %s", shipmentDelivered.Name(), order.OrderId, param)
 	returnChannel := make(chan future.IDataFuture, 1)
 	defer close(returnChannel)
 	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
@@ -96,12 +96,12 @@ func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context,
 	//		return future.NewFuture(returnChannel, 1, 1)
 	//	}
 	//
-	//	if req.Action == "success" {
+	//	if req.Actions == "success" {
 	//		shipmentDelivered.UpdateAllOrderStatus(ctx, &order, nil, "InProgress", false)
 	//		shipmentDelivered.updateOrderItemsProgress(ctx, &order, itemsId, Approved, true, "", false)
 	//		shipmentDelivered.persistOrder(ctx, &order)
 	//		return shipmentDelivered.Childes()[2].ProcessOrder(ctx, order, itemsId, nil)
-	//	} else if req.Action == "failed" {
+	//	} else if req.Actions == "failed" {
 	//		actionData := req.Get.(*message.RequestSellerOrderAction_Failed)
 	//		if ok != true {
 	//			logger.Err("request data not a message.RequestSellerOrderAction_Failed type , order: %v", order)
@@ -116,7 +116,7 @@ func (shipmentDelivered shipmentDeliveredStep) ProcessOrder(ctx context.Context,
 	//		return shipmentDelivered.Childes()[0].ProcessOrder(ctx, order, itemsId, nil)
 	//	}
 	//
-	//	logger.Err("%s step received invalid action, order: %v, action: %s", shipmentDelivered.ActionName(), order, req.Action)
+	//	logger.Err("%s step received invalid action, order: %v, action: %s", shipmentDelivered.ActionName(), order, req.Actions)
 	//	returnChannel := make(chan future.IDataFuture, 1)
 	//	defer close(returnChannel)
 	//	returnChannel <- future.IDataFuture{Get:nil, Ex:future.FutureError{Code: future.InternalError, Reason:"Unknown Error"}}

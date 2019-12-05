@@ -59,22 +59,21 @@ type ItemInvoice struct {
 }
 
 type Progress struct {
-	StateName     string         `bson:"stateName"`
-	StateIndex    int            `bson:"stateIndex"`
-	Action        Action         `bson:"action"`
-	StatesHistory []StateHistory `bson:"statesHistory"`
+	StateName  string  `bson:"stateName"`
+	StateIndex int     `bson:"stateIndex"`
+	Action     *Action `bson:"action"`
+	States     []State `bson:"states"`
 }
 
-type StateHistory struct {
-	Name          string    `bson:"name"`
-	Index         int       `bson:"index"`
-	ActionHistory []Action  `bson:"actionHistory"`
-	CreatedAt     time.Time `bson:"createdAt"`
-	UpdatedAt     time.Time `bson:"updatedAt"`
+type State struct {
+	Name      string    `bson:"name"`
+	Index     int       `bson:"index"`
+	Actions   []Action  `bson:"action"`
+	CreatedAt time.Time `bson:"createdAt"`
 }
 
 /*
- Action sample:
+ Actions sample:
 	ActionName: ApprovedAction
 	Type: SellerInfoActor
 	Get: "sample data"
@@ -134,15 +133,15 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 		Action:     subpackage.Tracking.Action,
 	}
 
-	if subpackage.Tracking.StatesHistory != nil {
-		subPkg.Tracking.StatesHistory = make([]StateHistory, 0, len(subpackage.Tracking.StatesHistory))
-		for _, state := range subpackage.Tracking.StatesHistory {
-			var newState StateHistory
-			newState.ActionHistory = make([]Action, 0, len(state.ActionHistory))
-			for _, action := range state.ActionHistory {
-				newState.ActionHistory = append(newState.ActionHistory, action)
+	if subpackage.Tracking.States != nil {
+		subPkg.Tracking.States = make([]State, 0, len(subpackage.Tracking.States))
+		for _, state := range subpackage.Tracking.States {
+			var newState State
+			newState.Actions = make([]Action, 0, len(state.Actions))
+			for _, action := range state.Actions {
+				newState.Actions = append(newState.Actions, action)
 			}
-			subPkg.Tracking.StatesHistory = append(subPkg.Tracking.StatesHistory, state)
+			subPkg.Tracking.States = append(subPkg.Tracking.States, state)
 		}
 	}
 	return &subPkg

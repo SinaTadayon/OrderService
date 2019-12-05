@@ -93,7 +93,7 @@ func (stockState stockActionLauncher) doReservedAction(ctx context.Context, orde
 		}
 	}
 
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, itemsId, stock_action.Reserve.ActionName())
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, nil, stock_action.Reserve.ActionName())
 	futureData := iPromise.Get()
 	if futureData == nil {
 		stockState.persistOrderState(ctx, order, stock_action.Reserve, false)
@@ -167,7 +167,7 @@ func (stockState stockActionLauncher) doReleasedAction(ctx context.Context, orde
 		}
 	}
 
-	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, itemsId, stock_action.Release.ActionName())
+	iPromise := global.Singletons.StockService.BatchStockActions(ctx, nil, stock_action.Release.ActionName())
 	futureData := iPromise.Get()
 	if futureData == nil {
 		stockState.persistOrderState(ctx, order, stock_action.Release, false)
@@ -222,24 +222,24 @@ func (stockState stockActionLauncher) persistOrderState(ctx context.Context, ord
 	//	order.Items[i].Tracking.CurrentState.AcceptedAction.Get = nil
 	//	order.Items[i].Tracking.CurrentState.AcceptedAction.Time = &order.UpdatedAt
 	//
-	//	order.Items[i].Tracking.CurrentState.Actions = []entities.Action{order.Items[i].Tracking.CurrentState.AcceptedAction}
+	//	order.Items[i].Tracking.CurrentState.Actions = []entities.Actions{order.Items[i].Tracking.CurrentState.AcceptedAction}
 	//
 	//	stateHistory := entities.StateHistory {
 	//		ActionName: order.Items[i].Tracking.CurrentState.ActionName,
 	//		Index: order.Items[i].Tracking.CurrentState.Index,
 	//		Type: order.Items[i].Tracking.CurrentState.Type,
-	//		Action: order.Items[i].Tracking.CurrentState.AcceptedAction,
+	//		Actions: order.Items[i].Tracking.CurrentState.AcceptedAction,
 	//		Result: order.Items[i].Tracking.CurrentState.Result,
 	//		Reason: order.Items[i].Tracking.CurrentState.Reason,
 	//		CreatedAt:order.Items[i].Tracking.CurrentState.CreatedAt,
 	//	}
 	//
-	//	order.Items[i].Tracking.StatesHistory[len(order.Items[i].Tracking.StatesHistory)].StatesHistory =
-	//		append(order.Items[i].Tracking.StatesHistory[len(order.Items[i].Tracking.StatesHistory)].StatesHistory, stateHistory)
+	//	order.Items[i].Tracking.States[len(order.Items[i].Tracking.States)].States =
+	//		append(order.Items[i].Tracking.States[len(order.Items[i].Tracking.States)].States, stateHistory)
 	//}
 	//
 	//orderChecked, err := global.Singletons.OrderRepository.Save(*order)
 	//if err != nil {
-	//	logger.Err("Save Stock State Failed, error: %s, order: %v", err, orderChecked)
+	//	logger.Err("Save Stock Status Failed, error: %s, order: %v", err, orderChecked)
 	//}
 }

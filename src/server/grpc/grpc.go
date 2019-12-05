@@ -87,7 +87,7 @@ const (
 
 const (
 	DataReqType   RequestType = "Get"
-	ActionReqType RequestType = "Action"
+	ActionReqType RequestType = "Actions"
 )
 
 const (
@@ -362,7 +362,7 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 
 	if actorAction == nil {
 		logger.Err("requestActionHandler() => %s action invalid, request: %v", req.Meta.Action.Action, req)
-		return nil, status.Error(codes.Code(future.BadRequest), "Action Invalid")
+		return nil, status.Error(codes.Code(future.BadRequest), "Actions Invalid")
 	}
 
 }
@@ -537,7 +537,7 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 						newResponseItem.Status.StepStatus = lastAction.Name
 					} else {
 						newResponseItem.Status.StepStatus = "none"
-						logger.Audit("SellerFindAllItems() => Action History is nil, orderId: %d, itemId: %d", order.OrderId, orderItem.ItemId)
+						logger.Audit("SellerFindAllItems() => Actions History is nil, orderId: %d, itemId: %d", order.OrderId, orderItem.ItemId)
 					}
 
 					sellerItemMap[orderItem.InventoryId] = newResponseItem
@@ -657,7 +657,7 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 				Currency:      order.Invoice.Currency,
 				ShipmentTotal: order.Invoice.ShipmentTotal,
 				PaymentMethod: order.Invoice.PaymentMethod,
-				PaymentOption: order.Invoice.PaymentOption,
+				PaymentOption: order.Invoice.PaymentGateway,
 				Voucher: &pb.Voucher{
 					Amount: order.Invoice.Voucher.Amount,
 					Code:   order.Invoice.Voucher.Code,
@@ -718,7 +718,7 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 					newResponseOrderItem.StepStatus = lastAction.Name
 				} else {
 					newResponseOrderItem.StepStatus = "none"
-					logger.Audit("BuyerFindAllOrders() => Action History is nil, orderId: %d, itemId: %d", order.OrderId, item.ItemId)
+					logger.Audit("BuyerFindAllOrders() => Actions History is nil, orderId: %d, itemId: %d", order.OrderId, item.ItemId)
 				}
 				orderItemMap[item.InventoryId] = newResponseOrderItem
 			}

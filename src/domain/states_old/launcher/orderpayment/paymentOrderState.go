@@ -66,7 +66,7 @@ func (orderPayment orderPaymentActionLauncher) ActionLauncher(ctx context.Contex
 
 	paymentRequest := payment_service.PaymentRequest{
 		Amount:   int64(order.Invoice.Total),
-		Gateway:  order.Invoice.PaymentOption,
+		Gateway:  order.Invoice.PaymentGateway,
 		Currency: order.Invoice.Currency,
 		OrderId:  order.OrderId,
 	}
@@ -167,7 +167,7 @@ func (orderPayment orderPaymentActionLauncher) persistOrderState(ctx context.Con
 	}
 
 	if _, err := global.Singletons.OrderRepository.Save(*order); err != nil {
-		logger.Err("Save orderPayment State Failed, error: %s, order: %v", err, order)
+		logger.Err("Save orderPayment Status Failed, error: %s, order: %v", err, order)
 	}
 }
 
@@ -192,18 +192,18 @@ func (orderPayment orderPaymentActionLauncher) doUpdateOrderState(ctx context.Co
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Get = nil
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Time = &order.Items[index].Tracking.CurrentState.CreatedAt
 	//
-	//order.Items[index].Tracking.CurrentState.Actions = []entities.Action{order.Items[index].Tracking.CurrentState.AcceptedAction}
+	//order.Items[index].Tracking.CurrentState.Actions = []entities.Actions{order.Items[index].Tracking.CurrentState.AcceptedAction}
 	//
 	//stateHistory := entities.StateHistory {
 	//	ActionName: order.Items[index].Tracking.CurrentState.ActionName,
 	//	Index: order.Items[index].Tracking.CurrentState.Index,
 	//	Type: order.Items[index].Tracking.CurrentState.Type,
-	//	Action: order.Items[index].Tracking.CurrentState.AcceptedAction,
+	//	Actions: order.Items[index].Tracking.CurrentState.AcceptedAction,
 	//	Result: order.Items[index].Tracking.CurrentState.Result,
 	//	Reason: order.Items[index].Tracking.CurrentState.Reason,
 	//	CreatedAt:order.Items[index].Tracking.CurrentState.CreatedAt,
 	//}
 	//
-	//order.Items[index].Tracking.StatesHistory[len(order.Items[index].Tracking.StatesHistory)].StatesHistory =
-	//	append(order.Items[index].Tracking.StatesHistory[len(order.Items[index].Tracking.StatesHistory)].StatesHistory, stateHistory)
+	//order.Items[index].Tracking.States[len(order.Items[index].Tracking.States)].States =
+	//	append(order.Items[index].Tracking.States[len(order.Items[index].Tracking.States)].States, stateHistory)
 }

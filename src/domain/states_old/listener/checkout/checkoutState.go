@@ -113,18 +113,18 @@ func (checkoutActionState checkoutActionListener) updateOrderStates(ctx context.
 	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.Get = nil
 	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.Time = &timestamp
 	//
-	//	newOrder.Items[i].Tracking.CurrentState.Actions = []entities.Action{newOrder.Items[i].Tracking.CurrentState.AcceptedAction}
+	//	newOrder.Items[i].Tracking.CurrentState.Actions = []entities.Actions{newOrder.Items[i].Tracking.CurrentState.AcceptedAction}
 	//
 	//	stateHistory := entities.StateHistory {
 	//		ActionName: newOrder.Items[i].Tracking.CurrentState.ActionName,
 	//		Index: newOrder.Items[i].Tracking.CurrentState.Index,
 	//		Type: newOrder.Items[i].Tracking.CurrentState.Type,
-	//		Action: newOrder.Items[i].Tracking.CurrentState.AcceptedAction,
+	//		Actions: newOrder.Items[i].Tracking.CurrentState.AcceptedAction,
 	//		Result: newOrder.Items[i].Tracking.CurrentState.Result,
 	//		Reason: newOrder.Items[i].Tracking.CurrentState.Reason,
 	//		CreatedAt:newOrder.Items[i].Tracking.CurrentState.CreatedAt,
 	//	}
 	//
-	//	newOrder.Items[i].Tracking.StatesHistory[len(newOrder.Items[i].Tracking.StatesHistory)].StatesHistory = append(newOrder.Items[i].Tracking.StatesHistory[len(newOrder.Items[i].Tracking.StatesHistory)].StatesHistory, stateHistory)
+	//	newOrder.Items[i].Tracking.States[len(newOrder.Items[i].Tracking.States)].States = append(newOrder.Items[i].Tracking.States[len(newOrder.Items[i].Tracking.States)].States, stateHistory)
 	//}
 }

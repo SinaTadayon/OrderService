@@ -91,7 +91,7 @@ func (finalizeState finalizeActionLauncher) persistOrderState(ctx context.Contex
 
 	orderChecked, err := global.Singletons.OrderRepository.Save(*order)
 	if err != nil {
-		logger.Err("Save finalize State Failed, error: %s, order: %v", err, orderChecked)
+		logger.Err("Save finalize Status Failed, error: %s, order: %v", err, orderChecked)
 	}
 }
 
@@ -115,18 +115,18 @@ func (finalizeState finalizeActionLauncher) doUpdateOrderState(ctx context.Conte
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Get = nil
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Time = &order.Items[index].Tracking.CurrentState.CreatedAt
 	//
-	//order.Items[index].Tracking.CurrentState.Actions = []entities.Action{order.Items[index].Tracking.CurrentState.AcceptedAction}
+	//order.Items[index].Tracking.CurrentState.Actions = []entities.Actions{order.Items[index].Tracking.CurrentState.AcceptedAction}
 	//
 	//stateHistory := entities.StateHistory {
 	//	ActionName: order.Items[index].Tracking.CurrentState.ActionName,
 	//	Index: order.Items[index].Tracking.CurrentState.Index,
 	//	Type: order.Items[index].Tracking.CurrentState.Type,
-	//	Action: order.Items[index].Tracking.CurrentState.AcceptedAction,
+	//	Actions: order.Items[index].Tracking.CurrentState.AcceptedAction,
 	//	Result: order.Items[index].Tracking.CurrentState.Result,
 	//	Reason: order.Items[index].Tracking.CurrentState.Reason,
 	//	CreatedAt:order.Items[index].Tracking.CurrentState.CreatedAt,
 	//}
 	//
-	//order.Items[index].Tracking.StatesHistory[len(order.Items[index].Tracking.StatesHistory)].StatesHistory =
-	//	append(order.Items[index].Tracking.StatesHistory[len(order.Items[index].Tracking.StatesHistory)].StatesHistory, stateHistory)
+	//order.Items[index].Tracking.States[len(order.Items[index].Tracking.States)].States =
+	//	append(order.Items[index].Tracking.States[len(order.Items[index].Tracking.States)].States, stateHistory)
 }

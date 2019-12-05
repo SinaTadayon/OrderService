@@ -48,8 +48,8 @@ func (shipmentPending shipmentPendingStep) ProcessMessage(ctx context.Context, r
 func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
 
 	if param == nil {
-		shipmentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, false)
-		shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, SellerShipmentPending, true, "", nil, true, states.InProgressStatus)
+		shipmentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, false)
+		shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, SellerShipmentPending, true, "", nil, true, states.OrderInProgressStatus)
 		if err := shipmentPending.persistOrder(ctx, &order); err != nil {
 			returnChannel := make(chan future.IDataFuture, 1)
 			defer close(returnChannel)
@@ -64,7 +64,7 @@ func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, ord
 		req, ok := param.(*message.RequestSellerOrderAction)
 		if ok != true {
 			if param == "actionExpired" {
-				iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, itemsId, StockReleased)
+				iPromise := global.Singletons.StockService.BatchStockActions(ctx, nil, StockReleased)
 				futureData := iPromise.Get()
 				if futureData == nil {
 					if err := shipmentPending.persistOrder(ctx, &order); err != nil {
@@ -81,12 +81,12 @@ func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, ord
 				}
 
 				if len(order.Items) == len(itemsId) {
-					shipmentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.ClosedStatus, false)
+					shipmentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderClosedStatus, false)
 				} else {
-					shipmentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, false)
+					shipmentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, false)
 				}
 
-				shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, AutoReject, false, "Action Expired", nil, false, states.ClosedStatus)
+				shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, AutoReject, false, "Actions Expired", nil, false, states.OrderClosedStatus)
 				if err := shipmentPending.persistOrder(ctx, &order); err != nil {
 					returnChannel := make(chan future.IDataFuture, 1)
 					defer close(returnChannel)
@@ -108,7 +108,7 @@ func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, ord
 			logger.Err("%s step received invalid action, order: %v, action: %s", shipmentPending.Name(), order, req.Action)
 			returnChannel := make(chan future.IDataFuture, 1)
 			defer close(returnChannel)
-			returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.NotAccepted, Reason: "Action Expired"}}
+			returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.NotAccepted, Reason: "Actions Expired"}}
 			return future.NewFuture(returnChannel, 1, 1)
 		}
 
@@ -129,8 +129,8 @@ func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, ord
 				return future.NewFuture(returnChannel, 1, 1)
 			}
 
-			shipmentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, false)
-			shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, Shipped, true, "", actionData, false, states.InProgressStatus)
+			shipmentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, false)
+			shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, Shipped, true, "", actionData, false, states.OrderInProgressStatus)
 			if err := shipmentPending.persistOrder(ctx, &order); err != nil {
 				returnChannel := make(chan future.IDataFuture, 1)
 				defer close(returnChannel)
@@ -149,7 +149,7 @@ func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, ord
 				return future.NewFuture(returnChannel, 1, 1)
 			}
 
-			iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, itemsId, StockReleased)
+			iPromise := global.Singletons.StockService.BatchStockActions(ctx, nil, StockReleased)
 			futureData := iPromise.Get()
 			if futureData == nil {
 				if err := shipmentPending.persistOrder(ctx, &order); err != nil {
@@ -166,12 +166,12 @@ func (shipmentPending shipmentPendingStep) ProcessOrder(ctx context.Context, ord
 			}
 
 			if len(order.Items) == len(itemsId) {
-				shipmentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.ClosedStatus, false)
+				shipmentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderClosedStatus, false)
 			} else {
-				shipmentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, false)
+				shipmentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, false)
 			}
 
-			shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, Shipped, false, actionData.Failed.Reason, nil, false, states.ClosedStatus)
+			shipmentPending.updateOrderItemsProgress(ctx, &order, itemsId, Shipped, false, actionData.Failed.Reason, nil, false, states.OrderClosedStatus)
 			if err := shipmentPending.persistOrder(ctx, &order); err != nil {
 				returnChannel := make(chan future.IDataFuture, 1)
 				defer close(returnChannel)

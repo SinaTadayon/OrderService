@@ -48,9 +48,9 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessMessage(ctx contex
 func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
 
 	if param == nil {
-		logger.Audit("Order Received in %s step, orderId: %d, Action: %s", sellerApprovalPending.Name(), order.OrderId, ApprovalPending)
-		sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, false)
-		sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, ApprovalPending, true, "", true, states.InProgressStatus)
+		logger.Audit("Order Received in %s step, orderId: %d, Actions: %s", sellerApprovalPending.Name(), order.OrderId, ApprovalPending)
+		sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, false)
+		sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, ApprovalPending, true, "", true, states.OrderInProgressStatus)
 		if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 		}
 		returnChannel := make(chan future.IDataFuture, 1)
@@ -58,7 +58,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 		returnChannel <- future.IDataFuture{Data: nil, Ex: nil}
 		return future.NewFuture(returnChannel, 1, 1)
 	} else {
-		logger.Audit("Order Received in %s step, orderId: %d, Action: %s", sellerApprovalPending.Name(), order.OrderId, Approved)
+		logger.Audit("Order Received in %s step, orderId: %d, Actions: %s", sellerApprovalPending.Name(), order.OrderId, Approved)
 		req, ok := param.(*message.RequestSellerOrderAction)
 		if ok != true {
 			if param == "actionExpired" {
@@ -79,12 +79,12 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 				}
 
 				if len(order.Items) == len(itemsId) {
-					sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.ClosedStatus, true)
+					sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderClosedStatus, true)
 				} else {
-					sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, true)
+					sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, true)
 				}
 
-				sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, AutoReject, false, "Action Expired", false, states.ClosedStatus)
+				sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, AutoReject, false, "Actions Expired", false, states.OrderClosedStatus)
 				if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 					returnChannel := make(chan future.IDataFuture, 1)
 					defer close(returnChannel)
@@ -106,13 +106,13 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 			logger.Err("%s step received invalid action, order: %v, action: %s", sellerApprovalPending.Name(), order, req.Action)
 			returnChannel := make(chan future.IDataFuture, 1)
 			defer close(returnChannel)
-			returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.NotAccepted, Reason: "Action Expired"}}
+			returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.NotAccepted, Reason: "Actions Expired"}}
 			return future.NewFuture(returnChannel, 1, 1)
 		}
 
 		if req.Action == "success" {
-			sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, true)
-			sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, Approved, true, "", false, states.InProgressStatus)
+			sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, true)
+			sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, Approved, true, "", false, states.OrderInProgressStatus)
 			if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 				returnChannel := make(chan future.IDataFuture, 1)
 				defer close(returnChannel)
@@ -137,7 +137,7 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 				return future.NewFuture(returnChannel, 1, 1)
 			}
 
-			iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, itemsId, StockReleased)
+			iPromise := global.Singletons.StockService.BatchStockActions(ctx, nil, StockReleased)
 			futureData := iPromise.Get()
 			if futureData == nil {
 				if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
@@ -154,11 +154,11 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 			}
 
 			if len(order.Items) == len(itemsId) {
-				sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.ClosedStatus, true)
+				sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderClosedStatus, true)
 			} else {
-				sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, true)
+				sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, true)
 			}
-			sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, Approved, false, actionData.Failed.Reason, false, states.ClosedStatus)
+			sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, Approved, false, actionData.Failed.Reason, false, states.OrderClosedStatus)
 			if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 				returnChannel := make(chan future.IDataFuture, 1)
 				defer close(returnChannel)
