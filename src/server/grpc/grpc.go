@@ -16,8 +16,8 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"gitlab.faza.io/order-project/order-service/domain"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	pb "gitlab.faza.io/protos/order"
 	pg "gitlab.faza.io/protos/payment-gateway"
 	"go.mongodb.org/mongo-driver/bson"
@@ -86,7 +86,7 @@ const (
 )
 
 const (
-	DataReqType   RequestType = "Data"
+	DataReqType   RequestType = "Get"
 	ActionReqType RequestType = "Action"
 )
 
@@ -165,13 +165,13 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
 		logger.Err("RequestHandler() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return nil, status.Error(codes.Code(promise.Forbidden), "User Not Authorized")
+		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
 	}
 
 	// TODO check acl
 	if uint64(userAcl.User().UserID) != req.Meta.UserId {
 		logger.Err("RequestHandler() => UserId mismatch with token userId, error: %s ", err)
-		return nil, status.Error(codes.Code(promise.InternalError), "User Not Authorized")
+		return nil, status.Error(codes.Code(future.InternalError), "User Not Authorized")
 	}
 
 	reqType := RequestType(req.Type)
@@ -185,13 +185,13 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	//promiseHandler := server.flowManager.MessageHandler(flowManagerCtx, req)
 	//futureData := <-promiseHandler.Channel()
 	//if futureData.Ex != nil {
-	//	futureErr := futureData.Ex.(promise.FutureError)
+	//	futureErr := futureData.Ex.(future.FutureError)
 	//	return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
 	//}
 	//
-	//response, ok := futureData.Data.(pb.MessageResponse)
+	//response, ok := futureData.Get.(pb.MessageResponse)
 	//if ok != true {
-	//	logger.Err("received data of futureData invalid, type: %T, value, %v", futureData.Data, futureData.Data)
+	//	logger.Err("received data of futureData invalid, type: %T, value, %v", futureData.Get, futureData.Get)
 	//	return nil, status.Error(500, "Unknown Error")
 	//}
 	//
@@ -215,7 +215,7 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	//}
 	//
 	//var RequestNewOrder pb.RequestNewOrder
-	//if err := ptypes.UnmarshalAny(req.Data, &RequestNewOrder); err != nil {
+	//if err := ptypes.UnmarshalAny(req.Get, &RequestNewOrder); err != nil {
 	//	logger.Err("Could not unmarshal OrderRequest from anything field: %s", err)
 	//	return &message.Response{}, err
 	//}
@@ -257,7 +257,7 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	////	logger.Err("could not serialize timestamp")
 	////}
 	////
-	////errors.Data = &any.Any{
+	////errors.Get = &any.Any{
 	////TypeUrl: "baman.io/" + proto.MessageName(&errDetails),
 	////Value:   serializedOrder,
 	////}
@@ -294,29 +294,29 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 
 	if reqName == SellerOrderList && filterType != OrderStateFilter {
 		logger.Err("requestDataHandler() => request name %s mismatch with %s filter, request: %v", reqName, filterType, req)
-		return nil, status.Error(codes.Code(promise.BadRequest), "Mismatch Request name with filter")
+		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with filter")
 	}
 
 	if (reqName == SellerOrderReturnList || reqName == BuyerReturnOrderList) && filterType != OrderReturnStateFilter {
 		logger.Err("requestDataHandler() => request name %s mismatch with %s filterType, request: %v", reqName, filterType, req)
-		return nil, status.Error(codes.Code(promise.BadRequest), "Mismatch Request name with filterType")
+		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with filterType")
 	}
 
 	if userType == SellerUser && (reqName != SellerOrderList || reqName != SellerOrderDetail ||
 		reqName != SellerOrderReturnList || reqName != SellerOrderReturnDetail) {
 		logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
-		return nil, status.Error(codes.Code(promise.BadRequest), "Mismatch Request name with RequestName")
+		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
 	}
 
 	if userType == BuyerUser && (reqName != BuyerOrderList || reqName != BuyerOrderDetail ||
 		reqName != BuyerReturnOrderReports || reqName != BuyerReturnOrderList || reqName != BuyerReturnOrderDetail) {
 		logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
-		return nil, status.Error(codes.Code(promise.BadRequest), "Mismatch Request name with RequestName")
+		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
 	}
 
 	if req.Meta.OrderId > 0 && reqADT != SingleType {
 		logger.Err("requestDataHandler() => %s orderId mismatch with %s requestADT, request: %v", userType, reqADT, req)
-		return nil, status.Error(codes.Code(promise.BadRequest), "Mismatch Request name with RequestADT")
+		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestADT")
 	}
 
 	switch reqName {
@@ -340,7 +340,7 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 		return server.buyerReturnOrderDetailHandler(req.Meta.UserId, req.Meta.OrderId, req.Meta.ItemId)
 	}
 
-	return nil, status.Error(codes.Code(promise.BadRequest), "Invalid Request")
+	return nil, status.Error(codes.Code(future.BadRequest), "Invalid Request")
 }
 
 func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
@@ -350,7 +350,7 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 	actionEnums, ok := server.actionStates[actionType]
 	if !ok {
 		logger.Err("requestActionHandler() => %s actionType not supported, request: %v", actionType, req)
-		return nil, status.Error(codes.Code(promise.BadRequest), "ActionType Invalid")
+		return nil, status.Error(codes.Code(future.BadRequest), "ActionType Invalid")
 	}
 
 	for _, actionEnum := range actionEnums {
@@ -362,7 +362,7 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 
 	if actorAction == nil {
 		logger.Err("requestActionHandler() => %s action invalid, request: %v", req.Meta.Action.Action, req)
-		return nil, status.Error(codes.Code(promise.BadRequest), "Action Invalid")
+		return nil, status.Error(codes.Code(future.BadRequest), "Action Invalid")
 	}
 
 }
@@ -409,13 +409,13 @@ func (server *Server) buyerReturnOrderDetailHandler(userId, orderId, itemId uint
 
 func (server *Server) PaymentGatewayHook(ctx context.Context, req *pg.PaygateHookRequest) (*pg.PaygateHookResponse, error) {
 	promiseHandler := server.flowManager.PaymentGatewayResult(ctx, req)
-	futureData := promiseHandler.Data()
+	futureData := promiseHandler.Get()
 	if futureData == nil {
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
+		futureErr := futureData.Ex.(future.FutureError)
 		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
 	}
 
@@ -431,13 +431,13 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 
 	//ctx, _ = context.WithTimeout(context.Background(), 3*time.Second)
 	promiseHandler := server.flowManager.MessageHandler(ctx, messageRequest)
-	futureData := promiseHandler.Data()
+	futureData := promiseHandler.Get()
 	if futureData == nil {
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
+		futureErr := futureData.Ex.(future.FutureError)
 		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
 	}
 
@@ -461,18 +461,18 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
 		logger.Err("SellerFindAllItems() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	if strconv.Itoa(int(userAcl.User().UserID)) != req.Id {
 		logger.Err(" SellerFindAllItems() => token userId %d not authorized for sellerId %s", userAcl.User().UserID, req.Id)
-		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
 	}
 
 	sellerId, err := strconv.Atoi(req.Id)
 	if err != nil {
 		logger.Err(" SellerFindAllItems() => sellerId invalid: %s", req.Id)
-		return nil, status.Error(codes.Code(promise.BadRequest), "SellerId Invalid")
+		return nil, status.Error(codes.Code(future.BadRequest), "SellerId Invalid")
 	}
 
 	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
@@ -481,7 +481,7 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 
 	if err != nil {
 		logger.Err("SellerFindAllItems failed, sellerId: %s, error: %s", req.Id, err.Error())
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	sellerItemMap := make(map[string]*pb.SellerFindAllItems, 16)
@@ -562,22 +562,22 @@ func (server Server) BuyerOrderAction(ctx context.Context, req *pb.RequestBuyerO
 	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
 		logger.Err("BuyerOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	if userAcl.User().UserID != int64(req.BuyerId) {
 		logger.Err(" BuyerOrderAction() => token userId %d not authorized for buyerId %d", userAcl.User().UserID, req.BuyerId)
-		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
 	}
 
 	promiseHandler := server.flowManager.BuyerApprovalPending(ctx, req)
-	futureData := promiseHandler.Data()
+	futureData := promiseHandler.Get()
 	if futureData == nil {
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
+		futureErr := futureData.Ex.(future.FutureError)
 		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
 	}
 
@@ -590,22 +590,22 @@ func (server Server) SellerOrderAction(ctx context.Context, req *pb.RequestSelle
 	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
 		logger.Err("SellerOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	if userAcl.User().UserID != int64(req.SellerId) {
 		logger.Err("SellerOrderAction() => token userId %d not authorized for sellerId %d", userAcl.User().UserID, req.SellerId)
-		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
 	}
 
 	promiseHandler := server.flowManager.SellerApprovalPending(ctx, req)
-	futureData := promiseHandler.Data()
+	futureData := promiseHandler.Get()
 	if futureData == nil {
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
+		futureErr := futureData.Ex.(future.FutureError)
 		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
 	}
 
@@ -618,18 +618,18 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
 		logger.Err("BuyerFindAllOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	if strconv.Itoa(int(userAcl.User().UserID)) != req.Id {
 		logger.Err(" BuyerFindAllOrders() => token userId %d not authorized of buyerId %s", userAcl.User().UserID, req.Id)
-		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
 	}
 
 	buyerId, err := strconv.Atoi(req.Id)
 	if err != nil {
 		logger.Err(" SellerFindAllItems() => buyerId invalid: %s", req.Id)
-		return nil, status.Error(codes.Code(promise.BadRequest), "BuyerId Invalid")
+		return nil, status.Error(codes.Code(future.BadRequest), "BuyerId Invalid")
 	}
 
 	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
@@ -638,7 +638,7 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 
 	if err != nil {
 		logger.Err("SellerFindAllItems failed, buyerId: %s, error: %s", req.Id, err.Error())
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	var response pb.ResponseBuyerFindAllOrders
@@ -762,23 +762,23 @@ func (server Server) BackOfficeOrdersListView(ctx context.Context, req *pb.Reque
 	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
 		logger.Err("BackOfficeOrdersListView() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	// TODO Must Be changed
 	if userAcl.User().UserID <= 0 {
 		logger.Err("BackOfficeOrdersListView() => token userId %d not authorized", userAcl.User().UserID)
-		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
 	}
 
 	promiseHandler := server.flowManager.BackOfficeOrdersListView(ctx, req)
-	futureData := promiseHandler.Data()
+	futureData := promiseHandler.Get()
 	if futureData == nil {
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
+		futureErr := futureData.Ex.(future.FutureError)
 		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
 	}
 
@@ -791,23 +791,23 @@ func (server Server) BackOfficeOrderDetailView(ctx context.Context, req *pb.Requ
 	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
 		logger.Err("BackOfficeOrderDetailView() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	// TODO Must Be changed
 	if userAcl.User().UserID <= 0 {
 		logger.Err("BackOfficeOrderDetailView() => token userId %d not authorized", userAcl.User().UserID)
-		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
 	}
 
 	promiseHandler := server.flowManager.BackOfficeOrderDetailView(ctx, req)
-	futureData := promiseHandler.Data()
+	futureData := promiseHandler.Get()
 	if futureData == nil {
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
+		futureErr := futureData.Ex.(future.FutureError)
 		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
 	}
 
@@ -820,23 +820,23 @@ func (server Server) BackOfficeOrderAction(ctx context.Context, req *pb.RequestB
 	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
 		logger.Err("BackOfficeOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	// TODO Must Be changed
 	if userAcl.User().UserID <= 0 {
 		logger.Err("BackOfficeOrderAction() => token userId %d not authorized", userAcl.User().UserID)
-		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
 	}
 
 	promiseHandler := server.flowManager.OperatorActionPending(ctx, req)
-	futureData := promiseHandler.Data()
+	futureData := promiseHandler.Get()
 	if futureData == nil {
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
+		futureErr := futureData.Ex.(future.FutureError)
 		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
 	}
 
@@ -850,22 +850,22 @@ func (server Server) SellerReportOrders(req *pb.RequestSellerReportOrders, srv p
 	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(srv.Context())
 	if err != nil {
 		logger.Err("SellerReportOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	if userAcl.User().UserID != int64(req.SellerId) {
 		logger.Err(" SellerFindAllItems() => token userId %d not authorized for sellerId %d", userAcl.User().UserID, req.SellerId)
-		return status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+		return status.Error(codes.Code(future.Forbidden), "User token not authorized")
 	}
 
 	promiseHandler := server.flowManager.SellerReportOrders(req, srv)
-	futureData := promiseHandler.Data()
+	futureData := promiseHandler.Get()
 	if futureData == nil {
-		return status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
+		futureErr := futureData.Ex.(future.FutureError)
 		return status.Error(codes.Code(futureErr.Code), futureErr.Reason)
 	}
 
@@ -878,23 +878,23 @@ func (server Server) BackOfficeReportOrderItems(req *pb.RequestBackOfficeReportO
 	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(srv.Context())
 	if err != nil {
 		logger.Err("SellerReportOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	// TODO Must Be changed
 	if userAcl.User().UserID <= 0 {
 		logger.Err("BackOfficeOrderAction() => token userId %d not authorized", userAcl.User().UserID)
-		return status.Error(codes.Code(promise.Forbidden), "User token not authorized")
+		return status.Error(codes.Code(future.Forbidden), "User token not authorized")
 	}
 
 	promiseHandler := server.flowManager.BackOfficeReportOrderItems(req, srv)
-	futureData := promiseHandler.Data()
+	futureData := promiseHandler.Get()
 	if futureData == nil {
-		return status.Error(codes.Code(promise.InternalError), "Unknown Error")
+		return status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
+		futureErr := futureData.Ex.(future.FutureError)
 		return status.Error(codes.Code(futureErr.Code), futureErr.Reason)
 	}
 

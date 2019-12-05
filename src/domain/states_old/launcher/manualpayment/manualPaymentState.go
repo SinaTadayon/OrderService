@@ -7,7 +7,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
 	"gitlab.faza.io/order-project/order-service/domain/states_old/launcher"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 )
 
 const (
@@ -37,6 +37,6 @@ func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) la
 	panic("implementation required")
 }
 
-func (manualPayment manualPaymentActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
+func (manualPayment manualPaymentActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
 	panic("implementation required")
 }

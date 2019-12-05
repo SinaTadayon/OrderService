@@ -52,7 +52,7 @@ func TestOrderPayment_Success(t *testing.T) {
 	}
 
 	ipromise := payment.OrderPayment(ctx, request)
-	futureData := ipromise.Data()
+	futureData := ipromise.Get()
 	assert.NotNil(t, futureData)
 	assert.Nil(t, futureData.Ex)
 

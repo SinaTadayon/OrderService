@@ -5,11 +5,11 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 )
 
 type IListenerState interface {
 	states_old.IState
 	ActorType() actions.ActionType
-	ActionListener(ctx context.Context, event events.IEvent, param interface{}) promise.IPromise
+	ActionListener(ctx context.Context, event events.IEvent, param interface{}) future.IFuture
 }

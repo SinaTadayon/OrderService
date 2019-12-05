@@ -6,8 +6,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	message "gitlab.faza.io/protos/order"
 	"time"
 )
@@ -41,11 +41,11 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 	panic("implementation required")
 }
 
-func (sellerApprovalPending sellerApprovalPendingStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) promise.IPromise {
+func (sellerApprovalPending sellerApprovalPendingStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) future.IFuture {
 	panic("implementation required")
 }
 
-func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
+func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
 
 	if param == nil {
 		logger.Audit("Order Received in %s step, orderId: %d, Action: %s", sellerApprovalPending.Name(), order.OrderId, ApprovalPending)
@@ -53,29 +53,29 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 		sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, ApprovalPending, true, "", true, states.InProgressStatus)
 		if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 		}
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: nil}
-		return promise.NewPromise(returnChannel, 1, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: nil}
+		return future.NewFuture(returnChannel, 1, 1)
 	} else {
 		logger.Audit("Order Received in %s step, orderId: %d, Action: %s", sellerApprovalPending.Name(), order.OrderId, Approved)
 		req, ok := param.(*message.RequestSellerOrderAction)
 		if ok != true {
 			if param == "actionExpired" {
 				iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, itemsId, StockReleased)
-				futureData := iPromise.Data()
+				futureData := iPromise.Get()
 				if futureData == nil {
 					if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 					}
-					logger.Err("StockService promise channel has been closed, order: %d", order.OrderId)
+					logger.Err("StockService future channel has been closed, order: %d", order.OrderId)
 				} else if futureData.Ex != nil {
 					if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 					}
 					logger.Err("released stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
-					returnChannel := make(chan promise.FutureData, 1)
+					returnChannel := make(chan future.IDataFuture, 1)
 					defer close(returnChannel)
-					returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-					return promise.NewPromise(returnChannel, 1, 1)
+					returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+					return future.NewFuture(returnChannel, 1, 1)
 				}
 
 				if len(order.Items) == len(itemsId) {
@@ -86,71 +86,71 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 
 				sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, AutoReject, false, "Action Expired", false, states.ClosedStatus)
 				if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
-					returnChannel := make(chan promise.FutureData, 1)
+					returnChannel := make(chan future.IDataFuture, 1)
 					defer close(returnChannel)
-					returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-					return promise.NewPromise(returnChannel, 1, 1)
+					returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+					return future.NewFuture(returnChannel, 1, 1)
 				}
 				return sellerApprovalPending.Childes()[1].ProcessOrder(ctx, order, itemsId, nil)
 
 			} else {
 				logger.Err("param not a message.RequestSellerOrderAction type , order: %v", order)
-				returnChannel := make(chan promise.FutureData, 1)
+				returnChannel := make(chan future.IDataFuture, 1)
 				defer close(returnChannel)
-				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-				return promise.NewPromise(returnChannel, 1, 1)
+				returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+				return future.NewFuture(returnChannel, 1, 1)
 			}
 		}
 
 		if !sellerApprovalPending.validateAction(ctx, &order, itemsId) {
 			logger.Err("%s step received invalid action, order: %v, action: %s", sellerApprovalPending.Name(), order, req.Action)
-			returnChannel := make(chan promise.FutureData, 1)
+			returnChannel := make(chan future.IDataFuture, 1)
 			defer close(returnChannel)
-			returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotAccepted, Reason: "Action Expired"}}
-			return promise.NewPromise(returnChannel, 1, 1)
+			returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.NotAccepted, Reason: "Action Expired"}}
+			return future.NewFuture(returnChannel, 1, 1)
 		}
 
 		if req.Action == "success" {
 			sellerApprovalPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, true)
 			sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, Approved, true, "", false, states.InProgressStatus)
 			if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
-				returnChannel := make(chan promise.FutureData, 1)
+				returnChannel := make(chan future.IDataFuture, 1)
 				defer close(returnChannel)
-				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-				return promise.NewPromise(returnChannel, 1, 1)
+				returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+				return future.NewFuture(returnChannel, 1, 1)
 			}
 			return sellerApprovalPending.Childes()[0].ProcessOrder(ctx, order, itemsId, nil)
 		} else if req.Action == "failed" {
 			if req.Data == nil {
-				returnChannel := make(chan promise.FutureData, 1)
+				returnChannel := make(chan future.IDataFuture, 1)
 				defer close(returnChannel)
-				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.BadRequest, Reason: "Reason Data Required"}}
-				return promise.NewPromise(returnChannel, 1, 1)
+				returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.BadRequest, Reason: "Reason Get Required"}}
+				return future.NewFuture(returnChannel, 1, 1)
 			}
 
 			actionData := req.Data.(*message.RequestSellerOrderAction_Failed)
 			if ok != true {
 				logger.Err("request data not a message.RequestSellerOrderAction_Failed type , order: %v", order)
-				returnChannel := make(chan promise.FutureData, 1)
+				returnChannel := make(chan future.IDataFuture, 1)
 				defer close(returnChannel)
-				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-				return promise.NewPromise(returnChannel, 1, 1)
+				returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+				return future.NewFuture(returnChannel, 1, 1)
 			}
 
 			iPromise := global.Singletons.StockService.BatchStockActions(ctx, order, itemsId, StockReleased)
-			futureData := iPromise.Data()
+			futureData := iPromise.Get()
 			if futureData == nil {
 				if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 				}
-				logger.Err("StockService promise channel has been closed, order: %d", order.OrderId)
+				logger.Err("StockService future channel has been closed, order: %d", order.OrderId)
 			} else if futureData.Ex != nil {
 				if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
 				}
 				logger.Err("released stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
-				returnChannel := make(chan promise.FutureData, 1)
+				returnChannel := make(chan future.IDataFuture, 1)
 				defer close(returnChannel)
-				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-				return promise.NewPromise(returnChannel, 1, 1)
+				returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+				return future.NewFuture(returnChannel, 1, 1)
 			}
 
 			if len(order.Items) == len(itemsId) {
@@ -160,20 +160,20 @@ func (sellerApprovalPending sellerApprovalPendingStep) ProcessOrder(ctx context.
 			}
 			sellerApprovalPending.updateOrderItemsProgress(ctx, &order, itemsId, Approved, false, actionData.Failed.Reason, false, states.ClosedStatus)
 			if err := sellerApprovalPending.persistOrder(ctx, &order); err != nil {
-				returnChannel := make(chan promise.FutureData, 1)
+				returnChannel := make(chan future.IDataFuture, 1)
 				defer close(returnChannel)
-				returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-				return promise.NewPromise(returnChannel, 1, 1)
+				returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+				return future.NewFuture(returnChannel, 1, 1)
 			}
 
 			return sellerApprovalPending.Childes()[1].ProcessOrder(ctx, order, itemsId, nil)
 		}
 
 		logger.Err("%s step received invalid action, order: %v, action: %s", sellerApprovalPending.Name(), order, req.Action)
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 }
 

@@ -1,6 +1,8 @@
-package promise
+package future
 
-import "fmt"
+import (
+	"time"
+)
 
 //422 - Validation Errors, an array of objects, each object containing the field and the value (message) of the error
 //400 - Bad Request - Any request not properly formatted for the server to understand and parse it
@@ -9,35 +11,32 @@ import "fmt"
 //406 - Not Accepted - The example usage for this code, is an attempt on an expired or timed-out action. Such as trying to cancel an order which cannot be cancelled any more
 //409 - Conflict - Anything which causes conflicts on the server, the most famous one, a not unique email error, a duplicate entity...
 
+type ErrorCode int32
+
 const (
-	BadRequest      = 400
-	Forbidden       = 403
-	NotFound        = 404
-	NotAccepted     = 406
-	Conflict        = 409
-	ValidationError = 422
-	InternalError   = 500
+	BadRequest      ErrorCode = 400
+	Forbidden       ErrorCode = 403
+	NotFound        ErrorCode = 404
+	NotAccepted     ErrorCode = 406
+	Conflict        ErrorCode = 409
+	ValidationError ErrorCode = 422
+	InternalError   ErrorCode = 500
 )
 
-type DataChan <-chan FutureData
-
-type IPromise interface {
-	Data() *FutureData
-	Channel() DataChan
+type IFuture interface {
+	Get() IDataFuture
+	GetTimeout(duration time.Duration) IDataFuture
 	Count() int
 	Capacity() int
 }
 
-type FutureData struct {
-	Data interface{}
-	Ex   error
+type IDataFuture interface {
+	Data() interface{}
+	Error() IErrorFuture
 }
 
-type FutureError struct {
-	Code   int32
-	Reason string
-}
-
-func (error FutureError) Error() string {
-	return fmt.Sprintf("err code: %d, reason: %s", error.Code, error.Reason)
+type IErrorFuture interface {
+	Code() ErrorCode
+	Message() string
+	Reason() error
 }

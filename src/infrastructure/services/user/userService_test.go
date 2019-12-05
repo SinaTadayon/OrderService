@@ -48,7 +48,7 @@ func TestGetSellerInfo(t *testing.T) {
 
 	// user service create dummy user with id 1000002
 	iPromise := userService.GetSellerProfile(ctx, "1000002")
-	futureData := iPromise.Data()
+	futureData := iPromise.Get()
 	assert.Nil(t, futureData.Ex)
 	assert.Equal(t, futureData.Data.(*entities.SellerProfile).SellerId, int64(1000002))
 }

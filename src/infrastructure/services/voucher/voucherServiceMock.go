@@ -2,7 +2,7 @@ package voucher_service
 
 import (
 	"context"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 )
 
 type iVoucherServiceMock struct {
@@ -13,11 +13,11 @@ func NewVoucherServiceMock() IVoucherService {
 }
 
 func (voucherService iVoucherServiceMock) VoucherSettlement(ctx context.Context, voucherCode string,
-	orderId uint64, buyerId uint64) promise.IPromise {
-	returnChannel := make(chan promise.FutureData, 1)
+	orderId uint64, buyerId uint64) future.IFuture {
+	returnChannel := make(chan future.IDataFuture, 1)
 	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data: nil, Ex: nil}
-	return promise.NewPromise(returnChannel, 1, 1)
+	returnChannel <- future.IDataFuture{Data: nil, Ex: nil}
+	return future.NewFuture(returnChannel, 1, 1)
 }
 
 func (voucherService iVoucherServiceMock) Connect() error {

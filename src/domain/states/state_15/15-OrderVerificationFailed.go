@@ -5,7 +5,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	message "gitlab.faza.io/protos/order"
 )
 
@@ -34,11 +34,11 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 	panic("implementation required")
 }
 
-func (paymentRejected paymentRejectedStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) promise.IPromise {
+func (paymentRejected paymentRejectedStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) future.IFuture {
 	panic("implementation required")
 }
 
-func (paymentRejected paymentRejectedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
+func (paymentRejected paymentRejectedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
 	panic("implementation required")
 }
 

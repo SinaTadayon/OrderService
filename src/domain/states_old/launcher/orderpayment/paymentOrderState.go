@@ -11,8 +11,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
 	"gitlab.faza.io/order-project/order-service/domain/states_old/launcher"
 	listener_state "gitlab.faza.io/order-project/order-service/domain/states_old/listener"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	"time"
 )
@@ -44,24 +44,24 @@ func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) la
 	panic("implementation required")
 }
 
-func (orderPayment orderPaymentActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
+func (orderPayment orderPaymentActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
 
 	paymentState, ok := orderPayment.Childes()[0].(listener_state.IListenerState)
 	if ok != true {
 		logger.Err("paymentState isn't child of orderPaymentState, order: %v", order)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.IDataFuture, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	nextToStepState, ok := orderPayment.Childes()[1].(launcher_state.ILauncherState)
 	if ok != true {
 		logger.Err("nextToStep isn't child of orderPaymentState, order: %v", order)
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	paymentRequest := payment_service.PaymentRequest{
@@ -83,7 +83,7 @@ func (orderPayment orderPaymentActionLauncher) ActionLauncher(ctx context.Contex
 	}
 
 	iPromise := global.Singletons.PaymentService.OrderPayment(ctx, paymentRequest)
-	futureData := iPromise.Data()
+	futureData := iPromise.Get()
 	if futureData == nil {
 		order.PaymentService[0].PaymentResponse = &entities.PaymentResponse{
 			Result:      false,
@@ -98,10 +98,10 @@ func (orderPayment orderPaymentActionLauncher) ActionLauncher(ctx context.Contex
 		orderPayment.persistOrderState(ctx, &order, itemsId, order_payment_action.OrderPaymentAction, false,
 			"PaymentService.OrderPayment in orderPaymentState failed", nil)
 		logger.Err("PaymentService.OrderPayment in orderPaymentState failed, order: %v", order)
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	if futureData.Ex != nil {
@@ -118,13 +118,13 @@ func (orderPayment orderPaymentActionLauncher) ActionLauncher(ctx context.Contex
 		orderPayment.persistOrderState(ctx, &order, itemsId, order_payment_action.OrderPaymentAction, false,
 			futureData.Ex.Error(), nil)
 		logger.Err("PaymentService.OrderPayment in orderPaymentState failed, order: %v, error: %s", order, futureData.Ex.Error())
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: futureData.Ex}
+		returnChannel <- future.IDataFuture{Data: nil, Ex: futureData.Ex}
 		go func() {
 			nextToStepState.ActionLauncher(ctx, order, nil, order_payment_action.OrderPaymentFailedAction)
 		}()
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	paymentResponse := futureData.Data.(payment_service.PaymentResponse)
@@ -189,7 +189,7 @@ func (orderPayment orderPaymentActionLauncher) doUpdateOrderState(ctx context.Co
 	//
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Type = actives.OrderPaymentAction.String()
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
-	//order.Items[index].Tracking.CurrentState.AcceptedAction.Data = nil
+	//order.Items[index].Tracking.CurrentState.AcceptedAction.Get = nil
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Time = &order.Items[index].Tracking.CurrentState.CreatedAt
 	//
 	//order.Items[index].Tracking.CurrentState.Actions = []entities.Action{order.Items[index].Tracking.CurrentState.AcceptedAction}

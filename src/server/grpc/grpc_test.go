@@ -208,7 +208,7 @@ func createMetaDataRequest() *message.RequestMetadata {
 //		//ItemId: orderId + strconv.Itoa(int(entities.GenerateRandomNumber())),
 //		Time: ptypes.TimestampNow(),
 //		Meta: metadata,
-//		Data: &any.Any{
+//		Get: &any.Any{
 //			TypeUrl: "baman.io/" + proto.MessageName(RequestNewOrder),
 //			Value:   serializedOrder,
 //		},

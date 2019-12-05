@@ -77,7 +77,7 @@ type StateHistory struct {
  Action sample:
 	ActionName: ApprovedAction
 	Type: SellerInfoActor
-	Data: "sample data"
+	Get: "sample data"
 */
 type Action struct {
 	Name      string                 `bson:"name"`

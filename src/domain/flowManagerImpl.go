@@ -20,7 +20,7 @@ import (
 	//"github.com/pkg/errors"
 	checkout_action "gitlab.faza.io/order-project/order-service/domain/actions/checkout"
 	checkout_action_state "gitlab.faza.io/order-project/order-service/domain/states_old/listener/checkout"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	//pb "gitlab.faza.io/protos/order"
 	////"google.golang.org/grpc/codes"
 	//"google.golang.org/grpc/status"
@@ -1034,7 +1034,7 @@ func (flowManager *iFlowManagerImpl) createStep0() {
 }
 
 // TODO Must be refactored
-func (flowManager iFlowManagerImpl) MessageHandler(ctx context.Context, req *message.MessageRequest) promise.IPromise {
+func (flowManager iFlowManagerImpl) MessageHandler(ctx context.Context, req *message.MessageRequest) future.IPromise {
 	// received New Order Request
 	//if len(req.OrderId) == 0 {
 
@@ -1050,23 +1050,23 @@ func (flowManager iFlowManagerImpl) MessageHandler(ctx context.Context, req *mes
 	//	if err != nil {
 	//		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
 	//			req.OrderId, err)
-	//		returnChannel := make(chan promise.FutureData, 1)
-	//		returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.NotFound, Reason:"OrderId Not Found"}}
+	//		returnChannel := make(chan future.FutureData, 1)
+	//		returnChannel <- future.FutureData{Get:nil, Ex:future.FutureError{Code: future.NotFound, Reason:"OrderId Not Found"}}
 	//		defer close(returnChannel)
-	//		return promise.NewPromise(returnChannel, 1, 1)
+	//		return future.NewPromise(returnChannel, 1, 1)
 	//	}
 	//}
 }
 
-func (flowManager iFlowManagerImpl) SellerApprovalPending(ctx context.Context, req *message.RequestSellerOrderAction) promise.IPromise {
+func (flowManager iFlowManagerImpl) SellerApprovalPending(ctx context.Context, req *message.RequestSellerOrderAction) future.IPromise {
 	order, err := global.Singletons.OrderRepository.FindById(req.OrderId)
 	if err != nil {
 		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, orderId: %d, error: %s",
 			req.OrderId, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "OrderId Not Found"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.NotFound, Reason: "OrderId Not Found"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	itemsId := make([]uint64, 0, len(order.Items))
@@ -1082,21 +1082,21 @@ func (flowManager iFlowManagerImpl) SellerApprovalPending(ctx context.Context, r
 		return flowManager.indexStepsMap[30].ProcessOrder(ctx, *order, itemsId, req)
 	}
 
-	returnChannel := make(chan promise.FutureData, 1)
-	returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "ActionType Not Found"}}
+	returnChannel := make(chan future.FutureData, 1)
+	returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.NotFound, Reason: "ActionType Not Found"}}
 	defer close(returnChannel)
-	return promise.NewPromise(returnChannel, 1, 1)
+	return future.NewPromise(returnChannel, 1, 1)
 }
 
-func (flowManager iFlowManagerImpl) BuyerApprovalPending(ctx context.Context, req *message.RequestBuyerOrderAction) promise.IPromise {
+func (flowManager iFlowManagerImpl) BuyerApprovalPending(ctx context.Context, req *message.RequestBuyerOrderAction) future.IPromise {
 	order, err := global.Singletons.OrderRepository.FindById(req.OrderId)
 	if err != nil {
 		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, orderId: %d, error: %s",
 			req.OrderId, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "OrderId Not Found"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.NotFound, Reason: "OrderId Not Found"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	//itemsId := make([]string, 0, len(order.Items))
@@ -1110,31 +1110,31 @@ func (flowManager iFlowManagerImpl) BuyerApprovalPending(ctx context.Context, re
 		return flowManager.indexStepsMap[32].ProcessOrder(ctx, *order, req.ItemsId, req)
 	}
 
-	returnChannel := make(chan promise.FutureData, 1)
-	returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "ActionType Not Found"}}
+	returnChannel := make(chan future.FutureData, 1)
+	returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.NotFound, Reason: "ActionType Not Found"}}
 	defer close(returnChannel)
-	return promise.NewPromise(returnChannel, 1, 1)
+	return future.NewPromise(returnChannel, 1, 1)
 }
 
-func (flowManager iFlowManagerImpl) PaymentGatewayResult(ctx context.Context, req *pg.PaygateHookRequest) promise.IPromise {
+func (flowManager iFlowManagerImpl) PaymentGatewayResult(ctx context.Context, req *pg.PaygateHookRequest) future.IPromise {
 	orderId, err := strconv.Atoi(req.OrderID)
 	if err != nil {
 		logger.Err("PaymentGatewayResult() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
 			req.OrderID, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.BadRequest, Reason: "OrderId Invalid"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.BadRequest, Reason: "OrderId Invalid"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	order, err := global.Singletons.OrderRepository.FindById(uint64(orderId))
 	if err != nil {
 		logger.Err("PaymentGatewayResult() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
 			req.OrderID, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "OrderId Not Found"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.NotFound, Reason: "OrderId Not Found"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	order.PaymentService[0].PaymentResult = &entities.PaymentResult{
@@ -1152,7 +1152,7 @@ func (flowManager iFlowManagerImpl) PaymentGatewayResult(ctx context.Context, re
 	return flowManager.indexStepsMap[10].ProcessOrder(ctx, *order, nil, "OrderPayment")
 }
 
-func (flowManager iFlowManagerImpl) OperatorActionPending(ctx context.Context, req *message.RequestBackOfficeOrderAction) promise.IPromise {
+func (flowManager iFlowManagerImpl) OperatorActionPending(ctx context.Context, req *message.RequestBackOfficeOrderAction) future.IPromise {
 	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
 		return bson.D{{"items.itemId", req.ItemId}}
 	})
@@ -1160,27 +1160,27 @@ func (flowManager iFlowManagerImpl) OperatorActionPending(ctx context.Context, r
 	if err != nil {
 		logger.Err("MessageHandler() => request itemId not found, OrderRepository.FindById failed, itemId: %d, error: %s",
 			req.ItemId, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	if len(orders) == 0 {
 		logger.Err("MessageHandler() => request itemId not found, itemId: %d", req.ItemId)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "ItemId Not Found"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.NotFound, Reason: "ItemId Not Found"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	if len(orders) > 1 {
 		logger.Err("MessageHandler() => request itemId found in multiple order, itemId: %d, error: %s",
 			req.ItemId, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	itemsId := make([]uint64, 0, 1)
@@ -1194,28 +1194,28 @@ func (flowManager iFlowManagerImpl) OperatorActionPending(ctx context.Context, r
 		return flowManager.indexStepsMap[43].ProcessOrder(ctx, *orders[0], itemsId, req)
 	}
 
-	returnChannel := make(chan promise.FutureData, 1)
-	returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "ActionType Not Found"}}
+	returnChannel := make(chan future.FutureData, 1)
+	returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.NotFound, Reason: "ActionType Not Found"}}
 	defer close(returnChannel)
-	return promise.NewPromise(returnChannel, 1, 1)
+	return future.NewPromise(returnChannel, 1, 1)
 }
 
-func (flowManager iFlowManagerImpl) BackOfficeOrdersListView(ctx context.Context, req *message.RequestBackOfficeOrdersList) promise.IPromise {
+func (flowManager iFlowManagerImpl) BackOfficeOrdersListView(ctx context.Context, req *message.RequestBackOfficeOrdersList) future.IPromise {
 	orders, total, err := global.Singletons.OrderRepository.FindAllWithPageAndSort(int64(req.Page), int64(req.PerPage), req.Sort, int(req.Direction))
 
 	if err != nil {
 		logger.Err("BackOfficeOrdersListView() => FindAllWithPageAndSort failed, error: %s", err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	if len(orders) == 0 {
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "Orders Not Found"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.NotFound, Reason: "Orders Not Found"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	response := message.ResponseBackOfficeOrdersList{
@@ -1254,33 +1254,33 @@ func (flowManager iFlowManagerImpl) BackOfficeOrdersListView(ctx context.Context
 		response.Orders = append(response.Orders, backOfficeOrder)
 	}
 
-	returnChannel := make(chan promise.FutureData, 1)
-	returnChannel <- promise.FutureData{Data: &response, Ex: nil}
+	returnChannel := make(chan future.FutureData, 1)
+	returnChannel <- future.FutureData{Data: &response, Ex: nil}
 	defer close(returnChannel)
-	return promise.NewPromise(returnChannel, 1, 1)
+	return future.NewPromise(returnChannel, 1, 1)
 }
 
 // TODO check payment length
-func (flowManager iFlowManagerImpl) BackOfficeOrderDetailView(ctx context.Context, req *message.RequestIdentifier) promise.IPromise {
+func (flowManager iFlowManagerImpl) BackOfficeOrderDetailView(ctx context.Context, req *message.RequestIdentifier) future.IPromise {
 
 	orderId, err := strconv.Atoi(req.Id)
 	if err != nil {
 		logger.Err("BackOfficeOrderDetailView() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
 			req.Id, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.BadRequest, Reason: "OrderId Invalid"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.BadRequest, Reason: "OrderId Invalid"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	order, err := global.Singletons.OrderRepository.FindById(uint64(orderId))
 	if err != nil {
 		logger.Err("BackOfficeOrderDetailView() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
 			req.Id, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "OrderId Not Found"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.NotFound, Reason: "OrderId Not Found"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	response := &message.ResponseOrderDetailView{
@@ -1355,13 +1355,13 @@ func (flowManager iFlowManagerImpl) BackOfficeOrderDetailView(ctx context.Contex
 		}
 	}
 
-	returnChannel := make(chan promise.FutureData, 1)
-	returnChannel <- promise.FutureData{Data: response, Ex: nil}
+	returnChannel := make(chan future.FutureData, 1)
+	returnChannel <- future.FutureData{Data: response, Ex: nil}
 	defer close(returnChannel)
-	return promise.NewPromise(returnChannel, 1, 1)
+	return future.NewPromise(returnChannel, 1, 1)
 }
 
-func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSellerReportOrders, srv message.OrderService_SellerReportOrdersServer) promise.IPromise {
+func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSellerReportOrders, srv message.OrderService_SellerReportOrdersServer) future.IPromise {
 	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
 		return bson.D{{"createdAt",
 			bson.D{{"$gte", time.Unix(int64(req.StartDateTime), 0).UTC()}}},
@@ -1371,17 +1371,17 @@ func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSelle
 	if err != nil {
 		logger.Err("SellerReportOrders() => OrderRepository.FindByFilter failed, startDateTime: %v, status: %s, error: %s",
 			req.StartDateTime, req.Status, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	if orders == nil || len(orders) == 0 {
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: nil}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: nil}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	reports := make([]*reports2.SellerExportOrders, 0, len(orders))
@@ -1458,10 +1458,10 @@ func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSelle
 	if err != nil {
 		logger.Err("SellerReportOrders() => create file %s failed, startDateTime: %v, status: %s, error: %s",
 			fileName, req.StartDateTime, req.Status, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	w := csv.NewWriter(f)
@@ -1469,10 +1469,10 @@ func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSelle
 	if err := w.WriteAll(csvReports); err != nil {
 		logger.Err("SellerReportOrders() => write csv to file failed, startDateTime: %v, : status: %s, error: %s",
 			req.StartDateTime, req.Status, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	if err := f.Close(); err != nil {
@@ -1483,10 +1483,10 @@ func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSelle
 	if err != nil {
 		logger.Err("SellerReportOrders() => write csv to file failed, startDateTime: %v, : status: %s, error: %s",
 			req.StartDateTime, req.Status, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	var fileErr, grpcErr error
@@ -1517,27 +1517,27 @@ func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSelle
 
 	if fileErr != nil {
 		logger.Err("SellerReportOrders() => read csv from file failed, filename: %s, error: %s", fileName, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	if grpcErr != nil {
 		logger.Err("SellerReportOrders() => send cvs file failed, filename: %s, error: %s", fileName, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
-	returnChannel := make(chan promise.FutureData, 1)
-	returnChannel <- promise.FutureData{Data: nil, Ex: nil}
+	returnChannel := make(chan future.FutureData, 1)
+	returnChannel <- future.FutureData{Data: nil, Ex: nil}
 	defer close(returnChannel)
-	return promise.NewPromise(returnChannel, 1, 1)
+	return future.NewPromise(returnChannel, 1, 1)
 }
 
-func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.RequestBackOfficeReportOrderItems, srv message.OrderService_BackOfficeReportOrderItemsServer) promise.IPromise {
+func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.RequestBackOfficeReportOrderItems, srv message.OrderService_BackOfficeReportOrderItemsServer) future.IPromise {
 	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
 		return bson.D{{"createdAt",
 			bson.D{{"$gte", time.Unix(int64(req.StartDateTime), 0).UTC()},
@@ -1547,17 +1547,17 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 	if err != nil {
 		logger.Err("BackOfficeReportOrderItems() => request itemId not found, OrderRepository.FindById failed, startDateTime: %v, endDateTime: %v, error: %s",
 			req.StartDateTime, req.EndDataTime, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	if orders == nil || len(orders) == 0 {
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: nil}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: nil}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	reports := make([]*reports2.BackOfficeExportItems, 0, len(orders))
@@ -1605,7 +1605,7 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 			if sellerProfile, ok := sellerProfileMap[item.SellerInfo.SellerId]; !ok {
 				userCtx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 				ipromise := global.Singletons.UserService.GetSellerProfile(userCtx, strconv.Itoa(int(item.SellerInfo.SellerId)))
-				futureData := ipromise.Data()
+				futureData := ipromise.Get()
 				if futureData.Ex != nil {
 					logger.Err("BackOfficeReportOrderItems() => get sellerProfile failed, orderId: %d, itemId: %d, sellerId: %d",
 						order.OrderId, item.ItemId, item.SellerInfo.SellerId)
@@ -1657,10 +1657,10 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 	if err != nil {
 		logger.Err("BackOfficeReportOrderItems() => create file %s failed, startDateTime: %v, endDateTime: %v, error: %s",
 			fileName, req.StartDateTime, req.EndDataTime, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	w := csv.NewWriter(f)
@@ -1668,10 +1668,10 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 	if err := w.WriteAll(csvReports); err != nil {
 		logger.Err("BackOfficeReportOrderItems() => write csv to file failed, startDateTime: %v, endDateTime: %v, error: %s",
 			req.StartDateTime, req.EndDataTime, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	if err := f.Close(); err != nil {
@@ -1682,10 +1682,10 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 	if err != nil {
 		logger.Err("BackOfficeReportOrderItems() => read csv from file failed, startDateTime: %v, endDateTime: %v, error: %s",
 			req.StartDateTime, req.EndDataTime, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	var fileErr, grpcErr error
@@ -1716,24 +1716,24 @@ func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.Requ
 
 	if fileErr != nil {
 		logger.Err("BackOfficeReportOrderItems() => read csv from file failed, filename: %s, error: %s", fileName, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
 	if grpcErr != nil {
 		logger.Err("BackOfficeReportOrderItems() => send cvs file failed, filename: %s, error: %s", fileName, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.FutureData, 1)
+		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewPromise(returnChannel, 1, 1)
 	}
 
-	returnChannel := make(chan promise.FutureData, 1)
-	returnChannel <- promise.FutureData{Data: nil, Ex: nil}
+	returnChannel := make(chan future.FutureData, 1)
+	returnChannel <- future.FutureData{Data: nil, Ex: nil}
 	defer close(returnChannel)
-	return promise.NewPromise(returnChannel, 1, 1)
+	return future.NewPromise(returnChannel, 1, 1)
 }
 
 func (flowManager iFlowManagerImpl) SchedulerEvents(event events.ISchedulerEvent) {

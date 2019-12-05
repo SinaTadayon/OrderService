@@ -3,7 +3,7 @@ package stock_service
 import (
 	"context"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	stockProto "gitlab.faza.io/protos/stock-proto.git"
 )
 
@@ -14,33 +14,33 @@ func NewStockServiceMock() IStockService {
 	return &iStockServiceMock{}
 }
 
-func (stock iStockServiceMock) SingleStockAction(ctx context.Context, inventoryId string, count int, action string) promise.IPromise {
+func (stock iStockServiceMock) SingleStockAction(ctx context.Context, inventoryId string, count int, action string) future.IFuture {
 	if action == "StockReserved" || action == "StockReleased" || action == "StockSettlement" {
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: nil}
-		return promise.NewPromise(returnChannel, 1, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: nil}
+		return future.NewFuture(returnChannel, 1, 1)
 	} else {
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{
-			Code: promise.InternalError, Reason: "Action Invalid"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{
+			Code: future.InternalError, Reason: "Action Invalid"}}
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 }
 
-func (stock iStockServiceMock) BatchStockActions(ctx context.Context, order entities.Order, itemsId []uint64, action string) promise.IPromise {
+func (stock iStockServiceMock) BatchStockActions(ctx context.Context, order entities.Order, itemsId []uint64, action string) future.IFuture {
 	if action == "StockReserved" || action == "StockReleased" || action == "StockSettlement" {
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: nil}
-		return promise.NewPromise(returnChannel, 1, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: nil}
+		return future.NewFuture(returnChannel, 1, 1)
 	} else {
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{
-			Code: promise.InternalError, Reason: "Action Invalid"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{
+			Code: future.InternalError, Reason: "Action Invalid"}}
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 }
 

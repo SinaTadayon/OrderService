@@ -9,8 +9,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
 	"gitlab.faza.io/order-project/order-service/domain/states_old/launcher"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	"time"
 )
 
@@ -43,30 +43,30 @@ func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) la
 
 // TODO must be dynamic
 // TODO check actions and improve handling actions
-func (finalizeState finalizeActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
+func (finalizeState finalizeActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
 
-	returnChannel := make(chan promise.FutureData, 1)
+	returnChannel := make(chan future.IDataFuture, 1)
 	defer close(returnChannel)
 	for _, action := range finalizeState.Actions().(actives.IActiveAction).ActionEnums() {
 		if action == finalize_action.OrderFailedFinalizeAction {
 			finalizeState.persistOrderState(ctx, &order, itemsId, action, true, "")
-			returnChannel <- promise.FutureData{Data: promise.FutureData{}, Ex: nil}
+			returnChannel <- future.IDataFuture{Data: future.IDataFuture{}, Ex: nil}
 			break
 		} else if action == finalize_action.BuyerFinalizeAction {
 			panic("must be implement")
 		} else if action == finalize_action.PaymentFailedFinalizeAction {
 			finalizeState.persistOrderState(ctx, &order, itemsId, action, true, "")
-			returnChannel <- promise.FutureData{Data: promise.FutureData{}, Ex: nil}
+			returnChannel <- future.IDataFuture{Data: future.IDataFuture{}, Ex: nil}
 		} else if action == finalize_action.MarketFinalizeAction {
 			panic("must be implement")
 		} else {
 			logger.Err("actions in not valid for finalize, action: %v, order: %v", action, order)
 			finalizeState.persistOrderState(ctx, &order, itemsId, action, false, "received param type is not a actions.IEnumAction")
-			returnChannel <- promise.FutureData{Data: promise.FutureData{}, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+			returnChannel <- future.IDataFuture{Data: future.IDataFuture{}, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 			break
 		}
 	}
-	return promise.NewPromise(returnChannel, 1, 1)
+	return future.NewFuture(returnChannel, 1, 1)
 }
 
 func (finalizeState finalizeActionLauncher) persistOrderState(ctx context.Context, order *entities.Order, itemsId []uint64,
@@ -112,7 +112,7 @@ func (finalizeState finalizeActionLauncher) doUpdateOrderState(ctx context.Conte
 	//
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Type = actives.FinalizeAction.String()
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
-	//order.Items[index].Tracking.CurrentState.AcceptedAction.Data = nil
+	//order.Items[index].Tracking.CurrentState.AcceptedAction.Get = nil
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Time = &order.Items[index].Tracking.CurrentState.CreatedAt
 	//
 	//order.Items[index].Tracking.CurrentState.Actions = []entities.Action{order.Items[index].Tracking.CurrentState.AcceptedAction}

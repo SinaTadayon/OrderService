@@ -2,9 +2,9 @@ package states
 
 import (
 	"context"
-	"gitlab.faza.io/order-project/order-service/domain/models/entities"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
-	message "gitlab.faza.io/protos/order"
+	"gitlab.faza.io/order-project/order-service/domain/actions"
+	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 )
 
 const (
@@ -18,6 +18,7 @@ type IState interface {
 	Index() int
 	Childes() []IState
 	Parents() []IState
-	ProcessMessage(ctx context.Context, request *message.MessageRequest) promise.IPromise
-	ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise
+	Actions() []actions.IAction
+	Process(ctx context.Context, frame frame.IFrame) future.IFuture
+	//ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture
 }

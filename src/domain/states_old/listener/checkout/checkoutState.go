@@ -11,8 +11,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
 	launcher_state "gitlab.faza.io/order-project/order-service/domain/states_old/launcher"
 	listener_state "gitlab.faza.io/order-project/order-service/domain/states_old/listener"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	"time"
 	//message "gitlab.faza.io/protos/order"
 )
@@ -45,23 +45,23 @@ func NewValueOf(base *listener_state.BaseListenerImpl, params ...interface{}) li
 }
 
 // TODO context handling
-func (checkoutActionState checkoutActionListener) ActionListener(ctx context.Context, event events.IEvent, param interface{}) promise.IPromise {
+func (checkoutActionState checkoutActionListener) ActionListener(ctx context.Context, event events.IEvent, param interface{}) future.IFuture {
 
 	if event == nil {
 		logger.Err("Received Event is nil")
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.IDataFuture, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	stockState, ok := checkoutActionState.Childes()[0].(launcher_state.ILauncherState)
 	if ok != true {
 		logger.Err("StockState isn't child of CheckoutState, event: %v", event)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.IDataFuture, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	// TODO checking type and result cast
@@ -69,18 +69,18 @@ func (checkoutActionState checkoutActionListener) ActionListener(ctx context.Con
 
 	if actorEvent.ActorType() != actions.Checkout {
 		logger.Err("Received actorType of event is not Checkout, event: %v", event)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.IDataFuture, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	if actorEvent.ActorAction().ActionEnum()[0] != checkout_action.NewOrderAction {
 		logger.Err("Received actorAction of event is not NewOrderAction, event: %v", event)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.IDataFuture, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	newOrder := actorEvent.Order()
@@ -89,10 +89,10 @@ func (checkoutActionState checkoutActionListener) ActionListener(ctx context.Con
 	order, err := global.Singletons.OrderRepository.Save(newOrder)
 	if err != nil {
 		logger.Err("Save NewOrder Failed, error: %s, newOrder: %v", err, newOrder)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.IDataFuture, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	return stockState.ActionLauncher(ctx, *order, nil, nil)
@@ -110,7 +110,7 @@ func (checkoutActionState checkoutActionListener) updateOrderStates(ctx context.
 	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.ActionName = checkout_action.NewOrderAction.String()
 	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.Type = actors.Checkout.String()
 	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.Base = actions.ActorAction.String()
-	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.Data = nil
+	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.Get = nil
 	//	newOrder.Items[i].Tracking.CurrentState.AcceptedAction.Time = &timestamp
 	//
 	//	newOrder.Items[i].Tracking.CurrentState.Actions = []entities.Action{newOrder.Items[i].Tracking.CurrentState.AcceptedAction}

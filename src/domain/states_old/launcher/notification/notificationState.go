@@ -9,8 +9,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
 	"gitlab.faza.io/order-project/order-service/domain/states_old/launcher"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	"time"
 )
 
@@ -43,14 +43,14 @@ func NewValueOf(base *launcher_state.BaseLauncherImpl, params ...interface{}) la
 
 // TODO must be implement sms and email templates and related to states and actions
 // TODO must decouple from child
-func (notificationState notificationActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
+func (notificationState notificationActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
 
-	returnChannel := make(chan promise.FutureData, 1)
+	returnChannel := make(chan future.IDataFuture, 1)
 	defer close(returnChannel)
 	for _, action := range notificationState.Actions().(actives.IActiveAction).ActionEnums() {
 		if action == notification_action.OperatorNotification {
 			notificationState.persistOrderState(ctx, &order, itemsId, action, true, "")
-			//returnChannel <- promise.FutureData{Data:promise.FutureData{}, Ex:nil}
+			//returnChannel <- future.IDataFuture{Get:future.IDataFuture{}, Ex:nil}
 			break
 		} else if action == notification_action.BuyerNotification {
 			notificationState.persistOrderState(ctx, &order, itemsId, action, true, "")
@@ -58,14 +58,14 @@ func (notificationState notificationActionLauncher) ActionLauncher(ctx context.C
 		} else if action == notification_action.SellerNotification {
 			notificationState.persistOrderState(ctx, &order, itemsId, action, true, "")
 			break
-			//returnChannel <- promise.FutureData{Data:promise.FutureData{}, Ex:nil}
+			//returnChannel <- future.IDataFuture{Get:future.IDataFuture{}, Ex:nil}
 		} else if action == notification_action.MarketNotificationAction {
 			notificationState.persistOrderState(ctx, &order, itemsId, action, true, "")
 			break
 		} else {
 			logger.Err("actions in not valid for notification, action: %v, order: %v", action, order)
 			notificationState.persistOrderState(ctx, &order, itemsId, action, false, "received param type is not a actions.IEnumAction")
-			//returnChannel <- promise.FutureData{Data:promise.FutureData{}, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+			//returnChannel <- future.IDataFuture{Get:future.IDataFuture{}, Ex:future.FutureError{Code: future.InternalError, Reason:"Unknown Error"}}
 			break
 		}
 	}
@@ -74,16 +74,16 @@ func (notificationState notificationActionLauncher) ActionLauncher(ctx context.C
 		finalizeState, ok := notificationState.Childes()[0].(launcher_state.ILauncherState)
 		if ok != true || finalizeState.ActiveType() != actives.FinalizeAction {
 			logger.Err("finalize state doesn't exist in index 0 of notificationState, order: %v", order)
-			returnChannel := make(chan promise.FutureData, 1)
+			returnChannel := make(chan future.IDataFuture, 1)
 			defer close(returnChannel)
-			returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-			return promise.NewPromise(returnChannel, 1, 1)
+			returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+			return future.NewFuture(returnChannel, 1, 1)
 		}
 
 		return finalizeState.ActionLauncher(ctx, order, itemsId, nil)
 	}
 
-	return promise.NewPromise(returnChannel, 1, 1)
+	return future.NewFuture(returnChannel, 1, 1)
 }
 
 func (notificationState notificationActionLauncher) persistOrderState(ctx context.Context, order *entities.Order, itemsId []uint64,
@@ -129,7 +129,7 @@ func (notificationState notificationActionLauncher) doUpdateOrderState(ctx conte
 	//
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Type = actives.FinalizeAction.String()
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
-	//order.Items[index].Tracking.CurrentState.AcceptedAction.Data = nil
+	//order.Items[index].Tracking.CurrentState.AcceptedAction.Get = nil
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Time = &order.Items[index].Tracking.CurrentState.CreatedAt
 	//
 	//order.Items[index].Tracking.CurrentState.Actions = []entities.Action{order.Items[index].Tracking.CurrentState.AcceptedAction}

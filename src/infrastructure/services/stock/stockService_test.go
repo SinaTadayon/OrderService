@@ -249,14 +249,14 @@ func createOrder() entities.Order {
 					//		ActionName: "Success",
 					//		Type: "NewOrder",
 					//		Base: "Active",
-					//		Data: nil,
+					//		Get: nil,
 					//		Time: &currentTime,
 					//	}},
 					//	AcceptedAction:entities.Action {
 					//		ActionName: "Success",
 					//		Type: "NewOrder",
 					//		Base: "Active",
-					//		Data: nil,
+					//		Get: nil,
 					//		Time: &currentTime,
 					//	},
 					//	Result: false,
@@ -276,7 +276,7 @@ func createOrder() entities.Order {
 						//		ActionName:           "Success",
 						//		Type:           "NewOrder",
 						//		Base:           "Active",
-						//		Data:           nil,
+						//		Get:           nil,
 						//		Time: 			&currentTime,
 						//	},
 						//	Result: 	  false,
@@ -418,14 +418,14 @@ func createOrder() entities.Order {
 					//		ActionName:           "Success",
 					//		Type:           "NewOrder",
 					//		Base:           "Active",
-					//		Data:           nil,
+					//		Get:           nil,
 					//		Time: 			&currentTime,
 					//	}},
 					//	AcceptedAction: entities.Action{
 					//		ActionName:           "Success",
 					//		Type:           "NewOrder",
 					//		Base:           "Active",
-					//		Data:           nil,
+					//		Get:           nil,
 					//		Time: 			&currentTime,
 					//	},
 					//	Result: false,
@@ -445,7 +445,7 @@ func createOrder() entities.Order {
 						//		ActionName:           "Success",
 						//		Type:           "NewOrder",
 						//		Base:           "Active",
-						//		Data:           nil,
+						//		Get:           nil,
 						//		Time: 			&currentTime,
 						//	},
 						//
@@ -505,7 +505,7 @@ func TestStockService_ReservedSuccess(t *testing.T) {
 
 	itemsId := []uint64{order.Items[0].ItemId}
 	promise := stock.BatchStockActions(ctx, order, itemsId, "StockReserved")
-	futureData := promise.Data()
+	futureData := promise.Get()
 	assert.Nil(t, futureData.Ex)
 
 	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Items[0].InventoryId})
@@ -541,11 +541,11 @@ func TestStockService_SettlementSuccess(t *testing.T) {
 
 	itemsId := []uint64{order.Items[0].ItemId}
 	promise := stock.BatchStockActions(ctx, order, itemsId, "StockReserved")
-	futureData := promise.Data()
+	futureData := promise.Get()
 	assert.Nil(t, futureData.Ex)
 
 	promise = stock.BatchStockActions(ctx, order, itemsId, "StockSettlement")
-	futureData = promise.Data()
+	futureData = promise.Get()
 	assert.Nil(t, futureData.Ex)
 
 	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Items[0].InventoryId})
@@ -579,11 +579,11 @@ func TestStockService_ReleaseSuccess(t *testing.T) {
 
 	itemsId := []uint64{order.Items[0].ItemId}
 	promise := stock.BatchStockActions(ctx, order, itemsId, "StockReserved")
-	futureData := promise.Data()
+	futureData := promise.Get()
 	assert.Nil(t, futureData.Ex)
 
 	promise = stock.BatchStockActions(ctx, order, itemsId, "StockReleased")
-	futureData = promise.Data()
+	futureData = promise.Get()
 	assert.Nil(t, futureData.Ex)
 
 	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Items[0].InventoryId})

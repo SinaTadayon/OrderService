@@ -2,11 +2,11 @@ package payment_service
 
 import (
 	"context"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 )
 
 type IPaymentService interface {
-	OrderPayment(ctx context.Context, request PaymentRequest) promise.IPromise
+	OrderPayment(ctx context.Context, request PaymentRequest) future.IFuture
 }
 
 type PaymentRequest struct {

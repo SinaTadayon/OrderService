@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"gitlab.faza.io/go-framework/logger"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	voucherProto "gitlab.faza.io/protos/cart"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -57,13 +57,13 @@ func (voucherService *iVoucherServiceImpl) Disconnect() error {
 }
 
 func (voucherService iVoucherServiceImpl) VoucherSettlement(ctx context.Context,
-	voucherCode string, orderId uint64, buyerId uint64) promise.IPromise {
+	voucherCode string, orderId uint64, buyerId uint64) future.IFuture {
 	if err := voucherService.Connect(); err != nil {
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{
-			Code: promise.InternalError, Reason: "Unknown Error"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{
+			Code: future.InternalError, Reason: "Unknown Error"}}
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	couponReq := &voucherProto.CouponUseRequest{
@@ -76,27 +76,27 @@ func (voucherService iVoucherServiceImpl) VoucherSettlement(ctx context.Context,
 	if err != nil {
 		logger.Err("VoucherSettlement() => voucherClient.CouponUsed internal error, "+
 			"voucherCode: %s, orderId: %d, buyerId: %d, error: %s", voucherCode, orderId, buyerId, result)
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{
-			Code: promise.InternalError, Reason: "Unknown Error"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{
+			Code: future.InternalError, Reason: "Unknown Error"}}
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	if result.Code != 200 {
 		logger.Err("VoucherSettlement() => voucherClient.CouponUsed failed, "+
 			"voucherCode: %s, orderId: %d, buyerId: %d, error: %s", voucherCode, orderId, buyerId, result)
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{
 			Code: result.Code, Reason: result.Message}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	logger.Audit("VoucherSettlement() => voucherClient.CouponUsed success, "+
 		"voucherCode: %s, orderId: %d, buyerId: %d, error: %s", voucherCode, orderId, buyerId, result)
-	returnChannel := make(chan promise.FutureData, 1)
+	returnChannel := make(chan future.IDataFuture, 1)
 	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data: nil, Ex: nil}
-	return promise.NewPromise(returnChannel, 1, 1)
+	returnChannel <- future.IDataFuture{Data: nil, Ex: nil}
+	return future.NewFuture(returnChannel, 1, 1)
 }

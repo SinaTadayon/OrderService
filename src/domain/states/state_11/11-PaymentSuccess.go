@@ -6,8 +6,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	message "gitlab.faza.io/protos/order"
 	"time"
 )
@@ -38,29 +38,29 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 	panic("implementation required")
 }
 
-func (paymentSuccess paymentSuccessStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) promise.IPromise {
+func (paymentSuccess paymentSuccessStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) future.IFuture {
 	panic("implementation required")
 }
 
 // TODO PaymentApprovalAction must be handled and implement
 // TODO notification must be handled and implement
-func (paymentSuccess paymentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
+func (paymentSuccess paymentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
 	//nextToStepState, ok := paymentSuccess.Childes()[2].(launcher_state.ILauncherState)
 	//if ok != true || nextToStepState.ActiveType() != actives.StockAction {
 	//	logger.Err("nextToStepState doesn't exist in index 2 of %s Childes() , order: %v", paymentSuccess.ActionName(), order)
-	//	returnChannel := make(chan promise.FutureData, 1)
+	//	returnChannel := make(chan future.IDataFuture, 1)
 	//	defer close(returnChannel)
-	//	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
-	//	return promise.NewPromise(returnChannel, 1, 1)
+	//	returnChannel <- future.IDataFuture{Get:nil, Ex:future.FutureError{Code: future.InternalError, Reason:"Unknown Error"}}
+	//	return future.NewFuture(returnChannel, 1, 1)
 	//}
 	logger.Audit("Order Received in %s step, orderId: %d, Action: %s", paymentSuccess.Name(), order.OrderId, PaymentSuccess)
 	paymentSuccess.UpdateAllOrderStatus(ctx, &order, itemsId, states.InProgressStatus, false)
 	paymentSuccess.updateOrderItemsProgress(ctx, &order, nil, PaymentSuccess, true, states.InProgressStatus)
 	if err := paymentSuccess.persistOrder(ctx, &order); err != nil {
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	return paymentSuccess.Childes()[1].ProcessOrder(ctx, order, nil, nil)

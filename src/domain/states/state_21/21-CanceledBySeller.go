@@ -6,8 +6,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	message "gitlab.faza.io/protos/order"
 	"time"
 )
@@ -38,11 +38,11 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 	panic("implementation required")
 }
 
-func (shipmentRejectedBySeller shipmentRejectedBySellerStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) promise.IPromise {
+func (shipmentRejectedBySeller shipmentRejectedBySellerStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) future.IFuture {
 	panic("implementation required")
 }
 
-func (shipmentRejectedBySeller shipmentRejectedBySellerStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
+func (shipmentRejectedBySeller shipmentRejectedBySellerStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
 
 	logger.Audit("shipmentRejectedBySeller step, orderId: %d", order.OrderId)
 
@@ -54,10 +54,10 @@ func (shipmentRejectedBySeller shipmentRejectedBySellerStep) ProcessOrder(ctx co
 
 	shipmentRejectedBySeller.updateOrderItemsProgress(ctx, &order, itemsId, RejectedBySeller, true, states.ClosedStatus)
 	if err := shipmentRejectedBySeller.persistOrder(ctx, &order); err != nil {
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 	return shipmentRejectedBySeller.Childes()[0].ProcessOrder(ctx, order, itemsId, nil)
 }

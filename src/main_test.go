@@ -132,7 +132,7 @@ func checkTcpPort(host string, port string) bool {
 func createAuthenticatedContext() (context.Context, error) {
 	ctx, _ := context.WithTimeout(context.Background(), 15*time.Second)
 	iPromise := global.Singletons.UserService.UserLogin(ctx, "989100000002", "123456")
-	futureData := iPromise.Data()
+	futureData := iPromise.Get()
 
 	if futureData.Ex != nil {
 		return nil, futureData.Ex

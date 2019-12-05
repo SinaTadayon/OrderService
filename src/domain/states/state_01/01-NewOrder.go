@@ -7,8 +7,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	message "gitlab.faza.io/protos/order"
 	pb "gitlab.faza.io/protos/order"
 	"time"
@@ -41,35 +41,35 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 	panic("implementation required")
 }
 
-func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) promise.IPromise {
+func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) future.IFuture {
 	var requestNewOrder pb.RequestNewOrder
 
 	logger.Audit("New Order Received . . .")
 
 	if err := ptypes.UnmarshalAny(request.Data, &requestNewOrder); err != nil {
 		logger.Err("Could not unmarshal requestNewOrder from anything field, error: %s, request: %v", err, request)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.BadRequest, Reason: "Invalid requestNewOrder"}}
+		returnChannel := make(chan future.IDataFuture, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.BadRequest, Reason: "Invalid requestNewOrder"}}
 		close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	//timestamp, err := ptypes.Timestamp(request.Time)
 	//if err != nil {
 	//	logger.Err("timestamp of requestNewOrder invalid, error: %s, requestNewOrder: %v", err, requestNewOrder)
-	//	returnChannel := make(chan promise.FutureData, 1)
-	//	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.BadRequest, Reason:"Invalid Request Timestamp"}}
+	//	returnChannel := make(chan future.IDataFuture, 1)
+	//	returnChannel <- future.IDataFuture{Get:nil, Ex:future.FutureError{Code: future.BadRequest, Reason:"Invalid Request Timestamp"}}
 	//	defer close(returnChannel)
-	//	return promise.NewPromise(returnChannel, 1, 1)
+	//	return future.NewFuture(returnChannel, 1, 1)
 	//}
 
 	value, err := global.Singletons.Converter.Map(requestNewOrder, entities.Order{})
 	if err != nil {
 		logger.Err("Converter.Map requestNewOrder to order object failed, error: %s, requestNewOrder: %v", err, requestNewOrder)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.BadRequest, Reason: "Received requestNewOrder invalid"}}
+		returnChannel := make(chan future.IDataFuture, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.BadRequest, Reason: "Received requestNewOrder invalid"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	newOrder := value.(*entities.Order)
@@ -79,37 +79,37 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 	//checkoutState, ok := newOrderProcessing.StatesMap()[0].(listener_state.IListenerState)
 	//if ok != true || checkoutState.ActorType() != actors.CheckoutActor {
 	//	logger.Err("checkout state doesn't exist in index 0 of statesMap, requestNewOrder: %v", requestNewOrder)
-	//	returnChannel := make(chan promise.FutureData, 1)
-	//	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+	//	returnChannel := make(chan future.IDataFuture, 1)
+	//	returnChannel <- future.IDataFuture{Get:nil, Ex:future.FutureError{Code: future.InternalError, Reason:"Unknown Error"}}
 	//	defer close(returnChannel)
-	//	return promise.NewPromise(returnChannel, 1, 1)
+	//	return future.NewFuture(returnChannel, 1, 1)
 	//}
 
 	newOrderProcessing.UpdateAllOrderStatus(ctx, newOrder, nil, states.NewStatus, false)
 	order, err := global.Singletons.OrderRepository.Save(*newOrder)
 	if err != nil {
 		logger.Err("Save NewOrder Step Failed, error: %s, order: %v", err, newOrder)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.IDataFuture, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, nil, StockReserved)
-	futureData := iPromise.Data()
+	futureData := iPromise.Get()
 	if futureData == nil {
 		newOrderProcessing.UpdateAllOrderStatus(ctx, order, nil, states.ClosedStatus, true)
 		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReserved, false, states.ClosedStatus)
 		if err := newOrderProcessing.persistOrder(ctx, order); err != nil {
 		}
-		logger.Err("StockService promise channel has been closed, order: %v", order)
-		returnChannel := make(chan promise.FutureData, 1)
+		logger.Err("StockService future channel has been closed, order: %v", order)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		go func() {
 			newOrderProcessing.Childes()[0].ProcessOrder(ctx, *order, nil, nil)
 		}()
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	if futureData.Ex != nil {
@@ -118,42 +118,42 @@ func (newOrderProcessing newOrderProcessingStep) ProcessMessage(ctx context.Cont
 		if err := newOrderProcessing.persistOrder(ctx, order); err != nil {
 		}
 		logger.Err("Reserved stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		go func() {
 			newOrderProcessing.Childes()[0].ProcessOrder(ctx, *order, nil, nil)
 		}()
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReserved, true, states.NewStatus)
 	if err := newOrderProcessing.persistOrder(ctx, order); err != nil {
 		newOrderProcessing.releasedStock(ctx, order)
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 
 		go func() {
 			newOrderProcessing.Childes()[0].ProcessOrder(ctx, *order, nil, nil)
 		}()
 
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	return newOrderProcessing.Childes()[1].ProcessOrder(ctx, *order, nil, "PaymentCallbackUrlRequest")
 	//return checkoutState.ActionListener(ctx, newOrderEvent, nil)
 }
 
-func (newOrderProcessing newOrderProcessingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
+func (newOrderProcessing newOrderProcessingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
 	panic("implementation required")
 }
 func (newOrderProcessing newOrderProcessingStep) releasedStock(ctx context.Context, order *entities.Order) {
 	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, nil, StockReleased)
-	futureData := iPromise.Data()
+	futureData := iPromise.Get()
 	if futureData == nil {
 		newOrderProcessing.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, states.ClosedStatus)
-		logger.Err("StockService promise channel has been closed, step: %s, orderId: %d", newOrderProcessing.Name(), order.OrderId)
+		logger.Err("StockService future channel has been closed, step: %s, orderId: %d", newOrderProcessing.Name(), order.OrderId)
 		return
 	}
 

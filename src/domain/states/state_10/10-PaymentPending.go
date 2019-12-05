@@ -6,8 +6,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	message "gitlab.faza.io/protos/order"
 	"strconv"
@@ -43,19 +43,19 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 	panic("implementation required")
 }
 
-func (paymentPending paymentPendingStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) promise.IPromise {
+func (paymentPending paymentPendingStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) future.IFuture {
 	panic("implementation required")
 }
 
-func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
+func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
 
 	//orderPaymentState, ok := paymentPending.StatesMap()[0].(launcher_state.ILauncherState)
 	//if ok != true || orderPaymentState.ActiveType() != actives.OrderPaymentAction {
 	//	logger.Err("orderPayment state doesn't exist in index 0 of statesMap, order: %v", order)
-	//	returnChannel := make(chan promise.FutureData, 1)
-	//	returnChannel <- promise.FutureData{Data:nil, Ex:promise.FutureError{Code: promise.InternalError, Reason:"Unknown Error"}}
+	//	returnChannel := make(chan future.IDataFuture, 1)
+	//	returnChannel <- future.IDataFuture{Get:nil, Ex:future.FutureError{Code: future.InternalError, Reason:"Unknown Error"}}
 	//	defer close(returnChannel)
-	//	return promise.NewPromise(returnChannel, 1, 1)
+	//	return future.NewFuture(returnChannel, 1, 1)
 	//}
 
 	paymentAction := param.(string)
@@ -97,13 +97,13 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			}
 
 			iPromise := global.Singletons.VoucherService.VoucherSettlement(ctx, order.Invoice.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
-			futureData := iPromise.Data()
+			futureData := iPromise.Get()
 			if futureData.Ex != nil {
 				logger.Err("VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Invoice.Voucher.Code, futureData.Ex.Error())
-				returnChannel := make(chan promise.FutureData, 1)
+				returnChannel := make(chan future.IDataFuture, 1)
 				defer close(returnChannel)
-				returnChannel <- promise.FutureData{Data: nil, Ex: futureData.Ex}
-				return promise.NewPromise(returnChannel, 1, 1)
+				returnChannel <- future.IDataFuture{Data: nil, Ex: futureData.Ex}
+				return future.NewFuture(returnChannel, 1, 1)
 			}
 
 			logger.Audit("Invoice paid by voucher order success, orderId: %d, voucherAmount: %d, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Amount, order.Invoice.Voucher.Code)
@@ -116,10 +116,10 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 				paymentPending.Childes()[1].ProcessOrder(ctx, order, nil, nil)
 			}()
 
-			returnChannel := make(chan promise.FutureData, 1)
+			returnChannel := make(chan future.IDataFuture, 1)
 			defer close(returnChannel)
-			returnChannel <- promise.FutureData{Data: order.PaymentService[0].PaymentResponse.CallBackUrl, Ex: nil}
-			return promise.NewPromise(returnChannel, 1, 1)
+			returnChannel <- future.IDataFuture{Data: order.PaymentService[0].PaymentResponse.CallBackUrl, Ex: nil}
+			return future.NewFuture(returnChannel, 1, 1)
 		}
 
 		paymentPending.UpdateAllOrderStatus(ctx, &order, itemsId, states.NewStatus, false)
@@ -144,7 +144,7 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 		}
 
 		iPromise := global.Singletons.PaymentService.OrderPayment(ctx, paymentRequest)
-		futureData := iPromise.Data()
+		futureData := iPromise.Get()
 		if futureData == nil {
 			order.PaymentService[0].PaymentResponse = &entities.PaymentResponse{
 				Result:    false,
@@ -158,11 +158,11 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			if err := paymentPending.persistOrder(ctx, &order); err != nil {
 			}
 
-			logger.Err("PaymentService promise channel has been closed, orderId: %d", order.OrderId)
-			returnChannel := make(chan promise.FutureData, 1)
+			logger.Err("PaymentService future channel has been closed, orderId: %d", order.OrderId)
+			returnChannel := make(chan future.IDataFuture, 1)
 			defer close(returnChannel)
-			returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-			return promise.NewPromise(returnChannel, 1, 1)
+			returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+			return future.NewFuture(returnChannel, 1, 1)
 		}
 
 		if futureData.Ex != nil {
@@ -178,10 +178,10 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 			if err := paymentPending.persistOrder(ctx, &order); err != nil {
 			}
 			logger.Err("PaymentService.OrderPayment in orderPaymentState failed, orderId: %d, error: %s", order.OrderId, futureData.Ex.Error())
-			returnChannel := make(chan promise.FutureData, 1)
+			returnChannel := make(chan future.IDataFuture, 1)
 			defer close(returnChannel)
-			returnChannel <- promise.FutureData{Data: nil, Ex: futureData.Ex}
-			return promise.NewPromise(returnChannel, 1, 1)
+			returnChannel <- future.IDataFuture{Data: nil, Ex: futureData.Ex}
+			return future.NewFuture(returnChannel, 1, 1)
 		}
 
 		paymentResponse := futureData.Data.(payment_service.PaymentResponse)
@@ -200,10 +200,10 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 		if err := paymentPending.persistOrder(ctx, &order); err != nil {
 		}
 
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: paymentResponse.CallbackUrl, Ex: nil}
-		return promise.NewPromise(returnChannel, 1, 1)
+		returnChannel <- future.IDataFuture{Data: paymentResponse.CallbackUrl, Ex: nil}
+		return future.NewFuture(returnChannel, 1, 1)
 
 	} else if paymentAction == OrderPayment {
 		logger.Audit("Order Received in %s step, orderId: %d, Action: %s", paymentPending.Name(), order.OrderId, OrderPayment)
@@ -219,13 +219,13 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 
 		if order.Invoice.Voucher.Amount > 0 {
 			iPromise := global.Singletons.VoucherService.VoucherSettlement(ctx, order.Invoice.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
-			futureData := iPromise.Data()
+			futureData := iPromise.Get()
 			if futureData.Ex != nil {
 				logger.Err("VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Invoice.Voucher.Code, futureData.Ex.Error())
-				returnChannel := make(chan promise.FutureData, 1)
+				returnChannel := make(chan future.IDataFuture, 1)
 				defer close(returnChannel)
-				returnChannel <- promise.FutureData{Data: nil, Ex: futureData.Ex}
-				return promise.NewPromise(returnChannel, 1, 1)
+				returnChannel <- future.IDataFuture{Data: nil, Ex: futureData.Ex}
+				return future.NewFuture(returnChannel, 1, 1)
 			}
 			logger.Audit("VoucherSettlement success, orderId: %d, voucherAmount: %d, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Amount, order.Invoice.Voucher.Code)
 		}
@@ -239,10 +239,10 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 	}
 
 	logger.Err("%s step received invalid action, orderId: %d, action: %s", paymentPending.Name(), order.OrderId, paymentAction)
-	returnChannel := make(chan promise.FutureData, 1)
+	returnChannel := make(chan future.IDataFuture, 1)
 	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-	return promise.NewPromise(returnChannel, 1, 1)
+	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
+	return future.NewFuture(returnChannel, 1, 1)
 	//orderPayment.persistOrderState(ctx, &order, itemsId, order_payment_action.OrderPaymentAction,
 	//	true, "", &paymentResponse)
 	//return paymentState.ActionListener(ctx, activeEvent, nil)
@@ -250,10 +250,10 @@ func (paymentPending paymentPendingStep) ProcessOrder(ctx context.Context, order
 
 func (paymentPending paymentPendingStep) releasedStock(ctx context.Context, order *entities.Order) {
 	iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, nil, StockReleased)
-	futureData := iPromise.Data()
+	futureData := iPromise.Get()
 	if futureData == nil {
 		paymentPending.updateOrderItemsProgress(ctx, order, nil, StockReleased, false, states.ClosedStatus)
-		logger.Err("StockService promise channel has been closed, step: %s, orderId: %d", paymentPending.Name(), order.OrderId)
+		logger.Err("StockService future channel has been closed, step: %s, orderId: %d", paymentPending.Name(), order.OrderId)
 		return
 	}
 

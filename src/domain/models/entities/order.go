@@ -119,8 +119,6 @@ type PaymentResult struct {
 	PaymentId   string    `bson:"paymentId"`
 	InvoiceId   int64     `bson:"invoiceId"`
 	Amount      uint64    `bson:"amount"`
-	ReqBody     string    `bson:"reqBody"`
-	ResBody     string    `bson:"resBody"`
 	CardNumMask string    `bson:"cardNumMask"`
 	CreatedAt   time.Time `bson:"createdAt"`
 }

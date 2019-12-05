@@ -9,8 +9,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
 	"gitlab.faza.io/order-project/order-service/domain/states_old/launcher"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	"time"
 )
 
@@ -46,24 +46,24 @@ func (nextStep nextToStepActionLauncher) ActionStepMap() map[actions.IEnumAction
 	return nextStep.actionStepMap
 }
 
-func (nextStep nextToStepActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) promise.IPromise {
+func (nextStep nextToStepActionLauncher) ActionLauncher(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
 
 	if param == nil {
 		logger.Err("received param in NextToStepState is nil, order: %v", order)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.IDataFuture, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	actionEnum, ok := param.(actions.IEnumAction)
 	if ok != true {
 		logger.Err("param in NextToStepState is not actions.IEnumAction type, order: %v", order)
 		nextStep.persistOrderState(ctx, &order, itemsId, nil, false, "received param type is not a actions.IEnumAction")
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.IDataFuture, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	if step, ok := nextStep.ActionStepMap()[actionEnum]; ok {
@@ -71,10 +71,10 @@ func (nextStep nextToStepActionLauncher) ActionLauncher(ctx context.Context, ord
 	} else {
 		logger.Err("Received action not exist in nextStep.ActionStepMap(), order: %v", order)
 		nextStep.persistOrderState(ctx, &order, itemsId, actionEnum, false, "received actions.IEnumAction is not valid for this nextToStep")
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.IDataFuture, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 }
 
@@ -125,7 +125,7 @@ func (nextStep nextToStepActionLauncher) doUpdateOrderState(ctx context.Context,
 	//
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Type = actives.NextToStepAction.String()
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Base = actions.ActiveAction.String()
-	//order.Items[index].Tracking.CurrentState.AcceptedAction.Data = nil
+	//order.Items[index].Tracking.CurrentState.AcceptedAction.Get = nil
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Time = &order.Items[index].Tracking.CurrentState.CreatedAt
 	//
 	//order.Items[index].Tracking.CurrentState.Actions = []entities.Action{order.Items[index].Tracking.CurrentState.AcceptedAction}

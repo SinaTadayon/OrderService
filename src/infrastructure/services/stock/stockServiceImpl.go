@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	stockProto "gitlab.faza.io/protos/stock-proto.git"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -48,7 +48,7 @@ func (stock *iStockServiceImpl) GetStockClient() stockProto.StockClient {
 	return stock.stockService
 }
 
-func (stock *iStockServiceImpl) SingleStockAction(ctx context.Context, inventoryId string, count int, action string) promise.IPromise {
+func (stock *iStockServiceImpl) SingleStockAction(ctx context.Context, inventoryId string, count int, action string) future.IFuture {
 	//if action == stock_action.ReservedAction {
 	//	panic("must be implement")
 	//} else if action == stock_action.ReleasedAction {
@@ -68,7 +68,7 @@ func (stock *iStockServiceImpl) SingleStockAction(ctx context.Context, inventory
 	return nil
 }
 
-func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order entities.Order, itemsId []uint64, action string) promise.IPromise {
+func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order entities.Order, itemsId []uint64, action string) future.IFuture {
 	//if action == stock_action.ReservedAction {
 	//	panic("must be implement")
 	//} else if action == stock_action.ReleasedAction {
@@ -78,16 +78,16 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order ent
 	//}
 	//return nil
 
-	//returnChannel := make(chan promise.FutureData, 1)
+	//returnChannel := make(chan future.IDataFuture, 1)
 	//defer close(returnChannel)
-	//returnChannel <- promise.FutureData{Data:nil, Ex:nil}
-	//return promise.NewPromise(returnChannel, 1, 1)
+	//returnChannel <- future.IDataFuture{Get:nil, Ex:nil}
+	//return future.NewFuture(returnChannel, 1, 1)
 	if err := stock.ConnectToStockService(); err != nil {
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{
-			Code: promise.InternalError, Reason: "Unknown Error"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{
+			Code: future.InternalError, Reason: "Unknown Error"}}
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	var itemStocks map[string]int
@@ -169,13 +169,13 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, order ent
 		}
 	}
 
-	returnChannel := make(chan promise.FutureData, 1)
+	returnChannel := make(chan future.IDataFuture, 1)
 	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data: nil, Ex: nil}
-	return promise.NewPromise(returnChannel, 1, 1)
+	returnChannel <- future.IDataFuture{Data: nil, Ex: nil}
+	return future.NewFuture(returnChannel, 1, 1)
 }
 
-func (stock *iStockServiceImpl) rollbackReservedStocks(ctx context.Context, order *entities.Order, reservedStock map[string]int) promise.IPromise {
+func (stock *iStockServiceImpl) rollbackReservedStocks(ctx context.Context, order *entities.Order, reservedStock map[string]int) future.IFuture {
 	logger.Audit("rollbackReservedStocks, orderId: %d", order.OrderId)
 	for inventoryId, quantity := range reservedStock {
 		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
@@ -192,14 +192,14 @@ func (stock *iStockServiceImpl) rollbackReservedStocks(ctx context.Context, orde
 		}
 	}
 
-	returnChannel := make(chan promise.FutureData, 1)
+	returnChannel := make(chan future.IDataFuture, 1)
 	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{
-		Code: promise.NotAccepted, Reason: "Stock Reserved Failed"}}
-	return promise.NewPromise(returnChannel, 1, 1)
+	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{
+		Code: future.NotAccepted, Reason: "Stock Reserved Failed"}}
+	return future.NewFuture(returnChannel, 1, 1)
 }
 
-func (stock *iStockServiceImpl) rollbackSettlementStocks(ctx context.Context, order *entities.Order, reservedStock map[string]int) promise.IPromise {
+func (stock *iStockServiceImpl) rollbackSettlementStocks(ctx context.Context, order *entities.Order, reservedStock map[string]int) future.IFuture {
 
 	//logger.Audit("rollbackSettlementStocks, orderId: %s", order.OrderId)
 	//for inventoryId, quantity := range reservedStock {
@@ -217,9 +217,9 @@ func (stock *iStockServiceImpl) rollbackSettlementStocks(ctx context.Context, or
 	//	}
 	//}
 
-	returnChannel := make(chan promise.FutureData, 1)
+	returnChannel := make(chan future.IDataFuture, 1)
 	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{
-		Code: promise.InternalError, Reason: "Unknown Error"}}
-	return promise.NewPromise(returnChannel, 1, 1)
+	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{
+		Code: future.InternalError, Reason: "Unknown Error"}}
+	return future.NewFuture(returnChannel, 1, 1)
 }

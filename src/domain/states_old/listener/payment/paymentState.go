@@ -12,8 +12,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states_old"
 	launcher_state "gitlab.faza.io/order-project/order-service/domain/states_old/launcher"
 	listener_state "gitlab.faza.io/order-project/order-service/domain/states_old/listener"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	"time"
 )
@@ -46,33 +46,33 @@ func NewValueOf(base *listener_state.BaseListenerImpl, params ...interface{}) li
 }
 
 // TODO must be complete implement
-func (paymentAction paymentActionListener) ActionListener(ctx context.Context, event events.IEvent, param interface{}) promise.IPromise {
+func (paymentAction paymentActionListener) ActionListener(ctx context.Context, event events.IEvent, param interface{}) future.IFuture {
 
 	if event == nil {
 		logger.Err("Received Event is nil")
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.IDataFuture, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	nextToStepState, ok := paymentAction.Childes()[0].(launcher_state.ILauncherState)
 	if ok != true {
 		logger.Err("nextToStepState isn't child of paymentAction, event: %v", event)
-		returnChannel := make(chan promise.FutureData, 1)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
+		returnChannel := make(chan future.IDataFuture, 1)
+		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 		defer close(returnChannel)
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.NewFuture(returnChannel, 1, 1)
 	}
 
 	if event.EventType() == events.ActiveEvent {
 		activeEvent := event.(active_event.IActiveEvent)
 		order := activeEvent.Order()
 		paymentAction.persistOrderState(ctx, &order, activeEvent.ItemsId(), activeEvent.ActiveAction().ActionEnums()[0], true, "", nil)
-		returnChannel := make(chan promise.FutureData, 1)
+		returnChannel := make(chan future.IDataFuture, 1)
 		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: activeEvent.Data(), Ex: nil}
-		return promise.NewPromise(returnChannel, 1, 1)
+		returnChannel <- future.IDataFuture{Data: activeEvent.Data(), Ex: nil}
+		return future.NewFuture(returnChannel, 1, 1)
 	} else {
 		actorEvent := event.(actor_event.IActorEvent)
 		order := actorEvent.Order()
@@ -94,10 +94,10 @@ func (paymentAction paymentActionListener) ActionListener(ctx context.Context, e
 			go func() {
 				nextToStepState.ActionLauncher(ctx, order, actorEvent.ItemsId(), payment_action.Success)
 			}()
-			returnChannel := make(chan promise.FutureData, 1)
+			returnChannel := make(chan future.IDataFuture, 1)
 			defer close(returnChannel)
-			returnChannel <- promise.FutureData{Data: actorEvent.Data(), Ex: nil}
-			return promise.NewPromise(returnChannel, 1, 1)
+			returnChannel <- future.IDataFuture{Data: actorEvent.Data(), Ex: nil}
+			return future.NewFuture(returnChannel, 1, 1)
 		} else {
 			paymentAction.persistOrderState(ctx, &order, actorEvent.ItemsId(), payment_action.Fail, false, "", &paymentResult)
 			return nextToStepState.ActionLauncher(ctx, order, actorEvent.ItemsId(), payment_action.Fail)
@@ -149,9 +149,9 @@ func (paymentAction paymentActionListener) doUpdateOrderState(ctx context.Contex
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Base = actions.ActorAction.String()
 	//// TODO implement stringfy paymentResult
 	//if paymentResult != nil {
-	//	order.Items[index].Tracking.CurrentState.AcceptedAction.Data = nil
+	//	order.Items[index].Tracking.CurrentState.AcceptedAction.Get = nil
 	//} else {
-	//	order.Items[index].Tracking.CurrentState.AcceptedAction.Data = nil
+	//	order.Items[index].Tracking.CurrentState.AcceptedAction.Get = nil
 	//}
 	//order.Items[index].Tracking.CurrentState.AcceptedAction.Time = &order.Items[index].Tracking.CurrentState.CreatedAt
 	//
