@@ -299,11 +299,11 @@ package item_repository
 //					//	CreatedAt:    time.Now().UTC(),
 //					//},
 //					CreatedAt: time.Now().UTC(),
-//					States: []entities.StepHistory{{
+//					History: []entities.StepHistory{{
 //						ActionName:      "0.NewOrder",
 //						Index:     0,
 //						CreatedAt: time.Now().UTC(),
-//						//States: []entities.StateHistory{{
+//						//History: []entities.StateHistory{{
 //						//	ActionName:  "0.New_Order_Process_State",
 //						//	Index: 0,
 //						//	Type: "ListenerAction",
@@ -433,11 +433,11 @@ package item_repository
 //					//	CreatedAt:    time.Now().UTC(),
 //					//},
 //					CreatedAt: time.Now().UTC(),
-//					States: []entities.StepHistory{{
+//					History: []entities.StepHistory{{
 //						ActionName:      "0.NewOrder",
 //						Index:     0,
 //						CreatedAt: time.Now().UTC(),
-//						//States: []entities.StateHistory{{
+//						//History: []entities.StateHistory{{
 //						//	ActionName:  "0.New_Order_Process_State",
 //						//	Index: 0,
 //						//	Type: "ListenerAction",

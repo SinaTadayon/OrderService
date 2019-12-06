@@ -2,45 +2,43 @@ package state_52
 
 import (
 	"context"
-	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/domain/states"
-	"gitlab.faza.io/order-project/order-service/domain/states_old"
-	"gitlab.faza.io/order-project/order-service/infrastructure/future"
-	message "gitlab.faza.io/protos/order"
+	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 )
 
 const (
-	stepName  string = "Return_Delivery"
+	stepName  string = "Return_Delivered"
 	stepIndex int    = 52
 )
 
-type returnShipmentDeliveryDelayedStep struct {
+type returnDeliveredState struct {
 	*states.BaseStateImpl
 }
 
-func New(childes, parents []states.IState, states ...states_old.IState) states.IState {
-	return &returnShipmentDeliveryDelayedStep{states.NewBaseStep(stepName, stepIndex, childes, parents, states)}
+func New(childes, parents []states.IState, actionStateMap map[actions.IAction]states.IState) states.IState {
+	return &returnDeliveredState{states.NewBaseStep(stepName, stepIndex, childes, parents, actionStateMap)}
 }
 
-func NewOf(name string, index int, childes, parents []states.IState, states ...states_old.IState) states.IState {
-	return &returnShipmentDeliveryDelayedStep{states.NewBaseStep(name, index, childes, parents, states)}
+func NewOf(name string, index int, childes, parents []states.IState, actionStateMap map[actions.IAction]states.IState) states.IState {
+	return &returnDeliveredState{states.NewBaseStep(name, index, childes, parents, actionStateMap)}
 }
 
 func NewFrom(base *states.BaseStateImpl) states.IState {
-	return &returnShipmentDeliveryDelayedStep{base}
+	return &returnDeliveredState{base}
 }
 
 func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState {
 	panic("implementation required")
 }
 
-func (returnShipmentDeliveryDelayed returnShipmentDeliveryDelayedStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) future.IFuture {
+func (state returnDeliveredState) Process(ctx context.Context, iFrame frame.IFrame) {
 	panic("implementation required")
 }
 
-func (returnShipmentDeliveryDelayed returnShipmentDeliveryDelayedStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
-	panic("implementation required")
-}
+//func (returnShipmentDeliveryDelayed returnDeliveredState) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
+//	panic("implementation required")
+//}
 
 //
 //import (

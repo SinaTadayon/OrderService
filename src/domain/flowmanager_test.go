@@ -17,8 +17,8 @@ import (
 func TestFlowManagerSteps(t *testing.T) {
 
 	flowManager := iFlowManagerImpl{}
-	flowManager.nameStepsMap = make(map[string]states.IState, 64)
-	flowManager.indexStepsMap = make(map[int]states.IState, 64)
+	flowManager.nameStateMap = make(map[string]states.IState, 64)
+	flowManager.statesMap = make(map[int]states.IState, 64)
 
 	assert.Nil(t, flowManager.setupFlowManager())
 
@@ -174,8 +174,8 @@ func TestFlowManagerSteps(t *testing.T) {
 	//	fmt.Printf("step.ActionName(): %s\nstep.Index(): %d\n", step.ActionName(), step.Index())
 	//	fmt.Printf("step.Childes(): %s\n", step.Childes())
 	//	fmt.Printf("step.Parents(): %s\n", step.Parents())
-	//	fmt.Printf("step.States(): %s\n", step.States())
-	//	traversState(step.States())
+	//	fmt.Printf("step.History(): %s\n", step.History())
+	//	traversState(step.History())
 	//}
 }
 

@@ -56,6 +56,20 @@ func (builder Builder) SetError(code ErrorCode, message string, reason error) Bu
 	return builder
 }
 
+func (builder Builder) SetErrorOf(errorFuture IErrorFuture) Builder {
+	builder.errorFuture = &iErrorFutureImpl{}
+	builder.errorFuture.code = errorFuture.Code()
+	builder.errorFuture.message = errorFuture.Message()
+	builder.errorFuture.reason = errorFuture.Reason()
+
+	if builder.dataFuture == nil {
+		builder.dataFuture = &iDataFutureImpl{}
+	}
+
+	builder.dataFuture.futureError = builder.errorFuture
+	return builder
+}
+
 func (builder Builder) Send() {
 	if builder.iFuture.channel == nil {
 		builder.iFuture.channel = make(chan IDataFuture, builder.iFuture.capacity)

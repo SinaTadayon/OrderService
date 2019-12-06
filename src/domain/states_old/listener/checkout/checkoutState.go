@@ -125,6 +125,6 @@ func (checkoutActionState checkoutActionListener) updateOrderStates(ctx context.
 	//		CreatedAt:newOrder.Items[i].Tracking.CurrentState.CreatedAt,
 	//	}
 	//
-	//	newOrder.Items[i].Tracking.States[len(newOrder.Items[i].Tracking.States)].States = append(newOrder.Items[i].Tracking.States[len(newOrder.Items[i].Tracking.States)].States, stateHistory)
+	//	newOrder.Items[i].Tracking.History[len(newOrder.Items[i].Tracking.History)].History = append(newOrder.Items[i].Tracking.History[len(newOrder.Items[i].Tracking.History)].History, stateHistory)
 	//}
 }

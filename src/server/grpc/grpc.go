@@ -74,15 +74,15 @@ const (
 const (
 	DeliveryDelayAction        Action = "DeliveryDelay"
 	SubmitReturnRequestAction  Action = "SubmitReturnRequest"
-	EnterShipmentDetailsAction Action = "EnterShipmentDetails"
+	EnterShipmentDetailsAction Action = "EnterShipmentDetail"
 	DeliverAction              Action = "Deliver"
 	DeliveryFailAction         Action = "DeliveryFail"
 	ApproveAction              Action = "Approve"
 	RejectAction               Action = "Reject"
 	CancelAction               Action = "Cancel"
-	AcceptReturnAction         Action = "AcceptReturn"
+	AcceptReturnAction         Action = "Accept"
 	CancelReturnAction         Action = "CancelReturn"
-	RejectReturnAction         Action = "RejectReturn"
+	RejectReturnAction         Action = "Reject"
 )
 
 const (
@@ -136,7 +136,7 @@ type Server struct {
 
 func NewServer(address string, port uint16, flowManager domain.IFlowManager) Server {
 	filterStatesMap := make(map[FilterValue][]states.IEnumState, 8)
-	filterStatesMap[ApprovalPendingFilter] = []states.IEnumState{states.SellerApprovalPending}
+	filterStatesMap[ApprovalPendingFilter] = []states.IEnumState{states.ApprovalPending}
 	filterStatesMap[ShipmentPendingFilter] = []states.IEnumState{states.ShipmentPending}
 	filterStatesMap[DeliveredFilter] = []states.IEnumState{states.Shipped, states.DeliveryPending,
 		states.DeliveryDelayed, states.Delivered}
@@ -149,13 +149,13 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 
 	actionStateMap := make(map[ActionType][]actions.IEnumAction, 8)
 	actionStateMap[ApprovalPendingActionState] = []actions.IEnumAction{seller_action.Approve, seller_action.Reject, buyer_action.Cancel}
-	actionStateMap[ShipmentPendingActionState] = []actions.IEnumAction{seller_action.EnterShipmentDetails, seller_action.Cancel, buyer_action.Cancel}
+	actionStateMap[ShipmentPendingActionState] = []actions.IEnumAction{seller_action.EnterShipmentDetail, seller_action.Cancel, buyer_action.Cancel}
 	actionStateMap[ShippedActionState] = []actions.IEnumAction{buyer_action.DeliveryDelay, operator_action.Deliver}
 	actionStateMap[DeliveredActionState] = []actions.IEnumAction{buyer_action.SubmitReturnRequest}
-	actionStateMap[ReturnRequestPendingActionState] = []actions.IEnumAction{buyer_action.CancelReturn, seller_action.RejectReturn, seller_action.AcceptReturn}
+	actionStateMap[ReturnRequestPendingActionState] = []actions.IEnumAction{buyer_action.CancelReturn, seller_action.RejectReturn, seller_action.Accept}
 	actionStateMap[ReturnShipmentPendingActionState] = []actions.IEnumAction{buyer_action.EnterShipmentDetails}
 	actionStateMap[ReturnShippedActionState] = []actions.IEnumAction{seller_action.Deliver, seller_action.DeliveryFail}
-	actionStateMap[ReturnDeliveredActionState] = []actions.IEnumAction{seller_action.RejectReturn, seller_action.AcceptReturn}
+	actionStateMap[ReturnDeliveredActionState] = []actions.IEnumAction{seller_action.RejectReturn, seller_action.Accept}
 
 	return Server{flowManager: flowManager, address: address, port: port, filterStates: filterStatesMap, actionStates: actionStateMap}
 }

@@ -3,7 +3,6 @@ package state_01
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/stock"
@@ -48,26 +47,26 @@ func (state newOrderState) Process(ctx context.Context, iFrame frame.IFrame) {
 	action := &entities.Action{
 		Name:      state.Actions()[0].ActionEnum().ActionName(),
 		Type:      state.Actions()[0].ActionType().ActionName(),
-		Data:      nil,
 		Result:    string(states.ActionSuccess),
 		Reasons:   nil,
 		CreatedAt: time.Now().UTC(),
 	}
-	state.UpdateOrderAllStatus(ctx, &order, action, states.OrderNewStatus, states.PackageNewStatus)
+	state.UpdateOrderAllStatus(ctx, &order, states.OrderNewStatus, states.PackageNewStatus, action)
 	newOrder, err := global.Singletons.OrderRepository.Save(ctx, order)
 	if err != nil {
 		errStr = fmt.Sprintf("OrderRepository.Save in %s state failed, order: %v, error: %s", state.Name(), order, err.Error())
 		logger.Err(errStr)
-		state.releasedStock(ctx, newOrder)
+		_ = state.releasedStock(ctx, newOrder)
 		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-			SetError(future.InternalError, errStr, errors.Wrap(err, "")).
+			SetError(future.InternalError, errStr, err).
 			Send()
-	}
 
-	state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetOrder(*newOrder).Build())
+	} else {
+		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetOrderId(newOrder.OrderId).SetBody(order).Build())
+	}
 }
 
-func (state newOrderState) releasedStock(ctx context.Context, order *entities.Order) {
+func (state newOrderState) releasedStock(ctx context.Context, order *entities.Order) error {
 
 	var inventories = make(map[string]int, 32)
 	for i := 0; i < len(order.Packages); i++ {
@@ -82,15 +81,16 @@ func (state newOrderState) releasedStock(ctx context.Context, order *entities.Or
 	iFuture := global.Singletons.StockService.BatchStockActions(ctx, inventories,
 		stock_action.New(stock_action.Release))
 	futureData := iFuture.Get()
-	if futureData == nil {
-		logger.Err("StockService future channel has been closed, state: %s, order: %v", state.Name(), order)
-		return
-	}
+	//if futureData == nil {
+	//	logger.Err("StockService future channel has been closed, state: %s, order: %v", state.Name(), order)
+	//	return
+	//}
 
 	if futureData.Error() != nil {
 		logger.Err("Reserved stock from stockService failed, state: %s, order: %v, error: %s", state.Name(), order, futureData.Error())
-		return
+		return futureData.Error().Reason()
 	}
 
 	logger.Audit("Release stock success, state: %s, order: %v", state.Name(), order)
+	return nil
 }

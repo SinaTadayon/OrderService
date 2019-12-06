@@ -165,7 +165,12 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 			},
 		}
 
-		pkgItem.Subpackages = make([]entities.Subpackage, 0, len(pkgDto.Items))
+		pkgItem.Subpackages = []entities.Subpackage{
+			{
+				SellerId: pkgDto.SellerId,
+				Items:    make([]entities.Item, 0, len(pkgDto.Items)),
+			},
+		}
 		for _, itemDto := range pkgDto.Items {
 			if len(itemDto.InventoryId) == 0 {
 				return nil, errors.New("InventoryId of RequestNewOrder invalid")
@@ -175,32 +180,30 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 				return nil, errors.New("Items Quantity of RequestNewOrder invalid")
 			}
 
-			var subpackage = entities.Subpackage{
-				SellerId: pkgDto.SellerId,
-				Items: entities.Item{
-					SKU:		 itemDto.Sku
-					InventoryId: itemDto.InventoryId,
-					Title:       itemDto.Title,
-					Brand:       itemDto.Brand,
-					Guaranty:    itemDto.Guaranty,
-					Category:    itemDto.Category,
-					Image:       itemDto.Image,
-					Returnable:  itemDto.Returnable,
-					Quantity:    itemDto.Quantity,
-					Attributes:  itemDto.Attributes,
-					Invoice: entities.ItemInvoice{
-						Unit:              itemDto.Invoice.Unit,
-						Total:             itemDto.Invoice.Total,
-						Original:          itemDto.Invoice.Original,
-						Special:           itemDto.Invoice.Special,
-						Discount:          itemDto.Invoice.Discount,
-						SellerCommission:  itemDto.Invoice.SellerCommission,
-						Currency:          itemDto.Invoice.Currency,
-						ApplicableVoucher: newOrderDto.Invoice.Voucher != nil && newOrderDto.Invoice.Voucher.Amount > 0,
-					},
+			var item = entities.Item{
+				SKU:         itemDto.Sku,
+				InventoryId: itemDto.InventoryId,
+				Title:       itemDto.Title,
+				Brand:       itemDto.Brand,
+				Guaranty:    itemDto.Guaranty,
+				Category:    itemDto.Category,
+				Image:       itemDto.Image,
+				Returnable:  itemDto.Returnable,
+				Quantity:    itemDto.Quantity,
+				Attributes:  itemDto.Attributes,
+				Invoice: entities.ItemInvoice{
+					Unit:              itemDto.Invoice.Unit,
+					Total:             itemDto.Invoice.Total,
+					Original:          itemDto.Invoice.Original,
+					Special:           itemDto.Invoice.Special,
+					Discount:          itemDto.Invoice.Discount,
+					SellerCommission:  itemDto.Invoice.SellerCommission,
+					Currency:          itemDto.Invoice.Currency,
+					ApplicableVoucher: newOrderDto.Invoice.Voucher != nil && newOrderDto.Invoice.Voucher.Amount > 0,
 				},
 			}
-			pkgItem.Subpackages = append(pkgItem.Subpackages, subpackage)
+
+			pkgItem.Subpackages[0].Items = append(pkgItem.Subpackages[0].Items, item)
 		}
 		order.Packages = append(order.Packages, pkgItem)
 	}

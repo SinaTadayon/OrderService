@@ -3,14 +3,16 @@ package frame
 type HeaderEnum string
 
 const (
-	HeaderOrder       HeaderEnum = "ORDER"
-	HeaderItems       HeaderEnum = "ITEMS"
-	HeaderOrderId     HeaderEnum = "ORDER_ID"
-	HeaderSellerId    HeaderEnum = "SELLER_ID"
-	HeaderItemId      HeaderEnum = "ITEM_ID"
-	HeaderIPAddress   HeaderEnum = "IP_ADDRESS"
-	HeaderInventoryId HeaderEnum = "INVENTORY_ID"
-	HeaderFuture      HeaderEnum = "Future"
+	HeaderOrder         HeaderEnum = "ORDER"
+	HeaderItems         HeaderEnum = "ITEMS"
+	HeaderOrderId       HeaderEnum = "ORDER_ID"
+	HeaderSellerId      HeaderEnum = "SELLER_ID"
+	HeaderItemId        HeaderEnum = "ITEM_ID"
+	HeaderIPAddress     HeaderEnum = "IP_ADDRESS"
+	HeaderInventoryId   HeaderEnum = "INVENTORY_ID"
+	HeaderFuture        HeaderEnum = "Future"
+	HeaderFutureError   HeaderEnum = "FutureError"
+	HeaderPaymentResult HeaderEnum = "PaymentResult"
 )
 
 type IFrame interface {

@@ -19,7 +19,7 @@ var stateTypeMap = map[int]stateEnum{
 	5: {"OrderVerificationSuccess", 14},
 	6: {"OrderVerificationFail", 15},
 
-	7: {"SellerApprovalPending", 20},
+	7: {"ApprovalPending", 20},
 	8: {"CanceledBySeller", 21},
 	9: {"CanceledByBuyer", 22},
 
@@ -57,7 +57,7 @@ const (
 	OrderVerificationSuccess
 	OrderVerificationFailed
 
-	SellerApprovalPending
+	ApprovalPending
 	CanceledBySeller
 	CanceledByBuyer
 
@@ -133,8 +133,8 @@ func FromString(stateType string) (StateType, error) {
 		return OrderVerificationSuccess, nil
 	case "OrderVerificationFailed":
 		return OrderVerificationFailed, nil
-	case "SellerApprovalPending":
-		return SellerApprovalPending, nil
+	case "ApprovalPending":
+		return ApprovalPending, nil
 	case "CanceledBySeller":
 		return CanceledBySeller, nil
 	case "CanceledByBuyer":
@@ -155,6 +155,8 @@ func FromString(stateType string) (StateType, error) {
 		return DeliveryFailed, nil
 	case "ReturnRequestPending":
 		return ReturnRequestPending, nil
+	case "ReturnRequestRejected":
+		return ReturnRequestRejected, nil
 	case "ReturnCanceled":
 		return ReturnCanceled, nil
 	case "ReturnShipmentPending":

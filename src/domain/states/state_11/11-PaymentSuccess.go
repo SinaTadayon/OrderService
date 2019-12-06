@@ -3,157 +3,67 @@ package state_11
 import (
 	"context"
 	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/order-project/order-service/domain/actions"
+	payment_action "gitlab.faza.io/order-project/order-service/domain/actions/payment"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
-	"gitlab.faza.io/order-project/order-service/domain/states_old"
-	"gitlab.faza.io/order-project/order-service/infrastructure/future"
+	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
-	message "gitlab.faza.io/protos/order"
 	"time"
 )
 
 const (
-	stepName       string = "Payment_Success"
-	stepIndex      int    = 11
-	PaymentSuccess        = "PaymentSuccess"
+	stepName  string = "Payment_Success"
+	stepIndex int    = 11
 )
 
-type paymentSuccessStep struct {
+type paymentSuccessState struct {
 	*states.BaseStateImpl
 }
 
-func New(childes, parents []states.IState, states ...states_old.IState) states.IState {
-	return &paymentSuccessStep{states.NewBaseStep(stepName, stepIndex, childes, parents, states)}
+func New(childes, parents []states.IState, actionStateMap map[actions.IAction]states.IState) states.IState {
+	return &paymentSuccessState{states.NewBaseStep(stepName, stepIndex, childes, parents, actionStateMap)}
 }
 
-func NewOf(name string, index int, childes, parents []states.IState, states ...states_old.IState) states.IState {
-	return &paymentSuccessStep{states.NewBaseStep(name, index, childes, parents, states)}
+func NewOf(name string, index int, childes, parents []states.IState, actionStateMap map[actions.IAction]states.IState) states.IState {
+	return &paymentSuccessState{states.NewBaseStep(name, index, childes, parents, actionStateMap)}
 }
 
 func NewFrom(base *states.BaseStateImpl) states.IState {
-	return &paymentSuccessStep{base}
+	return &paymentSuccessState{base}
 }
 
 func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState {
 	panic("implementation required")
 }
 
-func (paymentSuccess paymentSuccessStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) future.IFuture {
-	panic("implementation required")
-}
+func (state paymentSuccessState) Process(ctx context.Context, iFrame frame.IFrame) {
+	if iFrame.Header().KeyExists(string(frame.HeaderOrderId)) && iFrame.Body().Content() != nil {
+		order, ok := iFrame.Body().Content().(*entities.Order)
+		if !ok {
+			logger.Err("iFrame.Body().Content() not a order, orderId: %d, %s state ",
+				iFrame.Header().Value(string(frame.HeaderOrderId)), state.Name())
+			return
+		}
 
-// TODO PaymentApprovalAction must be handled and implement
-// TODO notification must be handled and implement
-func (paymentSuccess paymentSuccessStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
-	//nextToStepState, ok := paymentSuccess.Childes()[2].(launcher_state.ILauncherState)
-	//if ok != true || nextToStepState.ActiveType() != actives.StockAction {
-	//	logger.Err("nextToStepState doesn't exist in index 2 of %s Childes() , order: %v", paymentSuccess.ActionName(), order)
-	//	returnChannel := make(chan future.IDataFuture, 1)
-	//	defer close(returnChannel)
-	//	returnChannel <- future.IDataFuture{Get:nil, Ex:future.FutureError{Code: future.InternalError, Reason:"Unknown Error"}}
-	//	return future.NewFuture(returnChannel, 1, 1)
-	//}
-	logger.Audit("Order Received in %s step, orderId: %d, Actions: %s", paymentSuccess.Name(), order.OrderId, PaymentSuccess)
-	paymentSuccess.UpdateAllOrderStatus(ctx, &order, itemsId, states.OrderInProgressStatus, false)
-	paymentSuccess.updateOrderItemsProgress(ctx, &order, nil, PaymentSuccess, true, states.OrderInProgressStatus)
-	if err := paymentSuccess.persistOrder(ctx, &order); err != nil {
-		returnChannel := make(chan future.IDataFuture, 1)
-		defer close(returnChannel)
-		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
-		return future.NewFuture(returnChannel, 1, 1)
-	}
+		paymentAction := &entities.Action{
+			Name:      payment_action.Success.ActionName(),
+			Type:      actions.Payment.ActionName(),
+			Data:      nil,
+			Result:    string(states.ActionSuccess),
+			Reasons:   nil,
+			CreatedAt: time.Now().UTC(),
+		}
 
-	return paymentSuccess.Childes()[1].ProcessOrder(ctx, order, nil, nil)
-	//return nextToStepState.ActionLauncher(ctx, order, itemsId, buyer_action.ApprovedAction)
-}
-
-func (paymentSuccess paymentSuccessStep) persistOrder(ctx context.Context, order *entities.Order) error {
-	_, err := global.Singletons.OrderRepository.Save(*order)
-	if err != nil {
-		logger.Err("OrderRepository.Save in %s step failed, order: %v, error: %s", paymentSuccess.Name(), order, err.Error())
-	}
-
-	return err
-}
-
-func (paymentSuccess paymentSuccessStep) updateOrderItemsProgress(ctx context.Context, order *entities.Order, itemsId []uint64, action string, result bool, itemStatus string) {
-
-	findFlag := false
-	if itemsId != nil && len(itemsId) > 0 {
-		for _, id := range itemsId {
-			findFlag = false
-			for i := 0; i < len(order.Items); i++ {
-				if order.Items[i].ItemId == id {
-					paymentSuccess.doUpdateOrderItemsProgress(ctx, order, i, action, result, itemStatus)
-					findFlag = true
-					break
-				}
-			}
-			if !findFlag {
-				logger.Err("%s received itemId %d not exist in order, orderId: %d", paymentSuccess.Name(), id, order.OrderId)
-			}
+		state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
+		orderUpdated, err := global.Singletons.OrderRepository.Save(ctx, *order)
+		if err != nil {
+			logger.Err("OrderRepository.Save in %s state failed, orderId: %d, error: %s", state.Name(), order.OrderId, err.Error())
+		} else {
+			logger.Audit("Order Payment success, orderId: %d", order.OrderId)
+			state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(orderUpdated).Build())
 		}
 	} else {
-		for i := 0; i < len(order.Items); i++ {
-			paymentSuccess.doUpdateOrderItemsProgress(ctx, order, i, action, result, itemStatus)
-		}
+		logger.Err("HeaderOrderId of iFrame.Header not found and content of iFrame.Body() not set, state: %s iframe: %v", state.Name(), iFrame)
 	}
 }
-
-func (paymentSuccess paymentSuccessStep) doUpdateOrderItemsProgress(ctx context.Context, order *entities.Order, index int,
-	actionName string, result bool, itemStatus string) {
-
-	order.Items[index].Status = itemStatus
-	order.Items[index].UpdatedAt = time.Now().UTC()
-
-	length := len(order.Items[index].Progress.StepsHistory) - 1
-
-	if order.Items[index].Progress.StepsHistory[length].ActionHistory == nil || len(order.Items[index].Progress.StepsHistory[length].ActionHistory) == 0 {
-		order.Items[index].Progress.StepsHistory[length].ActionHistory = make([]entities.Action, 0, 5)
-	}
-
-	action := entities.Action{
-		Name:      actionName,
-		Result:    result,
-		CreatedAt: order.Items[index].UpdatedAt,
-	}
-
-	order.Items[index].Progress.StepsHistory[length].ActionHistory = append(order.Items[index].Progress.StepsHistory[length].ActionHistory, action)
-}
-
-//import (
-//	"encoding/json"
-//	"gitlab.faza.io/order-project/order-service"
-//
-//	"gitlab.faza.io/go-framework/logger"
-//
-//	"github.com/Shopify/sarama"
-//)
-//
-//func PaymentSuccessMessageValidate(message *sarama.ConsumerMessage) (*sarama.ConsumerMessage, error) {
-//	mess, err := main.CheckOrderKafkaAndMongoStatus(message, main.PaymentSuccess)
-//	if err != nil {
-//		return mess, err
-//	}
-//	return message, nil
-//}
-//
-//func PaymentSuccessAction(message *sarama.ConsumerMessage) error {
-//	ppr := PaymentPendingRequest{}
-//	err := json.Unmarshal(message.Value, &ppr)
-//	if err != nil {
-//		return err
-//	}
-//
-//	// @TODO: remove automatic move status auto fraud detection
-//	err = main.MoveOrderToNewState("system", "auto approval", main.SellerApprovalPending, "seller-approval-pending", ppr)
-//	if err != nil {
-//		return err
-//	}
-//
-//	err = main.NotifySellerForNewOrder(ppr)
-//	if err != nil {
-//		logger.Err("cant notify seller, %v", err)
-//	}
-//	return nil
-//}

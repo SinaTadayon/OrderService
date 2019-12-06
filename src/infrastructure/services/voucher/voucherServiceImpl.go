@@ -3,6 +3,7 @@ package voucher_service
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	voucherProto "gitlab.faza.io/protos/cart"
@@ -59,11 +60,11 @@ func (voucherService *iVoucherServiceImpl) Disconnect() error {
 func (voucherService iVoucherServiceImpl) VoucherSettlement(ctx context.Context,
 	voucherCode string, orderId uint64, buyerId uint64) future.IFuture {
 	if err := voucherService.Connect(); err != nil {
-		returnChannel := make(chan future.IDataFuture, 1)
-		defer close(returnChannel)
-		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{
-			Code: future.InternalError, Reason: "Unknown Error"}}
-		return future.NewFuture(returnChannel, 1, 1)
+		logger.Err("VoucherSettlement() => voucherClient.CouponUsed internal error, "+
+			"voucherCode: %s, orderId: %d, buyerId: %d, error: %s", voucherCode, orderId, buyerId)
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "voucherService.Connect() Failed")).
+			BuildAndSend()
 	}
 
 	couponReq := &voucherProto.CouponUseRequest{
@@ -76,27 +77,20 @@ func (voucherService iVoucherServiceImpl) VoucherSettlement(ctx context.Context,
 	if err != nil {
 		logger.Err("VoucherSettlement() => voucherClient.CouponUsed internal error, "+
 			"voucherCode: %s, orderId: %d, buyerId: %d, error: %s", voucherCode, orderId, buyerId, result)
-		returnChannel := make(chan future.IDataFuture, 1)
-		defer close(returnChannel)
-		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{
-			Code: future.InternalError, Reason: "Unknown Error"}}
-		return future.NewFuture(returnChannel, 1, 1)
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "voucherService.voucherClient.CouponUsed() Failed")).
+			BuildAndSend()
 	}
 
 	if result.Code != 200 {
 		logger.Err("VoucherSettlement() => voucherClient.CouponUsed failed, "+
 			"voucherCode: %s, orderId: %d, buyerId: %d, error: %s", voucherCode, orderId, buyerId, result)
-		returnChannel := make(chan future.IDataFuture, 1)
-		defer close(returnChannel)
-		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{
-			Code: result.Code, Reason: result.Message}}
-		return future.NewFuture(returnChannel, 1, 1)
+		return future.Factory().SetCapacity(1).
+			SetError(future.ErrorCode(result.Code), result.Message, errors.New("voucherService.voucherClient.CouponUsed() Failed")).
+			BuildAndSend()
 	}
 
 	logger.Audit("VoucherSettlement() => voucherClient.CouponUsed success, "+
 		"voucherCode: %s, orderId: %d, buyerId: %d, error: %s", voucherCode, orderId, buyerId, result)
-	returnChannel := make(chan future.IDataFuture, 1)
-	defer close(returnChannel)
-	returnChannel <- future.IDataFuture{Data: nil, Ex: nil}
-	return future.NewFuture(returnChannel, 1, 1)
+	return future.Factory().SetCapacity(1).BuildAndSend()
 }

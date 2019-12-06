@@ -14,6 +14,7 @@ var actionTypeStrings = []string{
 	"Scheduler",
 	"Stock",
 	"Notification",
+	"Voucher",
 	"System",
 }
 
@@ -25,6 +26,7 @@ const (
 	Scheduler
 	Stock
 	Notification
+	Voucher
 	System
 )
 
@@ -67,6 +69,8 @@ func FromString(actionType string) (ActionType, error) {
 		return Stock, nil
 	case "Notification":
 		return Notification, nil
+	case "Voucher":
+		return Voucher, nil
 	case "System":
 		return System, nil
 	default:

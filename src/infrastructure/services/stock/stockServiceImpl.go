@@ -57,7 +57,7 @@ func (stock *iStockServiceImpl) SingleStockAction(ctx context.Context, inventory
 func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, inventories map[string]int, action actions.IAction) future.IFuture {
 	if err := stock.ConnectToStockService(); err != nil {
 		return future.Factory().SetCapacity(1).
-			SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "ConnectToStockService failed")).
+			SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "ConnectToPaymentService failed")).
 			BuildAndSend()
 	}
 

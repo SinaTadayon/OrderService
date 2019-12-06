@@ -59,17 +59,17 @@ type ItemInvoice struct {
 }
 
 type Progress struct {
-	StateName  string  `bson:"stateName"`
-	StateIndex int     `bson:"stateIndex"`
-	Action     *Action `bson:"action"`
-	States     []State `bson:"states"`
+	State   *State  `bson:"state"`
+	Action  *Action `bson:"action"`
+	History []State `bson:"states"`
 }
 
 type State struct {
-	Name      string    `bson:"name"`
-	Index     int       `bson:"index"`
-	Actions   []Action  `bson:"action"`
-	CreatedAt time.Time `bson:"createdAt"`
+	Name      string                 `bson:"name"`
+	Index     int                    `bson:"index"`
+	Data      map[string]interface{} `bson:"data"`
+	Actions   []Action               `bson:"action"`
+	CreatedAt time.Time              `bson:"createdAt"`
 }
 
 /*
@@ -79,12 +79,11 @@ type State struct {
 	Get: "sample data"
 */
 type Action struct {
-	Name      string                 `bson:"name"`
-	Type      string                 `bson:"type"`
-	Data      map[string]interface{} `bson:"data"`
-	Result    string                 `bson:"result"`
-	Reasons   []string               `bson:"reasons"`
-	CreatedAt time.Time              `bson:"createdAt"`
+	Name      string    `bson:"name"`
+	Type      string    `bson:"type"`
+	Result    string    `bson:"result"`
+	Reasons   []string  `bson:"reasons"`
+	CreatedAt time.Time `bson:"createdAt"`
 }
 
 func (subpackage Subpackage) DeepCopy() *Subpackage {
@@ -133,15 +132,15 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 		Action:     subpackage.Tracking.Action,
 	}
 
-	if subpackage.Tracking.States != nil {
-		subPkg.Tracking.States = make([]State, 0, len(subpackage.Tracking.States))
-		for _, state := range subpackage.Tracking.States {
+	if subpackage.Tracking.History != nil {
+		subPkg.Tracking.History = make([]State, 0, len(subpackage.Tracking.History))
+		for _, state := range subpackage.Tracking.History {
 			var newState State
 			newState.Actions = make([]Action, 0, len(state.Actions))
 			for _, action := range state.Actions {
 				newState.Actions = append(newState.Actions, action)
 			}
-			subPkg.Tracking.States = append(subPkg.Tracking.States, state)
+			subPkg.Tracking.History = append(subPkg.Tracking.History, state)
 		}
 	}
 	return &subPkg

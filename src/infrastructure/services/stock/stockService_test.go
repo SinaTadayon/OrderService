@@ -314,7 +314,7 @@ func createOrder() *entities.Order {
 								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
 							},
-							States: []entities.State{
+							History: []entities.State{
 								{
 									Name:  "1.New",
 									Index: 1,
@@ -437,7 +437,7 @@ func createOrder() *entities.Order {
 								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
 							},
-							States: []entities.State{
+							History: []entities.State{
 								{
 									Name:  "1.New",
 									Index: 1,
@@ -652,7 +652,7 @@ func createOrder() *entities.Order {
 								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
 							},
-							States: []entities.State{
+							History: []entities.State{
 								{
 									Name:  "1.New",
 									Index: 1,
@@ -775,7 +775,7 @@ func createOrder() *entities.Order {
 								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
 							},
-							States: []entities.State{
+							History: []entities.State{
 								{
 									Name:  "1.New",
 									Index: 1,
@@ -837,7 +837,7 @@ func TestStockService_ReservedSuccess(t *testing.T) {
 
 	if err := stock.ConnectToStockService(); err != nil {
 		logger.Err(err.Error())
-		panic("stockService.ConnectToStockService() failed")
+		panic("stockService.ConnectToPaymentService() failed")
 	}
 
 	defer stock.CloseConnection()
@@ -870,7 +870,7 @@ func TestStockService_SettlementSuccess(t *testing.T) {
 
 	if err := stock.ConnectToStockService(); err != nil {
 		logger.Err(err.Error())
-		panic("stockService.ConnectToStockService() failed")
+		panic("stockService.ConnectToPaymentService() failed")
 	}
 
 	defer func() {
@@ -908,7 +908,7 @@ func TestStockService_ReleaseSuccess(t *testing.T) {
 
 	if err := stock.ConnectToStockService(); err != nil {
 		logger.Err(err.Error())
-		panic("stockService.ConnectToStockService() failed")
+		panic("stockService.ConnectToPaymentService() failed")
 	}
 
 	defer func() {

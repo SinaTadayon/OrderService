@@ -10,8 +10,8 @@ var actionStrings = []string{
 	"DeliveryDelay",
 	"Deliver",
 	"DeliveryFail",
-	"AcceptReturn",
-	"RejectReturn",
+	"Accept",
+	"Reject",
 	"CancelReturn",
 }
 
@@ -19,8 +19,8 @@ const (
 	DeliveryDelay ActionEnums = iota
 	Deliver
 	DeliveryFail
-	AcceptReturn
-	RejectReturn
+	Accept
+	Reject
 	CancelReturn
 )
 
@@ -56,10 +56,10 @@ func (actionEnum ActionEnums) FromString(action string) actions.IEnumAction {
 		return Deliver
 	case "DeliveryFail":
 		return DeliveryFail
-	case "AcceptReturn":
-		return AcceptReturn
-	case "RejectReturn":
-		return RejectReturn
+	case "Accept":
+		return Accept
+	case "Reject":
+		return Reject
 	case "CancelReturn":
 		return CancelReturn
 	default:

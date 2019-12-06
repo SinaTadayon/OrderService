@@ -2,11 +2,9 @@ package state_34
 
 import (
 	"context"
-	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/domain/states"
-	"gitlab.faza.io/order-project/order-service/domain/states_old"
-	"gitlab.faza.io/order-project/order-service/infrastructure/future"
-	message "gitlab.faza.io/protos/order"
+	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 )
 
 const (
@@ -14,33 +12,33 @@ const (
 	stepIndex int    = 34
 )
 
-type shipmentDeliveryPendingStep struct {
+type DeliveryPendingState struct {
 	*states.BaseStateImpl
 }
 
-func New(childes, parents []states.IState, states ...states_old.IState) states.IState {
-	return &shipmentDeliveryPendingStep{states.NewBaseStep(stepName, stepIndex, childes, parents, states)}
+func New(childes, parents []states.IState, actionStateMap map[actions.IAction]states.IState) states.IState {
+	return &DeliveryPendingState{states.NewBaseStep(stepName, stepIndex, childes, parents, actionStateMap)}
 }
 
-func NewOf(name string, index int, childes, parents []states.IState, states ...states_old.IState) states.IState {
-	return &shipmentDeliveryPendingStep{states.NewBaseStep(name, index, childes, parents, states)}
+func NewOf(name string, index int, childes, parents []states.IState, actionStateMap map[actions.IAction]states.IState) states.IState {
+	return &DeliveryPendingState{states.NewBaseStep(name, index, childes, parents, actionStateMap)}
 }
 
 func NewFrom(base *states.BaseStateImpl) states.IState {
-	return &shipmentDeliveryPendingStep{base}
+	return &DeliveryPendingState{base}
 }
 
 func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState {
 	panic("implementation required")
 }
 
-func (shipmentDeliveryPending shipmentDeliveryPendingStep) ProcessMessage(ctx context.Context, request *message.MessageRequest) future.IFuture {
+func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFrame) {
 	panic("implementation required")
 }
 
-func (shipmentDeliveryPending shipmentDeliveryPendingStep) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
-	panic("implementation required")
-}
+//func (shipmentDeliveryPending DeliveryPendingState) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
+//	panic("implementation required")
+//}
 
 //
 //import (

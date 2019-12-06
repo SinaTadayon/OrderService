@@ -87,8 +87,8 @@ func TestVoucherSettlement(t *testing.T) {
 	assert.NotEmpty(t, allVouchers.Vouchers[0].Code)
 
 	ctx, _ = context.WithCancel(context.Background())
-	iPromise := voucherSrv.VoucherSettlement(ctx, allVouchers.Vouchers[0].Code, 123456789776, 1000002)
-	futureData := iPromise.Get()
-	assert.Nil(t, futureData.Ex)
-	assert.Nil(t, futureData.Data)
+	iFuture := voucherSrv.VoucherSettlement(ctx, allVouchers.Vouchers[0].Code, 123456789776, 1000002)
+	futureData := iFuture.Get()
+	assert.Nil(t, futureData.Data())
+	assert.Nil(t, futureData.Error())
 }

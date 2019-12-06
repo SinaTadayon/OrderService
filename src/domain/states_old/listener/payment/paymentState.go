@@ -167,6 +167,6 @@ func (paymentAction paymentActionListener) doUpdateOrderState(ctx context.Contex
 	//	CreatedAt:order.Items[index].Tracking.CurrentState.CreatedAt,
 	//}
 	//
-	//order.Items[index].Tracking.States[len(order.Items[index].Tracking.States)].States =
-	//	append(order.Items[index].Tracking.States[len(order.Items[index].Tracking.States)].States, stateHistory)
+	//order.Items[index].Tracking.History[len(order.Items[index].Tracking.History)].History =
+	//	append(order.Items[index].Tracking.History[len(order.Items[index].Tracking.History)].History, stateHistory)
 }

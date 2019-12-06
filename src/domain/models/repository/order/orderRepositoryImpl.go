@@ -109,7 +109,7 @@ func (repo iOrderRepositoryImpl) Save(ctx context.Context, order entities.Order)
 			return nil, ErrorUpdateFailed
 		}
 
-		order.UpdatedAt = time.Now().UTC()
+		//order.UpdatedAt = time.Now().UTC()
 		for i := 0; i < len(order.Packages); i++ {
 			if currentOrder.Packages[i].Version == order.Packages[i].Version {
 				order.Packages[i].Version += 1

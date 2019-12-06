@@ -1,4 +1,4 @@
-package system_action
+package voucher_action
 
 import (
 	"gitlab.faza.io/order-project/order-service/domain/actions"
@@ -7,21 +7,11 @@ import (
 type ActionEnums int
 
 var actionStrings = []string{
-	"ComposeActorsAction",
-	"Success",
-	"Fail",
-	"NextToState",
-	"Close",
-	"CombineActorsAction",
+	"Settlement",
 }
 
 const (
-	ComposeActorsAction ActionEnums = iota
-	Success
-	Fail
-	NextToState
-	Close
-	CombineActorsAction
+	Settlement ActionEnums = iota
 )
 
 func (actionEnum ActionEnums) ActionName() string {
@@ -29,7 +19,7 @@ func (actionEnum ActionEnums) ActionName() string {
 }
 
 func (actionEnum ActionEnums) ActionOrdinal() int {
-	if actionEnum < ComposeActorsAction || actionEnum > CombineActorsAction {
+	if actionEnum != Settlement {
 		return -1
 	}
 
@@ -41,7 +31,7 @@ func (actionEnum ActionEnums) Values() []string {
 }
 
 func (actionEnum ActionEnums) String() string {
-	if actionEnum < ComposeActorsAction || actionEnum > CombineActorsAction {
+	if actionEnum != Settlement {
 		return ""
 	}
 
@@ -50,18 +40,8 @@ func (actionEnum ActionEnums) String() string {
 
 func (actionEnum ActionEnums) FromString(action string) actions.IEnumAction {
 	switch action {
-	case "ComposeActorsAction":
-		return ComposeActorsAction
-	case "Success":
-		return Success
-	case "Fail":
-		return Fail
-	case "NextToState":
-		return NextToState
-	case "Close":
-		return Close
-	case "CombineActorsAction":
-		return CombineActorsAction
+	case "Settlement":
+		return Settlement
 	default:
 		return nil
 	}

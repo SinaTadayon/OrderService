@@ -234,8 +234,8 @@ func (stockState stockActionLauncher) persistOrderState(ctx context.Context, ord
 	//		CreatedAt:order.Items[i].Tracking.CurrentState.CreatedAt,
 	//	}
 	//
-	//	order.Items[i].Tracking.States[len(order.Items[i].Tracking.States)].States =
-	//		append(order.Items[i].Tracking.States[len(order.Items[i].Tracking.States)].States, stateHistory)
+	//	order.Items[i].Tracking.History[len(order.Items[i].Tracking.History)].History =
+	//		append(order.Items[i].Tracking.History[len(order.Items[i].Tracking.History)].History, stateHistory)
 	//}
 	//
 	//orderChecked, err := global.Singletons.OrderRepository.Save(*order)

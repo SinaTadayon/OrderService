@@ -1,7 +1,6 @@
 package seller_action
 
 import (
-	"github.com/pkg/errors"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 )
 
@@ -11,24 +10,24 @@ var actionStrings = []string{
 	"Approve",
 	"Reject",
 	"Cancel",
-	"AcceptReturn",
+	"Accept",
 	"CancelReturn",
 	"RejectReturn",
 	"Deliver",
 	"DeliveryFail",
-	"EnterShipmentDetails",
+	"EnterShipmentDetail",
 }
 
 const (
 	Approve ActionEnums = iota
 	Reject
 	Cancel
-	AcceptReturn
+	Accept
 	CancelReturn
 	RejectReturn
 	Deliver
 	DeliveryFail
-	EnterShipmentDetails
+	EnterShipmentDetail
 )
 
 func (actionEnum ActionEnums) ActionName() string {
@@ -36,7 +35,7 @@ func (actionEnum ActionEnums) ActionName() string {
 }
 
 func (actionEnum ActionEnums) ActionOrdinal() int {
-	if actionEnum < Approve || actionEnum > EnterShipmentDetails {
+	if actionEnum < Approve || actionEnum > EnterShipmentDetail {
 		return -1
 	}
 
@@ -48,7 +47,7 @@ func (actionEnum ActionEnums) Values() []string {
 }
 
 func (actionEnum ActionEnums) String() string {
-	if actionEnum < Approve || actionEnum > EnterShipmentDetails {
+	if actionEnum < Approve || actionEnum > EnterShipmentDetail {
 		return ""
 	}
 
@@ -67,14 +66,14 @@ func (actionEnum ActionEnums) FromString(action string) actions.IEnumAction {
 		return Deliver
 	case "DeliveryFail":
 		return DeliveryFail
-	case "AcceptReturn":
-		return AcceptReturn
+	case "Accept":
+		return Accept
 	case "CancelReturn":
 		return CancelReturn
 	case "RejectReturn":
 		return RejectReturn
-	case "EnterShipmentDetails":
-		return EnterShipmentDetails
+	case "EnterShipmentDetail":
+		return EnterShipmentDetail
 	default:
 		return nil
 	}

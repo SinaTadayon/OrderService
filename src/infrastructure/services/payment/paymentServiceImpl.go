@@ -3,6 +3,7 @@ package payment_service
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	payment_gateway "gitlab.faza.io/protos/payment-gateway"
@@ -23,7 +24,7 @@ func NewPaymentService(address string, port int) IPaymentService {
 	return &iPaymentServiceImpl{nil, nil, address, port}
 }
 
-func (payment *iPaymentServiceImpl) ConnectToStockService() error {
+func (payment *iPaymentServiceImpl) ConnectToPaymentService() error {
 	if payment.grpcConnection == nil || payment.grpcConnection.GetState() != connectivity.Ready {
 		var err error
 		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
@@ -41,15 +42,13 @@ func (payment *iPaymentServiceImpl) ConnectToStockService() error {
 // TODO checking return error of payment
 func (payment iPaymentServiceImpl) OrderPayment(ctx context.Context, request PaymentRequest) future.IFuture {
 
-	if err := payment.ConnectToStockService(); err != nil {
-		returnChannel := make(chan future.IDataFuture, 1)
-		defer close(returnChannel)
-		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{
-			Code: future.InternalError, Reason: "Unknown Error"}}
-		return future.NewFuture(returnChannel, 1, 1)
+	if err := payment.ConnectToPaymentService(); err != nil {
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "ConnectToPaymentService failed")).
+			BuildAndSend()
 	}
 
-	ctx1, _ := context.WithCancel(context.Background())
+	ctx, _ = context.WithTimeout(ctx, 30*time.Second)
 	gatewayRequest := &payment_gateway.GenerateRedirRequest{
 		Gateway:  request.Gateway,
 		Amount:   request.Amount,
@@ -57,14 +56,15 @@ func (payment iPaymentServiceImpl) OrderPayment(ctx context.Context, request Pay
 		OrderID:  strconv.Itoa(int(request.OrderId)),
 	}
 
-	response, err := payment.paymentService.GenerateRedirectURL(ctx1, gatewayRequest)
+	// TODO decode err code
+	response, err := payment.paymentService.GenerateRedirectURL(ctx, gatewayRequest)
 	if err != nil {
 		logger.Err("request to payment gateway grpc failed, orderId: %d, amount: %d, gateway: %s, currency: %s, error: %s",
 			request.OrderId, request.Amount, request.Gateway, request.Currency, err)
-		returnChannel := make(chan future.IDataFuture, 1)
-		defer close(returnChannel)
-		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
-		return future.NewFuture(returnChannel, 1, 1)
+
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "GenerateRedirectURL failed")).
+			BuildAndSend()
 	}
 
 	paymentResponse := PaymentResponse{
@@ -73,8 +73,7 @@ func (payment iPaymentServiceImpl) OrderPayment(ctx context.Context, request Pay
 		PaymentId:   response.PaymentId,
 	}
 
-	returnChannel := make(chan future.IDataFuture, 1)
-	defer close(returnChannel)
-	returnChannel <- future.IDataFuture{Data: paymentResponse, Ex: nil}
-	return future.NewFuture(returnChannel, 1, 1)
+	return future.Factory().SetCapacity(1).
+		SetData(paymentResponse).
+		BuildAndSend()
 }

@@ -688,25 +688,37 @@ func createOrder() *entities.Order {
 							},
 						},
 						Tracking: entities.Progress{
-							StateName:  "0.NewOrder",
-							StateIndex: 0,
+							State: &entities.State{
+								Name:  "1.New",
+								Index: 1,
+								Data:  nil,
+								Actions: []entities.Action{
+									{
+										Name:      "BuyerCancel",
+										Type:      "OrderBuyerCancel",
+										Result:    "Success",
+										Reasons:   nil,
+										CreatedAt: time.Now().UTC(),
+									},
+								},
+								CreatedAt: time.Now().UTC(),
+							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
 								Type:      "OrderBuyerCancel",
-								Data:      nil,
 								Result:    "Success",
 								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
 							},
-							States: []entities.State{
+							History: []entities.State{
 								{
 									Name:  "1.New",
 									Index: 1,
+									Data:  nil,
 									Actions: []entities.Action{
 										{
 											Name:      "BuyerCancel",
 											Type:      "OrderBuyerCancel",
-											Data:      nil,
 											Result:    "Success",
 											Reasons:   nil,
 											CreatedAt: time.Now().UTC(),
@@ -716,7 +728,7 @@ func createOrder() *entities.Order {
 								},
 							},
 						},
-						Status:    "New",
+						Status:    "1.New",
 						CreatedAt: time.Now().UTC(),
 						UpdatedAt: time.Now().UTC(),
 						DeletedAt: nil,
@@ -811,25 +823,37 @@ func createOrder() *entities.Order {
 							},
 						},
 						Tracking: entities.Progress{
-							StateName:  "0.NewOrder",
-							StateIndex: 0,
+							State: &entities.State{
+								Name:  "1.New",
+								Index: 1,
+								Data:  nil,
+								Actions: []entities.Action{
+									{
+										Name:      "BuyerCancel",
+										Type:      "OrderBuyerCancel",
+										Result:    "Success",
+										Reasons:   nil,
+										CreatedAt: time.Now().UTC(),
+									},
+								},
+								CreatedAt: time.Now().UTC(),
+							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
 								Type:      "OrderBuyerCancel",
-								Data:      nil,
 								Result:    "Success",
 								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
 							},
-							States: []entities.State{
+							History: []entities.State{
 								{
 									Name:  "1.New",
 									Index: 1,
+									Data:  nil,
 									Actions: []entities.Action{
 										{
 											Name:      "BuyerCancel",
 											Type:      "OrderBuyerCancel",
-											Data:      nil,
 											Result:    "Success",
 											Reasons:   nil,
 											CreatedAt: time.Now().UTC(),
@@ -839,7 +863,7 @@ func createOrder() *entities.Order {
 								},
 							},
 						},
-						Status:    "New",
+						Status:    "1.New",
 						CreatedAt: time.Now().UTC(),
 						UpdatedAt: time.Now().UTC(),
 						DeletedAt: nil,
@@ -1026,25 +1050,37 @@ func createOrder() *entities.Order {
 							},
 						},
 						Tracking: entities.Progress{
-							StateName:  "0.NewOrder",
-							StateIndex: 0,
+							State: &entities.State{
+								Name:  "1.New",
+								Index: 1,
+								Data:  nil,
+								Actions: []entities.Action{
+									{
+										Name:      "BuyerCancel",
+										Type:      "OrderBuyerCancel",
+										Result:    "Success",
+										Reasons:   nil,
+										CreatedAt: time.Now().UTC(),
+									},
+								},
+								CreatedAt: time.Now().UTC(),
+							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
 								Type:      "OrderBuyerCancel",
-								Data:      nil,
 								Result:    "Success",
 								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
 							},
-							States: []entities.State{
+							History: []entities.State{
 								{
 									Name:  "1.New",
 									Index: 1,
+									Data:  nil,
 									Actions: []entities.Action{
 										{
 											Name:      "BuyerCancel",
 											Type:      "OrderBuyerCancel",
-											Data:      nil,
 											Result:    "Success",
 											Reasons:   nil,
 											CreatedAt: time.Now().UTC(),
@@ -1054,7 +1090,7 @@ func createOrder() *entities.Order {
 								},
 							},
 						},
-						Status:    "New",
+						Status:    "1.New",
 						CreatedAt: time.Now().UTC(),
 						UpdatedAt: time.Now().UTC(),
 						DeletedAt: nil,
@@ -1149,25 +1185,37 @@ func createOrder() *entities.Order {
 							},
 						},
 						Tracking: entities.Progress{
-							StateName:  "0.NewOrder",
-							StateIndex: 0,
+							State: &entities.State{
+								Name:  "1.New",
+								Index: 1,
+								Data:  nil,
+								Actions: []entities.Action{
+									{
+										Name:      "BuyerCancel",
+										Type:      "OrderBuyerCancel",
+										Result:    "Success",
+										Reasons:   nil,
+										CreatedAt: time.Now().UTC(),
+									},
+								},
+								CreatedAt: time.Now().UTC(),
+							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
 								Type:      "OrderBuyerCancel",
-								Data:      nil,
 								Result:    "Success",
 								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
 							},
-							States: []entities.State{
+							History: []entities.State{
 								{
 									Name:  "1.New",
 									Index: 1,
+									Data:  nil,
 									Actions: []entities.Action{
 										{
 											Name:      "BuyerCancel",
 											Type:      "OrderBuyerCancel",
-											Data:      nil,
 											Result:    "Success",
 											Reasons:   nil,
 											CreatedAt: time.Now().UTC(),
@@ -1177,7 +1225,7 @@ func createOrder() *entities.Order {
 								},
 							},
 						},
-						Status:    "New",
+						Status:    "1.New",
 						CreatedAt: time.Now().UTC(),
 						UpdatedAt: time.Now().UTC(),
 						DeletedAt: nil,
