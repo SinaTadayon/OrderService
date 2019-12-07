@@ -10,7 +10,6 @@ import (
 const (
 	stepName  string = "Canceled_By_Seller"
 	stepIndex int    = 21
-	//RejectedBySeller        = "RejectedBySeller"
 )
 
 type canceledBySellerState struct {
@@ -34,7 +33,7 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 }
 
 func (state canceledBySellerState) Process(ctx context.Context, iFrame frame.IFrame) {
-	panic("implementation required")
+
 }
 
 //func (shipmentRejectedBySeller canceledBySellerState) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {

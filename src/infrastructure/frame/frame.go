@@ -5,6 +5,7 @@ type HeaderEnum string
 const (
 	HeaderOrder         HeaderEnum = "ORDER"
 	HeaderSubpackages   HeaderEnum = "SUBPACKAGES"
+	HeaderSubpackage    HeaderEnum = "SUBPACKAGE"
 	HeaderItems         HeaderEnum = "ITEMS"
 	HeaderOrderId       HeaderEnum = "ORDER_ID"
 	HeaderSellerId      HeaderEnum = "SELLER_ID"
