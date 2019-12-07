@@ -58,7 +58,7 @@ func (base *BaseStateImpl) SetParents(iSteps []IState) {
 }
 
 func (base BaseStateImpl) Name() string {
-	return base.String()
+	return base.name
 }
 
 func (base BaseStateImpl) Index() int {
@@ -150,9 +150,15 @@ func (base BaseStateImpl) UpdateOrderAllSubPkg(ctx context.Context, order *entit
 	order.UpdatedAt = time.Now().UTC()
 	for i := 0; i < len(order.Packages); i++ {
 		order.Packages[i].UpdatedAt = time.Now().UTC()
-		for z := 0; z < len(actions); z++ {
+		if actions != nil && len(actions) > 0 {
+			for z := 0; z < len(actions); z++ {
+				for j := 0; j < len(order.Packages[i].Subpackages); j++ {
+					base.UpdateSubPackage(ctx, &order.Packages[i].Subpackages[j], actions[z])
+				}
+			}
+		} else {
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-				base.UpdateSubPackage(ctx, &order.Packages[i].Subpackages[j], actions[z])
+				base.UpdateSubPackage(ctx, &order.Packages[i].Subpackages[j], nil)
 			}
 		}
 	}

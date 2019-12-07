@@ -86,6 +86,39 @@ type Action struct {
 	CreatedAt time.Time `bson:"createdAt"`
 }
 
+func (item Item) DeepCopy() *Item {
+	newItem := Item{
+		SKU:         item.SKU,
+		InventoryId: item.InventoryId,
+		Title:       item.Title,
+		Brand:       item.Brand,
+		Guaranty:    item.Guaranty,
+		Category:    item.Category,
+		Image:       item.Image,
+		Returnable:  item.Returnable,
+		Quantity:    item.Quantity,
+		Attributes:  item.Attributes,
+		Invoice: ItemInvoice{
+			Unit:              item.Invoice.Unit,
+			Total:             item.Invoice.Total,
+			Original:          item.Invoice.Original,
+			Special:           item.Invoice.Special,
+			Discount:          item.Invoice.Discount,
+			SellerCommission:  item.Invoice.SellerCommission,
+			Currency:          item.Invoice.Currency,
+			ApplicableVoucher: item.Invoice.ApplicableVoucher,
+		},
+	}
+	if item.Reasons != nil {
+		newItem.Reasons = make([]string, 0, len(item.Reasons))
+		for _, reason := range item.Reasons {
+			newItem.Reasons = append(newItem.Reasons, reason)
+		}
+	}
+
+	return &newItem
+}
+
 func (subpackage Subpackage) DeepCopy() *Subpackage {
 	var subPkg = Subpackage{
 		ItemId:    subpackage.ItemId,
@@ -93,10 +126,42 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 		OrderId:   subpackage.OrderId,
 		Version:   subpackage.Version,
 		Status:    subpackage.Status,
-		Items:     subpackage.Items,
 		CreatedAt: subpackage.CreatedAt,
 		UpdatedAt: subpackage.UpdatedAt,
 		DeletedAt: subpackage.DeletedAt,
+	}
+
+	subPkg.Items = make([]Item, 0, len(subpackage.Items))
+	for _, item := range subpackage.Items {
+		newItem := Item{
+			SKU:         item.SKU,
+			InventoryId: item.InventoryId,
+			Title:       item.Title,
+			Brand:       item.Brand,
+			Guaranty:    item.Guaranty,
+			Category:    item.Category,
+			Image:       item.Image,
+			Returnable:  item.Returnable,
+			Quantity:    item.Quantity,
+			Attributes:  item.Attributes,
+			Invoice: ItemInvoice{
+				Unit:              item.Invoice.Unit,
+				Total:             item.Invoice.Total,
+				Original:          item.Invoice.Original,
+				Special:           item.Invoice.Special,
+				Discount:          item.Invoice.Discount,
+				SellerCommission:  item.Invoice.SellerCommission,
+				Currency:          item.Invoice.Currency,
+				ApplicableVoucher: item.Invoice.ApplicableVoucher,
+			},
+		}
+		if item.Reasons != nil {
+			newItem.Reasons = make([]string, 0, len(item.Reasons))
+			for _, reason := range item.Reasons {
+				newItem.Reasons = append(newItem.Reasons, reason)
+			}
+		}
+		subPkg.Items = append(subPkg.Items, newItem)
 	}
 
 	if subpackage.Shipments != nil {
@@ -127,9 +192,47 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 	}
 
 	subPkg.Tracking = Progress{
-		StateName:  subpackage.Tracking.StateName,
-		StateIndex: subpackage.Tracking.StateIndex,
-		Action:     subpackage.Tracking.Action,
+		State: &State{
+			Name:      subpackage.Tracking.State.Name,
+			Index:     subpackage.Tracking.State.Index,
+			Data:      subpackage.Tracking.State.Data,
+			Actions:   nil,
+			CreatedAt: subpackage.Tracking.State.CreatedAt,
+		},
+
+		Action: &Action{
+			Name:      subpackage.Tracking.Action.Name,
+			Type:      subpackage.Tracking.Action.Type,
+			Result:    subpackage.Tracking.Action.Result,
+			Reasons:   nil,
+			CreatedAt: subpackage.Tracking.Action.CreatedAt,
+		},
+	}
+
+	if subPkg.Tracking.State.Actions != nil {
+		subPkg.Tracking.State.Actions = make([]Action, 0, len(subpackage.Tracking.State.Actions))
+		for _, action := range subpackage.Tracking.State.Actions {
+			newAction := Action{
+				Name:      action.Name,
+				Type:      action.Type,
+				Result:    action.Result,
+				CreatedAt: action.CreatedAt,
+			}
+			if action.Reasons != nil {
+				newAction.Reasons = make([]string, 0, len(action.Reasons))
+				for _, reason := range action.Reasons {
+					newAction.Reasons = append(action.Reasons, reason)
+				}
+			}
+			subPkg.Tracking.State.Actions = append(subPkg.Tracking.State.Actions, newAction)
+		}
+	}
+
+	if subpackage.Tracking.Action.Reasons != nil {
+		subPkg.Tracking.Action.Reasons = make([]string, 0, len(subpackage.Tracking.Action.Reasons))
+		for _, reason := range subpackage.Tracking.Action.Reasons {
+			subPkg.Tracking.Action.Reasons = append(subPkg.Tracking.Action.Reasons, reason)
+		}
 	}
 
 	if subpackage.Tracking.History != nil {

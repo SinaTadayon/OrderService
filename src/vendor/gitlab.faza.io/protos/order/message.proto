@@ -39,18 +39,20 @@ message RequestMetadata {
     uint64 userId = 1;
     string userType = 2;
     uint64 orderId = 3;
-    uint64 itemId = 4;
-    uint32 page = 5;
-    uint32 perPage = 6;
-    string ipAddress = 7;
-    MetaAction action = 8;
-    repeated MetaSorts sorts = 9;
-    repeated MetaFilter filters = 10;
+    uint64 packageId = 4;
+    uint64 itemId = 5;
+    uint32 page = 6;
+    uint32 perPage = 7;
+    string ipAddress = 8;
+    MetaAction action = 9;
+    repeated MetaSorts sorts = 10;
+    repeated MetaFilter filters = 11;
 }
 
 message MetaAction {
     string actionType = 1;
     string actionState = 2;
+    int32 stateIndex = 3;
 }
 
 message MessageRequest {
@@ -72,10 +74,27 @@ message ValidationErr {
     string desc = 2;
 }
 
-message actionResponse {
+message ActionResponse {
     uint64 orderId = 1;
-    uint64 itemId = 2;
+    repeated uint64 itemId = 2;
 }
+
+message ActionData {
+    message Subpackage {
+        uint64 itemId = 1;
+        message Item {
+            string  inventoryId = 1;
+            int32   quantity = 2;
+            repeated string reasons = 3;
+        }
+        repeated Item items = 2;
+    }
+
+    repeated Subpackage subpackages = 1;
+    string carrier = 2;
+    string trackingNumber = 3;
+}
+
 
 /////////////////////////////////////////////////////////////
 // seller messages
@@ -210,31 +229,31 @@ message SellerOrderReturnDetail {
     repeated ItemDetail items = 8;
 }
 
-message SellerApprovalPendingAction {
-    message Item {
-        string  inventoryId = 1;
-        int32   quantity = 2;
-        repeated string reasons = 3;
-    }
-    repeated Item items = 1;
-}
+//message SellerApprovalPendingAction {
+//    message Item {
+//        string  inventoryId = 1;
+//        int32   quantity = 2;
+//        repeated string reasons = 3;
+//    }
+//    repeated Item items = 1;
+//}
 
-message SellerShipmentPendingAction {
-    message Item {
-        string  inventoryId = 1;
-    }
-    repeated Item items = 1;
-    string carrier = 2;
-    string trackingNumber = 3;
-}
+//message SellerShipmentPendingAction {
+//    message Item {
+//        string  inventoryId = 1;
+//    }
+//    repeated Item items = 1;
+//    string carrier = 2;
+//    string trackingNumber = 3;
+//}
 
-message SellerReturnRequestAction {
-    message Item {
-        string  inventoryId = 1;
-        repeated string reasons = 2;
-    }
-    repeated Item items = 1;
-}
+//message SellerReturnRequestAction {
+//    message Item {
+//        string  inventoryId = 1;
+//        repeated string reasons = 2;
+//    }
+//    repeated Item items = 1;
+//}
 
 /////////////////////////////////////////////////////////////
 // buyer messages
@@ -300,14 +319,14 @@ message BuyerOrderDetail {
     repeated Package Packages = 9;
 }
 
-message BuyerOrderAction {
-    message Item {
-        string  inventoryId = 1;
-        int32   quantity = 2;
-        repeated string reasons = 3;
-    }
-    repeated Item items = 1;
-}
+//message BuyerOrderAction {
+//    message Item {
+//        string  inventoryId = 1;
+//        int32   quantity = 2;
+//        repeated string reasons = 3;
+//    }
+//    repeated Item items = 1;
+//}
 
 message BuyerReturnOrderReports {
     int32 returnRequestPending = 1;
@@ -363,11 +382,11 @@ message BuyerReturnOrderDetail {
     repeated Item items = 8;
 }
 
-message BuyerReturnAction {
-    message Item {
-        string  inventoryId = 1;
-    }
-    repeated Item items = 1;
-    string carrier = 2;
-    string trackingNumber = 3;
-}
+//message BuyerReturnAction {
+//    message Item {
+//        string  inventoryId = 1;
+//    }
+//    repeated Item items = 1;
+//    string carrier = 2;
+//    string trackingNumber = 3;
+//}

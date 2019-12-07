@@ -2,9 +2,16 @@ package state_20
 
 import (
 	"context"
+	"github.com/pkg/errors"
+	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
+	"gitlab.faza.io/order-project/order-service/domain/events"
+	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
+	"gitlab.faza.io/order-project/order-service/infrastructure/global"
+	"time"
 )
 
 const (
@@ -38,6 +45,204 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 
 func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFrame) {
 
+	if iFrame.Header().KeyExists(string(frame.HeaderOrderId)) {
+		if iFrame.Body().Content() == nil {
+			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, %s state ",
+				iFrame.Header().Value(string(frame.HeaderOrderId)), state.Name())
+			return
+		}
+
+		order, ok := iFrame.Body().Content().(*entities.Order)
+		if !ok {
+			logger.Err("Process() => iFrame.Body().Content() not a order, orderId: %d, %s state ",
+				iFrame.Header().Value(string(frame.HeaderOrderId)), state.Name())
+			return
+		}
+
+		state.UpdateOrderAllSubPkg(ctx, order)
+		_, err := global.Singletons.OrderRepository.Save(ctx, *order)
+		if err != nil {
+			logger.Err("Process() => OrderRepository.Save in %s state failed, orderId: %d, error: %s", state.Name(), order.OrderId, err.Error())
+		} else {
+			logger.Audit("Process() => Status of all subpackage update to ApprovalPending, orderId: %d", order.OrderId)
+		}
+	} else if iFrame.Header().KeyExists(string(frame.HeaderEvent)) {
+		event, ok := iFrame.Header().Value(string(frame.HeaderEvent)).(events.IEvent)
+		if !ok {
+			logger.Err("Process() => received frame doesn't have a event, state: %s, frame: %v", state.String(), iFrame)
+			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+				SetError(future.InternalError, "Unknown Err", nil).Send()
+			return
+		}
+
+		if event.EventType() == events.Action {
+			pkgItem, ok := iFrame.Body().Content().(entities.PackageItem)
+			if !ok {
+				logger.Err("Process() => received frame body not a PackageItem, state: %s, event: %v, frame: %v", state.String(), event, iFrame)
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetError(future.InternalError, "Unknown Err", errors.New("frame body invalid")).Send()
+				return
+			}
+
+			actionData, ok := event.Data().(events.ActionData)
+			if !ok {
+				logger.Err("Process() => received action event data invalid, state: %s, event: %v", state.String(), event)
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetError(future.InternalError, "Unknown Err", errors.New("Action Data event invalid")).Send()
+				return
+			}
+
+			var newSubPackages []entities.Subpackage
+			var nextActionState states.IState
+			var approvalPendingAction *entities.Action
+
+			// iterate subpackages
+			for _, eventSubPkg := range actionData.SubPackages {
+				for i := 0; i < len(pkgItem.Subpackages); i++ {
+					if eventSubPkg.ItemId == pkgItem.Subpackages[i].ItemId && pkgItem.Subpackages[i].Status == state.Name() {
+						var findAction = false
+						for action, nextState := range state.StatesMap() {
+							if action.ActionType().ActionName() == event.Action().ActionType().ActionName() &&
+								action.ActionEnum().ActionName() == event.Action().ActionEnum().ActionName() {
+								findAction = true
+
+								var newSubPkg *entities.Subpackage
+								var newPkgItems []entities.Item
+
+								// iterate items
+								for _, actionItem := range eventSubPkg.Items {
+									for j := 0; j < len(pkgItem.Subpackages[i].Items); j++ {
+										if actionItem.InventoryId == pkgItem.Subpackages[i].Items[j].InventoryId {
+											nextActionState = nextState
+
+											if actionItem.Quantity != pkgItem.Subpackages[i].Items[j].Quantity {
+												if newSubPackages == nil {
+													newSubPackages = make([]entities.Subpackage, 0, 32)
+												}
+
+												if newSubPkg == nil {
+													newSubPkg = pkgItem.Subpackages[i].DeepCopy()
+													newSubPkg.ItemId = 0
+													newSubPkg.Items = make([]entities.Item, 0, len(eventSubPkg.Items))
+
+													approvalPendingAction = &entities.Action{
+														Name:      action.ActionEnum().ActionName(),
+														Type:      action.ActionType().ActionName(),
+														Result:    string(states.ActionSuccess),
+														Reasons:   actionItem.Reasons,
+														CreatedAt: time.Now().UTC(),
+													}
+												}
+
+												if newPkgItems == nil {
+													newPkgItems = make([]entities.Item, 0, len(pkgItem.Subpackages[i].Items))
+												}
+
+												pkgItem.Subpackages[i].Items[j].Quantity -= actionItem.Quantity
+												pkgItem.Subpackages[i].Items[j].Invoice.Total = pkgItem.Subpackages[i].Items[j].Invoice.Unit * uint64(pkgItem.Subpackages[i].Items[j].Quantity)
+												newPkgItem := pkgItem.Subpackages[i].Items[j].DeepCopy()
+												newPkgItems = append(newPkgItems, *newPkgItem)
+
+												newItem := pkgItem.Subpackages[i].Items[j].DeepCopy()
+												newItem.Quantity = actionItem.Quantity
+												newItem.Reasons = actionItem.Reasons
+												newItem.Invoice.Total = newItem.Invoice.Unit * uint64(newItem.Quantity)
+												if newSubPkg != nil {
+													newSubPkg.Items = append(newSubPkg.Items, *newItem)
+												}
+											} else {
+												if newPkgItems != nil {
+													newPkgItem := pkgItem.Subpackages[i].Items[j].DeepCopy()
+													newPkgItems = append(newPkgItems, *newPkgItem)
+												}
+											}
+										}
+									}
+								}
+
+								if newSubPkg != nil {
+									//state.UpdateSubPackage(ctx, newSubPkg, approvalPendingAction)
+									//err := global.Singletons.SubPkgRepository.Save(ctx, newSubPkg)
+									//if err != nil {
+									//	logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, action: %s, error: %s", state.Name(),
+									//		newSubPkg.OrderId, newSubPkg.SellerId, approvalPendingAction.Name, err.Error())
+									//	// TODO must distinct system error from update version error
+									//	future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+									//		SetError(future.InternalError, "Unknown Err", err).Send()
+									//	return
+									//} else {
+									//	logger.Audit("Process() => Status of new subpackage update to %s action, orderId: %d, sellerId: %d, itemId: %d",
+									//		approvalPendingAction.Name ,newSubPkg.OrderId, newSubPkg.SellerId, newSubPkg.ItemId)
+									//}
+									newSubPackages = append(newSubPackages, *newSubPkg)
+									newSubPkg = nil
+								}
+
+								// create diff packages
+								if newPkgItems != nil {
+									pkgItem.Subpackages[i].Items = newPkgItems
+								}
+							}
+						}
+
+						if !findAction {
+							logger.Err("Process() => received action not acceptable, state: %s, event: %v", state.String(), event)
+							future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+								SetError(future.NotAccepted, "Action Not Accepted", errors.New("Action Not Accepted")).Send()
+							return
+						}
+					}
+				}
+			}
+
+			if newSubPackages != nil {
+				for z := 0; z < len(newSubPackages); z++ {
+					state.UpdateSubPackage(ctx, &newSubPackages[z], approvalPendingAction)
+					err := global.Singletons.SubPkgRepository.Save(ctx, &newSubPackages[z])
+					if err != nil {
+						logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, action: %s, error: %s", state.Name(),
+							newSubPackages[z].OrderId, newSubPackages[z].SellerId, approvalPendingAction.Name, err.Error())
+						// TODO must distinct system error from update version error
+						future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+							SetError(future.InternalError, "Unknown Err", err).Send()
+						return
+					} else {
+						logger.Audit("Process() => Status of new subpackage update to %s action, orderId: %d, sellerId: %d, itemId: %d",
+							approvalPendingAction.Name, newSubPackages[z].OrderId, newSubPackages[z].SellerId, newSubPackages[z].ItemId)
+					}
+				}
+				if nextActionState != nil {
+					nextActionState.Process(ctx, frame.FactoryFromHeader(iFrame.Header()).SetSubpackages(newSubPackages).Build())
+				}
+			} else {
+				for i := 0; i < len(pkgItem.Subpackages); i++ {
+					state.UpdateSubPackage(ctx, &pkgItem.Subpackages[i], approvalPendingAction)
+					err := global.Singletons.SubPkgRepository.Save(ctx, &pkgItem.Subpackages[i])
+					if err != nil {
+						logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, action: %s, error: %s", state.Name(),
+							&pkgItem.Subpackages[i].OrderId, &pkgItem.Subpackages[i].SellerId, approvalPendingAction.Name, err.Error())
+						// TODO must distinct system error from update version error
+						future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+							SetError(future.InternalError, "Unknown Err", err).Send()
+						return
+					} else {
+						logger.Audit("Process() => Status of new subpackage update to %s action, orderId: %d, sellerId: %d, itemId: %d",
+							approvalPendingAction.Name, &pkgItem.Subpackages[i].OrderId, &pkgItem.Subpackages[i].SellerId, pkgItem.Subpackages[i].ItemId)
+					}
+				}
+				if nextActionState != nil {
+					nextActionState.Process(ctx, iFrame)
+				}
+			}
+		} else {
+			logger.Err("Process() => event type not supported, state: %s, event: %v, frame: %v", state.String(), event, iFrame)
+			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+				SetError(future.InternalError, "Unknown Err", errors.New("event type invalid")).Send()
+			return
+		}
+	} else {
+		logger.Err("HeaderOrderId or HeaderEvent of iFrame.Header not found, state: %s iframe: %v", state.Name(), iFrame)
+	}
 }
 
 //func (sellerApprovalPending approvalPendingState) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {

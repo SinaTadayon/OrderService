@@ -4,7 +4,6 @@ import (
 	"context"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	payment_action "gitlab.faza.io/order-project/order-service/domain/actions/payment"
 	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/stock"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
@@ -48,21 +47,20 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 			return
 		}
 
-		paymentAction := &entities.Action{
-			Name:      payment_action.Fail.ActionName(),
-			Type:      actions.Payment.ActionName(),
-			Data:      nil,
-			Result:    string(states.ActionSuccess),
-			Reasons:   nil,
-			CreatedAt: time.Now().UTC(),
-		}
+		//paymentAction := &entities.Action{
+		//	Name:      payment_action.Fail.ActionName(),
+		//	Type:      actions.Payment.ActionName(),
+		//	Data:      nil,
+		//	Result:    string(states.ActionSuccess),
+		//	Reasons:   nil,
+		//	CreatedAt: time.Now().UTC(),
+		//}
 
 		var stockAction *entities.Action
 		if err := state.releasedStock(ctx, order); err != nil {
 			stockAction = &entities.Action{
 				Name:      stock_action.Release.ActionName(),
 				Type:      actions.Stock.ActionName(),
-				Data:      nil,
 				Result:    string(states.ActionFail),
 				Reasons:   nil,
 				CreatedAt: time.Now().UTC(),
@@ -71,14 +69,13 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 			stockAction = &entities.Action{
 				Name:      stock_action.Release.ActionName(),
 				Type:      actions.Stock.ActionName(),
-				Data:      nil,
 				Result:    string(states.ActionSuccess),
 				Reasons:   nil,
 				CreatedAt: time.Now().UTC(),
 			}
 		}
 
-		state.UpdateOrderAllStatus(ctx, order, states.OrderClosedStatus, states.PackageClosedStatus, paymentAction, stockAction)
+		state.UpdateOrderAllStatus(ctx, order, states.OrderClosedStatus, states.PackageClosedStatus, stockAction)
 		_, err := global.Singletons.OrderRepository.Save(ctx, *order)
 		if err != nil {
 			logger.Err("OrderRepository.Save in %s state failed, orderId: %d, error: %s", state.Name(), order.OrderId, err.Error())

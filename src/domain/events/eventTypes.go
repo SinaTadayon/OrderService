@@ -5,25 +5,11 @@ import "github.com/pkg/errors"
 type EventType int
 
 var eventTypeStrings = []string{
-	"Payment",
-	"Operator",
-	"Seller",
-	"Buyer",
-	"Scheduler",
-	"Stock",
-	"Notification",
-	"System",
+	"Action",
 }
 
 const (
-	Payment EventType = iota
-	Operator
-	Seller
-	Buyer
-	Scheduler
-	Stock
-	Notification
-	System
+	Action EventType = iota
 )
 
 func (eventType EventType) ActionName() string {
@@ -31,7 +17,7 @@ func (eventType EventType) ActionName() string {
 }
 
 func (eventType EventType) ActionOrdinal() int {
-	if eventType < Payment || eventType > Payment {
+	if eventType != Action {
 		return -1
 	}
 	return int(eventType)
@@ -42,7 +28,7 @@ func (eventType EventType) Values() []string {
 }
 
 func (eventType EventType) String() string {
-	if eventType < Payment || eventType > Payment {
+	if eventType != Action {
 		return ""
 	}
 
@@ -51,22 +37,8 @@ func (eventType EventType) String() string {
 
 func FromString(eventType string) (EventType, error) {
 	switch eventType {
-	case "Payment":
-		return Payment, nil
-	case "Operator":
-		return Operator, nil
-	case "Seller":
-		return Seller, nil
-	case "Buyer":
-		return Buyer, nil
-	case "Scheduler":
-		return Scheduler, nil
-	case "Stock":
-		return Stock, nil
-	case "Notification":
-		return Notification, nil
-	case "System":
-		return System, nil
+	case "Action":
+		return Action, nil
 	default:
 		return -1, errors.New("invalid eventType string")
 	}

@@ -4,6 +4,7 @@ type HeaderEnum string
 
 const (
 	HeaderOrder         HeaderEnum = "ORDER"
+	HeaderSubpackages   HeaderEnum = "SUBPACKAGES"
 	HeaderItems         HeaderEnum = "ITEMS"
 	HeaderOrderId       HeaderEnum = "ORDER_ID"
 	HeaderSellerId      HeaderEnum = "SELLER_ID"
@@ -13,6 +14,7 @@ const (
 	HeaderFuture        HeaderEnum = "Future"
 	HeaderFutureError   HeaderEnum = "FutureError"
 	HeaderPaymentResult HeaderEnum = "PaymentResult"
+	HeaderEvent         HeaderEnum = "Event"
 )
 
 type IFrame interface {

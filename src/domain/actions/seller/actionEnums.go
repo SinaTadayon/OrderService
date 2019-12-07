@@ -11,8 +11,6 @@ var actionStrings = []string{
 	"Reject",
 	"Cancel",
 	"Accept",
-	"CancelReturn",
-	"RejectReturn",
 	"Deliver",
 	"DeliveryFail",
 	"EnterShipmentDetail",
@@ -23,8 +21,6 @@ const (
 	Reject
 	Cancel
 	Accept
-	CancelReturn
-	RejectReturn
 	Deliver
 	DeliveryFail
 	EnterShipmentDetail
@@ -68,10 +64,6 @@ func (actionEnum ActionEnums) FromString(action string) actions.IEnumAction {
 		return DeliveryFail
 	case "Accept":
 		return Accept
-	case "CancelReturn":
-		return CancelReturn
-	case "RejectReturn":
-		return RejectReturn
 	case "EnterShipmentDetail":
 		return EnterShipmentDetail
 	default:

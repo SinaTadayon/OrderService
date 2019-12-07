@@ -85,14 +85,14 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				},
 			}
 
-			paymentAction := &entities.Action{
-				Name:      payment_action.BuyerPaymentPendingRequest.ActionName(),
-				Type:      actions.Payment.ActionName(),
-				Data:      nil,
-				Result:    string(states.ActionSuccess),
-				Reasons:   nil,
-				CreatedAt: time.Now().UTC(),
-			}
+			//paymentAction := &entities.Action{
+			//	Name:      payment_action.BuyerPaymentPendingRequest.ActionName(),
+			//	Type:      actions.Payment.ActionName(),
+			//	Data:      nil,
+			//	Result:    string(states.ActionSuccess),
+			//	Reasons:   nil,
+			//	CreatedAt: time.Now().UTC(),
+			//}
 
 			// TODO check it voucher amount and if voucherSettlement failed can be cancel order
 			var voucherAction *entities.Action
@@ -103,7 +103,6 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				voucherAction = &entities.Action{
 					Name:      voucher_action.Settlement.ActionName(),
 					Type:      actions.Voucher.ActionName(),
-					Data:      nil,
 					Result:    string(states.ActionFail),
 					Reasons:   nil,
 					CreatedAt: time.Now().UTC(),
@@ -113,14 +112,13 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				voucherAction = &entities.Action{
 					Name:      voucher_action.Settlement.ActionName(),
 					Type:      actions.Voucher.ActionName(),
-					Data:      nil,
 					Result:    string(states.ActionSuccess),
 					Reasons:   nil,
 					CreatedAt: time.Now().UTC(),
 				}
 			}
 
-			state.UpdateOrderAllSubPkg(ctx, order, paymentAction, voucherAction)
+			state.UpdateOrderAllSubPkg(ctx, order, voucherAction)
 			orderUpdated, err := global.Singletons.OrderRepository.Save(ctx, *order)
 			if err != nil {
 				errStr := fmt.Sprintf("OrderRepository.Save in %s state failed, order: %v, error: %s", state.Name(), order, err.Error())
@@ -161,9 +159,8 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				}
 
 				paymentAction := &entities.Action{
-					Name:      payment_action.BuyerPaymentPendingRequest.ActionName(),
+					Name:      payment_action.Fail.ActionName(),
 					Type:      actions.Payment.ActionName(),
-					Data:      nil,
 					Result:    string(states.ActionFail),
 					Reasons:   nil,
 					CreatedAt: time.Now().UTC(),
@@ -198,16 +195,16 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 					CreatedAt:   time.Now().UTC(),
 				}
 
-				paymentAction := &entities.Action{
-					Name:      payment_action.BuyerPaymentPendingRequest.ActionName(),
-					Type:      actions.Payment.ActionName(),
-					Data:      nil,
-					Result:    string(states.ActionSuccess),
-					Reasons:   nil,
-					CreatedAt: time.Now().UTC(),
-				}
-
-				state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
+				//paymentAction := &entities.Action{
+				//	Name:      payment_action.BuyerPaymentPendingRequest.ActionName(),
+				//	Type:      actions.Payment.ActionName(),
+				//	Data:      nil,
+				//	Result:    string(states.ActionSuccess),
+				//	Reasons:   nil,
+				//	CreatedAt: time.Now().UTC(),
+				//}
+				//
+				//state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
 				_, err := global.Singletons.OrderRepository.Save(ctx, *order)
 				if err != nil {
 					logger.Err("Singletons.OrderRepository.Save failed, orderId: %d, error: %s", order.OrderId, err)
@@ -238,9 +235,8 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 		if order.PaymentService[0].PaymentResult.Result == false {
 			logger.Audit("PaymentResult failed, orderId: %d", order.OrderId)
 			paymentAction := &entities.Action{
-				Name:      payment_action.BuyerPaymentPendingResponse.ActionName(),
+				Name:      payment_action.Fail.ActionName(),
 				Type:      actions.Payment.ActionName(),
-				Data:      nil,
 				Result:    string(states.ActionFail),
 				Reasons:   nil,
 				CreatedAt: time.Now().UTC(),
@@ -263,7 +259,6 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 					voucherAction = &entities.Action{
 						Name:      voucher_action.Settlement.ActionName(),
 						Type:      actions.Voucher.ActionName(),
-						Data:      nil,
 						Result:    string(states.ActionFail),
 						Reasons:   nil,
 						CreatedAt: time.Now().UTC(),
@@ -273,7 +268,6 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 					voucherAction = &entities.Action{
 						Name:      voucher_action.Settlement.ActionName(),
 						Type:      actions.Voucher.ActionName(),
-						Data:      nil,
 						Result:    string(states.ActionSuccess),
 						Reasons:   nil,
 						CreatedAt: time.Now().UTC(),
@@ -284,9 +278,8 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			}
 
 			paymentAction := &entities.Action{
-				Name:      payment_action.BuyerPaymentPendingResponse.ActionName(),
+				Name:      payment_action.Success.ActionName(),
 				Type:      actions.Payment.ActionName(),
-				Data:      nil,
 				Result:    string(states.ActionSuccess),
 				Reasons:   nil,
 				CreatedAt: time.Now().UTC(),

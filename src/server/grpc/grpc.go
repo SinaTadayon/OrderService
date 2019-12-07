@@ -8,7 +8,9 @@ import (
 	operator_action "gitlab.faza.io/order-project/order-service/domain/actions/operator"
 	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
 	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
+	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/states"
+	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"strconv"
 	"time"
 
@@ -41,7 +43,8 @@ type UserType string
 type SortDirection string
 type FilterType string
 type FilterValue string
-type ActionType string
+
+//type ActionType string
 type Action string
 
 const (
@@ -60,29 +63,29 @@ const (
 	ReturnDeliveryFailedFilter  FilterValue = "ReturnDeliveryFailed"
 )
 
-const (
-	ApprovalPendingActionState       ActionType = "ApprovalPending"
-	ShipmentPendingActionState       ActionType = "ShipmentPending"
-	ShippedActionState               ActionType = "Shipped"
-	DeliveredActionState             ActionType = "Delivered"
-	ReturnRequestPendingActionState  ActionType = "ReturnRequestPending"
-	ReturnShipmentPendingActionState ActionType = "ReturnShipmentPending"
-	ReturnShippedActionState         ActionType = "ReturnShipped"
-	ReturnDeliveredActionState       ActionType = "ReturnDelivered"
-)
+//const (
+//	ApprovalPendingActionState       ActionType = "ApprovalPending"
+//	ShipmentPendingActionState       ActionType = "ShipmentPending"
+//	ShippedActionState               ActionType = "Shipped"
+//	DeliveredActionState             ActionType = "Delivered"
+//	ReturnRequestPendingActionState  ActionType = "ReturnRequestPending"
+//	ReturnShipmentPendingActionState ActionType = "ReturnShipmentPending"
+//	ReturnShippedActionState         ActionType = "ReturnShipped"
+//	ReturnDeliveredActionState       ActionType = "ReturnDelivered"
+//)
 
 const (
-	DeliveryDelayAction        Action = "DeliveryDelay"
-	SubmitReturnRequestAction  Action = "SubmitReturnRequest"
-	EnterShipmentDetailsAction Action = "EnterShipmentDetail"
-	DeliverAction              Action = "Deliver"
-	DeliveryFailAction         Action = "DeliveryFail"
-	ApproveAction              Action = "Approve"
-	RejectAction               Action = "Reject"
-	CancelAction               Action = "Cancel"
-	AcceptReturnAction         Action = "Accept"
-	CancelReturnAction         Action = "CancelReturn"
-	RejectReturnAction         Action = "Reject"
+	DeliverAction             Action = "Deliver"
+	DeliveryFailAction        Action = "DeliveryFail"
+	DeliveryDelayAction       Action = "DeliveryDelay"
+	DeliveryPendingAction     Action = "DeliveryPending"
+	SubmitReturnRequestAction Action = "SubmitReturnRequest"
+	EnterShipmentDetailAction Action = "EnterShipmentDetail"
+	ApproveAction             Action = "Approve"
+	RejectAction              Action = "Reject"
+	CancelAction              Action = "Cancel"
+	AcceptAction              Action = "Accept"
+	CloseAction               Action = "Close"
 )
 
 const (
@@ -96,9 +99,10 @@ const (
 )
 
 const (
-	OperatorUser UserType = "Operator"
-	SellerUser   UserType = "Seller"
-	BuyerUser    UserType = "Buyer"
+	OperatorUser  UserType = "Operator"
+	SellerUser    UserType = "Seller"
+	BuyerUser     UserType = "Buyer"
+	SchedulerUser UserType = "Scheduler"
 )
 
 const (
@@ -131,7 +135,7 @@ type Server struct {
 	address      string
 	port         uint16
 	filterStates map[FilterValue][]states.IEnumState
-	actionStates map[ActionType][]actions.IEnumAction
+	actionStates map[UserType][]actions.IAction
 }
 
 func NewServer(address string, port uint16, flowManager domain.IFlowManager) Server {
@@ -147,15 +151,39 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		states.ReturnDeliveryDelayed, states.ReturnDelivered}
 	filterStatesMap[ReturnDeliveryFailedFilter] = []states.IEnumState{states.ReturnDeliveryFailed}
 
-	actionStateMap := make(map[ActionType][]actions.IEnumAction, 8)
-	actionStateMap[ApprovalPendingActionState] = []actions.IEnumAction{seller_action.Approve, seller_action.Reject, buyer_action.Cancel}
-	actionStateMap[ShipmentPendingActionState] = []actions.IEnumAction{seller_action.EnterShipmentDetail, seller_action.Cancel, buyer_action.Cancel}
-	actionStateMap[ShippedActionState] = []actions.IEnumAction{buyer_action.DeliveryDelay, operator_action.Deliver}
-	actionStateMap[DeliveredActionState] = []actions.IEnumAction{buyer_action.SubmitReturnRequest}
-	actionStateMap[ReturnRequestPendingActionState] = []actions.IEnumAction{buyer_action.CancelReturn, seller_action.RejectReturn, seller_action.Accept}
-	actionStateMap[ReturnShipmentPendingActionState] = []actions.IEnumAction{buyer_action.EnterShipmentDetails}
-	actionStateMap[ReturnShippedActionState] = []actions.IEnumAction{seller_action.Deliver, seller_action.DeliveryFail}
-	actionStateMap[ReturnDeliveredActionState] = []actions.IEnumAction{seller_action.RejectReturn, seller_action.Accept}
+	actionStateMap := make(map[UserType][]actions.IAction, 8)
+	actionStateMap[SellerUser] = []actions.IAction{
+		seller_action.New(seller_action.Approve),
+		seller_action.New(seller_action.Reject),
+		seller_action.New(seller_action.Cancel),
+		seller_action.New(seller_action.Accept),
+		seller_action.New(seller_action.Deliver),
+		seller_action.New(seller_action.DeliveryFail),
+		seller_action.New(seller_action.EnterShipmentDetail),
+	}
+	actionStateMap[BuyerUser] = []actions.IAction{
+		buyer_action.New(buyer_action.DeliveryDelay),
+		buyer_action.New(buyer_action.Cancel),
+		buyer_action.New(buyer_action.SubmitReturnRequest),
+		buyer_action.New(buyer_action.EnterShipmentDetails),
+	}
+	actionStateMap[OperatorUser] = []actions.IAction{
+		operator_action.New(operator_action.DeliveryDelay),
+		operator_action.New(operator_action.Deliver),
+		operator_action.New(operator_action.DeliveryFail),
+		operator_action.New(operator_action.Accept),
+		operator_action.New(operator_action.Reject),
+		operator_action.New(operator_action.Deliver),
+	}
+	actionStateMap[SchedulerUser] = []actions.IAction{
+		scheduler_action.New(scheduler_action.Cancel),
+		scheduler_action.New(scheduler_action.Close),
+		scheduler_action.New(scheduler_action.DeliveryDelay),
+		scheduler_action.New(scheduler_action.Deliver),
+		scheduler_action.New(scheduler_action.DeliveryPending),
+		scheduler_action.New(scheduler_action.Reject),
+		scheduler_action.New(scheduler_action.Accept),
+	}
 
 	return Server{flowManager: flowManager, address: address, port: port, filterStates: filterStatesMap, actionStates: actionStateMap}
 }
@@ -344,27 +372,98 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 }
 
 func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
-	actionType := ActionType(req.Meta.Action.ActionType)
-	var actorAction actions.IEnumAction
+	userType := UserType(req.Meta.UserType)
+	var userAction actions.IAction
 
-	actionEnums, ok := server.actionStates[actionType]
+	userActions, ok := server.actionStates[userType]
 	if !ok {
-		logger.Err("requestActionHandler() => %s actionType not supported, request: %v", actionType, req)
-		return nil, status.Error(codes.Code(future.BadRequest), "ActionType Invalid")
+		logger.Err("requestActionHandler() => action %s user not supported, request: %v", userType, req)
+		return nil, status.Error(codes.Code(future.BadRequest), "User Action Invalid")
 	}
 
-	for _, actionEnum := range actionEnums {
-		if actionEnum.ActionName() == req.Meta.Action.ActionState {
-			actorAction = actionEnum.FromString(req.Meta.Action.ActionState)
+	for _, action := range userActions {
+		if action.ActionEnum().ActionName() == req.Meta.Action.ActionState {
+			userAction = action
 			break
 		}
 	}
 
-	if actorAction == nil {
-		logger.Err("requestActionHandler() => %s action invalid, request: %v", req.Meta.Action.Action, req)
-		return nil, status.Error(codes.Code(future.BadRequest), "Actions Invalid")
+	if userAction == nil {
+		logger.Err("requestActionHandler() => %s action invalid, request: %v", req.Meta.Action.ActionState, req)
+		return nil, status.Error(codes.Code(future.BadRequest), "Action Invalid")
 	}
 
+	var reqActionData pb.ActionData
+	if err := ptypes.UnmarshalAny(req.Data, &reqActionData); err != nil {
+		logger.Err("Could not unmarshal reqActionData from request anything field, request: %v, error %s", req, err)
+		return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
+	}
+
+	subpackages := make([]events.ActionSubpackage, 0, len(reqActionData.Subpackages))
+	for _, reqSubpackage := range reqActionData.Subpackages {
+		subpackage := events.ActionSubpackage{
+			ItemId: reqSubpackage.ItemId,
+		}
+		subpackage.Items = make([]events.ActionItem, 0, len(reqSubpackage.Items))
+		for _, item := range reqSubpackage.Items {
+			actionItem := events.ActionItem{
+				InventoryId: item.InventoryId,
+				Quantity:    item.Quantity,
+			}
+			if item.Reasons != nil {
+				actionItem.Reasons = make([]string, 0, len(item.Reasons))
+				for _, reason := range item.Reasons {
+					actionItem.Reasons = append(actionItem.Reasons, reason)
+				}
+			}
+			subpackage.Items = append(subpackage.Items, actionItem)
+		}
+		subpackages = append(subpackages, subpackage)
+	}
+
+	actionData := events.ActionData{
+		SubPackages:    subpackages,
+		Carrier:        reqActionData.Carrier,
+		TrackingNumber: reqActionData.TrackingNumber,
+	}
+
+	event := events.New(events.Action, req.Meta.OrderId, req.Meta.PackageId, req.Meta.UserId,
+		req.Meta.Action.StateIndex, userAction,
+		time.Unix(req.Time.GetSeconds(), int64(req.Time.GetNanos())), actionData)
+
+	iFuture := future.Factory().SetCapacity(1).Build()
+	iFrame := frame.Factory().SetFuture(iFuture).SetEvent(event).Build()
+	server.flowManager.MessageHandler(ctx, iFrame)
+	futureData := iFuture.Get()
+	if futureData.Error() != nil {
+		return nil, status.Error(codes.Code(futureData.Error().Code()), futureData.Error().Message())
+	}
+
+	responseFrame := futureData.Data().(frame.IFrame)
+	orderId := responseFrame.Header().Value(string(frame.HeaderOrderId)).(uint64)
+	itemId := responseFrame.Header().Value(string(frame.HeaderItemId)).(uint64)
+
+	actionResponse := &pb.ActionResponse{
+		OrderId: orderId,
+		ItemId:  itemId,
+	}
+
+	serializedResponse, err := proto.Marshal(actionResponse)
+	if err != nil {
+		logger.Err("could not serialize timestamp")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "ActionResponse",
+		Meta:   nil,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(actionResponse),
+			Value:   serializedResponse,
+		},
+	}
+
+	return response, nil
 }
 
 func (server *Server) sellerOrderListHandler(userId uint64, filter FilterValue, page, perPage uint32,
@@ -427,31 +526,31 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 	//var request *pb.MessageRequest
 	//var response *pb.MessageResponse
 
-	messageRequest := server.convertNewOrderRequestToMessage(req)
-
-	//ctx, _ = context.WithTimeout(context.Background(), 3*time.Second)
-	promiseHandler := server.flowManager.MessageHandler(ctx, messageRequest)
-	futureData := promiseHandler.Get()
-	if futureData == nil {
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-	}
-
-	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(future.FutureError)
-		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-	}
-
-	callbackUrl, ok := futureData.Data.(string)
-	if ok != true {
-		logger.Err("NewOrder received data of futureData invalid, type: %T, value, %v", futureData.Data, futureData.Data)
-		return nil, status.Error(500, "Unknown Error")
-	}
-
-	responseNewOrder := pb.ResponseNewOrder{
-		CallbackUrl: callbackUrl,
-	}
-
-	return &responseNewOrder, nil
+	//messageRequest := server.convertNewOrderRequestToMessage(req)
+	//
+	////ctx, _ = context.WithTimeout(context.Background(), 3*time.Second)
+	//promiseHandler := server.flowManager.MessageHandler(ctx, messageRequest)
+	//futureData := promiseHandler.Get()
+	//if futureData == nil {
+	//	return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	//}
+	//
+	//if futureData.Ex != nil {
+	//	futureErr := futureData.Ex.(future.FutureError)
+	//	return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+	//}
+	//
+	//callbackUrl, ok := futureData.Data.(string)
+	//if ok != true {
+	//	logger.Err("NewOrder received data of futureData invalid, type: %T, value, %v", futureData.Data, futureData.Data)
+	//	return nil, status.Error(500, "Unknown Error")
+	//}
+	//
+	//responseNewOrder := pb.ResponseNewOrder{
+	//	CallbackUrl: callbackUrl,
+	//}
+	//
+	//return &responseNewOrder, nil
 
 }
 

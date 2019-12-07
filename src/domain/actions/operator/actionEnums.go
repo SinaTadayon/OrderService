@@ -12,7 +12,6 @@ var actionStrings = []string{
 	"DeliveryFail",
 	"Accept",
 	"Reject",
-	"CancelReturn",
 }
 
 const (
@@ -21,7 +20,6 @@ const (
 	DeliveryFail
 	Accept
 	Reject
-	CancelReturn
 )
 
 func (actionEnum ActionEnums) ActionName() string {
@@ -29,7 +27,7 @@ func (actionEnum ActionEnums) ActionName() string {
 }
 
 func (actionEnum ActionEnums) ActionOrdinal() int {
-	if actionEnum < DeliveryDelay || actionEnum > CancelReturn {
+	if actionEnum < DeliveryDelay || actionEnum > Reject {
 		return -1
 	}
 
@@ -41,7 +39,7 @@ func (actionEnum ActionEnums) Values() []string {
 }
 
 func (actionEnum ActionEnums) String() string {
-	if actionEnum < DeliveryDelay || actionEnum > CancelReturn {
+	if actionEnum < DeliveryDelay || actionEnum > Reject {
 		return ""
 	}
 
@@ -60,8 +58,6 @@ func (actionEnum ActionEnums) FromString(action string) actions.IEnumAction {
 		return Accept
 	case "Reject":
 		return Reject
-	case "CancelReturn":
-		return CancelReturn
 	default:
 		return nil
 	}

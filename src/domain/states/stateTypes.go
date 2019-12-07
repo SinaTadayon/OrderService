@@ -1,7 +1,5 @@
 package states
 
-import "github.com/pkg/errors"
-
 type StateType int
 
 type stateEnum struct {
@@ -33,18 +31,17 @@ var stateTypeMap = map[int]stateEnum{
 
 	17: {"ReturnRequestPending", 40},
 	18: {"ReturnRequestRejected", 41},
-	19: {"ReturnCanceled", 42},
 
-	20: {"ReturnShipmentPending", 50},
-	21: {"ReturnShipped", 51},
-	22: {"ReturnDelivered", 52},
-	23: {"ReturnDeliveryPending", 53},
-	24: {"ReturnDeliveryDelayed", 54},
-	25: {"ReturnRejected", 55},
-	26: {"ReturnDeliveryFailed", 56},
+	19: {"ReturnShipmentPending", 50},
+	20: {"ReturnShipped", 51},
+	21: {"ReturnDelivered", 52},
+	22: {"ReturnDeliveryPending", 53},
+	23: {"ReturnDeliveryDelayed", 54},
+	24: {"ReturnRejected", 55},
+	25: {"ReturnDeliveryFailed", 56},
 
-	27: {"PayToBuyer", 80},
-	28: {"PayToSeller", 90},
+	26: {"PayToBuyer", 80},
+	27: {"PayToSeller", 90},
 }
 
 const (
@@ -71,7 +68,6 @@ const (
 
 	ReturnRequestPending
 	ReturnRequestRejected
-	ReturnCanceled
 
 	ReturnShipmentPending
 	ReturnShipped
@@ -117,68 +113,130 @@ func (stateType StateType) String() string {
 	return stateTypeMap[stateType.Ordinal()].name
 }
 
-func FromString(stateType string) (StateType, error) {
-	switch stateType {
-	case "NewOrder":
-		return NewOrder, nil
-	case "PaymentPending":
-		return PaymentPending, nil
-	case "PaymentSuccess":
-		return PaymentSuccess, nil
-	case "PaymentFailed":
-		return PaymentFailed, nil
-	case "OrderVerificationPending":
-		return OrderVerificationPending, nil
-	case "OrderVerificationSuccess":
-		return OrderVerificationSuccess, nil
-	case "OrderVerificationFailed":
-		return OrderVerificationFailed, nil
-	case "ApprovalPending":
-		return ApprovalPending, nil
-	case "CanceledBySeller":
-		return CanceledBySeller, nil
-	case "CanceledByBuyer":
-		return CanceledByBuyer, nil
-	case "ShipmentPending":
-		return ShipmentPending, nil
-	case "Shipped":
-		return Shipped, nil
-	case "Delivered":
-		return Delivered, nil
-	case "ShipmentDelayed":
-		return ShipmentDelayed, nil
-	case "DeliveryPending":
-		return DeliveryPending, nil
-	case "DeliveryDelayed":
-		return DeliveryDelayed, nil
-	case "DeliveryFailed":
-		return DeliveryFailed, nil
-	case "ReturnRequestPending":
-		return ReturnRequestPending, nil
-	case "ReturnRequestRejected":
-		return ReturnRequestRejected, nil
-	case "ReturnCanceled":
-		return ReturnCanceled, nil
-	case "ReturnShipmentPending":
-		return ReturnShipmentPending, nil
-	case "ReturnShipped":
-		return ReturnShipped, nil
-	case "ReturnDelivered":
-		return ReturnDelivered, nil
-	case "ReturnDeliveryPending":
-		return ReturnDeliveryPending, nil
-	case "ReturnDeliveryDelayed":
-		return ReturnDeliveryDelayed, nil
-	case "ReturnRejected":
-		return ReturnRejected, nil
-	case "ReturnDeliveryFailed":
-		return ReturnDeliveryFailed, nil
-	case "PayToBuyer":
-		return PayToBuyer, nil
-	case "PayToSeller":
-		return PayToSeller, nil
+func FromIndex(index int32) IEnumState {
+	switch index {
+	case 1:
+		return NewOrder
+	case 10:
+		return PaymentPending
+	case 11:
+		return PaymentSuccess
+	case 12:
+		return PaymentFailed
+	case 13:
+		return OrderVerificationPending
+	case 14:
+		return OrderVerificationSuccess
+	case 15:
+		return OrderVerificationFailed
+	case 20:
+		return ApprovalPending
+	case 21:
+		return CanceledBySeller
+	case 22:
+		return CanceledByBuyer
+	case 30:
+		return ShipmentPending
+	case 31:
+		return Shipped
+	case 32:
+		return Delivered
+	case 33:
+		return ShipmentDelayed
+	case 34:
+		return DeliveryPending
+	case 35:
+		return DeliveryDelayed
+	case 36:
+		return DeliveryFailed
+	case 40:
+		return ReturnRequestPending
+	case 41:
+		return ReturnRequestRejected
+	case 50:
+		return ReturnShipmentPending
+	case 51:
+		return ReturnShipped
+	case 52:
+		return ReturnDelivered
+	case 53:
+		return ReturnDeliveryPending
+	case 54:
+		return ReturnDeliveryDelayed
+	case 55:
+		return ReturnRejected
+	case 56:
+		return ReturnDeliveryFailed
+	case 80:
+		return PayToBuyer
+	case 90:
+		return PayToSeller
 
 	default:
-		return -1, errors.New("invalid stateType string")
+		return nil
+	}
+}
+
+func FromString(stateType string) IEnumState {
+	switch stateType {
+	case "NewOrder":
+		return NewOrder
+	case "PaymentPending":
+		return PaymentPending
+	case "PaymentSuccess":
+		return PaymentSuccess
+	case "PaymentFailed":
+		return PaymentFailed
+	case "OrderVerificationPending":
+		return OrderVerificationPending
+	case "OrderVerificationSuccess":
+		return OrderVerificationSuccess
+	case "OrderVerificationFailed":
+		return OrderVerificationFailed
+	case "ApprovalPending":
+		return ApprovalPending
+	case "CanceledBySeller":
+		return CanceledBySeller
+	case "CanceledByBuyer":
+		return CanceledByBuyer
+	case "ShipmentPending":
+		return ShipmentPending
+	case "Shipped":
+		return Shipped
+	case "Delivered":
+		return Delivered
+	case "ShipmentDelayed":
+		return ShipmentDelayed
+	case "DeliveryPending":
+		return DeliveryPending
+	case "DeliveryDelayed":
+		return DeliveryDelayed
+	case "DeliveryFailed":
+		return DeliveryFailed
+	case "ReturnRequestPending":
+		return ReturnRequestPending
+	case "ReturnRequestRejected":
+		return ReturnRequestRejected
+	case "ReturnShipmentPending":
+		return ReturnShipmentPending
+	case "ReturnShipped":
+		return ReturnShipped
+	case "ReturnDelivered":
+		return ReturnDelivered
+	case "ReturnDeliveryPending":
+		return ReturnDeliveryPending
+	case "ReturnDeliveryDelayed":
+		return ReturnDeliveryDelayed
+	case "ReturnRejected":
+		return ReturnRejected
+	case "ReturnDeliveryFailed":
+		return ReturnDeliveryFailed
+	case "PayToBuyer":
+		return PayToBuyer
+	case "PayToSeller":
+		return PayToSeller
+
+	default:
+		return nil
 	}
 }

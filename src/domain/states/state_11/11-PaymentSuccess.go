@@ -4,7 +4,7 @@ import (
 	"context"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	payment_action "gitlab.faza.io/order-project/order-service/domain/actions/payment"
+	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
@@ -47,9 +47,8 @@ func (state paymentSuccessState) Process(ctx context.Context, iFrame frame.IFram
 		}
 
 		paymentAction := &entities.Action{
-			Name:      payment_action.Success.ActionName(),
-			Type:      actions.Payment.ActionName(),
-			Data:      nil,
+			Name:      system_action.NextToState.ActionName(),
+			Type:      actions.System.ActionName(),
 			Result:    string(states.ActionSuccess),
 			Reasons:   nil,
 			CreatedAt: time.Now().UTC(),

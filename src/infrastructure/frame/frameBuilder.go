@@ -1,6 +1,10 @@
 package frame
 
-import "gitlab.faza.io/order-project/order-service/domain/models/entities"
+import (
+	"gitlab.faza.io/order-project/order-service/domain/events"
+	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
+)
 
 type Builder struct {
 	body   IFrameBody
@@ -91,6 +95,21 @@ func (builder Builder) SetItemId(itemId uint64) Builder {
 
 func (builder Builder) SetItem(item entities.Item) Builder {
 	builder.header[string(HeaderItems)] = item
+	return builder
+}
+
+func (builder Builder) SetSubpackages(subpackages []entities.Subpackage) Builder {
+	builder.header[string(HeaderItems)] = item
+	return builder
+}
+
+func (builder Builder) SetEvent(event events.IEvent) Builder {
+	builder.header[string(HeaderEvent)] = event
+	return builder
+}
+
+func (builder Builder) SetFuture(iFuture future.IFuture) Builder {
+	builder.header[string(HeaderFuture)] = iFuture
 	return builder
 }
 

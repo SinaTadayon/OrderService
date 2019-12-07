@@ -49,13 +49,12 @@ func (state orderVerificationFailed) Process(ctx context.Context, iFrame frame.I
 		orderVerifyAction := &entities.Action{
 			Name:      system_action.Fail.ActionName(),
 			Type:      actions.System.ActionName(),
-			Data:      nil,
 			Result:    string(states.ActionSuccess),
 			Reasons:   nil,
 			CreatedAt: time.Now().UTC(),
 		}
 
-		state.UpdateOrderAllSubPkg(ctx, order, orderVerifyAction)
+		state.UpdateOrderAllStatus(ctx, order, states.OrderClosedStatus, states.PackageClosedStatus, orderVerifyAction)
 		orderUpdated, err := global.Singletons.OrderRepository.Save(ctx, *order)
 		if err != nil {
 			logger.Err("OrderRepository.Save in %s state failed, orderId: %d, error: %s", state.Name(), order.OrderId, err.Error())
