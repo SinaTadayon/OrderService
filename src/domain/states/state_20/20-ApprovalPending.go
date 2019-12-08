@@ -254,10 +254,12 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 						pkgItem.Invoice.Subtotal -= rejectedSubtotal
 						pkgItem.Invoice.Discount -= rejectedDiscount
 					}
-					_, err := global.Singletons.PkgItemRepository.Update(ctx, *pkgItem)
+					pkgItemUpdated, err := global.Singletons.PkgItemRepository.Update(ctx, *pkgItem)
 					if err != nil {
 						logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
 							pkgItem.OrderId, pkgItem.SellerId, event, err.Error())
+					} else {
+						pkgItem = pkgItemUpdated
 					}
 
 					response := events.ActionResponse{

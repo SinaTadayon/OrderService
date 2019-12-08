@@ -83,52 +83,6 @@ func (state canceledBySellerState) Process(ctx context.Context, iFrame frame.IFr
 			logger.Audit("Cancel by seller success, orderId: %d, sellerId: %d, itemId: %d", subpkg.OrderId, subpkg.SellerId, subpkg.ItemId)
 			state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(subPkgUpdated).Build())
 		}
-	} else if iFrame.Header().KeyExists(string(frame.HeaderPackage)) {
-		pkgItem, ok := iFrame.Header().Value(string(frame.HeaderPackage)).(*entities.PackageItem)
-		if !ok {
-			logger.Err("iFrame.Header() not a sellerId, frame: %v, %s state ", iFrame, state.Name())
-			return
-		}
-
-		var releaseStockAction *entities.Action
-		if err := state.releasedStockPackage(ctx, pkgItem); err != nil {
-			releaseStockAction = &entities.Action{
-				Name:      stock_action.Release.ActionName(),
-				Type:      actions.Stock.ActionName(),
-				Result:    string(states.ActionFail),
-				Reasons:   nil,
-				CreatedAt: time.Now().UTC(),
-			}
-		} else {
-			releaseStockAction = &entities.Action{
-				Name:      stock_action.Release.ActionName(),
-				Type:      actions.Stock.ActionName(),
-				Result:    string(states.ActionSuccess),
-				Reasons:   nil,
-				CreatedAt: time.Now().UTC(),
-			}
-		}
-
-		nextToAction := &entities.Action{
-			Name:      system_action.NextToState.ActionName(),
-			Type:      actions.System.ActionName(),
-			Result:    string(states.ActionSuccess),
-			Reasons:   nil,
-			CreatedAt: time.Now().UTC(),
-		}
-
-		for i := 0; i < len(pkgItem.Subpackages); i++ {
-			state.UpdateSubPackage(ctx, &pkgItem.Subpackages[i], releaseStockAction)
-			state.UpdateSubPackage(ctx, &pkgItem.Subpackages[i], nextToAction)
-		}
-		pkgItemUpdated, err := global.Singletons.PkgItemRepository.Update(ctx, *pkgItem)
-		if err != nil {
-			logger.Err("PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, error: %s",
-				state.Name(), pkgItem.OrderId, pkgItem.SellerId, err.Error())
-		} else {
-			logger.Audit("Cancel by seller success, orderId: %d, sellerId: %d, itemId: %d", pkgItemUpdated.OrderId, pkgItemUpdated.SellerId)
-			state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItemUpdated).Build())
-		}
 	} else {
 		logger.Err("iFrame.Header() not a subpackage or sellerId not found, state: %s iframe: %v", state.Name(), iFrame)
 	}
@@ -153,31 +107,5 @@ func (state canceledBySellerState) releasedStock(ctx context.Context, subpackage
 
 	logger.Audit("Release stock success, state: %s, orderId: %d, sellerId: %d, itemId: %d",
 		state.Name(), subpackage.OrderId, subpackage.SellerId, subpackage.ItemId)
-	return nil
-}
-
-func (state canceledBySellerState) releasedStockPackage(ctx context.Context, pkgItem *entities.PackageItem) error {
-
-	var inventories = make(map[string]int, 32)
-
-	for j := 0; j < len(pkgItem.Subpackages); j++ {
-		for z := 0; z < len(pkgItem.Subpackages[j].Items); z++ {
-			item := pkgItem.Subpackages[j].Items[z]
-			inventories[item.InventoryId] = int(item.Quantity)
-		}
-	}
-
-	iFuture := global.Singletons.StockService.BatchStockActions(ctx, inventories,
-		stock_action.New(stock_action.Release))
-	futureData := iFuture.Get()
-	if futureData.Error() != nil {
-		logger.Err("Reserved stock from stockService failed, state: %s, orderId: %d, sellerId: %d, error: %s",
-			state.Name(), pkgItem.OrderId, pkgItem.SellerId, futureData.Error())
-		return futureData.Error().Reason()
-	}
-
-	logger.Audit("Release stock success, state: %s, orderId: %d, sellerId: %d",
-		state.Name(), pkgItem.OrderId, pkgItem.SellerId)
-
 	return nil
 }
