@@ -108,6 +108,11 @@ func (builder Builder) SetSubpackage(subpackage *entities.Subpackage) Builder {
 	return builder
 }
 
+func (builder Builder) SetPackage(packageItem *entities.PackageItem) Builder {
+	builder.header[string(HeaderPackage)] = packageItem
+	return builder
+}
+
 func (builder Builder) SetEvent(event events.IEvent) Builder {
 	builder.header[string(HeaderEvent)] = event
 	return builder

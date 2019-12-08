@@ -6,6 +6,7 @@ const (
 	HeaderOrder         HeaderEnum = "ORDER"
 	HeaderSubpackages   HeaderEnum = "SUBPACKAGES"
 	HeaderSubpackage    HeaderEnum = "SUBPACKAGE"
+	HeaderPackage       HeaderEnum = "PACKAGE"
 	HeaderItems         HeaderEnum = "ITEMS"
 	HeaderOrderId       HeaderEnum = "ORDER_ID"
 	HeaderSellerId      HeaderEnum = "SELLER_ID"

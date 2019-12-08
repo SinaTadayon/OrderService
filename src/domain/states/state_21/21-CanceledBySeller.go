@@ -83,8 +83,8 @@ func (state canceledBySellerState) Process(ctx context.Context, iFrame frame.IFr
 			logger.Audit("Cancel by seller success, orderId: %d, sellerId: %d, itemId: %d", subpkg.OrderId, subpkg.SellerId, subpkg.ItemId)
 			state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(subPkgUpdated).Build())
 		}
-	} else if iFrame.Header().KeyExists(string(frame.HeaderSellerId)) && iFrame.Body().Content() != nil {
-		pkgItem, ok := iFrame.Header().Value(string(frame.HeaderSellerId)).(*entities.PackageItem)
+	} else if iFrame.Header().KeyExists(string(frame.HeaderPackage)) {
+		pkgItem, ok := iFrame.Header().Value(string(frame.HeaderPackage)).(*entities.PackageItem)
 		if !ok {
 			logger.Err("iFrame.Header() not a sellerId, frame: %v, %s state ", iFrame, state.Name())
 			return
