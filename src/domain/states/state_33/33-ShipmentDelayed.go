@@ -5,7 +5,6 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
@@ -278,17 +277,6 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 				}
 
 				if nextActionState != nil {
-					if event.Action().ActionEnum() != seller_action.EnterShipmentDetail {
-						var rejectedSubtotal uint64 = 0
-						var rejectedDiscount uint64 = 0
-
-						for i := 0; i < len(newSubPackage.Items); i++ {
-							rejectedSubtotal += newSubPackage.Items[i].Invoice.Total
-							rejectedDiscount += newSubPackage.Items[i].Invoice.Discount
-						}
-						pkgItem.Invoice.Subtotal -= rejectedSubtotal
-						pkgItem.Invoice.Discount -= rejectedDiscount
-					}
 					pkgItemUpdated, err := global.Singletons.PkgItemRepository.Update(ctx, *pkgItem)
 					if err != nil {
 						logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),

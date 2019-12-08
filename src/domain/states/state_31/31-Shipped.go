@@ -47,6 +47,34 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 			return
 		}
 
+		if iFrame.Body().Content() == nil {
+			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, sellerId: %d, itemId: %d, %s state ",
+				subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, state.Name())
+			return
+		}
+
+		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
+		if !ok {
+			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, sellerId: %d, itemId: %d, %s state ",
+				subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, state.Name())
+			return
+		}
+
+		// TODO must be read from reids config
+		expiredTime := time.Now().UTC().Add(time.Hour*
+			time.Duration(pkgItem.ShipmentSpec.ShippingTime) +
+			time.Minute*time.Duration(0) +
+			time.Second*time.Duration(0))
+
+		state.UpdateSubPackage(ctx, subpkg, nil)
+		if subpkg.Tracking.State != nil {
+			subpkg.Tracking.State.Data = map[string]interface{}{
+				"expiredTime": expiredTime,
+			}
+			logger.Audit("Process() => set expiredTime: %s , orderId: %d, sellerId: %d, itemId: %d, %s state ",
+				expiredTime, subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, state.Name())
+		}
+
 		_, err := global.Singletons.SubPkgRepository.Update(ctx, *subpkg)
 		if err != nil {
 			logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, itemId: %d, error: %s",
@@ -55,6 +83,7 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 			logger.Audit("Process() => Status of subpackage update to %s state, orderId: %d, sellerId: %d, itemId: %d",
 				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId)
 		}
+
 	} else if iFrame.Header().KeyExists(string(frame.HeaderEvent)) {
 		event, ok := iFrame.Header().Value(string(frame.HeaderEvent)).(events.IEvent)
 		if !ok {
