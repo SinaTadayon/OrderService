@@ -4,7 +4,6 @@ import (
 	"context"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/stock"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
@@ -46,25 +45,6 @@ func (state deliveryFailedState) Process(ctx context.Context, iFrame frame.IFram
 			return
 		}
 
-		var releaseStockAction *entities.Action
-		if err := state.releasedStock(ctx, subpkg); err != nil {
-			releaseStockAction = &entities.Action{
-				Name:      stock_action.Release.ActionName(),
-				Type:      actions.Stock.ActionName(),
-				Result:    string(states.ActionFail),
-				Reasons:   nil,
-				CreatedAt: time.Now().UTC(),
-			}
-		} else {
-			releaseStockAction = &entities.Action{
-				Name:      stock_action.Release.ActionName(),
-				Type:      actions.Stock.ActionName(),
-				Result:    string(states.ActionSuccess),
-				Reasons:   nil,
-				CreatedAt: time.Now().UTC(),
-			}
-		}
-
 		nextToStateAction := &entities.Action{
 			Name:      system_action.NextToState.ActionName(),
 			Type:      actions.System.ActionName(),
@@ -73,7 +53,6 @@ func (state deliveryFailedState) Process(ctx context.Context, iFrame frame.IFram
 			CreatedAt: time.Now().UTC(),
 		}
 
-		state.UpdateSubPackage(ctx, subpkg, releaseStockAction)
 		state.UpdateSubPackage(ctx, subpkg, nextToStateAction)
 		subPkgUpdated, err := global.Singletons.SubPkgRepository.Update(ctx, *subpkg)
 		if err != nil {
@@ -87,26 +66,4 @@ func (state deliveryFailedState) Process(ctx context.Context, iFrame frame.IFram
 	} else {
 		logger.Err("HeaderOrderId of iFrame.Header not found and content of iFrame.Body() not set, state: %s iframe: %v", state.Name(), iFrame)
 	}
-}
-
-func (state deliveryFailedState) releasedStock(ctx context.Context, subpackage *entities.Subpackage) error {
-
-	var inventories = make(map[string]int, 32)
-	for z := 0; z < len(subpackage.Items); z++ {
-		item := subpackage.Items[z]
-		inventories[item.InventoryId] = int(item.Quantity)
-	}
-
-	iFuture := global.Singletons.StockService.BatchStockActions(ctx, inventories,
-		stock_action.New(stock_action.Release))
-	futureData := iFuture.Get()
-	if futureData.Error() != nil {
-		logger.Err("Reserved stock from stockService failed, state: %s, orderId: %d, sellerId: %d, itemId: %d, error: %s",
-			state.Name(), subpackage.OrderId, subpackage.SellerId, subpackage.ItemId, futureData.Error())
-		return futureData.Error().Reason()
-	}
-
-	logger.Audit("Release stock success, state: %s, orderId: %d, sellerId: %d, itemId: %d",
-		state.Name(), subpackage.OrderId, subpackage.SellerId, subpackage.ItemId)
-	return nil
 }

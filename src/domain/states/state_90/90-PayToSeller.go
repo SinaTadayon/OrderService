@@ -72,6 +72,56 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 		} else {
 			logger.Audit("Cancel by seller success, orderId: %d, sellerId: %d, itemId: %d", subpkg.OrderId, subpkg.SellerId, subpkg.ItemId)
 		}
+
+		order, err := global.Singletons.OrderRepository.FindById(ctx, subpkg.OrderId)
+		if err != nil {
+			logger.Err("OrderRepository.FindById in %s state failed, orderId: %d, sellerId: %d, itemId: %d, error: %s",
+				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, err.Error())
+			return
+		}
+
+		var findFlag = true
+		for i := 0; i < len(order.Packages); i++ {
+			findFlag = true
+			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
+				if order.Packages[i].Subpackages[j].Status != states.PayToBuyer.StateName() ||
+					order.Packages[i].Subpackages[j].Status != states.PayToSeller.StateName() {
+					findFlag = false
+					break
+				}
+			}
+
+			if findFlag {
+				state.SetPkgStatus(ctx, &order.Packages[i], states.PackageClosedStatus)
+				_, err := global.Singletons.PkgItemRepository.Update(ctx, order.Packages[i])
+				if err != nil {
+					logger.Err("update pkgItem status to closed failed, orderId: %d, sellerId: %d, error: %s",
+						state.Name(), order.Packages[i].OrderId, order.Packages[i].SellerId, err.Error())
+				} else {
+					logger.Audit("update pkgItem status to closed success, orderId: %d, sellerId: %d",
+						state.Name(), order.Packages[i].OrderId, order.Packages[i].SellerId)
+				}
+			}
+		}
+
+		findFlag = true
+		for i := 0; i < len(order.Packages); i++ {
+			if order.Packages[i].Status != string(states.PackageClosedStatus) {
+				findFlag = false
+				break
+			}
+		}
+
+		if findFlag {
+			state.SetOrderStatus(ctx, order, states.OrderClosedStatus)
+			_, err := global.Singletons.OrderRepository.Save(ctx, *order)
+			if err != nil {
+				logger.Err("update order status to closed failed, orderId: %d, error: %s",
+					state.Name(), order.OrderId, err.Error())
+			} else {
+				logger.Audit("update order status to closed failed, orderId: %d", state.Name(), order.OrderId)
+			}
+		}
 	} else {
 		logger.Err("iFrame.Header() not a subpackage or sellerId not found, state: %s iframe: %v", state.Name(), iFrame)
 	}

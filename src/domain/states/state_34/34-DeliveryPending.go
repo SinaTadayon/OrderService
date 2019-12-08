@@ -5,6 +5,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
+	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
@@ -62,18 +63,24 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 		//}
 
 		// TODO must be read from reids config
-		expiredTime := time.Now().UTC().Add(time.Hour*
+		notificationExpiredTime := time.Now().UTC().Add(time.Hour*
 			time.Duration(24) +
+			time.Minute*time.Duration(0) +
+			time.Second*time.Duration(0))
+
+		deliveredExpiredTime := time.Now().UTC().Add(time.Hour*
+			time.Duration(72) +
 			time.Minute*time.Duration(0) +
 			time.Second*time.Duration(0))
 
 		state.UpdateSubPackage(ctx, subpkg, nil)
 		if subpkg.Tracking.State != nil {
 			subpkg.Tracking.State.Data = map[string]interface{}{
-				"expiredTime": expiredTime,
+				"notificationExpiredTime": notificationExpiredTime,
+				"deliveredExpiredTime":    deliveredExpiredTime,
 			}
-			logger.Audit("Process() => set expiredTime: %s , orderId: %d, sellerId: %d, itemId: %d, %s state ",
-				expiredTime, subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, state.Name())
+			logger.Audit("Process() => set notificationExpiredTime: %s ,deliveredExpiredTime: %s, orderId: %d, sellerId: %d, itemId: %d, %s state ",
+				notificationExpiredTime, deliveredExpiredTime, subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, state.Name())
 		}
 
 		_, err := global.Singletons.SubPkgRepository.Update(ctx, *subpkg)
@@ -83,29 +90,6 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 		} else {
 			logger.Audit("Process() => Status of subpackage update to %s state, orderId: %d, sellerId: %d, itemId: %d",
 				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId)
-		}
-
-		order, err := global.Singletons.OrderRepository.FindById(ctx, subpkg.OrderId)
-		if err != nil {
-			logger.Err("Process() => OrderRepository.FindById failed, state: %s, orderId: %d, sellerId: %d, itemId: %d, error: %s",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, err.Error())
-		}
-
-		// TODO Notification template must be load from file
-		if order != nil {
-			buyerNotify := notify_service.SMSRequest{
-				Phone: order.BuyerInfo.ShippingAddress.Mobile,
-				Body:  "Order Satisfaction",
-			}
-
-			futureData := global.Singletons.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
-			if futureData.Error() != nil {
-				logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, sellerId: %d, itemId: %d, error: %s",
-					buyerNotify, state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, futureData.Error().Reason())
-			}
-
-			logger.Audit("Process() => NotifyService.NotifyBySMS success, buyerNotify: %v, state: %s, orderId: %d, sellerId: %d, itemId: %d, error: %s",
-				buyerNotify, state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, futureData.Error().Reason())
 		}
 
 	} else if iFrame.Header().KeyExists(string(frame.HeaderEvent)) {
@@ -131,6 +115,32 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 				logger.Err("Process() => received action event data invalid, state: %s, event: %v", state.String(), event)
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 					SetError(future.InternalError, "Unknown Err", errors.New("Action Data event invalid")).Send()
+				return
+			}
+
+			if event.Action().ActionType() == actions.Scheduler && event.Action().ActionEnum() == scheduler_action.Notification {
+				order, err := global.Singletons.OrderRepository.FindById(ctx, pkgItem.OrderId)
+				if err != nil {
+					logger.Err("Process() => OrderRepository.FindById failed, state: %s, orderId: %d, sellerId: %d, error: %s",
+						state.Name(), pkgItem.OrderId, pkgItem.SellerId, err.Error())
+				}
+
+				// TODO Notification template must be load from file
+				if order != nil {
+					buyerNotify := notify_service.SMSRequest{
+						Phone: order.BuyerInfo.ShippingAddress.Mobile,
+						Body:  "Order Satisfaction",
+					}
+
+					futureData := global.Singletons.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
+					if futureData.Error() != nil {
+						logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, sellerId: %d, itemId: %d, error: %s",
+							buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.SellerId, futureData.Error().Reason())
+					}
+
+					logger.Audit("Process() => NotifyService.NotifyBySMS success, buyerNotify: %v, state: %s, orderId: %d, sellerId: %d, error: %s",
+						buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.SellerId, futureData.Error().Reason())
+				}
 				return
 			}
 

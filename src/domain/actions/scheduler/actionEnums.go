@@ -12,6 +12,7 @@ var actionStrings = []string{
 	"DeliveryDelay",
 	"Deliver",
 	"DeliveryPending",
+	"Notification",
 	"Reject",
 	"Accept",
 }
@@ -22,6 +23,7 @@ const (
 	DeliveryDelay
 	Deliver
 	DeliveryPending
+	Notification
 	Reject
 	Accept
 )
@@ -62,6 +64,8 @@ func (actionEnum ActionEnums) FromString(action string) actions.IEnumAction {
 		return DeliveryPending
 	case "Deliver":
 		return Deliver
+	case "Notification":
+		return Notification
 	case "Reject":
 		return Reject
 	case "Accept":
