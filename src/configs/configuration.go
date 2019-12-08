@@ -25,6 +25,11 @@ type Cfg struct {
 		Port    int    `env:"USER_SERVICE_PORT"`
 	}
 
+	NotifyService struct {
+		Address string `env:"NOTIFY_SERVICE_ADDRESS"`
+		Port    int    `env:"NOTIFY_SERVICE_PORT"`
+	}
+
 	VoucherService struct {
 		Address     string `env:"VOUCHER_SERVICE_ADDRESS"`
 		Port        int    `env:"VOUCHER_SERVICE_PORT"`

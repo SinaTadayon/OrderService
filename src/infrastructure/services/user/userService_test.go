@@ -47,10 +47,10 @@ func TestGetSellerInfo(t *testing.T) {
 	ctx, _ = context.WithCancel(context.Background())
 
 	// user service create dummy user with id 1000002
-	iPromise := userService.GetSellerProfile(ctx, "1000002")
-	futureData := iPromise.Get()
-	assert.Nil(t, futureData.Ex)
-	assert.Equal(t, futureData.Data.(*entities.SellerProfile).SellerId, int64(1000002))
+	iFuture := userService.GetSellerProfile(ctx, "1000002")
+	futureData := iFuture.Get()
+	assert.Nil(t, futureData.Error())
+	assert.Equal(t, futureData.Data().(*entities.SellerProfile).SellerId, int64(1000002))
 }
 
 func TestAuthenticationToken(t *testing.T) {

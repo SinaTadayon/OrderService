@@ -2,6 +2,7 @@ package user_service
 
 import (
 	"context"
+	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/acl"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
@@ -57,27 +58,25 @@ func (userService *iUserServiceImpl) getUserService(ctx context.Context) error {
 
 func (userService *iUserServiceImpl) UserLogin(ctx context.Context, username, password string) future.IFuture {
 	if err := userService.getUserService(ctx); err != nil {
-		returnChannel := make(chan future.IDataFuture, 1)
-		defer close(returnChannel)
-		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Connect to UserService failed"}}
-		return future.NewFuture(returnChannel, 1, 1)
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "UnknownError", errors.Wrap(err, "Connect to UserService Failed")).
+			BuildAndSend()
 	}
 
 	result, err := userService.client.Login(username, password, ctx)
 	if err != nil {
 		logger.Err("UserLogin() => userService.client.Login failed, username: %s, password: %s, error: %s", username, password, err)
-		returnChannel := make(chan future.IDataFuture, 1)
-		defer close(returnChannel)
-		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
-		return future.NewFuture(returnChannel, 1, 1)
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "UnknownError", errors.Wrap(err, "userService.client.Login Failed")).
+			BuildAndSend()
 	}
 
 	if int(result.Code) != 200 {
 		logger.Err("UserLogin() => userService.client.Login failed, username: %s, password: %s, error: %s", username, password, err)
-		returnChannel := make(chan future.IDataFuture, 1)
-		defer close(returnChannel)
-		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.Forbidden, Reason: "User Login Failed"}}
-		return future.NewFuture(returnChannel, 1, 1)
+
+		return future.Factory().SetCapacity(1).
+			SetError(future.Forbidden, "User Login Failed", errors.Wrap(err, "User Login Failed")).
+			BuildAndSend()
 	}
 
 	loginTokens := LoginTokens{
@@ -85,10 +84,7 @@ func (userService *iUserServiceImpl) UserLogin(ctx context.Context, username, pa
 		RefreshToken: result.Data.RefreshToken,
 	}
 
-	returnChannel := make(chan future.IDataFuture, 1)
-	defer close(returnChannel)
-	returnChannel <- future.IDataFuture{Data: loginTokens, Ex: nil}
-	return future.NewFuture(returnChannel, 1, 1)
+	return future.Factory().SetCapacity(1).SetData(loginTokens).BuildAndSend()
 }
 
 func (userService iUserServiceImpl) AuthenticateContextToken(ctx context.Context) (*acl.Acl, error) {
@@ -101,19 +97,17 @@ func (userService iUserServiceImpl) AuthenticateContextToken(ctx context.Context
 
 func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, sellerId string) future.IFuture {
 	if err := userService.getUserService(ctx); err != nil {
-		returnChannel := make(chan future.IDataFuture, 1)
-		defer close(returnChannel)
-		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Connect to UserService failed"}}
-		return future.NewFuture(returnChannel, 1, 1)
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "UnknownError", errors.Wrap(err, "Connect to UserService Failed")).
+			BuildAndSend()
 	}
 
 	userProfile, err := userService.client.InternalUserGetOne("userId", sellerId, "", ctx)
 	if err != nil {
 		logger.Err("userService.client.InternalUserGetOne failed, sellerId: %s, error: %s", sellerId, err)
-		returnChannel := make(chan future.IDataFuture, 1)
-		defer close(returnChannel)
-		returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.NotFound, Reason: "sellerId Not Found"}}
-		return future.NewFuture(returnChannel, 1, 1)
+		return future.Factory().SetCapacity(1).
+			SetError(future.NotFound, "sellerId Not Found", errors.Wrap(err, "sellerId Not Found")).
+			BuildAndSend()
 	}
 
 	sellerProfile := &entities.SellerProfile{
@@ -239,9 +233,5 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 		timestamp = time.Now()
 	}
 	sellerProfile.UpdatedAt = timestamp
-
-	returnChannel := make(chan future.IDataFuture, 1)
-	defer close(returnChannel)
-	returnChannel <- future.IDataFuture{Data: sellerProfile, Ex: nil}
-	return future.NewFuture(returnChannel, 1, 1)
+	return future.Factory().SetCapacity(1).SetData(sellerProfile).BuildAndSend()
 }

@@ -12,6 +12,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
+	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
+	"strconv"
 	"time"
 )
 
@@ -48,6 +50,19 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 			return
 		}
 
+		if iFrame.Body().Content() == nil {
+			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, sellerId: %d, itemId: %d, %s state ",
+				subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, state.Name())
+			return
+		}
+
+		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
+		if !ok {
+			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, sellerId: %d, itemId: %d, %s state ",
+				subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, state.Name())
+			return
+		}
+
 		_, err := global.Singletons.SubPkgRepository.Update(ctx, *subpkg)
 		if err != nil {
 			logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, itemId: %d, error: %s",
@@ -56,6 +71,48 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 			logger.Audit("Process() => Status of subpackage update to %s state, orderId: %d, sellerId: %d, itemId: %d",
 				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId)
 		}
+
+		order, err := global.Singletons.OrderRepository.FindById(ctx, pkgItem.OrderId)
+		if err != nil {
+			logger.Err("Process() => OrderRepository.FindById failed, state: %s, orderId: %d, sellerId: %d, itemId: %d, error: %s",
+				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, err.Error())
+		}
+
+		futureData := global.Singletons.UserService.GetSellerProfile(ctx, strconv.Itoa(int(pkgItem.SellerId))).Get()
+		if futureData.Error() != nil {
+			logger.Err("Process() => UserService.GetSellerProfile failed, state: %s, orderId: %d, sellerId: %d, itemId: %d, error: %s",
+				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, futureData.Error().Reason())
+		}
+
+		// TODO Notification template must be load from file
+		if order != nil && futureData.Data() != nil {
+			sellerProfile := futureData.Data().(entities.SellerProfile)
+			sellerNotify := notify_service.SMSRequest{
+				Phone: sellerProfile.GeneralInfo.MobilePhone,
+				Body:  "Shipment Delay",
+			}
+
+			buyerNotify := notify_service.SMSRequest{
+				Phone: order.BuyerInfo.ShippingAddress.Mobile,
+				Body:  "Shipment Delay",
+			}
+
+			futureData = global.Singletons.NotifyService.NotifyBySMS(ctx, sellerNotify).Get()
+			if futureData.Error() != nil {
+				logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, sellerId: %d, itemId: %d, error: %s",
+					sellerNotify, state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, futureData.Error().Reason())
+			}
+
+			futureData = global.Singletons.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
+			if futureData.Error() != nil {
+				logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, sellerId: %d, itemId: %d, error: %s",
+					buyerNotify, state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, futureData.Error().Reason())
+			}
+
+			logger.Audit("Process() => NotifyService.NotifyBySMS success, sellerNotify: %v, buyerNotify: %v, state: %s, orderId: %d, sellerId: %d, itemId: %d, error: %s",
+				sellerNotify, buyerNotify, state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, futureData.Error().Reason())
+		}
+
 	} else if iFrame.Header().KeyExists(string(frame.HeaderEvent)) {
 		event, ok := iFrame.Header().Value(string(frame.HeaderEvent)).(events.IEvent)
 		if !ok {
@@ -266,21 +323,3 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 		logger.Err("HeaderOrderId or HeaderEvent of iFrame.Header not found, state: %s iframe: %v", state.Name(), iFrame)
 	}
 }
-
-//func (shipmentDetailDelayed shipmentDelayedState) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
-//	panic("implementation required")
-//}
-
-//
-//import (
-//	"gitlab.faza.io/order-project/order-service"
-//	OrderService "gitlab.faza.io/protos/order"
-//)
-//
-//func BuyerCancel(ppr PaymentPendingRequest, req *OrderService.BuyerCancelRequest) error {
-//	err := main.MoveOrderToNewState("buyer", req.GetReason(), main.ShipmentCanceled, "shipment-canceled", ppr)
-//	if err != nil {
-//		return err
-//	}
-//	return nil
-//}
