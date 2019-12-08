@@ -137,7 +137,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 			// TODO cleaning subpackage after merging subpackages
 			var newSubPackage *entities.Subpackage
 			var nextActionState states.IState
-			var shipmentPendingAction *entities.Action
+			var DeliveryPendingAction *entities.Action
 
 			// iterate subpackages
 			for _, eventSubPkg := range actionData.SubPackages {
@@ -164,7 +164,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 													newSubPackage.ItemId = 0
 													newSubPackage.Items = make([]entities.Item, 0, len(eventSubPkg.Items))
 
-													shipmentPendingAction = &entities.Action{
+													DeliveryPendingAction = &entities.Action{
 														Name:      action.ActionEnum().ActionName(),
 														Type:      action.ActionType().ActionName(),
 														Result:    string(states.ActionSuccess),
@@ -199,7 +199,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 													newSubPackage.ItemId = 0
 													newSubPackage.Items = make([]entities.Item, 0, len(eventSubPkg.Items))
 
-													shipmentPendingAction = &entities.Action{
+													DeliveryPendingAction = &entities.Action{
 														Name:      action.ActionEnum().ActionName(),
 														Type:      action.ActionType().ActionName(),
 														Result:    string(states.ActionSuccess),
@@ -258,7 +258,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 					pkgItem = pkgItemUpdated
 				}
 
-				state.UpdateSubPackage(ctx, newSubPackage, shipmentPendingAction)
+				state.UpdateSubPackage(ctx, newSubPackage, DeliveryPendingAction)
 				err := global.Singletons.SubPkgRepository.Save(ctx, newSubPackage)
 				if err != nil {
 					logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),

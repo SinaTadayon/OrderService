@@ -5,6 +5,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
+	operator_action "gitlab.faza.io/order-project/order-service/domain/actions/operator"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
@@ -85,7 +86,7 @@ func (state DeliveryDelayedState) Process(ctx context.Context, iFrame frame.IFra
 			// TODO cleaning subpackage after merging subpackages
 			var newSubPackage *entities.Subpackage
 			var nextActionState states.IState
-			var shipmentPendingAction *entities.Action
+			var deliveryDelayedAction *entities.Action
 
 			// iterate subpackages
 			for _, eventSubPkg := range actionData.SubPackages {
@@ -112,7 +113,7 @@ func (state DeliveryDelayedState) Process(ctx context.Context, iFrame frame.IFra
 													newSubPackage.ItemId = 0
 													newSubPackage.Items = make([]entities.Item, 0, len(eventSubPkg.Items))
 
-													shipmentPendingAction = &entities.Action{
+													deliveryDelayedAction = &entities.Action{
 														Name:      action.ActionEnum().ActionName(),
 														Type:      action.ActionType().ActionName(),
 														Result:    string(states.ActionSuccess),
@@ -147,7 +148,7 @@ func (state DeliveryDelayedState) Process(ctx context.Context, iFrame frame.IFra
 													newSubPackage.ItemId = 0
 													newSubPackage.Items = make([]entities.Item, 0, len(eventSubPkg.Items))
 
-													shipmentPendingAction = &entities.Action{
+													deliveryDelayedAction = &entities.Action{
 														Name:      action.ActionEnum().ActionName(),
 														Type:      action.ActionType().ActionName(),
 														Result:    string(states.ActionSuccess),
@@ -206,7 +207,7 @@ func (state DeliveryDelayedState) Process(ctx context.Context, iFrame frame.IFra
 					pkgItem = pkgItemUpdated
 				}
 
-				state.UpdateSubPackage(ctx, newSubPackage, shipmentPendingAction)
+				state.UpdateSubPackage(ctx, newSubPackage, deliveryDelayedAction)
 				err := global.Singletons.SubPkgRepository.Save(ctx, newSubPackage)
 				if err != nil {
 					logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
@@ -221,6 +222,17 @@ func (state DeliveryDelayedState) Process(ctx context.Context, iFrame frame.IFra
 				}
 
 				if nextActionState != nil {
+					if event.Action().ActionEnum() == operator_action.DeliveryFail {
+						var rejectedSubtotal uint64 = 0
+						var rejectedDiscount uint64 = 0
+
+						for i := 0; i < len(newSubPackage.Items); i++ {
+							rejectedSubtotal += newSubPackage.Items[i].Invoice.Total
+							rejectedDiscount += newSubPackage.Items[i].Invoice.Discount
+						}
+						pkgItem.Invoice.Subtotal -= rejectedSubtotal
+						pkgItem.Invoice.Discount -= rejectedDiscount
+					}
 					pkgItemUpdated, err := global.Singletons.PkgItemRepository.Update(ctx, *pkgItem)
 					if err != nil {
 						logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
