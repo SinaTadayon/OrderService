@@ -9,6 +9,7 @@ import (
 	payment_action "gitlab.faza.io/order-project/order-service/domain/actions/payment"
 	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
 	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
+	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/stock"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
@@ -48,7 +49,6 @@ import (
 
 	//"github.com/pkg/errors"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
-	//pb "gitlab.faza.io/protos/order"
 	////"google.golang.org/grpc/codes"
 	//"google.golang.org/grpc/status"
 	pg "gitlab.faza.io/protos/payment-gateway"
@@ -496,9 +496,14 @@ func (flowManager iFlowManagerImpl) MessageHandler(ctx context.Context, iFrame f
 
 	if iFrame.Header().KeyExists(string(frame.HeaderEvent)) {
 		flowManager.EventHandler(ctx, iFrame)
+	} else if iFrame.Header().KeyExists(string(frame.HeaderNewOrder)) {
+		flowManager.newOrderHandler(ctx, iFrame)
 	}
+}
 
-	//var requestNewOrder pb.RequestNewOrder
+func (flowManager iFlowManagerImpl) newOrderHandler(ctx context.Context, iFrame frame.IFrame) {
+
+	requestNewOrder := iFrame.Header().Value(string(frame.HeaderNewOrder))
 	//if err := ptypes.UnmarshalAny(request.Data, &requestNewOrder); err != nil {
 	//	logger.Err("Could not unmarshal requestNewOrder from anything field, error: %s, request: %v", err, request)
 	//	returnChannel := make(chan future.IDataFuture, 1)
@@ -515,101 +520,40 @@ func (flowManager iFlowManagerImpl) MessageHandler(ctx context.Context, iFrame f
 	//	defer close(returnChannel)
 	//	return future.NewFuture(returnChannel, 1, 1)
 	//}
-	//
-	//value, err := global.Singletons.Converter.Map(requestNewOrder, entities.Order{})
-	//if err != nil {
-	//	logger.Err("Converter.Map requestNewOrder to order object failed, error: %s, requestNewOrder: %v", err, requestNewOrder)
-	//	returnChannel := make(chan future.IDataFuture, 1)
-	//	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.BadRequest, Reason: "Received requestNewOrder invalid"}}
-	//	defer close(returnChannel)
-	//	return future.NewFuture(returnChannel, 1, 1)
-	//}
-	//
-	//state := value.(*entities.Order)
-	//newOrderEvent := actor_event.NewActorEvent(actors.CheckoutActor, checkout_action.NewOf(checkout_action.NewOrderAction),
-	//	state, nil, nil, timestamp)
-	//
-	//checkoutState, ok := state.StatesMap()[0].(listener_state.IListenerState)
-	//if ok != true || checkoutState.ActorType() != actors.CheckoutActor {
-	//	logger.Err("checkout state doesn't exist in index 0 of statesMap, requestNewOrder: %v", requestNewOrder)
-	//	returnChannel := make(chan future.IDataFuture, 1)
-	//	returnChannel <- future.IDataFuture{Get:nil, Ex:future.FutureError{Code: future.InternalError, Reason:"Unknown Error"}}
-	//	defer close(returnChannel)
-	//	return future.NewFuture(returnChannel, 1, 1)
-	//}
-	//
-	//state.UpdateAllOrderStatus(ctx, state, nil, states.OrderNewStatus, false)
-	//order, err := global.Singletons.OrderRepository.Save(*state)
-	//if err != nil {
-	//	logger.Err("Save NewOrder Step Failed, error: %s, order: %v", err, state)
-	//	returnChannel := make(chan future.IDataFuture, 1)
-	//	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
-	//	defer close(returnChannel)
-	//	return future.NewFuture(returnChannel, 1, 1)
-	//}
-	//
-	//iPromise := global.Singletons.StockService.BatchStockActions(ctx, *order, nil, StockReserved)
-	//futureData := iPromise.Get()
-	//if futureData == nil {
-	//	state.UpdateAllOrderStatus(ctx, order, nil, states.OrderClosedStatus, true)
-	//	state.updateOrderItemsProgress(ctx, order, nil, StockReserved, false, states.OrderClosedStatus)
-	//	if err := state.persistOrder(ctx, order); err != nil {
-	//	}
-	//	logger.Err("StockService future channel has been closed, order: %v", order)
-	//	returnChannel := make(chan future.IDataFuture, 1)
-	//	defer close(returnChannel)
-	//	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
-	//	go func() {
-	//		state.Childes()[0].ProcessOrder(ctx, *order, nil, nil)
-	//	}()
-	//	return future.NewFuture(returnChannel, 1, 1)
-	//}
-	//
-	//if futureData.Ex != nil {
-	//	state.UpdateAllOrderStatus(ctx, order, nil, states.OrderClosedStatus, true)
-	//	state.updateOrderItemsProgress(ctx, order, nil, StockReserved, false, states.OrderClosedStatus)
-	//	if err := state.persistOrder(ctx, order); err != nil {
-	//	}
-	//	logger.Err("Reserved stock from stockService failed, error: %s, orderId: %d", futureData.Ex.Error(), order.OrderId)
-	//	returnChannel := make(chan future.IDataFuture, 1)
-	//	defer close(returnChannel)
-	//	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
-	//	go func() {
-	//		state.Childes()[0].ProcessOrder(ctx, *order, nil, nil)
-	//	}()
-	//	return future.NewFuture(returnChannel, 1, 1)
-	//}
-	//
-	//state.updateOrderItemsProgress(ctx, order, nil, StockReserved, true, states.OrderNewStatus)
-	//if err := state.persistOrder(ctx, order); err != nil {
-	//	state.releasedStock(ctx, order)
-	//	returnChannel := make(chan future.IDataFuture, 1)
-	//	defer close(returnChannel)
-	//	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
-	//
-	//	go func() {
-	//		state.Childes()[0].ProcessOrder(ctx, *order, nil, nil)
-	//	}()
-	//
-	//	return future.NewFuture(returnChannel, 1, 1)
-	//}
-	//
-	//return state.Childes()[1].ProcessOrder(ctx, *order, nil, "PaymentCallbackUrlRequest")
-	////return checkoutState.ActionListener(ctx, newOrderEvent, nil)
-	//
-	//} else if len(req.ItemId) != 0 {
-	//
-	//} else {
-	//	order, err := global.Singletons.OrderRepository.FindById(req.OrderId)
-	//	if err != nil {
-	//		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
-	//			req.OrderId, err)
-	//		returnChannel := make(chan future.FutureData, 1)
-	//		returnChannel <- future.FutureData{Get:nil, Ex:future.FutureError{Code: future.NotFound, Reason:"OrderId Not Found"}}
-	//		defer close(returnChannel)
-	//		return future.NewPromise(returnChannel, 1, 1)
-	//	}
-	//}
+
+	value, err := global.Singletons.Converter.Map(requestNewOrder, entities.Order{})
+	if err != nil {
+		logger.Err("Converter.Map requestNewOrder to order object failed, error: %s, requestNewOrder: %v", err, requestNewOrder)
+		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+			SetError(future.BadRequest, "Received requestNewOrder invalid", err).
+			Send()
+	}
+
+	newOrder := value.(*entities.Order)
+
+	var inventories = make(map[string]int, 32)
+	for i := 0; i < len(newOrder.Packages); i++ {
+		for j := 0; j < len(newOrder.Packages[i].Subpackages); j++ {
+			for z := 0; z < len(newOrder.Packages[i].Subpackages[j].Items); z++ {
+				item := newOrder.Packages[i].Subpackages[j].Items[z]
+				inventories[item.InventoryId] = int(item.Quantity)
+			}
+		}
+	}
+
+	iFuture := global.Singletons.StockService.BatchStockActions(ctx, inventories,
+		stock_action.New(stock_action.Release))
+	futureData := iFuture.Get()
+	if futureData.Error() != nil {
+		logger.Err("Reserved stock from stockService failed, newOrder: %v, error: %s",
+			newOrder, futureData.Error())
+		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+			SetError(future.NotAccepted, "Received requestNewOrder invalid", err).
+			Send()
+		return
+	}
+
+	flowManager.statesMap[states.NewOrder].Process(ctx, frame.FactoryOf(iFrame).SetOrder(newOrder).Build())
 }
 
 func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame frame.IFrame) {

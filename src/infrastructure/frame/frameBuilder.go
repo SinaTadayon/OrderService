@@ -83,7 +83,7 @@ func (builder Builder) SetOrderId(orderId uint64) Builder {
 	return builder
 }
 
-func (builder Builder) SetOrder(order entities.Order) Builder {
+func (builder Builder) SetOrder(order *entities.Order) Builder {
 	builder.header[string(HeaderOrder)] = order
 	return builder
 }

@@ -13,10 +13,11 @@ const (
 	HeaderItemId        HeaderEnum = "ITEM_ID"
 	HeaderIPAddress     HeaderEnum = "IP_ADDRESS"
 	HeaderInventoryId   HeaderEnum = "INVENTORY_ID"
-	HeaderFuture        HeaderEnum = "Future"
-	HeaderFutureError   HeaderEnum = "FutureError"
-	HeaderPaymentResult HeaderEnum = "PaymentResult"
-	HeaderEvent         HeaderEnum = "Event"
+	HeaderFuture        HeaderEnum = "FUTURE"
+	HeaderFutureError   HeaderEnum = "FUTURE_ERROR"
+	HeaderPaymentResult HeaderEnum = "PAYMENT_RESULT"
+	HeaderEvent         HeaderEnum = "EVENT"
+	HeaderNewOrder      HeaderEnum = "NEW_ORDER"
 )
 
 type IFrame interface {

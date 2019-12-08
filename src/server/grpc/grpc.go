@@ -89,8 +89,8 @@ const (
 )
 
 const (
-	DataReqType   RequestType = "Get"
-	ActionReqType RequestType = "Actions"
+	DataReqType   RequestType = "Data"
+	ActionReqType RequestType = "Action"
 )
 
 const (
@@ -523,35 +523,32 @@ func (server *Server) PaymentGatewayHook(ctx context.Context, req *pg.PaygateHoo
 
 func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb.ResponseNewOrder, error) {
 
-	//var request *pb.MessageRequest
-	//var response *pb.MessageResponse
+	//ctx, _ = context.WithTimeout(context.Background(), 3*time.Second)
 
-	//messageRequest := server.convertNewOrderRequestToMessage(req)
-	//
-	////ctx, _ = context.WithTimeout(context.Background(), 3*time.Second)
-	//promiseHandler := server.flowManager.MessageHandler(ctx, messageRequest)
-	//futureData := promiseHandler.Get()
-	//if futureData == nil {
-	//	return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-	//}
-	//
-	//if futureData.Ex != nil {
-	//	futureErr := futureData.Ex.(future.FutureError)
-	//	return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-	//}
-	//
-	//callbackUrl, ok := futureData.Data.(string)
-	//if ok != true {
-	//	logger.Err("NewOrder received data of futureData invalid, type: %T, value, %v", futureData.Data, futureData.Data)
-	//	return nil, status.Error(500, "Unknown Error")
-	//}
-	//
-	//responseNewOrder := pb.ResponseNewOrder{
-	//	CallbackUrl: callbackUrl,
-	//}
-	//
-	//return &responseNewOrder, nil
+	iFuture := future.Factory().SetCapacity(1).Build()
+	iFrame := frame.Factory().SetDefaultHeader(frame.HeaderNewOrder, req).SetFuture(iFuture).Build()
+	server.flowManager.MessageHandler(ctx, iFrame)
+	futureData := iFuture.Get()
+	if futureData == nil {
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
 
+	if futureData.Error() != nil {
+		futureErr := futureData.Error()
+		return nil, status.Error(codes.Code(futureErr.Code()), futureErr.Message())
+	}
+
+	callbackUrl, ok := futureData.Data().(string)
+	if ok != true {
+		logger.Err("NewOrder received data of futureData invalid, type: %T, value, %v", futureData.Data, futureData.Data)
+		return nil, status.Error(500, "Unknown Error")
+	}
+
+	responseNewOrder := pb.ResponseNewOrder{
+		CallbackUrl: callbackUrl,
+	}
+
+	return &responseNewOrder, nil
 }
 
 // TODO Add checking acl
@@ -834,26 +831,28 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 	return &response, nil
 }
 
-func (server Server) convertNewOrderRequestToMessage(req *pb.RequestNewOrder) *pb.MessageRequest {
-
-	serializedOrder, err := proto.Marshal(req)
-	if err != nil {
-		logger.Err("could not serialize timestamp")
-	}
-
-	request := pb.MessageRequest{
-		OrderId: "",
-		//ItemId: orderId + strconv.Itoa(int(entities.GenerateRandomNumber())),
-		Time: ptypes.TimestampNow(),
-		Meta: nil,
-		Data: &any.Any{
-			TypeUrl: "baman.io/" + proto.MessageName(req),
-			Value:   serializedOrder,
-		},
-	}
-
-	return &request
-}
+//func (server Server) convertNewOrderRequestToMessage(req *pb.RequestNewOrder) *pb.MessageRequest {
+//
+//	serializedOrder, err := proto.Marshal(req)
+//	if err != nil {
+//		logger.Err("could not serialize timestamp")
+//	}
+//
+//	request := pb.MessageRequest{
+//		Name:   "NewOrder",
+//		Type:   string(DataReqType),
+//		ADT:    "Single",
+//		Method: "GRPC",
+//		Time: ptypes.TimestampNow(),
+//		Meta: nil,
+//		Data: &any.Any{
+//			TypeUrl: "baman.io/" + proto.MessageName(req),
+//			Value:   serializedOrder,
+//		},
+//	}
+//
+//	return &request
+//}
 
 // TODO Add checking acl and authenticate
 func (server Server) BackOfficeOrdersListView(ctx context.Context, req *pb.RequestBackOfficeOrdersList) (*pb.ResponseBackOfficeOrdersList, error) {
