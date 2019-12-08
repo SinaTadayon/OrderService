@@ -19,5 +19,5 @@ type ActionItem struct {
 
 type ActionResponse struct {
 	OrderId uint64
-	ItemsId []uint64
+	ItemsId uint64
 }
