@@ -2,9 +2,14 @@ package state_56
 
 import (
 	"context"
+	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
+	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
+	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
+	"gitlab.faza.io/order-project/order-service/infrastructure/global"
+	"time"
 )
 
 const (
@@ -33,31 +38,33 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 }
 
 func (state returnDeliveryFailedState) Process(ctx context.Context, iFrame frame.IFrame) {
-	panic("implementation required")
+	if iFrame.Header().KeyExists(string(frame.HeaderSubpackage)) {
+		subpkg, ok := iFrame.Header().Value(string(frame.HeaderSubpackage)).(*entities.Subpackage)
+		if !ok {
+			logger.Err("iFrame.Header() not a subpackage, frame: %v, %s state ", iFrame, state.Name())
+			return
+		}
+
+		nextToAction := &entities.Action{
+			Name:      system_action.NextToState.ActionName(),
+			Type:      actions.System.ActionName(),
+			Result:    string(states.ActionSuccess),
+			Reasons:   nil,
+			CreatedAt: time.Now().UTC(),
+		}
+
+		state.UpdateSubPackage(ctx, subpkg, nextToAction)
+		subPkgUpdated, err := global.Singletons.SubPkgRepository.Update(ctx, *subpkg)
+		if err != nil {
+			logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, itemId: %d, error: %s",
+				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, err.Error())
+		} else {
+			logger.Audit("Process() => Status of subpackage update to %s state, orderId: %d, sellerId: %d, itemId: %d",
+				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId)
+			state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(subPkgUpdated).Build())
+		}
+
+	} else {
+		logger.Err("HeaderOrderId or HeaderEvent of iFrame.Header not found, state: %s iframe: %v", state.Name(), iFrame)
+	}
 }
-
-//func (returnShipmentSuccess returnDeliveryFailedState) ProcessOrder(ctx context.Context, order entities.Order, itemsId []uint64, param interface{}) future.IFuture {
-//	panic("implementation required")
-//}
-
-//
-//import (
-//	"gitlab.faza.io/order-project/order-service"
-//	pb "gitlab.faza.io/protos/order"
-//)
-//
-//func ReturnShipmentDeliveredGrpcAction(ppr PaymentPendingRequest, req *pb.ReturnShipmentSuccessRequest) error {
-//	err := main.MoveOrderToNewState("buyer", "", main.ReturnShipmentSuccess, "return-shipment-success", ppr)
-//	if err != nil {
-//		return err
-//	}
-//	newPpr, err := main.GetOrder(ppr.OrderNumber)
-//	if err != nil {
-//		return err
-//	}
-//	err = main.MoveOrderToNewState("system", "", main.PayToBuyer, "pay-to-buyer", newPpr)
-//	if err != nil {
-//		return err
-//	}
-//	return nil
-//}
