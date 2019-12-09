@@ -134,7 +134,7 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 		{"$project": bson.M{
 			"_id":       0,
 			"orderId":   1,
-			"itemId":    "$items.itemId",
+			"sid":       "$items.sid",
 			"sellerId":  "$items.sellerInfo.sellerId",
 			"stepName":  "$items.progress.stepsHistory.name",
 			"stepIndex": "$items.progress.stepsHistory.index",
@@ -147,7 +147,7 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 		},
 		{"$project": bson.M{
 			"orderId":   1,
-			"itemId":    1,
+			"sid":       1,
 			"sellerId":  1,
 			"stepName":  1,
 			"stepIndex": 1,
@@ -233,7 +233,7 @@ func (scheduler *iSchedulerServiceImpl) doProcess(ctx context.Context, data Sche
 func (scheduler *iSchedulerServiceImpl) checkExpiredTime(fetchData *fetchItemData) bool {
 	if fetchData.ActionHistory[0].ExpiredTime.Before(time.Now().UTC()) {
 		logger.Audit("action expired, "+
-			"orderId: %d, itemId: %d, stepName: %s, stepIndex: %d, actionName: %s, expiredTime: %s ",
+			"orderId: %d, sid: %d, stepName: %s, stepIndex: %d, actionName: %s, expiredTime: %s ",
 			fetchData.OrderId, fetchData.ItemId, fetchData.StepName, fetchData.StepIndex,
 			fetchData.ActionHistory[0].ActionName, fetchData.ActionHistory[0].ExpiredTime)
 		return true

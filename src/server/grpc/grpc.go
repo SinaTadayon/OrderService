@@ -3,12 +3,14 @@ package grpc_server
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	buyer_action "gitlab.faza.io/order-project/order-service/domain/actions/buyer"
 	operator_action "gitlab.faza.io/order-project/order-service/domain/actions/operator"
 	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
 	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
 	"gitlab.faza.io/order-project/order-service/domain/events"
+	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"strconv"
@@ -183,6 +185,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		scheduler_action.New(scheduler_action.DeliveryPending),
 		scheduler_action.New(scheduler_action.Reject),
 		scheduler_action.New(scheduler_action.Accept),
+		scheduler_action.New(scheduler_action.Notification),
 	}
 
 	return Server{flowManager: flowManager, address: address, port: port, filterStates: filterStatesMap, actionStates: actionStateMap}
@@ -197,7 +200,7 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	}
 
 	// TODO check acl
-	if uint64(userAcl.User().UserID) != req.Meta.UserId {
+	if uint64(userAcl.User().UserID) != req.Meta.UId {
 		logger.Err("RequestHandler() => UserId mismatch with token userId, error: %s ", err)
 		return nil, status.Error(codes.Code(future.InternalError), "User Not Authorized")
 	}
@@ -208,97 +211,6 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	} else {
 		return server.requestActionHandler(ctx, req)
 	}
-
-	//flowManagerCtx, _ := context.WithTimeout(context.Background(), 3*time.Second)
-	//promiseHandler := server.flowManager.MessageHandler(flowManagerCtx, req)
-	//futureData := <-promiseHandler.Channel()
-	//if futureData.Ex != nil {
-	//	futureErr := futureData.Ex.(future.FutureError)
-	//	return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-	//}
-	//
-	//response, ok := futureData.Get.(pb.MessageResponse)
-	//if ok != true {
-	//	logger.Err("received data of futureData invalid, type: %T, value, %v", futureData.Get, futureData.Get)
-	//	return nil, status.Error(500, "Unknown Error")
-	//}
-	//
-	//return &response, nil
-
-	//logger.Audit("Req Order Id: %v", req.GetOrderId())
-	//logger.Audit("Req Items Id: %v", req.GetItemId())
-	//logger.Audit("Req timestamp: %v", req.GetTime())
-	//logger.Audit("Req Meta Page: %v", req.GetMeta().GetPage())
-	//logger.Audit("Req Meta PerPage %v", req.GetMeta().GetPerPage())
-	//logger.Audit("Req Meta Sorts: ")
-	//for index, sort := range req.GetMeta().GetSorts() {
-	//	logger.Audit("Req Meta Sort[%d].name: %v", index, sort.GetName())
-	//	logger.Audit("Req Meta Sort[%d].name: %v", index, sort.GetDirection())
-	//}
-	//logger.Audit("Req Meta Filters: ")
-	//for index, filter := range req.GetMeta().GetFilters() {
-	//	logger.Audit("Req Meta Filter.filters[%d].name = %v", index, filter.GetName())
-	//	logger.Audit("Req Meta Filter.filters[%d].opt = %v", index, filter.GetOpt())
-	//	logger.Audit("Req Meta Filter.filters[%d].values = %v", index, filter.GetValue())
-	//}
-	//
-	//var RequestNewOrder pb.RequestNewOrder
-	//if err := ptypes.UnmarshalAny(req.Get, &RequestNewOrder); err != nil {
-	//	logger.Err("Could not unmarshal OrderRequest from anything field: %s", err)
-	//	return &message.Response{}, err
-	//}
-	//
-	//logger.Audit("Req RequestNewOrder Buyer.firstName: %v", RequestNewOrder.GetBuyer().GetFirstName())
-	//logger.Audit("Req RequestNewOrder Buyer.lastName: %v", RequestNewOrder.GetBuyer().GetLastName())
-	//logger.Audit("Req RequestNewOrder Buyer.finance: %v", RequestNewOrder.GetBuyer().GetFinance())
-	//logger.Audit("Req RequestNewOrder Buyer.Address: %v", RequestNewOrder.GetBuyer().GetShippingAddress())
-	//
-	//res1 , err1 := json.Marshal(RequestNewOrder)
-	//if err1 != nil {
-	//	logger.Err("json.Marshal failed, %s", err1)
-	//}
-	//
-	//logger.Audit("json request: %s	", res1)
-	//
-	////status.Error(codes.NotFound, "Product Not found")
-	//
-	//st := status.New(codes.InvalidArgument, "invalid username")
-	////desc := "The username must only contain alphanumeric characters"
-	//
-	//validations := []*message.ValidationErr {
-	//	{
-	//		Field: "username",
-	//		Desc: "value2",
-	//	},
-	//	{
-	//		Field: "password",
-	//		Desc: "value2",
-	//	},
-	//}
-	//
-	//errDetails := message.ErrorDetails {
-	//	Validation: validations,
-	//}
-	//
-	////serializedOrder, err := proto.Marshal(&errDetails)
-	////if err != nil {
-	////	logger.Err("could not serialize timestamp")
-	////}
-	////
-	////errors.Get = &any.Any{
-	////TypeUrl: "baman.io/" + proto.MessageName(&errDetails),
-	////Value:   serializedOrder,
-	////}
-	//
-	//st, err := st.WithDetails(&errDetails)
-	//if err != nil {
-	//	// If this errored, it will always error
-	//	// here, so better panic so we can figure
-	//	// out why than have this silently passing.
-	//	panic(fmt.Sprintf("Unexpected error attaching metadata: %v", err))
-	//}
-	//
-	//return &message.Response{}, st.Err()
 }
 
 func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
@@ -342,30 +254,30 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
 	}
 
-	if req.Meta.OrderId > 0 && reqADT != SingleType {
+	if req.Meta.OId > 0 && reqADT != SingleType {
 		logger.Err("requestDataHandler() => %s orderId mismatch with %s requestADT, request: %v", userType, reqADT, req)
 		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestADT")
 	}
 
 	switch reqName {
 	case SellerOrderList:
-		return server.sellerOrderListHandler(req.Meta.UserId, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+		return server.sellerOrderListHandler(ctx, req.Meta.PId, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
 	case SellerOrderDetail:
-		return server.sellerOrderDetailHandler(req.Meta.UserId, req.Meta.OrderId, req.Meta.ItemId)
+		return server.sellerOrderDetailHandler(ctx, req.Meta.PId, req.Meta.OId, req.Meta.SId)
 	case SellerOrderReturnList:
-		return server.sellerOrderReturnListHandler(req.Meta.UserId, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+		return server.sellerOrderReturnListHandler(ctx, req.Meta.PId, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
 	case SellerOrderReturnDetail:
-		return server.sellerOrderReturnDetailHandler(req.Meta.UserId, req.Meta.OrderId, req.Meta.ItemId)
+		return server.sellerOrderReturnDetailHandler(ctx, req.Meta.PId, req.Meta.OId, req.Meta.SId)
 	case BuyerOrderList:
-		return server.buyerOrderListHandler(req.Meta.UserId, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+		return server.buyerOrderListHandler(ctx, req.Meta.PId, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
 	case BuyerOrderDetail:
-		return server.buyerOrderDetailHandler(req.Meta.UserId, req.Meta.OrderId, req.Meta.ItemId)
+		return server.buyerOrderDetailHandler(ctx, req.Meta.PId, req.Meta.OId, req.Meta.SId)
 	case BuyerReturnOrderReports:
-		return server.buyerReturnOrderReportsHandler(req.Meta.UserId, req.Meta.OrderId, req.Meta.ItemId)
+		return server.buyerReturnOrderReportsHandler(ctx, req.Meta.PId, req.Meta.OId, req.Meta.SId)
 	case BuyerReturnOrderList:
-		return server.buyerReturnOrderListHandler(req.Meta.UserId, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+		return server.buyerReturnOrderListHandler(ctx, req.Meta.PId, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
 	case BuyerReturnOrderDetail:
-		return server.buyerReturnOrderDetailHandler(req.Meta.UserId, req.Meta.OrderId, req.Meta.ItemId)
+		return server.buyerReturnOrderDetailHandler(ctx, req.Meta.PId, req.Meta.OId, req.Meta.SId)
 	}
 
 	return nil, status.Error(codes.Code(future.BadRequest), "Invalid Request")
@@ -402,7 +314,7 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 	subpackages := make([]events.ActionSubpackage, 0, len(reqActionData.Subpackages))
 	for _, reqSubpackage := range reqActionData.Subpackages {
 		subpackage := events.ActionSubpackage{
-			ItemId: reqSubpackage.ItemId,
+			SId: reqSubpackage.SId,
 		}
 		subpackage.Items = make([]events.ActionItem, 0, len(reqSubpackage.Items))
 		for _, item := range reqSubpackage.Items {
@@ -427,7 +339,7 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 		TrackingNumber: reqActionData.TrackingNumber,
 	}
 
-	event := events.New(events.Action, req.Meta.OrderId, req.Meta.PackageId, req.Meta.UserId,
+	event := events.New(events.Action, req.Meta.OId, req.Meta.PId, req.Meta.UId,
 		req.Meta.Action.StateIndex, userAction,
 		time.Unix(req.Time.GetSeconds(), int64(req.Time.GetNanos())), actionData)
 
@@ -439,13 +351,11 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 		return nil, status.Error(codes.Code(futureData.Error().Code()), futureData.Error().Message())
 	}
 
-	responseFrame := futureData.Data().(frame.IFrame)
-	orderId := responseFrame.Header().Value(string(frame.HeaderOrderId)).(uint64)
-	itemId := responseFrame.Header().Value(string(frame.HeaderItemId)).(uint64)
+	eventResponse := futureData.Data().(events.ActionResponse)
 
 	actionResponse := &pb.ActionResponse{
-		OrderId: orderId,
-		ItemId:  itemId,
+		OId:  eventResponse.OrderId,
+		SIds: eventResponse.SIds,
 	}
 
 	serializedResponse, err := proto.Marshal(actionResponse)
@@ -466,43 +376,146 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 	return response, nil
 }
 
-func (server *Server) sellerOrderListHandler(userId uint64, filter FilterValue, page, perPage uint32,
+func (server *Server) sellerOrderListHandler(ctx context.Context, pid uint64, filter FilterValue, page, perPage uint32,
+	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
+	if page < 0 || perPage <= 0 {
+		logger.Err("sellerOrderListHandler() => page or perPage invalid, sellerId: %d, filterValue: %s, page: %d, perPage: %d", pid, filter, page, perPage)
+		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
+	}
+
+	countFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil, "packages.subpackages.status": filter}},
+			{"$project": bson.M{"subSize": 1}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	var totalCount, err = global.Singletons.PkgItemRepository.CountWithFilter(ctx, countFilter)
+	if err != nil {
+		logger.Err("sellerOrderListHandler() => CountWithFilter failed,  sellerId: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	if totalCount == 0 {
+		logger.Err("sellerOrderListHandler() => total count is zero,  sellerId: %d, filterValue: %s, page: %d, perPage: %d", pid, filter, page, perPage)
+		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	}
+
+	// total 160 page=6 perPage=30
+	var availablePages int64
+
+	if totalCount%int64(perPage) != 0 {
+		availablePages = (totalCount / int64(perPage)) + 1
+	} else {
+		availablePages = totalCount / int64(perPage)
+	}
+
+	if totalCount < int64(perPage) {
+		availablePages = 1
+	}
+
+	if availablePages < int64(page) {
+		logger.Err("sellerOrderListHandler() => availablePages less than page, availablePages: %d, sellerId: %d, filterValue: %s, page: %d, perPage: %d", availablePages, pid, filter, page, perPage)
+		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	}
+
+	var offset = (page - 1) * perPage
+	if int64(offset) >= totalCount {
+		logger.Err("sellerOrderListHandler() => offset invalid, offset: %d, sellerId: %d, filterValue: %s, page: %d, perPage: %d", offset, pid, filter, page, perPage)
+		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	}
+
+	pkgFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil, "packages.subpackages.status": filter}},
+			{"$unwind": "$packages"},
+			{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
+			{"$project": bson.M{"_id": 0, "packages": 1}},
+			{"$sort": bson.M{"packages.subpackages." + sortName: direction}},
+			{"$skip": offset},
+			{"$limit": perPage},
+			{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+		}
+	}
+
+	pkgList, err := global.Singletons.PkgItemRepository.FindByFilter(ctx, pkgFilter)
+	if err != nil {
+		logger.Err("sellerOrderListHandler() => FindByFilter failed, sellerId: %d, filterValue: %s, page: %d, perPage: %d, error: %s", offset, pid, filter, page, perPage, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	itemList := make([]*pb.SellerOrderList_ItemList, 0, perPage)
+
+	for _, pkgItem := range pkgList {
+		sellerOrderItem := &pb.SellerOrderList_ItemList{
+			OId:                   pkgItem.OrderId,
+			OrderRequestTimestamp: pkgItem.CreatedAt.Format(ISO8601),
+			Amount:                pkgItem.Invoice.Subtotal,
+		}
+		itemList = append(itemList, sellerOrderItem)
+	}
+
+	sellerOrderList := &pb.SellerOrderList{
+		Items: itemList,
+	}
+
+	serializedData, err := proto.Marshal(sellerOrderList)
+	if err != nil {
+		logger.Err("could not serialize timestamp")
+	}
+
+	meta := &pb.ResponseMetadata{
+		Total:   uint32(availablePages),
+		Page:    page,
+		PerPage: perPage,
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "SellerOrderList",
+		Meta:   meta,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(sellerOrderList),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
+func (server *Server) sellerOrderDetailHandler(ctx context.Context, userId, orderId, sid uint64) (*pb.MessageResponse, error) {
+
+}
+
+func (server *Server) sellerOrderReturnListHandler(ctx context.Context, userId uint64, filter FilterValue, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
 
 }
 
-func (server *Server) sellerOrderDetailHandler(userId, orderId, itemId uint64) (*pb.MessageResponse, error) {
+func (server *Server) sellerOrderReturnDetailHandler(ctx context.Context, userId, orderId, sid uint64) (*pb.MessageResponse, error) {
 
 }
 
-func (server *Server) sellerOrderReturnListHandler(userId uint64, filter FilterValue, page, perPage uint32,
+func (server *Server) buyerOrderListHandler(ctx context.Context, userId uint64, filter FilterValue, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
 
 }
 
-func (server *Server) sellerOrderReturnDetailHandler(userId, orderId, itemId uint64) (*pb.MessageResponse, error) {
+func (server *Server) buyerOrderDetailHandler(ctx context.Context, userId, orderId, sid uint64) (*pb.MessageResponse, error) {
 
 }
 
-func (server *Server) buyerOrderListHandler(userId uint64, filter FilterValue, page, perPage uint32,
+func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId, orderId, sid uint64) (*pb.MessageResponse, error) {
+
+}
+
+func (server *Server) buyerReturnOrderListHandler(ctx context.Context, userId uint64, filter FilterValue, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
 
 }
 
-func (server *Server) buyerOrderDetailHandler(userId, orderId, itemId uint64) (*pb.MessageResponse, error) {
-
-}
-
-func (server *Server) buyerReturnOrderReportsHandler(userId, orderId, itemId uint64) (*pb.MessageResponse, error) {
-
-}
-
-func (server *Server) buyerReturnOrderListHandler(userId uint64, filter FilterValue, page, perPage uint32,
-	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
-
-}
-
-func (server *Server) buyerReturnOrderDetailHandler(userId, orderId, itemId uint64) (*pb.MessageResponse, error) {
+func (server *Server) buyerReturnOrderDetailHandler(ctx context.Context, userId, orderId, sid uint64) (*pb.MessageResponse, error) {
 
 }
 
@@ -568,7 +581,7 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 	sellerId, err := strconv.Atoi(req.Id)
 	if err != nil {
 		logger.Err(" SellerFindAllItems() => sellerId invalid: %s", req.Id)
-		return nil, status.Error(codes.Code(future.BadRequest), "SellerId Invalid")
+		return nil, status.Error(codes.Code(future.BadRequest), "PId Invalid")
 	}
 
 	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
@@ -633,7 +646,7 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 						newResponseItem.Status.StepStatus = lastAction.Name
 					} else {
 						newResponseItem.Status.StepStatus = "none"
-						logger.Audit("SellerFindAllItems() => Actions History is nil, orderId: %d, itemId: %d", order.OrderId, orderItem.ItemId)
+						logger.Audit("SellerFindAllItems() => Actions History is nil, orderId: %d, sid: %d", order.OrderId, orderItem.ItemId)
 					}
 
 					sellerItemMap[orderItem.InventoryId] = newResponseItem
@@ -814,7 +827,7 @@ func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIden
 					newResponseOrderItem.StepStatus = lastAction.Name
 				} else {
 					newResponseOrderItem.StepStatus = "none"
-					logger.Audit("BuyerFindAllOrders() => Actions History is nil, orderId: %d, itemId: %d", order.OrderId, item.ItemId)
+					logger.Audit("BuyerFindAllOrders() => Actions History is nil, orderId: %d, sid: %d", order.OrderId, item.ItemId)
 				}
 				orderItemMap[item.InventoryId] = newResponseOrderItem
 			}

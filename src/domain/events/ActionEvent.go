@@ -7,8 +7,8 @@ type ActionData struct {
 }
 
 type ActionSubpackage struct {
-	ItemId uint64
-	Items  []ActionItem
+	SId   uint64
+	Items []ActionItem
 }
 
 type ActionItem struct {
@@ -19,5 +19,5 @@ type ActionItem struct {
 
 type ActionResponse struct {
 	OrderId uint64
-	ItemsId uint64
+	SIds    []uint64
 }

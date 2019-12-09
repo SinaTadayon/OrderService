@@ -67,7 +67,7 @@ func TestSave(t *testing.T) {
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
 	ctx, _ := context.WithCancel(context.Background())
 	newSubPkg := order.Packages[0].Subpackages[1].DeepCopy()
-	newSubPkg.ItemId = 0
+	newSubPkg.SId = 0
 	err = subPkgRepo.Save(ctx, newSubPkg)
 	require.Nil(t, err)
 	updateOrder, err := getOrder(order.OrderId)
@@ -102,9 +102,9 @@ func TestFindByOrderAndItemId(t *testing.T) {
 	require.Nil(t, err, "createOrderAndSave failed")
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
 	ctx, _ := context.WithCancel(context.Background())
-	subPkg, err := subPkgRepo.FindByOrderAndItemId(ctx, order.OrderId, order.Packages[1].Subpackages[1].ItemId)
+	subPkg, err := subPkgRepo.FindByOrderAndItemId(ctx, order.OrderId, order.Packages[1].Subpackages[1].SId)
 	require.Nil(t, err)
-	require.Equal(t, order.Packages[1].Subpackages[1].ItemId, subPkg.ItemId)
+	require.Equal(t, order.Packages[1].Subpackages[1].SId, subPkg.SId)
 }
 
 func TestFindByOrderAndSellerId(t *testing.T) {
@@ -114,9 +114,9 @@ func TestFindByOrderAndSellerId(t *testing.T) {
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
 	defer removeCollection()
 	ctx, _ := context.WithCancel(context.Background())
-	subPkgList, err := subPkgRepo.FindByOrderAndSellerId(ctx, order.OrderId, order.Packages[1].SellerId)
+	subPkgList, err := subPkgRepo.FindByOrderAndSellerId(ctx, order.OrderId, order.Packages[1].PId)
 	require.Nil(t, err)
-	require.Equal(t, order.Packages[1].SellerId, subPkgList[0].SellerId)
+	require.Equal(t, order.Packages[1].PId, subPkgList[0].SellerId)
 	require.Equal(t, 2, len(subPkgList))
 }
 
@@ -130,10 +130,10 @@ func TestFindAll(t *testing.T) {
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
 	defer removeCollection()
 	ctx, _ := context.WithCancel(context.Background())
-	subPkgList, err := subPkgRepo.FindAll(ctx, order.Packages[1].SellerId)
+	subPkgList, err := subPkgRepo.FindAll(ctx, order.Packages[1].PId)
 	require.Nil(t, err)
-	require.Equal(t, order.Packages[1].SellerId, subPkgList[0].SellerId)
-	require.Equal(t, order.Packages[1].SellerId, subPkgList[1].SellerId)
+	require.Equal(t, order.Packages[1].PId, subPkgList[0].SellerId)
+	require.Equal(t, order.Packages[1].PId, subPkgList[1].SellerId)
 	require.Equal(t, 4, len(subPkgList))
 }
 
@@ -156,7 +156,7 @@ func TestFindAllWithSort(t *testing.T) {
 
 	defer removeCollection()
 	ctx, _ := context.WithCancel(context.Background())
-	subPkgList, err := subPkgRepo.FindAllWithSort(ctx, order.Packages[0].SellerId, "createdAt", -1)
+	subPkgList, err := subPkgRepo.FindAllWithSort(ctx, order.Packages[0].PId, "createdAt", -1)
 	require.Nil(t, err)
 	require.Equal(t, 4, len(subPkgList))
 	require.Equal(t, firstTime.Unix(), subPkgList[0].CreatedAt.Unix())
@@ -176,10 +176,10 @@ func TestFindAllWithPage(t *testing.T) {
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
 	defer removeCollection()
 	ctx, _ := context.WithCancel(context.Background())
-	subPkgList, totalPage, err := subPkgRepo.FindAllWithPage(ctx, order.Packages[1].SellerId, 1, 2)
+	subPkgList, totalPage, err := subPkgRepo.FindAllWithPage(ctx, order.Packages[1].PId, 1, 2)
 	require.Nil(t, err)
-	require.Equal(t, order.Packages[1].SellerId, subPkgList[0].SellerId)
-	require.Equal(t, order.Packages[1].SellerId, subPkgList[1].SellerId)
+	require.Equal(t, order.Packages[1].PId, subPkgList[0].SellerId)
+	require.Equal(t, order.Packages[1].PId, subPkgList[1].SellerId)
 	require.Equal(t, 2, len(subPkgList))
 	require.Equal(t, int64(3), totalPage)
 }
@@ -207,7 +207,7 @@ func TestFindAllWithPageAndSort(t *testing.T) {
 
 	defer removeCollection()
 	ctx, _ := context.WithCancel(context.Background())
-	subPkgList, totalPage, err := subPkgRepo.FindAllWithPageAndSort(ctx, order.Packages[0].SellerId, 1, 2, "createdAt", -1)
+	subPkgList, totalPage, err := subPkgRepo.FindAllWithPageAndSort(ctx, order.Packages[0].PId, 1, 2, "createdAt", -1)
 	require.Nil(t, err)
 	require.Equal(t, 2, len(subPkgList))
 	require.Equal(t, int64(3), totalPage)
@@ -226,15 +226,15 @@ func TestFindByFilter(t *testing.T) {
 	defer removeCollection()
 	ctx, _ := context.WithCancel(context.Background())
 	totalPipeline := []bson.M{
-		{"$match": bson.M{"packages.sellerId": order.Packages[0].SellerId, "packages.deletedAt": nil}},
+		{"$match": bson.M{"packages.pid": order.Packages[0].PId, "packages.deletedAt": nil}},
 		{"$project": bson.M{"subSize": bson.M{"$size": "$packages.subpackages"}}},
 		{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
 		{"$project": bson.M{"_id": 0, "count": 1}},
 	}
 	pipeline := []bson.M{
-		{"$match": bson.M{"packages.sellerId": order.Packages[0].SellerId, "packages.deletedAt": nil}},
+		{"$match": bson.M{"packages.pid": order.Packages[0].PId, "packages.deletedAt": nil}},
 		{"$unwind": "$packages"},
-		{"$match": bson.M{"packages.sellerId": order.Packages[0].SellerId, "packages.deletedAt": nil}},
+		{"$match": bson.M{"packages.pid": order.Packages[0].PId, "packages.deletedAt": nil}},
 		{"$project": bson.M{"_id": 0, "packages.subpackages": 1}},
 		{"$unwind": "$packages.subpackages"},
 		{"$replaceRoot": bson.M{"newRoot": "$packages"}},
@@ -243,8 +243,8 @@ func TestFindByFilter(t *testing.T) {
 
 	subPkgList, err := subPkgRepo.FindByFilter(ctx, func() (filter interface{}) { return totalPipeline }, func() (filter interface{}) { return pipeline })
 	require.Nil(t, err)
-	require.Equal(t, order.Packages[0].SellerId, subPkgList[0].SellerId)
-	require.Equal(t, order.Packages[0].SellerId, subPkgList[1].SellerId)
+	require.Equal(t, order.Packages[0].PId, subPkgList[0].SellerId)
+	require.Equal(t, order.Packages[0].PId, subPkgList[1].SellerId)
 	require.Equal(t, 4, len(subPkgList))
 }
 
@@ -259,16 +259,16 @@ func TestFindByFilterWithPage(t *testing.T) {
 	defer removeCollection()
 	ctx, _ := context.WithCancel(context.Background())
 	totalPipeline := []bson.M{
-		{"$match": bson.M{"packages.sellerId": order.Packages[0].SellerId, "packages.deletedAt": nil}},
+		{"$match": bson.M{"packages.pid": order.Packages[0].PId, "packages.deletedAt": nil}},
 		{"$project": bson.M{"subSize": bson.M{"$size": "$packages.subpackages"}}},
 		{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
 		{"$project": bson.M{"_id": 0, "count": 1}},
 	}
 
 	pipeline := []bson.M{
-		{"$match": bson.M{"packages.sellerId": order.Packages[0].SellerId, "packages.deletedAt": nil}},
+		{"$match": bson.M{"packages.pid": order.Packages[0].PId, "packages.deletedAt": nil}},
 		{"$unwind": "$packages"},
-		{"$match": bson.M{"packages.sellerId": order.Packages[0].SellerId, "packages.deletedAt": nil}},
+		{"$match": bson.M{"packages.pid": order.Packages[0].PId, "packages.deletedAt": nil}},
 		{"$project": bson.M{"_id": 0, "packages.subpackages": 1}},
 		{"$unwind": "$packages.subpackages"},
 		{"$skip": 0},
@@ -278,8 +278,8 @@ func TestFindByFilterWithPage(t *testing.T) {
 	}
 	subPkgList, totalPages, err := subPkgRepo.FindByFilterWithPage(ctx, func() (filter interface{}) { return totalPipeline }, func() (filter interface{}) { return pipeline }, 1, 2)
 	require.Nil(t, err)
-	require.Equal(t, order.Packages[0].SellerId, subPkgList[0].SellerId)
-	require.Equal(t, order.Packages[0].SellerId, subPkgList[1].SellerId)
+	require.Equal(t, order.Packages[0].PId, subPkgList[0].SellerId)
+	require.Equal(t, order.Packages[0].PId, subPkgList[1].SellerId)
 	require.Equal(t, 2, len(subPkgList))
 	require.Equal(t, int64(2), totalPages)
 }
@@ -290,7 +290,7 @@ func TestExitsById_Success(t *testing.T) {
 	require.Nil(t, err, "createOrderAndSave failed")
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
 	ctx, _ := context.WithCancel(context.Background())
-	result, err := subPkgRepo.ExistsById(ctx, order.Packages[1].Subpackages[0].ItemId)
+	result, err := subPkgRepo.ExistsById(ctx, order.Packages[1].Subpackages[0].SId)
 	require.Nil(t, err, "subPkgRepo.ExistsById failed")
 	require.True(t, result)
 }
@@ -314,10 +314,10 @@ func insert(order *entities.Order) (*entities.Order, error) {
 					if _, ok := mapItemIds[random]; ok {
 						continue
 					}
-					mapItemIds[random] = order.Packages[i].SellerId
-					itemId, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + strconv.Itoa(random))
-					order.Packages[i].Subpackages[j].ItemId = uint64(itemId)
-					order.Packages[i].Subpackages[j].SellerId = order.Packages[i].SellerId
+					mapItemIds[random] = order.Packages[i].PId
+					sid, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + strconv.Itoa(random))
+					order.Packages[i].Subpackages[j].SId = uint64(sid)
+					order.Packages[i].Subpackages[j].SellerId = order.Packages[i].PId
 					order.Packages[i].Subpackages[j].OrderId = order.OrderId
 					order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
 					order.Packages[i].Subpackages[j].UpdatedAt = time.Now().UTC()
@@ -363,10 +363,10 @@ func insertWithoutChangeTime(order *entities.Order) (*entities.Order, error) {
 					if _, ok := mapItemIds[random]; ok {
 						continue
 					}
-					mapItemIds[random] = order.Packages[i].SellerId
-					itemId, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + strconv.Itoa(random))
-					order.Packages[i].Subpackages[j].ItemId = uint64(itemId)
-					order.Packages[i].Subpackages[j].SellerId = order.Packages[i].SellerId
+					mapItemIds[random] = order.Packages[i].PId
+					sid, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + strconv.Itoa(random))
+					order.Packages[i].Subpackages[j].SId = uint64(sid)
+					order.Packages[i].Subpackages[j].SellerId = order.Packages[i].PId
 					order.Packages[i].Subpackages[j].OrderId = order.OrderId
 					break
 				}
@@ -513,9 +513,9 @@ func createOrder() *entities.Order {
 		},
 		Packages: []entities.PackageItem{
 			{
-				SellerId: 129384234,
-				OrderId:  0,
-				Version:  0,
+				PId:     129384234,
+				OrderId: 0,
+				Version: 0,
 				Invoice: entities.PackageInvoice{
 					Subtotal:       2873423,
 					Discount:       9283443,
@@ -599,7 +599,7 @@ func createOrder() *entities.Order {
 				},
 				Subpackages: []entities.Subpackage{
 					{
-						ItemId:   0,
+						SId:      0,
 						SellerId: 129384234,
 						OrderId:  0,
 						Version:  0,
@@ -734,7 +734,7 @@ func createOrder() *entities.Order {
 						DeletedAt: nil,
 					},
 					{
-						ItemId:   0,
+						SId:      0,
 						SellerId: 129384234,
 						OrderId:  0,
 						Version:  0,
@@ -875,9 +875,9 @@ func createOrder() *entities.Order {
 				DeletedAt: nil,
 			},
 			{
-				SellerId: 99988887777,
-				OrderId:  0,
-				Version:  0,
+				PId:     99988887777,
+				OrderId: 0,
+				Version: 0,
 				Invoice: entities.PackageInvoice{
 					Subtotal:       2873423,
 					Discount:       9283443,
@@ -961,7 +961,7 @@ func createOrder() *entities.Order {
 				},
 				Subpackages: []entities.Subpackage{
 					{
-						ItemId:   0,
+						SId:      0,
 						SellerId: 99988887777,
 						OrderId:  0,
 						Version:  0,
@@ -1096,7 +1096,7 @@ func createOrder() *entities.Order {
 						DeletedAt: nil,
 					},
 					{
-						ItemId:   0,
+						SId:      0,
 						SellerId: 99988887777,
 						OrderId:  0,
 						Version:  0,

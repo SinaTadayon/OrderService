@@ -3,7 +3,7 @@ package entities
 import "time"
 
 type PackageItem struct {
-	SellerId     uint64         `bson:"sellerId"`
+	PId          uint64         `bson:"pid"`
 	OrderId      uint64         `bson:"orderId"`
 	Version      uint64         `bson:"version"`
 	Invoice      PackageInvoice `bson:"invoice"`

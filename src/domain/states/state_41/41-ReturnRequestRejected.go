@@ -50,11 +50,11 @@ func (state returnRequestRejectedState) Process(ctx context.Context, iFrame fram
 		state.UpdateSubPackage(ctx, subpkg, nil)
 		_, err := global.Singletons.SubPkgRepository.Update(ctx, *subpkg)
 		if err != nil {
-			logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, itemId: %d, error: %s",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, err.Error())
+			logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
+				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
 		} else {
-			logger.Audit("Process() => Status of subpackage update to %s state, orderId: %d, sellerId: %d, itemId: %d",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId)
+			logger.Audit("Process() => Status of subpackage update to %s state, orderId: %d, sellerId: %d, sid: %d",
+				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId)
 		}
 
 	} else if iFrame.Header().KeyExists(string(frame.HeaderEvent)) {
@@ -91,7 +91,7 @@ func (state returnRequestRejectedState) Process(ctx context.Context, iFrame fram
 			// iterate subpackages
 			for _, eventSubPkg := range actionData.SubPackages {
 				for i := 0; i < len(pkgItem.Subpackages); i++ {
-					if eventSubPkg.ItemId == pkgItem.Subpackages[i].ItemId && pkgItem.Subpackages[i].Status == state.Name() {
+					if eventSubPkg.SId == pkgItem.Subpackages[i].SId && pkgItem.Subpackages[i].Status == state.Name() {
 						var findAction = false
 						for action, nextState := range state.StatesMap() {
 							if action.ActionType().ActionName() == event.Action().ActionType().ActionName() &&
@@ -110,7 +110,7 @@ func (state returnRequestRejectedState) Process(ctx context.Context, iFrame fram
 											if actionItem.Quantity != pkgItem.Subpackages[i].Items[j].Quantity {
 												if newSubPackage == nil {
 													newSubPackage = pkgItem.Subpackages[i].DeepCopy()
-													newSubPackage.ItemId = 0
+													newSubPackage.SId = 0
 													newSubPackage.Items = make([]entities.Item, 0, len(eventSubPkg.Items))
 
 													returnRequestRejectedAction = &entities.Action{
@@ -145,7 +145,7 @@ func (state returnRequestRejectedState) Process(ctx context.Context, iFrame fram
 												newItem.Reasons = actionItem.Reasons
 												if newSubPackage == nil {
 													newSubPackage = pkgItem.Subpackages[i].DeepCopy()
-													newSubPackage.ItemId = 0
+													newSubPackage.SId = 0
 													newSubPackage.Items = make([]entities.Item, 0, len(eventSubPkg.Items))
 
 													returnRequestRejectedAction = &entities.Action{
@@ -198,7 +198,7 @@ func (state returnRequestRejectedState) Process(ctx context.Context, iFrame fram
 					pkgItemUpdated, err := global.Singletons.PkgItemRepository.Update(ctx, *pkgItem)
 					if err != nil {
 						logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
-							pkgItem.OrderId, pkgItem.SellerId, event, err.Error())
+							pkgItem.OrderId, pkgItem.PId, event, err.Error())
 						// TODO must distinct system error from update version error
 						future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 							SetError(future.InternalError, "Unknown Err", err).Send()
@@ -217,22 +217,22 @@ func (state returnRequestRejectedState) Process(ctx context.Context, iFrame fram
 						SetError(future.InternalError, "Unknown Err", err).Send()
 					return
 				} else {
-					logger.Audit("Process() => Status of new subpackage update to %v event, orderId: %d, sellerId: %d, itemId: %d",
-						event, newSubPackage.OrderId, newSubPackage.SellerId, newSubPackage.ItemId)
+					logger.Audit("Process() => Status of new subpackage update to %v event, orderId: %d, sellerId: %d, sid: %d",
+						event, newSubPackage.OrderId, newSubPackage.SellerId, newSubPackage.SId)
 				}
 
 				if nextActionState != nil {
 					pkgItemUpdated, err := global.Singletons.PkgItemRepository.Update(ctx, *pkgItem)
 					if err != nil {
 						logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
-							pkgItem.OrderId, pkgItem.SellerId, event, err.Error())
+							pkgItem.OrderId, pkgItem.PId, event, err.Error())
 					} else {
 						pkgItem = pkgItemUpdated
 					}
 
 					response := events.ActionResponse{
 						OrderId: newSubPackage.OrderId,
-						ItemsId: newSubPackage.ItemId,
+						SIds:    newSubPackage.SId,
 					}
 
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
@@ -241,7 +241,7 @@ func (state returnRequestRejectedState) Process(ctx context.Context, iFrame fram
 				}
 			} else {
 				logger.Err("Process() => result of event invalid, state: %s, event: %v, orderId: %d, sellerId: %d",
-					state.String(), event, pkgItem.OrderId, pkgItem.SellerId)
+					state.String(), event, pkgItem.OrderId, pkgItem.PId)
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 					SetError(future.InternalError, "Unknown Err", errors.New("event type invalid")).Send()
 				return

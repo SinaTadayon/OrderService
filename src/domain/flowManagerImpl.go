@@ -596,8 +596,8 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //
 //	itemsId := make([]uint64, 0, len(order.Items))
 //	for i := 0; i < len(order.Items); i++ {
-//		if order.Items[i].SellerInfo.SellerId == req.SellerId {
-//			itemsId = append(itemsId, order.Items[i].ItemId)
+//		if order.Items[i].SellerInfo.PId == req.PId {
+//			itemsId = append(itemsId, order.Items[i].SId)
 //		}
 //	}
 //
@@ -626,13 +626,13 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //
 //	//itemsId := make([]string, 0, len(order.Items))
 //	//for i:= 0; i < len(order.Items); i++ {
-//	//	if order.Items[i].SellerInfo.SellerId == req.ItemId[i] {
-//	//		itemsId = append(itemsId,order.Items[i].ItemId)
+//	//	if order.Items[i].SellerInfo.PId == req.SId[i] {
+//	//		itemsId = append(itemsId,order.Items[i].SId)
 //	//	}
 //	//}
 //
 //	if req.ActionType == "Approved" {
-//		return flowManager.statesMap[32].ProcessOrder(ctx, *order, req.ItemsId, req)
+//		return flowManager.statesMap[32].ProcessOrder(ctx, *order, req.SIds, req)
 //	}
 //
 //	returnChannel := make(chan future.FutureData, 1)
@@ -643,12 +643,12 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //
 //func (flowManager iFlowManagerImpl) OperatorActionPending(ctx context.Context, req *message.RequestBackOfficeOrderAction) future.IPromise {
 //	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
-//		return bson.D{{"items.itemId", req.ItemId}}
+//		return bson.D{{"items.sid", req.SId}}
 //	})
 //
 //	if err != nil {
-//		logger.Err("MessageHandler() => request itemId not found, OrderRepository.FindById failed, itemId: %d, error: %s",
-//			req.ItemId, err)
+//		logger.Err("MessageHandler() => request sid not found, OrderRepository.FindById failed, sid: %d, error: %s",
+//			req.SId, err)
 //		returnChannel := make(chan future.FutureData, 1)
 //		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 //		defer close(returnChannel)
@@ -656,16 +656,16 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //	}
 //
 //	if len(orders) == 0 {
-//		logger.Err("MessageHandler() => request itemId not found, itemId: %d", req.ItemId)
+//		logger.Err("MessageHandler() => request sid not found, sid: %d", req.SId)
 //		returnChannel := make(chan future.FutureData, 1)
-//		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.NotFound, Reason: "ItemId Not Found"}}
+//		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.NotFound, Reason: "SId Not Found"}}
 //		defer close(returnChannel)
 //		return future.NewPromise(returnChannel, 1, 1)
 //	}
 //
 //	if len(orders) > 1 {
-//		logger.Err("MessageHandler() => request itemId found in multiple order, itemId: %d, error: %s",
-//			req.ItemId, err)
+//		logger.Err("MessageHandler() => request sid found in multiple order, sid: %d, error: %s",
+//			req.SId, err)
 //		returnChannel := make(chan future.FutureData, 1)
 //		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
 //		defer close(returnChannel)
@@ -674,8 +674,8 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //
 //	itemsId := make([]uint64, 0, 1)
 //	for i := 0; i < len(orders[0].Items); i++ {
-//		if orders[0].Items[i].ItemId == req.ItemId {
-//			itemsId = append(itemsId, orders[0].Items[i].ItemId)
+//		if orders[0].Items[i].SId == req.SId {
+//			itemsId = append(itemsId, orders[0].Items[i].SId)
 //		}
 //	}
 //
@@ -802,8 +802,8 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //
 //	for _, item := range order.Items {
 //		itemInfo := &message.ItemInfo{
-//			ItemId:      item.ItemId,
-//			SellerId:    item.SellerInfo.SellerId,
+//			SId:      item.SId,
+//			PId:    item.SellerInfo.PId,
 //			InventoryId: item.InventoryId,
 //			Quantity:    item.Quantity,
 //			ItemStatus:  item.Status,
@@ -827,7 +827,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //			itemInfo.StepStatus = lastAction.Name
 //		} else {
 //			itemInfo.StepStatus = "none"
-//			logger.Audit("BackOfficeOrderDetailView() => Actions History is nil, orderId: %d, itemId: %d", order.OrderId, item.ItemId)
+//			logger.Audit("BackOfficeOrderDetailView() => Actions History is nil, orderId: %d, sid: %d", order.OrderId, item.SId)
 //		}
 //
 //		//lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
@@ -854,7 +854,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
 //		return bson.D{{"createdAt",
 //			bson.D{{"$gte", time.Unix(int64(req.StartDateTime), 0).UTC()}}},
-//			{"items.status", req.Status}, {"items.sellerInfo.sellerId", req.SellerId}}
+//			{"items.status", req.Status}, {"items.sellerInfo.sellerId", req.PId}}
 //	})
 //
 //	if err != nil {
@@ -880,7 +880,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //			if item.Status == req.Status {
 //				itemReport := &reports2.SellerExportOrders{
 //					OrderId:     order.OrderId,
-//					ItemId:      item.ItemId,
+//					SId:      item.SId,
 //					ProductId:   item.InventoryId[0:8],
 //					InventoryId: item.InventoryId,
 //					PaidPrice:   item.Invoice.Total,
@@ -920,7 +920,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //
 //	csvReports := make([][]string, 0, len(reports))
 //	csvHeadLines := []string{
-//		"OrderId", "ItemId", "ProductId", "InventoryId",
+//		"OrderId", "SId", "ProductId", "InventoryId",
 //		"PaidPrice", "Commission", "Category", "Status", "CreatedAt", "UpdatedAt",
 //	}
 //
@@ -928,7 +928,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //	for _, itemReport := range reports {
 //		csvRecord := []string{
 //			strconv.Itoa(int(itemReport.OrderId)),
-//			strconv.Itoa(int(itemReport.ItemId)),
+//			strconv.Itoa(int(itemReport.SId)),
 //			itemReport.ProductId,
 //			itemReport.InventoryId,
 //			fmt.Sprint(itemReport.PaidPrice),
@@ -1034,7 +1034,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //	})
 //
 //	if err != nil {
-//		logger.Err("BackOfficeReportOrderItems() => request itemId not found, OrderRepository.FindById failed, startDateTime: %v, endDateTime: %v, error: %s",
+//		logger.Err("BackOfficeReportOrderItems() => request sid not found, OrderRepository.FindById failed, startDateTime: %v, endDateTime: %v, error: %s",
 //			req.StartDateTime, req.EndDataTime, err)
 //		returnChannel := make(chan future.FutureData, 1)
 //		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
@@ -1055,12 +1055,12 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //	for _, order := range orders {
 //		for _, item := range order.Items {
 //			itemReport := &reports2.BackOfficeExportItems{
-//				ItemId:      item.ItemId,
+//				SId:      item.SId,
 //				InventoryId: item.InventoryId,
 //				ProductId:   item.InventoryId[0:8],
 //				BuyerId:     order.BuyerInfo.BuyerId,
 //				BuyerPhone:  order.BuyerInfo.Phone,
-//				SellerId:    item.SellerInfo.SellerId,
+//				PId:    item.SellerInfo.PId,
 //				SellerName:  "",
 //				Price:       item.Invoice.Total,
 //				Status:      item.Status,
@@ -1091,24 +1091,24 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //			itemReport.UpdatedAt = pt.String()
 //			reports = append(reports, itemReport)
 //
-//			if sellerProfile, ok := sellerProfileMap[item.SellerInfo.SellerId]; !ok {
+//			if sellerProfile, ok := sellerProfileMap[item.SellerInfo.PId]; !ok {
 //				userCtx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-//				ipromise := global.Singletons.UserService.GetSellerProfile(userCtx, strconv.Itoa(int(item.SellerInfo.SellerId)))
+//				ipromise := global.Singletons.UserService.GetSellerProfile(userCtx, strconv.Itoa(int(item.SellerInfo.PId)))
 //				futureData := ipromise.Get()
 //				if futureData.Ex != nil {
-//					logger.Err("BackOfficeReportOrderItems() => get sellerProfile failed, orderId: %d, itemId: %d, sellerId: %d",
-//						order.OrderId, item.ItemId, item.SellerInfo.SellerId)
+//					logger.Err("BackOfficeReportOrderItems() => get sellerProfile failed, orderId: %d, sid: %d, sellerId: %d",
+//						order.OrderId, item.SId, item.SellerInfo.PId)
 //					continue
 //				}
 //
 //				sellerInfo, ok := futureData.Data.(entities.SellerProfile)
 //				if ok != true {
-//					logger.Err("BackOfficeReportOrderItems() => get sellerProfile invalid, orderId: %d, itemId: %d, sellerId: %d",
-//						order.OrderId, item.ItemId, item.SellerInfo.SellerId)
+//					logger.Err("BackOfficeReportOrderItems() => get sellerProfile invalid, orderId: %d, sid: %d, sellerId: %d",
+//						order.OrderId, item.SId, item.SellerInfo.PId)
 //					continue
 //				}
 //
-//				sellerProfileMap[item.SellerInfo.SellerId] = sellerProfile
+//				sellerProfileMap[item.SellerInfo.PId] = sellerProfile
 //				itemReport.SellerName = sellerInfo.GeneralInfo.ShopDisplayName
 //			} else {
 //				itemReport.SellerName = sellerProfile.GeneralInfo.ShopDisplayName
@@ -1118,19 +1118,19 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //
 //	csvReports := make([][]string, 0, len(reports))
 //	csvHeadLines := []string{
-//		"ItemId", "InventoryId", "ProductId", "BuyerId", "BuyerPhone", "SellerId",
+//		"SId", "InventoryId", "ProductId", "BuyerId", "BuyerPhone", "PId",
 //		"SellerName", "ItemInvoice", "Status", "CreatedAt", "UpdatedAt",
 //	}
 //
 //	csvReports = append(csvReports, csvHeadLines)
 //	for _, itemReport := range reports {
 //		csvRecord := []string{
-//			strconv.Itoa(int(itemReport.ItemId)),
+//			strconv.Itoa(int(itemReport.SId)),
 //			itemReport.InventoryId,
 //			itemReport.ProductId,
 //			strconv.Itoa(int(itemReport.BuyerId)),
 //			itemReport.BuyerPhone,
-//			strconv.Itoa(int(itemReport.SellerId)),
+//			strconv.Itoa(int(itemReport.PId)),
 //			itemReport.SellerName,
 //			fmt.Sprint(itemReport.Price),
 //			itemReport.Status,
@@ -1234,22 +1234,22 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //	}
 //
 //	//itemsId := make([]string, 0, len(order.Items))
-//	//for i:= 0; i < len(event.ItemsId); i++ {
-//	//	if order.Items[i].ItemId == event.ItemsId[i] && order.Items[i].SellerInfo.SellerId == event.SellerId {
-//	//		itemsId = append(itemsId,order.Items[i].ItemId)
+//	//for i:= 0; i < len(event.SIds); i++ {
+//	//	if order.Items[i].SId == event.SIds[i] && order.Items[i].SellerInfo.PId == event.PId {
+//	//		itemsId = append(itemsId,order.Items[i].SId)
 //	//	}
 //	//}
 //
 //	ctx, _ := context.WithCancel(context.Background())
 //
 //	if event.Action == "ApprovalPending" {
-//		flowManager.statesMap[20].ProcessOrder(ctx, *order, event.ItemsId, "actionExpired")
+//		flowManager.statesMap[20].ProcessOrder(ctx, *order, event.SIds, "actionExpired")
 //
 //	} else if event.Action == "SellerShipmentPending" {
-//		flowManager.statesMap[30].ProcessOrder(ctx, *order, event.ItemsId, "actionExpired")
+//		flowManager.statesMap[30].ProcessOrder(ctx, *order, event.SIds, "actionExpired")
 //
 //	} else if event.Action == "ShipmentDeliveredPending" {
-//		flowManager.statesMap[32].ProcessOrder(ctx, *order, event.ItemsId, "actionApproved")
+//		flowManager.statesMap[32].ProcessOrder(ctx, *order, event.SIds, "actionApproved")
 //	}
 //
 //}

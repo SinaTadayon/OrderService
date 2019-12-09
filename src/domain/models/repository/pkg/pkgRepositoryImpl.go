@@ -18,6 +18,13 @@ const (
 	defaultDocCount int    = 1024
 )
 
+var ErrorTotalCountExceeded = errors.New("total count exceeded")
+var ErrorPageNotAvailable = errors.New("page not available")
+var ErrorDeleteFailed = errors.New("update deletedAt field failed")
+var ErrorRemoveFailed = errors.New("remove subpackage failed")
+var ErrorUpdateFailed = errors.New("update subpackage failed")
+var ErrorVersionUpdateFailed = errors.New("update subpackage version failed")
+
 type iPkgItemRepositoryImpl struct {
 	mongoAdapter *mongoadapter.Mongo
 }
@@ -37,7 +44,7 @@ func (repo iPkgItemRepositoryImpl) findAndUpdate(ctx context.Context, pkgItem *e
 			{"orderId", pkgItem.OrderId},
 			{"packages", bson.D{
 				{"$elemMatch", bson.D{
-					{"sellerId", pkgItem.SellerId},
+					{"sellerId", pkgItem.PId},
 					{"version", currentVersion},
 				}},
 			}},
@@ -78,7 +85,7 @@ func (repo iPkgItemRepositoryImpl) FindById(ctx context.Context, orderId uint64,
 	pipeline := []bson.M{
 		{"$match": bson.M{"orderId": orderId, "deletedAt": nil}},
 		{"$unwind": "$packages"},
-		{"$match": bson.M{"packages.sellerId": id}},
+		{"$match": bson.M{"packages.pid": id}},
 		{"$project": bson.M{"_id": 0, "packages": 1}},
 		{"$replaceRoot": bson.M{"newRoot": "$packages"}},
 	}
@@ -123,8 +130,68 @@ func (repo iPkgItemRepositoryImpl) FindByFilter(ctx context.Context, supplier fu
 	return pkgItems, nil
 }
 
+func (repo iPkgItemRepositoryImpl) FindByFilterWithPage(ctx context.Context, totalSupplier, supplier func() (filter interface{}), page, perPage int64) ([]*entities.PackageItem, int64, error) {
+	if page < 0 || perPage == 0 {
+		return nil, 0, errors.New("neither offset nor start can be zero")
+	}
+
+	filter := supplier()
+	var totalCount, err = repo.CountWithFilter(ctx, totalSupplier)
+	if err != nil {
+		return nil, 0, errors.Wrap(err, "FindByFilterWithPage Subpackages Failed")
+	}
+
+	if totalCount == 0 {
+		return nil, 0, nil
+	}
+
+	// total 160 page=6 perPage=30
+	var availablePages int64
+
+	if totalCount%perPage != 0 {
+		availablePages = (totalCount / perPage) + 1
+	} else {
+		availablePages = totalCount / perPage
+	}
+
+	if totalCount < perPage {
+		availablePages = 1
+	}
+
+	if availablePages < page {
+		return nil, availablePages, ErrorPageNotAvailable
+	}
+
+	var offset = (page - 1) * perPage
+	if offset >= totalCount {
+		return nil, availablePages, ErrorTotalCountExceeded
+	}
+
+	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, filter)
+	if err != nil {
+		return nil, availablePages, errors.Wrap(err, "FindByFilterWithPage packages Failed")
+	} else if cursor.Err() != nil {
+		return nil, availablePages, errors.Wrap(err, "FindByFilterWithPage packages Failed")
+	}
+
+	defer closeCursor(ctx, cursor)
+	packages := make([]*entities.PackageItem, 0, perPage)
+
+	// iterate through all documents
+	for cursor.Next(ctx) {
+		var pkgItem entities.PackageItem
+		// decode the document
+		if err := cursor.Decode(&pkgItem); err != nil {
+			return nil, availablePages, errors.Wrap(err, "FindByFilter Package Failed")
+		}
+		packages = append(packages, &pkgItem)
+	}
+
+	return packages, availablePages, nil
+}
+
 func (repo iPkgItemRepositoryImpl) ExistsById(ctx context.Context, orderId uint64, id uint64) (bool, error) {
-	singleResult := repo.mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"orderId", orderId}, {"packages.sellerId", id}, {"deletedAt", nil}})
+	singleResult := repo.mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"orderId", orderId}, {"packages.pid", id}, {"deletedAt", nil}})
 	if err := singleResult.Err(); err != nil {
 		if repo.mongoAdapter.NoDocument(err) {
 			return false, nil
@@ -135,7 +202,7 @@ func (repo iPkgItemRepositoryImpl) ExistsById(ctx context.Context, orderId uint6
 }
 
 func (repo iPkgItemRepositoryImpl) Count(ctx context.Context, id uint64) (int64, error) {
-	total, err := repo.mongoAdapter.Count(databaseName, collectionName, bson.D{{"packages.sellerId", id},
+	total, err := repo.mongoAdapter.Count(databaseName, collectionName, bson.D{{"packages.pid", id},
 		{"deletedAt", nil}})
 	if err != nil {
 		return 0, errors.Wrap(err, "Count failed")

@@ -129,7 +129,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	for _, pkgDto := range newOrderDto.Packages {
 
 		if pkgDto.SellerId <= 0 {
-			return nil, errors.New("SellerId of RequestNewOrder invalid")
+			return nil, errors.New("PId of RequestNewOrder invalid")
 		}
 
 		if pkgDto.Invoice == nil {
@@ -145,7 +145,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 		}
 
 		var pkgItem = entities.PackageItem{
-			SellerId: pkgDto.SellerId,
+			PId: pkgDto.SellerId,
 			Invoice: entities.PackageInvoice{
 				Subtotal:       pkgDto.Invoice.Subtotal,
 				Discount:       pkgDto.Invoice.Discount,

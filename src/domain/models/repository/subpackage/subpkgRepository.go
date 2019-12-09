@@ -14,9 +14,9 @@ type ISubpackageRepository interface {
 
 	UpdateAll(ctx context.Context, subPkgList []entities.Subpackage) ([]*entities.Subpackage, error)
 
-	//FindByItemId(ctx context.Context, itemId uint64) (*entities.Subpackage, error)
+	//FindByItemId(ctx context.Context, sid uint64) (*entities.Subpackage, error)
 
-	FindByOrderAndItemId(ctx context.Context, orderId, itemId uint64) (*entities.Subpackage, error)
+	FindByOrderAndItemId(ctx context.Context, orderId, sid uint64) (*entities.Subpackage, error)
 
 	FindByOrderAndSellerId(ctx context.Context, orderId, sellerId uint64) ([]*entities.Subpackage, error)
 
@@ -32,7 +32,7 @@ type ISubpackageRepository interface {
 
 	FindByFilterWithPage(ctx context.Context, totalSupplier func() (filter interface{}), supplier func() (filter interface{}), page, perPage int64) ([]*entities.Subpackage, int64, error)
 
-	ExistsById(ctx context.Context, itemId uint64) (bool, error)
+	ExistsById(ctx context.Context, sid uint64) (bool, error)
 
 	Count(ctx context.Context, sellerId uint64) (int64, error)
 

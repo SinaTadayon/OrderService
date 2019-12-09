@@ -45,9 +45,9 @@ func NewOrderRepository(mongoDriver *mongoadapter.Mongo) (IOrderRepository, erro
 		return nil, err
 	}
 
-	_, err = mongoDriver.AddUniqueIndex(databaseName, collectionName, "packages.subpackages.itemId")
+	_, err = mongoDriver.AddUniqueIndex(databaseName, collectionName, "packages.subpackages.sid")
 	if err != nil {
-		logger.Err("create packages.subpackages.items.itemId index failed, error: %s", err.Error())
+		logger.Err("create packages.subpackages.items.sid index failed, error: %s", err.Error())
 		return nil, err
 	}
 
@@ -70,10 +70,10 @@ func (repo iOrderRepositoryImpl) generateAndSetId(ctx context.Context, order ent
 				if _, ok := mapItemIds[random]; ok {
 					continue
 				}
-				mapItemIds[random] = order.Packages[i].SellerId
-				itemId, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + strconv.Itoa(random))
-				order.Packages[i].Subpackages[j].ItemId = uint64(itemId)
-				order.Packages[i].Subpackages[j].SellerId = order.Packages[i].SellerId
+				mapItemIds[random] = order.Packages[i].PId
+				sid, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + strconv.Itoa(random))
+				order.Packages[i].Subpackages[j].SId = uint64(sid)
+				order.Packages[i].Subpackages[j].SellerId = order.Packages[i].PId
 				order.Packages[i].Subpackages[j].OrderId = order.OrderId
 				order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
 				order.Packages[i].Subpackages[j].UpdatedAt = time.Now().UTC()
@@ -118,8 +118,8 @@ func (repo iOrderRepositoryImpl) Save(ctx context.Context, order entities.Order)
 						order.Packages[i].Subpackages[j].Version += 1
 					} else {
 						logger.Err("Update order failed, subpackage version obsolete, "+
-							"orderId: %d, itemId: %d, last version: %d, update version: %d",
-							order.OrderId, order.Packages[i].Subpackages[j].ItemId,
+							"orderId: %d, sid: %d, last version: %d, update version: %d",
+							order.OrderId, order.Packages[i].Subpackages[j].SId,
 							order.Packages[i].Subpackages[j].Version,
 							currentOrder.Packages[i].Subpackages[j].Version)
 						return nil, ErrorVersionUpdateFailed
@@ -128,7 +128,7 @@ func (repo iOrderRepositoryImpl) Save(ctx context.Context, order entities.Order)
 			} else {
 				logger.Err("Update order failed, package version obsolete, "+
 					"orderId: %d, sellerId: %d, last version: %d, update version: %d",
-					order.OrderId, order.Packages[i].SellerId,
+					order.OrderId, order.Packages[i].PId,
 					order.Packages[i].Version,
 					currentOrder.Packages[i].Version)
 				return nil, ErrorVersionUpdateFailed

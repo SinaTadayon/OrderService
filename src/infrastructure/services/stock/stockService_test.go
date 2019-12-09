@@ -129,9 +129,9 @@ func createOrder() *entities.Order {
 		},
 		Packages: []entities.PackageItem{
 			{
-				SellerId: 129384234,
-				OrderId:  0,
-				Version:  0,
+				PId:     129384234,
+				OrderId: 0,
+				Version: 0,
 				Invoice: entities.PackageInvoice{
 					Subtotal:       2873423,
 					Discount:       9283443,
@@ -215,7 +215,7 @@ func createOrder() *entities.Order {
 				},
 				Subpackages: []entities.Subpackage{
 					{
-						ItemId:   0,
+						SId:      0,
 						SellerId: 129384234,
 						OrderId:  0,
 						Version:  0,
@@ -338,7 +338,7 @@ func createOrder() *entities.Order {
 						DeletedAt: nil,
 					},
 					{
-						ItemId:   0,
+						SId:      0,
 						SellerId: 129384234,
 						OrderId:  0,
 						Version:  0,
@@ -467,9 +467,9 @@ func createOrder() *entities.Order {
 				DeletedAt: nil,
 			},
 			{
-				SellerId: 99988887777,
-				OrderId:  0,
-				Version:  0,
+				PId:     99988887777,
+				OrderId: 0,
+				Version: 0,
 				Invoice: entities.PackageInvoice{
 					Subtotal:       2873423,
 					Discount:       9283443,
@@ -553,7 +553,7 @@ func createOrder() *entities.Order {
 				},
 				Subpackages: []entities.Subpackage{
 					{
-						ItemId:   0,
+						SId:      0,
 						SellerId: 99988887777,
 						OrderId:  0,
 						Version:  0,
@@ -676,7 +676,7 @@ func createOrder() *entities.Order {
 						DeletedAt: nil,
 					},
 					{
-						ItemId:   0,
+						SId:      0,
 						SellerId: 99988887777,
 						OrderId:  0,
 						Version:  0,

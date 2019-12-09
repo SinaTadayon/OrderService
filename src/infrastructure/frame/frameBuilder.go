@@ -69,7 +69,7 @@ func (builder Builder) SetBody(body interface{}) Builder {
 }
 
 func (builder Builder) SetSellerId(sellerId uint64) Builder {
-	builder.header[string(HeaderSellerId)] = sellerId
+	builder.header[string(HeaderPId)] = sellerId
 	return builder
 }
 
@@ -88,8 +88,8 @@ func (builder Builder) SetOrder(order *entities.Order) Builder {
 	return builder
 }
 
-func (builder Builder) SetItemId(itemId uint64) Builder {
-	builder.header[string(HeaderItemId)] = itemId
+func (builder Builder) SetItemId(sid uint64) Builder {
+	builder.header[string(HeaderSId)] = sid
 	return builder
 }
 

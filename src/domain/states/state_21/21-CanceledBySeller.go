@@ -56,10 +56,10 @@ func (state canceledBySellerState) Process(ctx context.Context, iFrame frame.IFr
 		state.UpdateSubPackage(ctx, subpkg, nextToAction)
 		subPkgUpdated, err := global.Singletons.SubPkgRepository.Update(ctx, *subpkg)
 		if err != nil {
-			logger.Err("SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, itemId: %d, error: %s",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, err.Error())
+			logger.Err("SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
+				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
 		} else {
-			logger.Audit("Cancel by seller success, orderId: %d, sellerId: %d, itemId: %d", subpkg.OrderId, subpkg.SellerId, subpkg.ItemId)
+			logger.Audit("Cancel by seller success, orderId: %d, sellerId: %d, sid: %d", subpkg.OrderId, subpkg.SellerId, subpkg.SId)
 			state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(subPkgUpdated).Build())
 		}
 	} else {

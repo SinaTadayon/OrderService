@@ -236,7 +236,7 @@ func updateOrderStatus(order *entities.Order, itemsId []uint64, orderStatus stri
 					}
 				}
 				if !findFlag {
-					logger.Err("%s received itemId %d not exist in order, orderId: %d", stepName, id, order.OrderId)
+					logger.Err("%s received sid %d not exist in order, orderId: %d", stepName, id, order.OrderId)
 				}
 			}
 		} else {
@@ -280,7 +280,7 @@ func updateOrderItemsProgress(order *entities.Order, itemsId []uint64, action st
 			}
 
 			if !findFlag {
-				logger.Err("received itemId %d not exist in order, orderId: %d", id, order.OrderId)
+				logger.Err("received sid %d not exist in order, orderId: %d", id, order.OrderId)
 			}
 		}
 	} else {

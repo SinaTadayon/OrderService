@@ -2,9 +2,9 @@ package entities
 
 import "time"
 
-// subpackage id same as itemId
+// subpackage id same as sid
 type Subpackage struct {
-	ItemId    uint64     `bson:"itemId"`
+	SId       uint64     `bson:"sId"`
 	SellerId  uint64     `bson:"sellerId"`
 	OrderId   uint64     `bson:"orderId"`
 	Version   uint64     `bson:"version"`
@@ -121,7 +121,7 @@ func (item Item) DeepCopy() *Item {
 
 func (subpackage Subpackage) DeepCopy() *Subpackage {
 	var subPkg = Subpackage{
-		ItemId:    subpackage.ItemId,
+		SId:       subpackage.SId,
 		SellerId:  subpackage.SellerId,
 		OrderId:   subpackage.OrderId,
 		Version:   subpackage.Version,

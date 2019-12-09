@@ -205,7 +205,7 @@ func createMetaDataRequest() *message.RequestMetadata {
 //	orderId := entities.GenerateOrderId()
 //	request := message.MessageRequest {
 //		OrderId: orderId,
-//		//ItemId: orderId + strconv.Itoa(int(entities.GenerateRandomNumber())),
+//		//SId: orderId + strconv.Itoa(int(entities.GenerateRandomNumber())),
 //		Time: ptypes.TimestampNow(),
 //		Meta: metadata,
 //		Get: &any.Any{

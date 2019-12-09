@@ -67,16 +67,16 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 		state.UpdateSubPackage(ctx, subpkg, releaseStockAction)
 		_, err := global.Singletons.SubPkgRepository.Update(ctx, *subpkg)
 		if err != nil {
-			logger.Err("SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, itemId: %d, error: %s",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, err.Error())
+			logger.Err("SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
+				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
 		} else {
-			logger.Audit("Cancel by seller success, orderId: %d, sellerId: %d, itemId: %d", subpkg.OrderId, subpkg.SellerId, subpkg.ItemId)
+			logger.Audit("Cancel by seller success, orderId: %d, sellerId: %d, sid: %d", subpkg.OrderId, subpkg.SellerId, subpkg.SId)
 		}
 
 		order, err := global.Singletons.OrderRepository.FindById(ctx, subpkg.OrderId)
 		if err != nil {
-			logger.Err("OrderRepository.FindById in %s state failed, orderId: %d, sellerId: %d, itemId: %d, error: %s",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.ItemId, err.Error())
+			logger.Err("OrderRepository.FindById in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
+				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
 			return
 		}
 
@@ -96,10 +96,10 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 				_, err := global.Singletons.PkgItemRepository.Update(ctx, order.Packages[i])
 				if err != nil {
 					logger.Err("update pkgItem status to closed failed, orderId: %d, sellerId: %d, error: %s",
-						state.Name(), order.Packages[i].OrderId, order.Packages[i].SellerId, err.Error())
+						state.Name(), order.Packages[i].OrderId, order.Packages[i].PId, err.Error())
 				} else {
 					logger.Audit("update pkgItem status to closed success, orderId: %d, sellerId: %d",
-						state.Name(), order.Packages[i].OrderId, order.Packages[i].SellerId)
+						state.Name(), order.Packages[i].OrderId, order.Packages[i].PId)
 				}
 			}
 		}
@@ -139,12 +139,12 @@ func (state payToSellerState) settlementStock(ctx context.Context, subpackage *e
 		stock_action.New(stock_action.Settlement))
 	futureData := iFuture.Get()
 	if futureData.Error() != nil {
-		logger.Err("Settlement stock from stockService failed, state: %s, orderId: %d, sellerId: %d, itemId: %d, error: %s",
-			state.Name(), subpackage.OrderId, subpackage.SellerId, subpackage.ItemId, futureData.Error())
+		logger.Err("Settlement stock from stockService failed, state: %s, orderId: %d, sellerId: %d, sid: %d, error: %s",
+			state.Name(), subpackage.OrderId, subpackage.SellerId, subpackage.SId, futureData.Error())
 		return futureData.Error().Reason()
 	}
 
-	logger.Audit("Settlement stock success, state: %s, orderId: %d, sellerId: %d, itemId: %d",
-		state.Name(), subpackage.OrderId, subpackage.SellerId, subpackage.ItemId)
+	logger.Audit("Settlement stock success, state: %s, orderId: %d, sellerId: %d, sid: %d",
+		state.Name(), subpackage.OrderId, subpackage.SellerId, subpackage.SId)
 	return nil
 }
