@@ -4,6 +4,7 @@ import (
 	"context"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
+	pg "gitlab.faza.io/protos/payment-gateway"
 )
 
 type IFlowManager interface {

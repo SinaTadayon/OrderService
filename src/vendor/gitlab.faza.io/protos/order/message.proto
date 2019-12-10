@@ -118,8 +118,7 @@ message SellerOrderDetail {
     uint64 OID = 1;
     uint64 PID = 2;
     uint64 amount = 3;
-    string status = 4;
-    string RequestAt = 5;
+    string RequestAt = 6;
     message ShipmentAddress {
         string firstName = 1;
         string lastName = 2;
@@ -134,20 +133,22 @@ message SellerOrderDetail {
         string long = 11;
         string zipCode = 12;
     }
-    ShipmentAddress address = 6;
+    ShipmentAddress address = 7;
 
     message ItemDetail {
         uint64 SID = 1;
         string sku = 2;
-        string inventoryId = 3;
-        string title = 4;
-        string brand = 5;
-        string category = 6;
-        string guaranty = 7;
-        string image = 8;
-        bool returnable = 9;
-        int32 quantity = 10;
-        map<string, string> attributes = 11;
+        string status = 3;
+        int32  sIdx = 4;
+        string inventoryId = 5;
+        string title = 6;
+        string brand = 7;
+        string category = 8;
+        string guaranty = 9;
+        string image = 10;
+        bool returnable = 11;
+        int32 quantity = 12;
+        map<string, string> attributes = 13;
         message Invoice {
             uint64 unit = 1;
             uint64 total = 2;
@@ -157,10 +158,10 @@ message SellerOrderDetail {
             float  sellerCommission = 6;
             string currency = 7;
         };
-        Invoice invoice = 12;
+        Invoice invoice = 14;
     }
 
-    repeated ItemDetail items = 7;
+    repeated ItemDetail items = 8;
 }
 
 //message SellerOrderReturnList {
@@ -194,8 +195,7 @@ message SellerReturnOrderDetailList {
         uint64 OID = 1;
         uint64 PID = 2;
         uint64 amount = 3;
-        string status = 4;
-        string RequestAt = 5;
+        string RequestAt = 6;
         message ShipmentAddress {
             string firstName = 1;
             string lastName = 2;
@@ -212,33 +212,39 @@ message SellerReturnOrderDetailList {
         }
         ShipmentAddress address = 7;
 
-        message ItemDetail {
+        message Item {
             uint64 SID = 1;
             string sku = 2;
-            string inventoryId = 3;
-            string title = 4;
-            string brand = 5;
-            string category = 6;
-            string guaranty = 7;
-            string image = 8;
-            bool returnable = 9;
-            int32 quantity = 10;
-            map<string, string> attributes = 11;
-            string ReturnRequestAt = 12;
-            string ReturnShippedAt = 13;
-            message Invoice {
-                uint64 unit = 1;
-                uint64 total = 2;
-                uint64 original = 3;
-                uint64 special = 4;
-                uint64 discount = 5;
-                float sellerCommission = 6;
-                string currency = 7;
-            };
-            Invoice invoice = 14;
+            string status = 3;
+            int32  sIdx = 4;
+            message Detail {
+                string inventoryId = 1;
+                string title = 2;
+                string brand = 3;
+                string category = 4;
+                string guaranty = 5;
+                string image = 6;
+                bool returnable = 7;
+                int32 quantity = 8;
+                map<string, string> attributes = 9;
+                string ReturnRequestAt = 10;
+                string ReturnShippedAt = 11;
+                message Invoice {
+                    uint64 unit = 1;
+                    uint64 total = 2;
+                    uint64 original = 3;
+                    uint64 special = 4;
+                    uint64 discount = 5;
+                    float sellerCommission = 6;
+                    string currency = 7;
+                };
+                Invoice invoice = 12;
+            }
+
+            Detail detail = 5;
         }
 
-        repeated ItemDetail items = 8;
+        repeated Item items = 8;
     }
 
     repeated ReturnOrderDetail returnOrderDetail = 1;
@@ -288,10 +294,10 @@ message BuyerOrderDetailList {
             message Item {
                 uint64 SID = 1;
                 string status = 2;
-                bool isCancelable = 3;
-                bool isReturnable = 4;
-                bool isReturnCancelable = 5;
-                string productId = 6;
+                int32  sIdx = 3;
+                bool isCancelable = 4;
+                bool isReturnable = 5;
+                bool isReturnCancelable = 6;
                 string inventoryId = 7;
                 string title = 8;
                 string brand = 9;
@@ -373,9 +379,9 @@ message BuyerReturnOrderDetailList {
             message Item {
                 uint64 SID = 1;
                 string status = 2;
-                bool isCancelable = 3;
-                bool isAccepted = 4;
-                string productId = 5;
+                int32 sIdx = 3;
+                bool isCancelable = 4;
+                bool isAccepted = 5;
                 string inventoryId = 6;
                 string title = 7;
                 string brand = 8;

@@ -98,7 +98,7 @@ func (builder Builder) SetItem(item entities.Item) Builder {
 	return builder
 }
 
-func (builder Builder) SetSubpackages(subpackages []entities.Subpackage) Builder {
+func (builder Builder) SetSubpackages(subpackages []*entities.Subpackage) Builder {
 	builder.header[string(HeaderSubpackages)] = subpackages
 	return builder
 }

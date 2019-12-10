@@ -210,3 +210,7 @@ func (base BaseStateImpl) SaveOrUpdateOrder(ctx context.Context, order *entities
 	order, err = global.Singletons.OrderRepository.Save(ctx, *order)
 	return errors.Wrap(err, "OrderRepository.Save failed")
 }
+
+func (base BaseStateImpl) Remove(s []struct{}, i int) []struct{} {
+
+}
