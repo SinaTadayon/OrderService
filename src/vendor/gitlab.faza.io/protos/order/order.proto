@@ -141,9 +141,10 @@ message RequestNewOrder {
 
 message Package {
     uint64 sellerId = 1;
-    ShippingSpec shipment = 2;
-    PackageInvoice invoice = 3;
-    repeated Item items = 4;
+    string shopName = 2;
+    ShippingSpec shipment = 3;
+    PackageInvoice invoice = 4;
+    repeated Item items = 5;
 }
 
 message PackageInvoice {

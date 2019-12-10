@@ -65,6 +65,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 
 	var pkg = &pb.Package{
 		SellerId: 6546345,
+		ShopName: "sazgar",
 		Shipment: &pb.ShippingSpec{
 			CarrierNames:   []string{"Post"},
 			CarrierProduct: "Post Express",
@@ -86,6 +87,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order.Packages = append(order.Packages, pkg)
 	pkg.Items = make([]*pb.Item, 0, 2)
 	var item = &pb.Item{
+		Sku:         "53456-2342",
 		InventoryId: "1243444",
 		Title:       "Asus",
 		Brand:       "Electronic/laptop",
@@ -115,6 +117,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	}
 	pkg.Items = append(pkg.Items, item)
 	item = &pb.Item{
+		Sku:         "dfg34534",
 		InventoryId: "57834534",
 		Title:       "Nexus",
 		Brand:       "Electronic/laptop",
@@ -167,6 +170,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order.Packages = append(order.Packages, pkg)
 	pkg.Items = make([]*pb.Item, 0, 2)
 	item = &pb.Item{
+		Sku:         "gffd-4534",
 		InventoryId: "7684034234",
 		Title:       "Asus",
 		Brand:       "Electronic/laptop",
@@ -193,9 +197,13 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 			SellerCommission: 8,
 			Currency:         "IRR",
 		},
+		XXX_NoUnkeyedLiteral: struct{}{},
+		XXX_unrecognized:     nil,
+		XXX_sizecache:        0,
 	}
 	pkg.Items = append(pkg.Items, item)
 	item = &pb.Item{
+		Sku:         "dfg-54322",
 		InventoryId: "443353563463",
 		Title:       "Nexus",
 		Brand:       "Electronic/laptop",

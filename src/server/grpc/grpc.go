@@ -108,16 +108,16 @@ const (
 )
 
 const (
-	SellerOrderList         RequestName = "SellerOrderList"
-	SellerOrderDetail       RequestName = "SellerOrderDetail"
-	SellerOrderReturnList   RequestName = "SellerOrderReturnList"
-	SellerOrderReturnDetail RequestName = "SellerOrderReturnDetail"
+	SellerOrderList             RequestName = "SellerOrderList"
+	SellerOrderDetail           RequestName = "SellerOrderDetail"
+	SellerReturnOrderDetailList RequestName = "SellerReturnOrderDetailList"
+	//SellerOrderReturnDetail     RequestName = "SellerOrderReturnDetail"
 
-	BuyerOrderList          RequestName = "BuyerOrderList"
-	BuyerOrderDetail        RequestName = "BuyerOrderDetail"
-	BuyerReturnOrderReports RequestName = "BuyerReturnOrderReports"
-	BuyerReturnOrderList    RequestName = "BuyerReturnOrderList"
-	BuyerReturnOrderDetail  RequestName = "BuyerReturnOrderDetail"
+	//BuyerOrderList             RequestName = "BuyerOrderList"
+	BuyerOrderDetailList       RequestName = "BuyerOrderDetailList"
+	BuyerReturnOrderReports    RequestName = "BuyerReturnOrderReports"
+	BuyerReturnOrderDetailList RequestName = "BuyerReturnOrderDetailList"
+	//BuyerReturnOrderDetail  RequestName = "BuyerReturnOrderDetail"
 )
 
 const (
@@ -200,7 +200,7 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	}
 
 	// TODO check acl
-	if uint64(userAcl.User().UserID) != req.Meta.UId {
+	if uint64(userAcl.User().UserID) != req.Meta.UID {
 		logger.Err("RequestHandler() => UserId mismatch with token userId, error: %s ", err)
 		return nil, status.Error(codes.Code(future.InternalError), "User Not Authorized")
 	}
@@ -215,7 +215,7 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 
 func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
 	reqName := RequestName(req.Name)
-	userType := UserType(req.Meta.UserType)
+	userType := UserType(req.Meta.UTP)
 	reqADT := RequestADT(req.ADT)
 
 	var filterType FilterType
@@ -237,54 +237,48 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with filter")
 	}
 
-	if (reqName == SellerOrderReturnList || reqName == BuyerReturnOrderList) && filterType != OrderReturnStateFilter {
+	if (reqName == SellerReturnOrderDetailList || reqName == BuyerReturnOrderDetailList) && filterType != OrderReturnStateFilter {
 		logger.Err("requestDataHandler() => request name %s mismatch with %s filterType, request: %v", reqName, filterType, req)
 		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with filterType")
 	}
 
 	if userType == SellerUser && (reqName != SellerOrderList || reqName != SellerOrderDetail ||
-		reqName != SellerOrderReturnList || reqName != SellerOrderReturnDetail) {
+		reqName != SellerReturnOrderDetailList) {
 		logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
 		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
 	}
 
-	if userType == BuyerUser && (reqName != BuyerOrderList || reqName != BuyerOrderDetail ||
-		reqName != BuyerReturnOrderReports || reqName != BuyerReturnOrderList || reqName != BuyerReturnOrderDetail) {
+	if userType == BuyerUser && (reqName != BuyerOrderDetailList ||
+		reqName != BuyerReturnOrderReports || reqName != BuyerReturnOrderDetailList) {
 		logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
 		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
 	}
 
-	if req.Meta.OId > 0 && reqADT != SingleType {
+	if req.Meta.OID > 0 && reqADT != SingleType {
 		logger.Err("requestDataHandler() => %s orderId mismatch with %s requestADT, request: %v", userType, reqADT, req)
 		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestADT")
 	}
 
 	switch reqName {
 	case SellerOrderList:
-		return server.sellerOrderListHandler(ctx, req.Meta.PId, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+		return server.sellerOrderListHandler(ctx, req.Meta.PID, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
 	case SellerOrderDetail:
-		return server.sellerOrderDetailHandler(ctx, req.Meta.PId, req.Meta.OId, req.Meta.SId)
-	case SellerOrderReturnList:
-		return server.sellerOrderReturnListHandler(ctx, req.Meta.PId, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
-	case SellerOrderReturnDetail:
-		return server.sellerOrderReturnDetailHandler(ctx, req.Meta.PId, req.Meta.OId, req.Meta.SId)
-	case BuyerOrderList:
-		return server.buyerOrderListHandler(ctx, req.Meta.PId, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
-	case BuyerOrderDetail:
-		return server.buyerOrderDetailHandler(ctx, req.Meta.PId, req.Meta.OId, req.Meta.SId)
+		return server.sellerOrderDetailHandler(ctx, req.Meta.PID, req.Meta.OID, filterValue)
+	case SellerReturnOrderDetailList:
+		return server.sellerOrderReturnDetailListHandler(ctx, req.Meta.PID, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+	case BuyerOrderDetailList:
+		return server.buyerOrderDetailHandler(ctx, req.Meta.UID, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
 	case BuyerReturnOrderReports:
-		return server.buyerReturnOrderReportsHandler(ctx, req.Meta.PId, req.Meta.OId, req.Meta.SId)
-	case BuyerReturnOrderList:
-		return server.buyerReturnOrderListHandler(ctx, req.Meta.PId, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
-	case BuyerReturnOrderDetail:
-		return server.buyerReturnOrderDetailHandler(ctx, req.Meta.PId, req.Meta.OId, req.Meta.SId)
+		return server.buyerReturnOrderReportsHandler(ctx, req.Meta.UID)
+	case BuyerReturnOrderDetailList:
+		return server.buyerReturnOrderDetailListHandler(ctx, req.Meta.UID, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
 	}
 
 	return nil, status.Error(codes.Code(future.BadRequest), "Invalid Request")
 }
 
 func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
-	userType := UserType(req.Meta.UserType)
+	userType := UserType(req.Meta.UTP)
 	var userAction actions.IAction
 
 	userActions, ok := server.actionStates[userType]
@@ -314,7 +308,7 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 	subpackages := make([]events.ActionSubpackage, 0, len(reqActionData.Subpackages))
 	for _, reqSubpackage := range reqActionData.Subpackages {
 		subpackage := events.ActionSubpackage{
-			SId: reqSubpackage.SId,
+			SId: reqSubpackage.SID,
 		}
 		subpackage.Items = make([]events.ActionItem, 0, len(reqSubpackage.Items))
 		for _, item := range reqSubpackage.Items {
@@ -339,7 +333,7 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 		TrackingNumber: reqActionData.TrackingNumber,
 	}
 
-	event := events.New(events.Action, req.Meta.OId, req.Meta.PId, req.Meta.UId,
+	event := events.New(events.Action, req.Meta.OID, req.Meta.PID, req.Meta.UID,
 		req.Meta.Action.StateIndex, userAction,
 		time.Unix(req.Time.GetSeconds(), int64(req.Time.GetNanos())), actionData)
 
@@ -354,8 +348,8 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 	eventResponse := futureData.Data().(events.ActionResponse)
 
 	actionResponse := &pb.ActionResponse{
-		OId:  eventResponse.OrderId,
-		SIds: eventResponse.SIds,
+		OID:  eventResponse.OrderId,
+		SIDs: eventResponse.SIds,
 	}
 
 	serializedResponse, err := proto.Marshal(actionResponse)
@@ -427,13 +421,20 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, pid uint64, fi
 		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
 	}
 
+	var sortDirect int
+	if direction == "ASC" {
+		sortDirect = 1
+	} else {
+		sortDirect = -1
+	}
+
 	pkgFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil, "packages.subpackages.status": filter}},
 			{"$unwind": "$packages"},
 			{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
 			{"$project": bson.M{"_id": 0, "packages": 1}},
-			{"$sort": bson.M{"packages.subpackages." + sortName: direction}},
+			{"$sort": bson.M{"packages.subpackages." + sortName: sortDirect}},
 			{"$skip": offset},
 			{"$limit": perPage},
 			{"$replaceRoot": bson.M{"newRoot": "$packages"}},
@@ -450,14 +451,15 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, pid uint64, fi
 
 	for _, pkgItem := range pkgList {
 		sellerOrderItem := &pb.SellerOrderList_ItemList{
-			OId:                   pkgItem.OrderId,
-			OrderRequestTimestamp: pkgItem.CreatedAt.Format(ISO8601),
-			Amount:                pkgItem.Invoice.Subtotal,
+			OID:       pkgItem.OrderId,
+			RequestAt: pkgItem.CreatedAt.Format(ISO8601),
+			Amount:    pkgItem.Invoice.Subtotal,
 		}
 		itemList = append(itemList, sellerOrderItem)
 	}
 
 	sellerOrderList := &pb.SellerOrderList{
+		PID:   pid,
 		Items: itemList,
 	}
 
@@ -484,38 +486,691 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, pid uint64, fi
 	return response, nil
 }
 
-func (server *Server) sellerOrderDetailHandler(ctx context.Context, userId, orderId, sid uint64) (*pb.MessageResponse, error) {
+func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId uint64, filter FilterValue) (*pb.MessageResponse, error) {
+	order, err := global.Singletons.OrderRepository.FindById(ctx, orderId)
+	if err != nil {
+		logger.Err("sellerOrderDetailHandler() => PkgItemRepository.FindById failed, orderId: %d, pid: %d, filter:%d , error: %s", orderId, pid, filter, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
 
+	var pkgItem entities.PackageItem
+	for i := 0; i < len(order.Packages); i++ {
+		if order.Packages[i].PId == pid {
+			pkgItem = order.Packages[i]
+			break
+		}
+	}
+
+	sellerOrderDetailItems := make([]*pb.SellerOrderDetail_ItemDetail, 0, 32)
+	for i := 0; i < len(pkgItem.Subpackages); i++ {
+		if pkgItem.Subpackages[i].Status == string(filter) {
+			for j := 0; j < len(pkgItem.Subpackages[i].Items); j++ {
+				itemDetail := &pb.SellerOrderDetail_ItemDetail{
+					SID:         pkgItem.Subpackages[i].SId,
+					Sku:         pkgItem.Subpackages[i].Items[j].SKU,
+					InventoryId: pkgItem.Subpackages[i].Items[j].InventoryId,
+					Title:       pkgItem.Subpackages[i].Items[j].Title,
+					Brand:       pkgItem.Subpackages[i].Items[j].Brand,
+					Category:    pkgItem.Subpackages[i].Items[j].Category,
+					Guaranty:    pkgItem.Subpackages[i].Items[j].Guaranty,
+					Image:       pkgItem.Subpackages[i].Items[j].Image,
+					Returnable:  pkgItem.Subpackages[i].Items[j].Returnable,
+					Quantity:    pkgItem.Subpackages[i].Items[j].Quantity,
+					Attributes:  pkgItem.Subpackages[i].Items[j].Attributes,
+					Invoice: &pb.SellerOrderDetail_ItemDetail_Invoice{
+						Unit:             pkgItem.Subpackages[i].Items[j].Invoice.Unit,
+						Total:            pkgItem.Subpackages[i].Items[j].Invoice.Total,
+						Original:         pkgItem.Subpackages[i].Items[j].Invoice.Original,
+						Special:          pkgItem.Subpackages[i].Items[j].Invoice.Special,
+						Discount:         pkgItem.Subpackages[i].Items[j].Invoice.Discount,
+						SellerCommission: pkgItem.Subpackages[i].Items[j].Invoice.SellerCommission,
+					},
+				}
+				sellerOrderDetailItems = append(sellerOrderDetailItems, itemDetail)
+			}
+		}
+	}
+
+	sellerOrderDetail := &pb.SellerOrderDetail{
+		OID:       orderId,
+		PID:       pid,
+		Amount:    pkgItem.Invoice.Subtotal,
+		Status:    string(filter),
+		RequestAt: order.CreatedAt.Format(ISO8601),
+		Address: &pb.SellerOrderDetail_ShipmentAddress{
+			FirstName:     order.BuyerInfo.ShippingAddress.FirstName,
+			LastName:      order.BuyerInfo.ShippingAddress.LastName,
+			Address:       order.BuyerInfo.ShippingAddress.Address,
+			Phone:         order.BuyerInfo.ShippingAddress.Phone,
+			Mobile:        order.BuyerInfo.ShippingAddress.Mobile,
+			Country:       order.BuyerInfo.ShippingAddress.Country,
+			City:          order.BuyerInfo.ShippingAddress.City,
+			Province:      order.BuyerInfo.ShippingAddress.Province,
+			Neighbourhood: order.BuyerInfo.ShippingAddress.Neighbourhood,
+			Lat:           "",
+			Long:          "",
+			ZipCode:       order.BuyerInfo.ShippingAddress.ZipCode,
+		},
+		Items: sellerOrderDetailItems,
+	}
+
+	if order.BuyerInfo.ShippingAddress.Location != nil {
+		sellerOrderDetail.Address.Lat = strconv.Itoa(int(order.BuyerInfo.ShippingAddress.Location.Coordinates[0]))
+		sellerOrderDetail.Address.Long = strconv.Itoa(int(order.BuyerInfo.ShippingAddress.Location.Coordinates[1]))
+	}
+
+	serializedData, err := proto.Marshal(sellerOrderDetail)
+	if err != nil {
+		logger.Err("sellerOrderDetailHandler() => could not serialize sellerOrderDetail, sellerOrderDetail: %v, error:%s", sellerOrderDetail, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "SellerOrderDetail",
+		Meta:   nil,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(sellerOrderDetail),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
 }
 
-func (server *Server) sellerOrderReturnListHandler(ctx context.Context, userId uint64, filter FilterValue, page, perPage uint32,
+// TODO should be refactor and projection pkg
+func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pid uint64, filter FilterValue, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
+	if page < 0 || perPage <= 0 {
+		logger.Err("sellerOrderReturnDetailListHandler() => page or perPage invalid, pid: %d, filterValue: %s, page: %d, perPage: %d", pid, filter, page, perPage)
+		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
+	}
+	//
+	//countFilter := func() interface{} {
+	//	return []bson.M{
+	//		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil, "packages.subpackages.status": filter}},
+	//		{"$project": bson.M{"subSize": 1}},
+	//		{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
+	//		{"$project": bson.M{"_id": 0, "count": 1}},
+	//	}
+	//}
+	//
+	//var totalCount, err = global.Singletons.PkgItemRepository.CountWithFilter(ctx, countFilter)
+	//if err != nil {
+	//	logger.Err("sellerOrderReturnDetailListHandler() => CountWithFilter failed,  sellerId: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
+	//	return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	//}
+	//
+	//if totalCount == 0 {
+	//	logger.Err("sellerOrderReturnDetailListHandler() => total count is zero,  sellerId: %d, filterValue: %s, page: %d, perPage: %d", pid, filter, page, perPage)
+	//	return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	//}
+	//
+	//// total 160 page=6 perPage=30
+	//var availablePages int64
+	//
+	//if totalCount%int64(perPage) != 0 {
+	//	availablePages = (totalCount / int64(perPage)) + 1
+	//} else {
+	//	availablePages = totalCount / int64(perPage)
+	//}
+	//
+	//if totalCount < int64(perPage) {
+	//	availablePages = 1
+	//}
+	//
+	//if availablePages < int64(page) {
+	//	logger.Err("sellerOrderListHandler() => availablePages less than page, availablePages: %d, sellerId: %d, filterValue: %s, page: %d, perPage: %d", availablePages, pid, filter, page, perPage)
+	//	return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	//}
+	//
+	//var offset = (page - 1) * perPage
+	//if int64(offset) >= totalCount {
+	//	logger.Err("sellerOrderListHandler() => offset invalid, offset: %d, sellerId: %d, filterValue: %s, page: %d, perPage: %d", offset, pid, filter, page, perPage)
+	//	return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	//}
 
+	var sortDirect int
+	if direction == "ASC" {
+		sortDirect = 1
+	} else {
+		sortDirect = -1
+	}
+
+	//pkgFilter := func() interface{} {
+	//	return []bson.M{
+	//		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil, "packages.subpackages.status": filter}},
+	//		{"$unwind": "$packages"},
+	//		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
+	//		{"$project": bson.M{"_id": 0, "packages": 1}},
+	//		{"$sort": bson.M{"packages.subpackages." + sortName: sortDirect}},
+	//		{"$skip": offset},
+	//		{"$limit": perPage},
+	//		{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+	//	}
+	//}
+
+	pkgFilter := func() (interface{}, string, int) {
+		return []bson.M{
+				{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil, "packages.subpackages.status": filter}}},
+			sortName, sortDirect
+	}
+
+	orderList, total, err := global.Singletons.OrderRepository.FindByFilterWithPageAndSort(ctx, pkgFilter, int64(page), int64(perPage))
+	if err != nil {
+		logger.Err("sellerOrderReturnDetailListHandler() => FindByFilter failed, pid: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	//pb.SellerReturnOrderDetailList{
+	//	Items: nil,
+	//}
+
+	sellerReturnOrderList := make([]*pb.SellerReturnOrderDetailList_ReturnOrderDetail, 0, len(orderList))
+
+	for i := 0; i < len(orderList); i++ {
+		for j := 0; j < len(orderList[i].Packages); j++ {
+			if orderList[i].Packages[j].PId == pid {
+				for z := 0; z < len(orderList[i].Packages[j].Subpackages); z++ {
+					if orderList[i].Packages[j].Subpackages[z].Status == string(filter) {
+						itemDetailList := make([]*pb.SellerReturnOrderDetailList_ReturnOrderDetail_ItemDetail, 0, len(orderList[i].Packages[j].Subpackages[z].Items))
+						for t := 0; t < len(orderList[i].Packages[j].Subpackages[z].Items); t++ {
+							itemOrderDetail := &pb.SellerReturnOrderDetailList_ReturnOrderDetail_ItemDetail{
+								SID:             orderList[i].Packages[j].Subpackages[z].SId,
+								Sku:             orderList[i].Packages[j].Subpackages[z].Items[t].SKU,
+								InventoryId:     orderList[i].Packages[j].Subpackages[z].Items[t].InventoryId,
+								Title:           orderList[i].Packages[j].Subpackages[z].Items[t].Title,
+								Brand:           orderList[i].Packages[j].Subpackages[z].Items[t].Brand,
+								Category:        orderList[i].Packages[j].Subpackages[z].Items[t].Category,
+								Guaranty:        orderList[i].Packages[j].Subpackages[z].Items[t].Guaranty,
+								Image:           orderList[i].Packages[j].Subpackages[z].Items[t].Image,
+								Returnable:      orderList[i].Packages[j].Subpackages[z].Items[t].Returnable,
+								Quantity:        orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
+								Attributes:      orderList[i].Packages[j].Subpackages[z].Items[t].Attributes,
+								ReturnRequestAt: "",
+								ReturnShippedAt: "",
+								Invoice: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_ItemDetail_Invoice{
+									Unit:             orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit,
+									Total:            orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total,
+									Original:         orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original,
+									Special:          orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special,
+									Discount:         orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount,
+									SellerCommission: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.SellerCommission,
+									Currency:         orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Currency,
+								},
+							}
+
+							if orderList[i].Packages[j].Subpackages[z].Shipments != nil &&
+								orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail != nil {
+								if orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt != nil {
+									itemOrderDetail.ReturnRequestAt = orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt.Format(ISO8601)
+								}
+								if orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.ShippedAt != nil {
+									itemOrderDetail.ReturnShippedAt = orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.ShippedAt.Format(ISO8601)
+								}
+							}
+
+							itemDetailList = append(itemDetailList, itemOrderDetail)
+						}
+
+					}
+				}
+				returnOrderDetail := &pb.SellerReturnOrderDetailList_ReturnOrderDetail{
+					OID:       orderList[i].Packages[j].OrderId,
+					PID:       orderList[i].Packages[j].PId,
+					Amount:    orderList[i].Packages[j].Invoice.Subtotal,
+					Status:    string(filter),
+					RequestAt: orderList[i].Packages[j].CreatedAt.Format(ISO8601),
+					Address: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_ShipmentAddress{
+						FirstName:     orderList[i].BuyerInfo.ShippingAddress.FirstName,
+						LastName:      orderList[i].BuyerInfo.ShippingAddress.LastName,
+						Address:       orderList[i].BuyerInfo.ShippingAddress.Address,
+						Phone:         orderList[i].BuyerInfo.ShippingAddress.Phone,
+						Mobile:        orderList[i].BuyerInfo.ShippingAddress.Mobile,
+						Country:       orderList[i].BuyerInfo.ShippingAddress.Country,
+						City:          orderList[i].BuyerInfo.ShippingAddress.City,
+						Province:      orderList[i].BuyerInfo.ShippingAddress.Province,
+						Neighbourhood: orderList[i].BuyerInfo.ShippingAddress.Neighbourhood,
+						Lat:           "",
+						Long:          "",
+						ZipCode:       orderList[i].BuyerInfo.ShippingAddress.ZipCode,
+					},
+				}
+				if orderList[i].BuyerInfo.ShippingAddress.Location != nil {
+					returnOrderDetail.Address.Lat = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[0]))
+					returnOrderDetail.Address.Long = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[1]))
+				}
+				sellerReturnOrderList = append(sellerReturnOrderList, returnOrderDetail)
+			}
+		}
+	}
+
+	sellerReturnOrderDetailList := &pb.SellerReturnOrderDetailList{
+		ReturnOrderDetail: sellerReturnOrderList,
+	}
+
+	serializedData, err := proto.Marshal(sellerReturnOrderDetailList)
+	if err != nil {
+		logger.Err("sellerOrderDetailHandler() => could not serialize sellerReturnOrderDetailList, sellerReturnOrderDetailList: %v, error:%s", sellerReturnOrderDetailList, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "SellerReturnOrderDetailList",
+		Meta: &pb.ResponseMetadata{
+			Total:   uint32(total),
+			Page:    page,
+			PerPage: perPage,
+		},
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(sellerReturnOrderDetailList),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
 }
 
-func (server *Server) sellerOrderReturnDetailHandler(ctx context.Context, userId, orderId, sid uint64) (*pb.MessageResponse, error) {
-
-}
-
-func (server *Server) buyerOrderListHandler(ctx context.Context, userId uint64, filter FilterValue, page, perPage uint32,
+func (server *Server) buyerOrderDetailHandler(ctx context.Context, userId uint64, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
+	if page <= 0 || perPage <= 0 {
+		logger.Err("buyerOrderDetailHandler() => page or perPage invalid, userId: %d, page: %d, perPage: %d", userId, page, perPage)
+		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
+	}
 
+	var sortDirect int
+	if direction == "ASC" {
+		sortDirect = 1
+	} else {
+		sortDirect = -1
+	}
+
+	orderFilter := func() (interface{}, string, int) {
+		return []bson.M{
+				{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "order.status": bson.M{"$or": bson.A{states.OrderInProgressStatus, states.NewOrder}}}}},
+			sortName, sortDirect
+	}
+
+	orderList, total, err := global.Singletons.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+	if err != nil {
+		logger.Err("sellerOrderReturnDetailListHandler() => FindByFilter failed, userId: %d, page: %d, perPage: %d, error: %s", userId, page, perPage, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	orderDetailList := make([]*pb.BuyerOrderDetailList_OrderDetail, 0, len(orderList))
+	for i := 0; i < len(orderList); i++ {
+		packageDetailList := make([]*pb.BuyerOrderDetailList_OrderDetail_Package, 0, len(orderList[i].Packages))
+		for j := 0; j < len(orderList[i].Packages); j++ {
+			for z := 0; z < len(orderList[i].Packages[j].Subpackages); z++ {
+				itemPackageDetailList := make([]*pb.BuyerOrderDetailList_OrderDetail_Package_Item, 0, len(orderList[i].Packages[j].Subpackages[z].Items))
+				for t := 0; t < len(orderList[i].Packages[j].Subpackages[z].Items); t++ {
+					itemPackageDetail := &pb.BuyerOrderDetailList_OrderDetail_Package_Item{
+						SID:                orderList[i].Packages[j].Subpackages[z].SId,
+						Status:             orderList[i].Packages[j].Subpackages[z].Status,
+						IsCancelable:       false,
+						IsReturnable:       false,
+						IsReturnCancelable: false,
+						ProductId:          orderList[i].Packages[j].Subpackages[z].Items[t].InventoryId[0:7],
+						InventoryId:        orderList[i].Packages[j].Subpackages[z].Items[t].InventoryId,
+						Title:              orderList[i].Packages[j].Subpackages[z].Items[t].Title,
+						Brand:              orderList[i].Packages[j].Subpackages[z].Items[t].Brand,
+						Image:              orderList[i].Packages[j].Subpackages[z].Items[t].Image,
+						Returnable:         orderList[i].Packages[j].Subpackages[z].Items[t].Returnable,
+						Quantity:           orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
+						Attributes:         orderList[i].Packages[j].Subpackages[z].Items[t].Attributes,
+						Invoice: &pb.BuyerOrderDetailList_OrderDetail_Package_Item_Invoice{
+							Unit:     orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit,
+							Total:    orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total,
+							Original: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original,
+							Special:  orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special,
+							Discount: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount,
+							Currency: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Currency,
+						},
+					}
+					if itemPackageDetail.Status == states.ApprovalPending.StateName() ||
+						itemPackageDetail.Status == states.ShipmentPending.StateName() ||
+						itemPackageDetail.Status == states.ShipmentDelayed.StateName() {
+						itemPackageDetail.IsCancelable = true
+
+					} else if itemPackageDetail.Status == states.Delivered.StateName() {
+						itemPackageDetail.IsReturnable = true
+
+					} else if itemPackageDetail.Status == states.ReturnRequestPending.StateName() {
+						itemPackageDetail.IsReturnCancelable = true
+					}
+
+					itemPackageDetailList = append(itemPackageDetailList, itemPackageDetail)
+				}
+
+				packageDetail := &pb.BuyerOrderDetailList_OrderDetail_Package{
+					PID:          orderList[i].Packages[j].PId,
+					ShopName:     orderList[i].Packages[j].ShopName,
+					Items:        itemPackageDetailList,
+					ShipmentInfo: nil,
+				}
+
+				if orderList[i].Packages[j].Subpackages[z].Shipments != nil &&
+					orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail != nil {
+					packageDetail.ShipmentInfo = &pb.BuyerOrderDetailList_OrderDetail_Package_Shipment{
+						DeliveryAt:     nil,
+						ShippedAt:      orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601),
+						ShipmentAmount: orderList[i].Packages[j].ShipmentSpec.ShippingCost,
+						CarrierName:    orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.CarrierName,
+						TrackingNumber: orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.TrackingNumber,
+					}
+
+					packageDetail.ShipmentInfo.DeliveryAt = orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.
+						Add(time.Duration(orderList[i].Packages[j].ShipmentSpec.ShippingTime) * time.Hour).Format(ISO8601)
+				}
+
+				packageDetailList = append(packageDetailList, packageDetail)
+			}
+		}
+
+		orderDetail := &pb.BuyerOrderDetailList_OrderDetail{
+			Address: &pb.BuyerOrderDetailList_OrderDetail_BuyerAddress{
+				FirstName:     orderList[i].BuyerInfo.ShippingAddress.FirstName,
+				LastName:      orderList[i].BuyerInfo.ShippingAddress.LastName,
+				Address:       orderList[i].BuyerInfo.ShippingAddress.Address,
+				Phone:         orderList[i].BuyerInfo.ShippingAddress.Phone,
+				Mobile:        orderList[i].BuyerInfo.ShippingAddress.Mobile,
+				Country:       orderList[i].BuyerInfo.ShippingAddress.Country,
+				City:          orderList[i].BuyerInfo.ShippingAddress.City,
+				Province:      orderList[i].BuyerInfo.ShippingAddress.Province,
+				Neighbourhood: orderList[i].BuyerInfo.ShippingAddress.Neighbourhood,
+				Lat:           "",
+				Long:          "",
+				ZipCode:       orderList[i].BuyerInfo.ShippingAddress.ZipCode,
+			},
+			PackageCount:     int32(len(orderList[i].Packages)),
+			TotalAmount:      orderList[i].Invoice.Subtotal,
+			PayableAmount:    orderList[i].Invoice.GrandTotal,
+			Discounts:        orderList[i].Invoice.Discount,
+			ShipmentAmount:   orderList[i].Invoice.ShipmentTotal,
+			IsPaymentSuccess: false,
+			RequestAt:        orderList[i].CreatedAt.Format(ISO8601),
+			Packages:         packageDetailList,
+		}
+		if orderList[i].BuyerInfo.ShippingAddress.Location != nil {
+			orderDetail.Address.Lat = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[0]))
+			orderDetail.Address.Long = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[1]))
+		}
+
+		if orderList[i].PaymentService != nil && orderList[i].PaymentService[0].PaymentResult != nil {
+			orderDetail.IsPaymentSuccess = orderList[i].PaymentService[0].PaymentResult.Result
+		}
+
+		orderDetailList = append(orderDetailList, orderDetail)
+	}
+
+	buyerOrderDetailList := &pb.BuyerOrderDetailList{
+		OrderDetails: orderDetailList,
+	}
+
+	serializedData, err := proto.Marshal(buyerOrderDetailList)
+	if err != nil {
+		logger.Err("buyerOrderDetailHandler() => could not serialize buyerOrderDetailList, userId: %d, error:%s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "buyerOrderDetailList",
+		Meta: &pb.ResponseMetadata{
+			Total:   uint32(total),
+			Page:    page,
+			PerPage: perPage,
+		},
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(buyerOrderDetailList),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
 }
 
-func (server *Server) buyerOrderDetailHandler(ctx context.Context, userId, orderId, sid uint64) (*pb.MessageResponse, error) {
+func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
 
+	returnRequestPendingFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnRequestPending.StateName()}},
+			{"$project": bson.M{"subSize": 1}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	returnShipmentPendingFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnShipmentPending.StateName()}},
+			{"$project": bson.M{"subSize": 1}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	returnShippedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnShipped.StateName()}},
+			{"$project": bson.M{"subSize": 1}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	// TODO check correct result
+	returnDeliveredFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnDelivered.StateName()}},
+			{"$project": bson.M{"subSize": 1}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	// TODO check correct result
+	returnDeliveryFailedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnDeliveryFailed.StateName()}},
+			{"$project": bson.M{"subSize": 1}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	returnRequestPendingCount, err := global.Singletons.SubPkgRepository.CountWithFilter(ctx, returnRequestPendingFilter)
+	if err != nil {
+		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnRequestPendingFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnShipmentPendingCount, err := global.Singletons.SubPkgRepository.CountWithFilter(ctx, returnShipmentPendingFilter)
+	if err != nil {
+		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnShipmentPendingFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnShippedCount, err := global.Singletons.SubPkgRepository.CountWithFilter(ctx, returnShippedFilter)
+	if err != nil {
+		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnShippedFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnDeliveredCount, err := global.Singletons.SubPkgRepository.CountWithFilter(ctx, returnDeliveredFilter)
+	if err != nil {
+		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnDeliveredFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnDeliveryFailedCount, err := global.Singletons.SubPkgRepository.CountWithFilter(ctx, returnDeliveryFailedFilter)
+	if err != nil {
+		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnDeliveryFailedFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	buyerReturnOrderReports := &pb.BuyerReturnOrderReports{
+		ReturnRequestPending:  int32(returnRequestPendingCount),
+		ReturnShipmentPending: int32(returnShipmentPendingCount),
+		ReturnShipped:         int32(returnShippedCount),
+		ReturnDelivered:       int32(returnDeliveredCount),
+		ReturnDeliveryFailed:  int32(returnDeliveryFailedCount),
+	}
+
+	serializedData, err := proto.Marshal(buyerReturnOrderReports)
+	if err != nil {
+		logger.Err("buyerReturnOrderReportsHandler() => could not serialize buyerReturnOrderReports, userId: %d, error:%s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "BuyerReturnOrderReports",
+		Meta:   nil,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(buyerReturnOrderReports),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
 }
 
-func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId, orderId, sid uint64) (*pb.MessageResponse, error) {
-
-}
-
-func (server *Server) buyerReturnOrderListHandler(ctx context.Context, userId uint64, filter FilterValue, page, perPage uint32,
+func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, userId uint64, filter FilterValue, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
+	if page <= 0 || perPage <= 0 {
+		logger.Err("buyerReturnOrderDetailListHandler() => page or perPage invalid, userId: %d, filter: %s, page: %d, perPage: %d", userId, filter, page, perPage)
+		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
+	}
 
-}
+	var sortDirect int
+	if direction == "ASC" {
+		sortDirect = 1
+	} else {
+		sortDirect = -1
+	}
 
-func (server *Server) buyerReturnOrderDetailHandler(ctx context.Context, userId, orderId, sid uint64) (*pb.MessageResponse, error) {
+	orderFilter := func() (interface{}, string, int) {
+		return []bson.M{
+				{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnShipped.StateName()}}},
+			sortName, sortDirect
+	}
+
+	orderList, total, err := global.Singletons.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+	if err != nil {
+		logger.Err("buyerReturnOrderDetailListHandler() => FindByFilter failed, userId: %d, filter: %s, page: %d, perPage: %d, error: %s", userId, filter, page, perPage, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnOrderDetailList := make([]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail, 0, len(orderList))
+	for i := 0; i < len(orderList); i++ {
+		returnPackageDetailList := make([]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail, 0, len(orderList[i].Packages))
+		for j := 0; j < len(orderList[i].Packages); j++ {
+			for z := 0; z < len(orderList[i].Packages[j].Subpackages); z++ {
+				returnItemPackageDetailList := make([]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item, 0, len(orderList[i].Packages[j].Subpackages[z].Items))
+				for t := 0; t < len(orderList[i].Packages[j].Subpackages[z].Items); t++ {
+					returnItemPackageDetail := &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item{
+						SID:          orderList[i].Packages[j].Subpackages[z].SId,
+						Status:       orderList[i].Packages[j].Subpackages[z].Status,
+						IsCancelable: false,
+						IsAccepted:   false,
+						//ShopName:           orderList[i].Packages[j].Subpackages[z].Items[t].ShopName,
+						ProductId:       orderList[i].Packages[j].Subpackages[z].Items[t].InventoryId[0:7],
+						InventoryId:     orderList[i].Packages[j].Subpackages[z].Items[t].InventoryId,
+						Title:           orderList[i].Packages[j].Subpackages[z].Items[t].Title,
+						Brand:           orderList[i].Packages[j].Subpackages[z].Items[t].Brand,
+						Image:           orderList[i].Packages[j].Subpackages[z].Items[t].Image,
+						Returnable:      orderList[i].Packages[j].Subpackages[z].Items[t].Returnable,
+						Quantity:        orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
+						Attributes:      orderList[i].Packages[j].Subpackages[z].Items[t].Attributes,
+						Reason:          "",
+						ReturnRequestAt: orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt.Format(ISO8601),
+						Invoice: &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Invoice{
+							Unit:     orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit,
+							Total:    orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total,
+							Original: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original,
+							Special:  orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special,
+							Discount: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount,
+							Currency: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Currency,
+						},
+					}
+
+					if orderList[i].Packages[j].Subpackages[z].Items[t].Reasons != nil {
+						returnItemPackageDetail.Reason = orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0]
+					}
+
+					if returnItemPackageDetail.Status == states.ReturnRequestPending.StateName() {
+						returnItemPackageDetail.IsCancelable = true
+
+					} else if returnItemPackageDetail.Status == states.ReturnShipmentPending.StateName() {
+						returnItemPackageDetail.IsAccepted = true
+
+					}
+
+					returnItemPackageDetailList = append(returnItemPackageDetailList, returnItemPackageDetail)
+				}
+
+				returnPackageDetail := &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail{
+					PID:      orderList[i].Packages[j].PId,
+					ShopName: orderList[i].Packages[j].ShopName,
+					Mobile:   "",
+					Phone:    "",
+					Shipment: nil,
+					Items:    returnItemPackageDetailList,
+				}
+
+				if orderList[i].Packages[j].SellerInfo != nil {
+					if orderList[i].Packages[j].SellerInfo.ReturnInfo != nil {
+						returnPackageDetail.Shipment = &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_SellerReturnShipment{
+							Country:      orderList[i].Packages[j].SellerInfo.ReturnInfo.Country,
+							Province:     orderList[i].Packages[j].SellerInfo.ReturnInfo.Province,
+							City:         orderList[i].Packages[j].SellerInfo.ReturnInfo.City,
+							Neighborhood: orderList[i].Packages[j].SellerInfo.ReturnInfo.Neighborhood,
+							Address:      orderList[i].Packages[j].SellerInfo.ReturnInfo.PostalAddress,
+							ZipCode:      orderList[i].Packages[j].SellerInfo.ReturnInfo.PostalCode}
+					}
+					if orderList[i].Packages[j].SellerInfo.GeneralInfo != nil {
+						returnPackageDetail.Mobile = orderList[i].Packages[j].SellerInfo.GeneralInfo.MobilePhone
+						returnPackageDetail.Phone = orderList[i].Packages[j].SellerInfo.GeneralInfo.LandPhone
+					}
+				}
+
+				returnPackageDetailList = append(returnPackageDetailList, returnPackageDetail)
+			}
+		}
+
+		returnOrderDetail := &pb.BuyerReturnOrderDetailList_ReturnOrderDetail{
+			OID:                 orderList[i].OrderId,
+			CreatedAt:           orderList[i].CreatedAt.Format(ISO8601),
+			TotalAmount:         orderList[i].Invoice.Subtotal,
+			ReturnPackageDetail: returnPackageDetailList,
+		}
+
+		returnOrderDetailList = append(returnOrderDetailList, returnOrderDetail)
+	}
+
+	buyerReturnOrderDetailList := &pb.BuyerReturnOrderDetailList{
+		ReturnOrderDetail: returnOrderDetailList,
+	}
+
+	serializedData, err := proto.Marshal(buyerReturnOrderDetailList)
+	if err != nil {
+		logger.Err("buyerReturnOrderDetailListHandler() => could not serialize buyerReturnOrderDetailList, userId: %d, filter: %s, error:%s", userId, filter, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "buyerReturnOrderDetailList",
+		Meta: &pb.ResponseMetadata{
+			Total:   uint32(total),
+			Page:    page,
+			PerPage: perPage,
+		},
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(buyerReturnOrderDetailList),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
 
 }
 
@@ -581,7 +1236,7 @@ func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIden
 	sellerId, err := strconv.Atoi(req.Id)
 	if err != nil {
 		logger.Err(" SellerFindAllItems() => sellerId invalid: %s", req.Id)
-		return nil, status.Error(codes.Code(future.BadRequest), "PId Invalid")
+		return nil, status.Error(codes.Code(future.BadRequest), "PID Invalid")
 	}
 
 	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {

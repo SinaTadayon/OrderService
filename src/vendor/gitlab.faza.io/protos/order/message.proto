@@ -35,12 +35,18 @@ message MetaSorts {
     string direction = 2;
 }
 
+// UID = userId
+// UTP = userType
+// OID = orderId
+// PID = packageId
+// SID = subpackageId
+
 message RequestMetadata {
-    uint64 UId = 1;
-    string userType = 2;
-    uint64 OId = 3;
-    uint64 PId = 4;
-    uint64 SId = 5;
+    uint64 UID = 1;
+    string UTP = 2;
+    uint64 OID = 3;
+    uint64 PID = 4;
+    repeated uint64 SIDs = 5;
     uint32 page = 6;
     uint32 perPage = 7;
     string ipAddress = 8;
@@ -75,13 +81,13 @@ message ValidationErr {
 }
 
 message ActionResponse {
-    uint64 OId = 1;
-    repeated uint64 SIds = 2;
+    uint64 OID = 1;
+    repeated uint64 SIDs = 2;
 }
 
 message ActionData {
     message Subpackage {
-        uint64 SId = 1;
+        uint64 SID = 1;
         message Item {
             string  inventoryId = 1;
             int32   quantity = 2;
@@ -99,19 +105,21 @@ message ActionData {
 /////////////////////////////////////////////////////////////
 // seller messages
 message SellerOrderList {
+    uint64 PID  = 1;
     message ItemList {
-        uint64 OId = 1;
-        string orderRequestTimestamp = 2;
+        uint64 OID = 1;
+        string RequestAt = 2;
         uint64 amount = 3;
     };
-    repeated ItemList items = 4;
+    repeated ItemList items = 2;
 }
 
 message SellerOrderDetail {
-    uint64 OId = 1;
-    uint64 amount = 2 ;
-    string status = 3 ;
-    string orderRequestTimestamp = 4;
+    uint64 OID = 1;
+    uint64 PID = 2;
+    uint64 amount = 3;
+    string status = 4;
+    string RequestAt = 5;
     message ShipmentAddress {
         string firstName = 1;
         string lastName = 2;
@@ -126,10 +134,10 @@ message SellerOrderDetail {
         string long = 11;
         string zipCode = 12;
     }
-    ShipmentAddress address = 5;
+    ShipmentAddress address = 6;
 
     message ItemDetail {
-        uint64 SId = 1;
+        uint64 SID = 1;
         string sku = 2;
         string inventoryId = 3;
         string title = 4;
@@ -152,147 +160,171 @@ message SellerOrderDetail {
         Invoice invoice = 12;
     }
 
-    repeated ItemDetail items = 6;
+    repeated ItemDetail items = 7;
 }
 
-message SellerOrderReturnList {
-    message ItemOrderList {
-        uint64 OId = 1;
-        uint64 SId = 2;
-        string sku = 3;
-        string inventoryId = 4;
-        string orderRequestTimestamp = 5;
-        string returnRequestTimestamp = 6;
-        uint64 amount = 7;
-        string title = 8;
-        string brand = 9;
-        int32 quantity = 10;
+//message SellerOrderReturnList {
+//    message ItemOrderList {
+//        uint64 OID = 1;
+//        uint64 SID = 2;
+//        string sku = 3;
+//        string inventoryId = 4;
+//        string orderRequestTimestamp = 5;
+//        string returnRequestTimestamp = 6;
+//        uint64 amount = 7;
+//        string title = 8;
+//        string brand = 9;
+//        int32 quantity = 10;
+//        message ShipmentAddress {
+//            string firstName = 1;
+//            string lastName = 2;
+//            string address = 3;
+//            string country = 4;
+//            string city = 5;
+//            string province = 6;
+//            string neighbourhood = 7;
+//        }
+//        ShipmentAddress address = 11;
+//    };
+//    repeated ItemOrderList items = 1;
+//}
+
+message SellerReturnOrderDetailList {
+    message ReturnOrderDetail {
+        uint64 OID = 1;
+        uint64 PID = 2;
+        uint64 amount = 3;
+        string status = 4;
+        string RequestAt = 5;
         message ShipmentAddress {
             string firstName = 1;
             string lastName = 2;
             string address = 3;
-            string country = 4;
-            string city = 5;
-            string province = 6;
-            string neighbourhood = 7;
+            string phone = 4;
+            string mobile = 5;
+            string country = 6;
+            string city = 7;
+            string province = 8;
+            string neighbourhood = 9;
+            string lat = 10;
+            string long = 11;
+            string zipCode = 12;
         }
-        ShipmentAddress address = 11;
-    };
-    repeated ItemOrderList items = 1;
-}
+        ShipmentAddress address = 7;
 
-message SellerOrderReturnDetail {
-    uint64 OId = 1;
-    uint64 SId = 2;
-    uint64 amount = 3;
-    string status = 4;
-    string orderRequestTimestamp = 5;
-    string returnRequestTimestamp = 6;
-    message ShipmentAddress {
-        string firstName = 1;
-        string lastName = 2;
-        string address = 3;
-        string phone = 4;
-        string mobile = 5;
-        string country = 6;
-        string city = 7;
-        string province = 8;
-        string neighbourhood = 9;
-        string lat = 10;
-        string long = 11;
-        string zipCode = 12;
-    }
-    ShipmentAddress address = 7;
+        message ItemDetail {
+            uint64 SID = 1;
+            string sku = 2;
+            string inventoryId = 3;
+            string title = 4;
+            string brand = 5;
+            string category = 6;
+            string guaranty = 7;
+            string image = 8;
+            bool returnable = 9;
+            int32 quantity = 10;
+            map<string, string> attributes = 11;
+            string ReturnRequestAt = 12;
+            string ReturnShippedAt = 13;
+            message Invoice {
+                uint64 unit = 1;
+                uint64 total = 2;
+                uint64 original = 3;
+                uint64 special = 4;
+                uint64 discount = 5;
+                float sellerCommission = 6;
+                string currency = 7;
+            };
+            Invoice invoice = 14;
+        }
 
-    message ItemDetail {
-        string sku = 1;
-        string inventoryId = 2;
-        string title = 3;
-        string brand = 4;
-        string category = 5;
-        string guaranty = 6;
-        string image = 7;
-        bool returnable = 8;
-        int32 quantity = 9;
-        map<string, string> attributes = 10;
-        message Invoice {
-            uint64 unit = 1;
-            uint64 total = 2;
-            uint64 original = 3;
-            uint64 special = 4;
-            uint64 discount = 5;
-            float  sellerCommission = 6;
-            string currency = 7;
-        };
-        Invoice invoice = 11;
+        repeated ItemDetail items = 8;
     }
 
-    repeated ItemDetail items = 8;
+    repeated ReturnOrderDetail returnOrderDetail = 1;
 }
 
 /////////////////////////////////////////////////////////////
 // buyer messages
-message BuyerOrderList {
-    message OrderList {
-        uint64 OId = 1;
-        string orderRequestTimestamp = 2;
+//message BuyerOrderList {
+//    message OrderList {
+//        uint64 OID = 1;
+//        string orderRequestTimestamp = 2;
+//        uint64 totalAmount = 3;
+//        bool isPaymentSuccess = 4;
+//    }
+//    repeated OrderList orders = 1;
+//}
+
+message BuyerOrderDetailList {
+
+    message OrderDetail {
+        message BuyerAddress {
+            string firstName = 1;
+            string lastName = 2;
+            string address = 3;
+            string phone = 4;
+            string mobile = 5;
+            string country = 6;
+            string city = 7;
+            string province = 8;
+            string neighbourhood = 9;
+            string lat = 10;
+            string long = 11;
+            string zipCode = 12;
+        }
+        BuyerAddress address = 1;
+        int32 packageCount = 2;
         uint64 totalAmount = 3;
-        bool isPaymentSuccess = 4;
-    }
-    repeated OrderList orders = 1;
-}
+        uint64 payableAmount = 4;
+        uint64 discounts = 5;
+        uint64 shipmentAmount = 6;
+        bool isPaymentSuccess = 7;
+        string RequestAt = 8;
 
-message BuyerOrderDetail {
-    message BuyerAddress {
-        string firstName = 1;
-        string lastName = 2;
-        string address = 3;
-        string country = 6;
-        string city = 7;
-        string province = 8;
-        string neighbourhood = 9;
-        string lat = 10;
-        string long = 11;
-        string zipCode = 12;
-    }
-    BuyerAddress address = 1;
-    int32 packageCount = 2;
-    uint64 totalAmount = 3;
-    uint64 payableAmount = 4;
-    uint64 discounts = 5;
-    uint64 shipmentAmount = 6;
-    bool isPaymentSuccess = 7;
-    string orderRequestTimestamp = 8;
+        message Package {
+            uint64 PID = 1;
+            string shopName = 2;
+            message Item {
+                uint64 SID = 1;
+                string status = 2;
+                bool isCancelable = 3;
+                bool isReturnable = 4;
+                bool isReturnCancelable = 5;
+                string productId = 6;
+                string inventoryId = 7;
+                string title = 8;
+                string brand = 9;
+                string image = 10;
+                bool returnable = 11;
+                int32 quantity = 12;
+                map<string, string> attributes = 13;
+                message Invoice {
+                    uint64 unit = 1;
+                    uint64 total = 2;
+                    uint64 original = 3;
+                    uint64 special = 4;
+                    uint64 discount = 5;
+                    string currency = 7;
+                };
+                Invoice invoice = 14;
+            }
 
-    message Package {
-        uint64 PId = 1;
-        string status = 2;
-        message Item {
-            uint64 SId = 1;
-            string productId = 2;
-            string inventoryId = 3;
-            string title = 4;
-            string brand = 5;
-            string image = 6;
-            bool returnable = 7;
-            int32 quantity = 8;
-            map<string, string> attributes = 9;
-            uint64 price = 10;
+            message Shipment {
+                string deliveryAt = 1;
+                string shippedAt = 2;
+                uint64 shipmentAmount = 3;
+                string carrierName = 4;
+                string trackingNumber = 5;
+            }
+
+            repeated Item items = 3;
+            Shipment shipmentInfo = 4;
         }
 
-        message Shipment {
-            string deliveryTimestamp = 1;
-            string shippedTimestamp = 2;
-            uint64 shipmentAmount = 3;
-            string carrierName = 4;
-            string trackingNumber = 5;
-        }
-
-        repeated Item items = 3;
-        Shipment shipmentInfo = 4;
+        repeated Package Packages = 9;
     }
-
-    repeated Package Packages = 9;
+    repeated OrderDetail orderDetails = 1;
 }
 
 message BuyerReturnOrderReports {
@@ -303,49 +335,71 @@ message BuyerReturnOrderReports {
     int32 returnDeliveryFailed = 5;
 }
 
-message BuyerReturnOrderList {
-    message ReturnOrder {
-        uint64 OId = 1;
-        string returnRequestTimestamp = 2;
-        string status = 3;
-        uint64 totalAmount = 4;
+//message BuyerReturnOrderList {
+//    message ReturnOrder {
+//        uint64 OID = 1;
+//        string returnRequestTimestamp = 2;
+//        string status = 3;
+//        uint64 totalAmount = 4;
+//    }
+//
+//    repeated ReturnOrder returnOrders = 1;
+//}
+
+message BuyerReturnOrderDetailList {
+
+    message ReturnOrderDetail {
+        uint64 OID = 1;
+        string createdAt = 2;
+        uint64 totalAmount = 3;
+
+        message ReturnPackageDetail {
+            uint64 PID = 1;
+            string shopName = 2;
+            string mobile = 3;
+            string phone = 4;
+
+            message SellerReturnShipment {
+                string Country = 1;
+                string Province = 2;
+                string City = 3;
+                string Neighborhood = 4;
+                string Address = 5;
+                string ZipCode = 6;
+            }
+
+            SellerReturnShipment shipment = 7;
+
+            message Item {
+                uint64 SID = 1;
+                string status = 2;
+                bool isCancelable = 3;
+                bool isAccepted = 4;
+                string productId = 5;
+                string inventoryId = 6;
+                string title = 7;
+                string brand = 8;
+                string image = 9;
+                bool returnable = 10;
+                int32 quantity = 11;
+                map<string, string> attributes = 12;
+                message Invoice {
+                    uint64 unit = 1;
+                    uint64 total = 2;
+                    uint64 original = 3;
+                    uint64 special = 4;
+                    uint64 discount = 5;
+                    string currency = 7;
+                };
+                Invoice invoice = 13;
+                string reason = 14;
+                string returnRequestAt = 15;
+            }
+
+            repeated Item items = 8;
+        }
+        repeated ReturnPackageDetail returnPackageDetail = 5;
     }
 
-    repeated ReturnOrder returnOrders = 1;
-}
-
-message BuyerReturnOrderDetail {
-    uint64 PId = 1;
-    string shopDisplayName = 2;
-    string mobile = 3;
-    string phone = 4;
-    string returnRequestTimestamp = 5;
-    uint64 totalAmount = 6;
-
-    message SellerReturnShipment {
-        string Country      = 1;
-        string Province     = 2;
-        string City         = 3;
-        string Neighborhood = 4;
-        string Address      = 5;
-        string ZipCode      = 6;
-    }
-
-    SellerReturnShipment shipment = 7;
-
-    message Item {
-        uint64 SId = 1;
-        string productId = 2;
-        string inventoryId = 3;
-        string title = 4;
-        string brand = 5;
-        string image = 6;
-        bool returnable = 7;
-        int32 quantity = 8;
-        map<string, string> attributes = 9;
-        uint64 price = 10;
-        string reason = 11;
-    }
-
-    repeated Item items = 8;
+    repeated ReturnOrderDetail returnOrderDetail = 1;
 }

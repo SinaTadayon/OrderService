@@ -145,7 +145,8 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 		}
 
 		var pkgItem = entities.PackageItem{
-			PId: pkgDto.SellerId,
+			PId:      pkgDto.SellerId,
+			ShopName: pkgDto.ShopName,
 			Invoice: entities.PackageInvoice{
 				Subtotal:       pkgDto.Invoice.Subtotal,
 				Discount:       pkgDto.Invoice.Discount,

@@ -8,6 +8,7 @@ type PackageItem struct {
 	Version      uint64         `bson:"version"`
 	Invoice      PackageInvoice `bson:"invoice"`
 	SellerInfo   *SellerProfile `bson:"sellerInfo"`
+	ShopName     string         `bson:"shopName"`
 	ShipmentSpec ShipmentSpec   `bson:"shipmentSpec"`
 	Subpackages  []Subpackage   `bson:"subpackages"`
 	Status       string         `bson:"status"`

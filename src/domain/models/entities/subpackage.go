@@ -18,18 +18,29 @@ type Subpackage struct {
 }
 
 type Shipment struct {
-	ShipmentDetail       *ShippingDetail `bson:"shipmentDetail"`
-	ReturnShipmentDetail *ShippingDetail `bson:"returnShipmentDetail"`
+	ShipmentDetail       *ShippingDetail       `bson:"shipmentDetail"`
+	ReturnShipmentDetail *ReturnShippingDetail `bson:"returnShipmentDetail"`
 }
 
 type ShippingDetail struct {
-	CarrierName    string    `bson:"carrierName"`
-	ShippingMethod string    `bson:"shippingMethod"`
-	TrackingNumber string    `bson:"trackingNumber"`
-	Image          string    `bson:"image"`
-	Description    string    `bson:"description"`
-	ShippedDate    time.Time `bson:"shippedDate"`
-	CreatedAt      time.Time `bson:"createdAt"`
+	CarrierName    string     `bson:"carrierName"`
+	ShippingMethod string     `bson:"shippingMethod"`
+	TrackingNumber string     `bson:"trackingNumber"`
+	Image          string     `bson:"image"`
+	Description    string     `bson:"description"`
+	ShippedAt      *time.Time `bson:"shippedDate"`
+	CreatedAt      time.Time  `bson:"createdAt"`
+}
+
+type ReturnShippingDetail struct {
+	CarrierName    string     `bson:"carrierName"`
+	ShippingMethod string     `bson:"shippingMethod"`
+	TrackingNumber string     `bson:"trackingNumber"`
+	Image          string     `bson:"image"`
+	Description    string     `bson:"description"`
+	ShippedAt      *time.Time `bson:"shippedDate"`
+	RequestedAt    *time.Time `bson:"requestedAt"`
+	CreatedAt      time.Time  `bson:"createdAt"`
 }
 
 type Item struct {
@@ -68,7 +79,7 @@ type State struct {
 	Name      string                 `bson:"name"`
 	Index     int                    `bson:"index"`
 	Data      map[string]interface{} `bson:"data"`
-	Actions   []Action               `bson:"action"`
+	Actions   []Action               `bson:"actions"`
 	CreatedAt time.Time              `bson:"createdAt"`
 }
 
@@ -173,19 +184,19 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 				TrackingNumber: subpackage.Shipments.ShipmentDetail.TrackingNumber,
 				Image:          subpackage.Shipments.ShipmentDetail.Image,
 				Description:    subpackage.Shipments.ShipmentDetail.Description,
-				ShippedDate:    subpackage.Shipments.ShipmentDetail.ShippedDate,
+				ShippedAt:      subpackage.Shipments.ShipmentDetail.ShippedAt,
 				CreatedAt:      subpackage.Shipments.ShipmentDetail.CreatedAt,
 			}
 		}
 
 		if subpackage.Shipments.ReturnShipmentDetail != nil {
-			subPkg.Shipments.ReturnShipmentDetail = &ShippingDetail{
+			subPkg.Shipments.ReturnShipmentDetail = &ReturnShippingDetail{
 				CarrierName:    subpackage.Shipments.ReturnShipmentDetail.CarrierName,
 				ShippingMethod: subpackage.Shipments.ReturnShipmentDetail.ShippingMethod,
 				TrackingNumber: subpackage.Shipments.ReturnShipmentDetail.TrackingNumber,
 				Image:          subpackage.Shipments.ReturnShipmentDetail.Image,
 				Description:    subpackage.Shipments.ReturnShipmentDetail.Description,
-				ShippedDate:    subpackage.Shipments.ReturnShipmentDetail.ShippedDate,
+				ShippedAt:      subpackage.Shipments.ReturnShipmentDetail.ShippedAt,
 				CreatedAt:      subpackage.Shipments.ReturnShipmentDetail.CreatedAt,
 			}
 		}

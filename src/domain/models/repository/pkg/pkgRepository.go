@@ -12,8 +12,6 @@ type IPkgItemRepository interface {
 
 	FindByFilter(ctx context.Context, supplier func() (filter interface{})) ([]*entities.PackageItem, error)
 
-	FindByFilterWithPage(ctx context.Context, totalSupplier, supplier func() (filter interface{}), page, perPage int64) ([]*entities.PackageItem, int64, error)
-
 	ExistsById(ctx context.Context, orderId uint64, id uint64) (bool, error)
 
 	Count(ctx context.Context, id uint64) (int64, error)
