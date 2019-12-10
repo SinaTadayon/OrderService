@@ -171,7 +171,8 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
-		scheduler_action.New(scheduler_action.Reject):       flowManager.statesMap[states.PayToSeller],
+		buyer_action.New(buyer_action.Cancel):               flowManager.statesMap[states.PayToSeller],
+		scheduler_action.New(scheduler_action.Close):        flowManager.statesMap[states.PayToSeller],
 		buyer_action.New(buyer_action.EnterShipmentDetails): flowManager.statesMap[states.ReturnShipped],
 	}
 	childStates = []states.IState{

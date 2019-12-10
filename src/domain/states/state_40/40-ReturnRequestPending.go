@@ -246,7 +246,7 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 
 					response := events.ActionResponse{
 						OrderId: newSubPackage.OrderId,
-						SIds:    newSubPackage.SId,
+						SIds:    nil,
 					}
 
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).

@@ -11,6 +11,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	"gitlab.faza.io/order-project/order-service/infrastructure/global"
+	"strconv"
 	"time"
 )
 
@@ -47,6 +48,19 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 			return
 		}
 
+		if iFrame.Body().Content() == nil {
+			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, sellerId: %d, sid: %d, %s state ",
+				subpkg.OrderId, subpkg.SellerId, subpkg.SId, state.Name())
+			return
+		}
+
+		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
+		if !ok {
+			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, sellerId: %d, sid: %d, %s state ",
+				subpkg.OrderId, subpkg.SellerId, subpkg.SId, state.Name())
+			return
+		}
+
 		// TODO must be read from reids config
 		expiredTime := time.Now().UTC().Add(time.Hour*
 			time.Duration(72) +
@@ -62,12 +76,20 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 				expiredTime, subpkg.OrderId, subpkg.SellerId, subpkg.SId, state.Name())
 		}
 
-		_, err := global.Singletons.SubPkgRepository.Update(ctx, *subpkg)
-		if err != nil {
+		// TODO check it
+		futureData := global.Singletons.UserService.GetSellerProfile(ctx, strconv.Itoa(int(subpkg.SellerId))).Get()
+		if futureData.Error() != nil {
 			logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
+				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, futureData.Error().Reason())
+		}
+
+		pkgItem.SellerInfo = futureData.Data().(*entities.SellerProfile)
+		_, err := global.Singletons.PkgItemRepository.Update(ctx, *pkgItem)
+		if err != nil {
+			logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
 				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
 		} else {
-			logger.Audit("Process() => Status of subpackage update to %s state, orderId: %d, sellerId: %d, sid: %d",
+			logger.Audit("Process() => Status of subpackage update to %s state and sellerProfile get from user service , orderId: %d, sellerId: %d, sid: %d",
 				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId)
 		}
 
@@ -246,7 +268,7 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 
 					response := events.ActionResponse{
 						OrderId: newSubPackage.OrderId,
-						SIds:    newSubPackage.SId,
+						SIds:    nil,
 					}
 
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).

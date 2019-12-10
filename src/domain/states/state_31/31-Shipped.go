@@ -259,7 +259,7 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 
 					response := events.ActionResponse{
 						OrderId: newSubPackage.OrderId,
-						SIds:    newSubPackage.SId,
+						SIds:    nil,
 					}
 
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).

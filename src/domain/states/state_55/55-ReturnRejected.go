@@ -245,7 +245,7 @@ func (state returnRejectedState) Process(ctx context.Context, iFrame frame.IFram
 
 					response := events.ActionResponse{
 						OrderId: newSubPackage.OrderId,
-						SIds:    newSubPackage.SId,
+						SIds:    nil,
 					}
 
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
