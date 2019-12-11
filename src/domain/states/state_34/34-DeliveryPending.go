@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
 	"gitlab.faza.io/order-project/order-service/domain/events"
@@ -11,7 +12,6 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
-	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	"time"
 )
@@ -83,7 +83,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 				notificationExpiredTime, deliveredExpiredTime, subpkg.OrderId, subpkg.SellerId, subpkg.SId, state.Name())
 		}
 
-		_, err := global.Singletons.SubPkgRepository.Update(ctx, *subpkg)
+		_, err := app.Globals.SubPkgRepository.Update(ctx, *subpkg)
 		if err != nil {
 			logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
 				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
@@ -119,7 +119,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 			}
 
 			if event.Action().ActionType() == actions.Scheduler && event.Action().ActionEnum() == scheduler_action.Notification {
-				order, err := global.Singletons.OrderRepository.FindById(ctx, pkgItem.OrderId)
+				order, err := app.Globals.OrderRepository.FindById(ctx, pkgItem.OrderId)
 				if err != nil {
 					logger.Err("Process() => OrderRepository.FindById failed, state: %s, orderId: %d, sellerId: %d, error: %s",
 						state.Name(), pkgItem.OrderId, pkgItem.PId, err.Error())
@@ -132,7 +132,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 						Body:  "Order Satisfaction",
 					}
 
-					futureData := global.Singletons.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
+					futureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
 					if futureData.Error() != nil {
 						logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, sellerId: %d, sid: %d, error: %s",
 							buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, futureData.Error().Reason())
@@ -256,7 +256,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 
 				if len(pkgItem.Subpackages) != len(subpackages) {
 					pkgItem.Subpackages = subpackages
-					pkgItemUpdated, err := global.Singletons.PkgItemRepository.Update(ctx, *pkgItem)
+					pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 					if err != nil {
 						logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
 							pkgItem.OrderId, pkgItem.PId, event, err.Error())
@@ -269,7 +269,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 				}
 
 				state.UpdateSubPackage(ctx, newSubPackage, DeliveryPendingAction)
-				err := global.Singletons.SubPkgRepository.Save(ctx, newSubPackage)
+				err := app.Globals.SubPkgRepository.Save(ctx, newSubPackage)
 				if err != nil {
 					logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
 						newSubPackage.OrderId, newSubPackage.SellerId, event, err.Error())
@@ -283,7 +283,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 				}
 
 				if nextActionState != nil {
-					pkgItemUpdated, err := global.Singletons.PkgItemRepository.Update(ctx, *pkgItem)
+					pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 					if err != nil {
 						logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
 							pkgItem.OrderId, pkgItem.PId, event, err.Error())

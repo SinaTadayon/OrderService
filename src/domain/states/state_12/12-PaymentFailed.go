@@ -3,12 +3,12 @@ package state_12
 import (
 	"context"
 	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/stock"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
-	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"time"
 )
 
@@ -76,7 +76,7 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 		}
 
 		state.UpdateOrderAllStatus(ctx, order, states.OrderClosedStatus, states.PackageClosedStatus, stockAction)
-		_, err := global.Singletons.OrderRepository.Save(ctx, *order)
+		_, err := app.Globals.OrderRepository.Save(ctx, *order)
 		if err != nil {
 			logger.Err("OrderRepository.Save in %s state failed, orderId: %d, error: %s", state.Name(), order.OrderId, err.Error())
 		}
@@ -98,7 +98,7 @@ func (state paymentFailedState) releasedStock(ctx context.Context, order *entiti
 		}
 	}
 
-	iFuture := global.Singletons.StockService.BatchStockActions(ctx, inventories,
+	iFuture := app.Globals.StockService.BatchStockActions(ctx, inventories,
 		stock_action.New(stock_action.Release))
 	futureData := iFuture.Get()
 	if futureData.Error() != nil {

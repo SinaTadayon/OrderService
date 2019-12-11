@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-var config *configs.Cfg
+var config *configs.Config
 var userService *iUserServiceImpl
 
 func init() {

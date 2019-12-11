@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-var config *configs.Cfg
+var config *configs.Config
 var payment iPaymentServiceImpl
 
 func init() {

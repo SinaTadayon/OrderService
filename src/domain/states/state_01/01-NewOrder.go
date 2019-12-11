@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/stock"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
@@ -52,7 +53,7 @@ func (state newOrderState) Process(ctx context.Context, iFrame frame.IFrame) {
 		CreatedAt: time.Now().UTC(),
 	}
 	state.UpdateOrderAllStatus(ctx, &order, states.OrderNewStatus, states.PackageNewStatus, action)
-	newOrder, err := global.Singletons.OrderRepository.Save(ctx, order)
+	newOrder, err := app.Globals.OrderRepository.Save(ctx, order)
 	if err != nil {
 		errStr = fmt.Sprintf("OrderRepository.Save in %s state failed, order: %v, error: %s", state.Name(), order, err.Error())
 		logger.Err(errStr)
@@ -78,7 +79,7 @@ func (state newOrderState) releasedStock(ctx context.Context, order *entities.Or
 		}
 	}
 
-	iFuture := global.Singletons.StockService.BatchStockActions(ctx, inventories,
+	iFuture := app.Globals.StockService.BatchStockActions(ctx, inventories,
 		stock_action.New(stock_action.Release))
 	futureData := iFuture.Get()
 	//if futureData == nil {

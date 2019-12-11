@@ -3,13 +3,13 @@ package state_80
 import (
 	"context"
 	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/stock"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
-	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"time"
 )
 
@@ -75,7 +75,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 
 		state.UpdateSubPackage(ctx, subpkg, releaseStockAction)
 		state.UpdateSubPackage(ctx, subpkg, nextToAction)
-		subPkgUpdated, err := global.Singletons.SubPkgRepository.Update(ctx, *subpkg)
+		subPkgUpdated, err := app.Globals.SubPkgRepository.Update(ctx, *subpkg)
 		if err != nil {
 			logger.Err("SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
 				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
@@ -84,7 +84,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(subPkgUpdated).Build())
 		}
 
-		order, err := global.Singletons.OrderRepository.FindById(ctx, subpkg.OrderId)
+		order, err := app.Globals.OrderRepository.FindById(ctx, subpkg.OrderId)
 		if err != nil {
 			logger.Err("OrderRepository.FindById in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
 				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
@@ -104,7 +104,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 
 			if findFlag {
 				state.SetPkgStatus(ctx, &order.Packages[i], states.PackageClosedStatus)
-				_, err := global.Singletons.PkgItemRepository.Update(ctx, order.Packages[i])
+				_, err := app.Globals.PkgItemRepository.Update(ctx, order.Packages[i])
 				if err != nil {
 					logger.Err("update pkgItem status to closed failed, orderId: %d, sellerId: %d, error: %s",
 						state.Name(), order.Packages[i].OrderId, order.Packages[i].PId, err.Error())
@@ -125,7 +125,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 
 		if findFlag {
 			state.SetOrderStatus(ctx, order, states.OrderClosedStatus)
-			_, err := global.Singletons.OrderRepository.Save(ctx, *order)
+			_, err := app.Globals.OrderRepository.Save(ctx, *order)
 			if err != nil {
 				logger.Err("update order status to closed failed, orderId: %d, error: %s",
 					state.Name(), order.OrderId, err.Error())
@@ -146,7 +146,7 @@ func (state payToBuyerState) releasedStock(ctx context.Context, subpackage *enti
 		inventories[item.InventoryId] = int(item.Quantity)
 	}
 
-	iFuture := global.Singletons.StockService.BatchStockActions(ctx, inventories,
+	iFuture := app.Globals.StockService.BatchStockActions(ctx, inventories,
 		stock_action.New(stock_action.Release))
 	futureData := iFuture.Get()
 	if futureData.Error() != nil {

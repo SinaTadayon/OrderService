@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-var config *configs.Cfg
+var config *configs.Config
 var voucherSrv iVoucherServiceImpl
 
 func init() {

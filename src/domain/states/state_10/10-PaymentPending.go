@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	payment_action "gitlab.faza.io/order-project/order-service/domain/actions/payment"
 	voucher_action "gitlab.faza.io/order-project/order-service/domain/actions/voucher"
@@ -12,7 +13,6 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
-	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	"strconv"
 	"time"
@@ -96,7 +96,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 
 			// TODO check it voucher amount and if voucherSettlement failed can be cancel order
 			var voucherAction *entities.Action
-			iFuture := global.Singletons.VoucherService.VoucherSettlement(ctx, order.Invoice.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
+			iFuture := app.Globals.VoucherService.VoucherSettlement(ctx, order.Invoice.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
 			futureData := iFuture.Get()
 			if futureData.Error() != nil {
 				logger.Err("VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Invoice.Voucher.Code, futureData.Error().Reason())
@@ -119,7 +119,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			}
 
 			state.UpdateOrderAllSubPkg(ctx, order, voucherAction)
-			orderUpdated, err := global.Singletons.OrderRepository.Save(ctx, *order)
+			orderUpdated, err := app.Globals.OrderRepository.Save(ctx, *order)
 			if err != nil {
 				errStr := fmt.Sprintf("OrderRepository.Save in %s state failed, order: %v, error: %s", state.Name(), order, err.Error())
 				logger.Err(errStr)
@@ -149,7 +149,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				},
 			}
 
-			iFuture := global.Singletons.PaymentService.OrderPayment(ctx, paymentRequest)
+			iFuture := app.Globals.PaymentService.OrderPayment(ctx, paymentRequest)
 			futureData := iFuture.Get()
 			if futureData.Error() != nil {
 				order.PaymentService[0].PaymentResponse = &entities.PaymentResponse{
@@ -167,7 +167,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				}
 
 				state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
-				orderUpdated, err := global.Singletons.OrderRepository.Save(ctx, *order)
+				orderUpdated, err := app.Globals.OrderRepository.Save(ctx, *order)
 				if err != nil {
 					logger.Err("Singletons.OrderRepository.Save failed, orderId: %d, error: %s", order.OrderId, err)
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
@@ -205,7 +205,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				//}
 				//
 				//state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
-				_, err := global.Singletons.OrderRepository.Save(ctx, *order)
+				_, err := app.Globals.OrderRepository.Save(ctx, *order)
 				if err != nil {
 					logger.Err("Singletons.OrderRepository.Save failed, orderId: %d, error: %s", order.OrderId, err)
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
@@ -222,7 +222,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 		}
 	} else if iFrame.Header().KeyExists(string(frame.HeaderOrderId)) &&
 		iFrame.Header().KeyExists(string(frame.HeaderPaymentResult)) {
-		order, err := global.Singletons.OrderRepository.FindById(ctx, iFrame.Header().Value(string(frame.HeaderOrderId)).(uint64))
+		order, err := app.Globals.OrderRepository.FindById(ctx, iFrame.Header().Value(string(frame.HeaderOrderId)).(uint64))
 		if err != nil {
 			logger.Err("Singletons.OrderRepository.Save failed, orderId: %d, paymentResult: %v, error: %s",
 				iFrame.Header().Value(string(frame.HeaderOrderId)).(uint64),
@@ -243,7 +243,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			}
 
 			state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
-			if _, err := global.Singletons.OrderRepository.Save(ctx, *order); err != nil {
+			if _, err := app.Globals.OrderRepository.Save(ctx, *order); err != nil {
 				logger.Err("Singletons.OrderRepository.Save failed, orderId: %d, error: %s", order.OrderId, err)
 			}
 			failAction := state.GetAction(payment_action.Fail.ActionName())
@@ -252,7 +252,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 		} else {
 			var voucherAction *entities.Action
 			if order.Invoice.Voucher.Amount > 0 {
-				iFuture := global.Singletons.VoucherService.VoucherSettlement(ctx, order.Invoice.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
+				iFuture := app.Globals.VoucherService.VoucherSettlement(ctx, order.Invoice.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
 				futureData := iFuture.Get()
 				if futureData.Error() != nil {
 					logger.Err("VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Invoice.Voucher.Code, futureData.Error().Reason())
@@ -287,7 +287,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 
 			logger.Audit("PaymentResult success, orderId: %d", order.OrderId)
 			state.UpdateOrderAllSubPkg(ctx, order, paymentAction, voucherAction)
-			_, err = global.Singletons.OrderRepository.Save(ctx, *order)
+			_, err = app.Globals.OrderRepository.Save(ctx, *order)
 			if err != nil {
 				errStr := fmt.Sprintf("OrderRepository.Save in %s state failed, orderId: %d, error: %s", state.Name(), order.OrderId, err.Error())
 				logger.Err(errStr)

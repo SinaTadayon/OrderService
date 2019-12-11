@@ -207,6 +207,6 @@ func (base BaseStateImpl) UpdateSubPackage(ctx context.Context, subpackage *enti
 
 func (base BaseStateImpl) SaveOrUpdateOrder(ctx context.Context, order *entities.Order) error {
 	var err error
-	order, err = global.Singletons.OrderRepository.Save(ctx, *order)
+	order, err = app.Globals.OrderRepository.Save(ctx, *order)
 	return errors.Wrap(err, "OrderRepository.Save failed")
 }

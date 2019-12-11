@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
 	"gitlab.faza.io/order-project/order-service/domain/events"
@@ -11,7 +12,6 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
-	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"time"
 )
 
@@ -72,7 +72,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 				}
 			}
 		}
-		_, err := global.Singletons.OrderRepository.Save(ctx, *order)
+		_, err := app.Globals.OrderRepository.Save(ctx, *order)
 		if err != nil {
 			logger.Err("Process() => OrderRepository.Save in %s state failed, orderId: %d, error: %s", state.Name(), order.OrderId, err.Error())
 		} else {
@@ -221,7 +221,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 			for i := 0; i < len(newSubPackages); i++ {
 				if newSubPackages[i].SId == 0 {
 					state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
-					err := global.Singletons.SubPkgRepository.Save(ctx, newSubPackages[i])
+					err := app.Globals.SubPkgRepository.Save(ctx, newSubPackages[i])
 					if err != nil {
 						logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
 							newSubPackages[i].OrderId, newSubPackages[i].SellerId, event, err.Error())
@@ -253,7 +253,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 				pkgItem.Invoice.Subtotal -= rejectedSubtotal
 				pkgItem.Invoice.Discount -= rejectedDiscount
 			}
-			pkgItemUpdated, err := global.Singletons.PkgItemRepository.Update(ctx, *pkgItem)
+			pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 			if err != nil {
 				logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
 					pkgItem.OrderId, pkgItem.PId, event, err.Error())

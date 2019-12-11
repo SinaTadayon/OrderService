@@ -1,4 +1,4 @@
-package subpackage
+package subpkg_repository
 
 import (
 	"context"
@@ -37,7 +37,7 @@ func TestMain(m *testing.M) {
 		Host:     config.Mongo.Host,
 		Port:     config.Mongo.Port,
 		Username: config.Mongo.User,
-		//Password:     App.Cfg.Mongo.Pass,
+		//Password:     App.Config.Mongo.Pass,
 		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout),
 		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout),
 		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout),

@@ -4,13 +4,13 @@ import (
 	"context"
 	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
-	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"strconv"
 	"time"
 )
@@ -77,14 +77,14 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 		}
 
 		// TODO check it
-		futureData := global.Singletons.UserService.GetSellerProfile(ctx, strconv.Itoa(int(subpkg.SellerId))).Get()
+		futureData := app.Globals.UserService.GetSellerProfile(ctx, strconv.Itoa(int(subpkg.SellerId))).Get()
 		if futureData.Error() != nil {
 			logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
 				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, futureData.Error().Reason())
 		}
 
 		pkgItem.SellerInfo = futureData.Data().(*entities.SellerProfile)
-		_, err := global.Singletons.PkgItemRepository.Update(ctx, *pkgItem)
+		_, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 		if err != nil {
 			logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
 				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
@@ -231,7 +231,7 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 
 				if len(pkgItem.Subpackages) != len(subpackages) {
 					pkgItem.Subpackages = subpackages
-					pkgItemUpdated, err := global.Singletons.PkgItemRepository.Update(ctx, *pkgItem)
+					pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 					if err != nil {
 						logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
 							pkgItem.OrderId, pkgItem.PId, event, err.Error())
@@ -244,7 +244,7 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 				}
 
 				state.UpdateSubPackage(ctx, newSubPackage, returnShipmentPendingAction)
-				err := global.Singletons.SubPkgRepository.Save(ctx, newSubPackage)
+				err := app.Globals.SubPkgRepository.Save(ctx, newSubPackage)
 				if err != nil {
 					logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
 						newSubPackage.OrderId, newSubPackage.SellerId, event, err.Error())
@@ -258,7 +258,7 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 				}
 
 				if nextActionState != nil {
-					pkgItemUpdated, err := global.Singletons.PkgItemRepository.Update(ctx, *pkgItem)
+					pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 					if err != nil {
 						logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
 							pkgItem.OrderId, pkgItem.PId, event, err.Error())

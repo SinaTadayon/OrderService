@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/order-project/order-service/app"
 	buyer_action "gitlab.faza.io/order-project/order-service/domain/actions/buyer"
 	operator_action "gitlab.faza.io/order-project/order-service/domain/actions/operator"
 	payment_action "gitlab.faza.io/order-project/order-service/domain/actions/payment"
@@ -43,7 +44,6 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states/state_80"
 	"gitlab.faza.io/order-project/order-service/domain/states/state_90"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
-	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"strconv"
 	"time"
 
@@ -465,7 +465,7 @@ func (flowManager iFlowManagerImpl) PaymentGatewayResult(ctx context.Context, re
 
 	iframe := frame.Factory().SetDefaultHeader(frame.HeaderPaymentResult, paymentResult).SetOrderId(uint64(orderId)).Build()
 
-	//order, err := global.Singletons.OrderRepository.FindById(ctx, uint64(orderId))
+	//order, err := app.Globals.OrderRepository.FindById(ctx, uint64(orderId))
 	//if err != nil {
 	//	logger.Err("PaymentGatewayResult() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
 	//		req.OrderID, err)
@@ -522,7 +522,7 @@ func (flowManager iFlowManagerImpl) newOrderHandler(ctx context.Context, iFrame 
 	//	return future.NewFuture(returnChannel, 1, 1)
 	//}
 
-	value, err := global.Singletons.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
 	if err != nil {
 		logger.Err("Converter.Map requestNewOrder to order object failed, error: %s, requestNewOrder: %v", err, requestNewOrder)
 		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
@@ -542,7 +542,7 @@ func (flowManager iFlowManagerImpl) newOrderHandler(ctx context.Context, iFrame 
 		}
 	}
 
-	iFuture := global.Singletons.StockService.BatchStockActions(ctx, inventories,
+	iFuture := app.Globals.StockService.BatchStockActions(ctx, inventories,
 		stock_action.New(stock_action.Release))
 	futureData := iFuture.Get()
 	if futureData.Error() != nil {
@@ -560,7 +560,7 @@ func (flowManager iFlowManagerImpl) newOrderHandler(ctx context.Context, iFrame 
 func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame frame.IFrame) {
 	event := iFrame.Header().Value(string(frame.HeaderEvent)).(events.IEvent)
 	if event.EventType() == events.Action {
-		pkgItem, err := global.Singletons.PkgItemRepository.FindById(ctx, event.OrderId(), event.PackageId())
+		pkgItem, err := app.Globals.PkgItemRepository.FindById(ctx, event.OrderId(), event.PackageId())
 		if err != nil {
 			logger.Err("EventHandler => SubPkgRepository.FindByOrderAndSellerId failed, event: %v, error: %s ", event, err)
 			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
@@ -585,7 +585,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 }
 
 //func (flowManager iFlowManagerImpl) SellerApprovalPending(ctx context.Context, req *message.RequestSellerOrderAction) future.IPromise {
-//	order, err := global.Singletons.OrderRepository.FindById(req.OrderId)
+//	order, err := app.Globals.OrderRepository.FindById(req.OrderId)
 //	if err != nil {
 //		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, orderId: %d, error: %s",
 //			req.OrderId, err)
@@ -615,7 +615,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //}
 //
 //func (flowManager iFlowManagerImpl) BuyerApprovalPending(ctx context.Context, req *message.RequestBuyerOrderAction) future.IPromise {
-//	order, err := global.Singletons.OrderRepository.FindById(req.OrderId)
+//	order, err := app.Globals.OrderRepository.FindById(req.OrderId)
 //	if err != nil {
 //		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, orderId: %d, error: %s",
 //			req.OrderId, err)
@@ -643,7 +643,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //}
 //
 //func (flowManager iFlowManagerImpl) OperatorActionPending(ctx context.Context, req *message.RequestBackOfficeOrderAction) future.IPromise {
-//	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
+//	orders, err := app.Globals.OrderRepository.FindByFilter(func() interface{} {
 //		return bson.D{{"items.sid", req.SId}}
 //	})
 //
@@ -691,7 +691,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //}
 //
 //func (flowManager iFlowManagerImpl) BackOfficeOrdersListView(ctx context.Context, req *message.RequestBackOfficeOrdersList) future.IPromise {
-//	orders, total, err := global.Singletons.OrderRepository.FindAllWithPageAndSort(int64(req.Page), int64(req.PerPage), req.Sort, int(req.Direction))
+//	orders, total, err := app.Globals.OrderRepository.FindAllWithPageAndSort(int64(req.Page), int64(req.PerPage), req.Sort, int(req.Direction))
 //
 //	if err != nil {
 //		logger.Err("BackOfficeOrdersListView() => FindAllWithPageAndSort failed, error: %s", err)
@@ -763,7 +763,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //		return future.NewPromise(returnChannel, 1, 1)
 //	}
 //
-//	order, err := global.Singletons.OrderRepository.FindById(uint64(orderId))
+//	order, err := app.Globals.OrderRepository.FindById(uint64(orderId))
 //	if err != nil {
 //		logger.Err("BackOfficeOrderDetailView() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
 //			req.Id, err)
@@ -852,7 +852,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //}
 //
 //func (flowManager iFlowManagerImpl) SellerReportOrders(req *message.RequestSellerReportOrders, srv message.OrderService_SellerReportOrdersServer) future.IPromise {
-//	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
+//	orders, err := app.Globals.OrderRepository.FindByFilter(func() interface{} {
 //		return bson.D{{"createdAt",
 //			bson.D{{"$gte", time.Unix(int64(req.StartDateTime), 0).UTC()}}},
 //			{"items.status", req.Status}, {"items.sellerInfo.sellerId", req.PId}}
@@ -1028,7 +1028,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //}
 //
 //func (flowManager iFlowManagerImpl) BackOfficeReportOrderItems(req *message.RequestBackOfficeReportOrderItems, srv message.OrderService_BackOfficeReportOrderItemsServer) future.IPromise {
-//	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
+//	orders, err := app.Globals.OrderRepository.FindByFilter(func() interface{} {
 //		return bson.D{{"createdAt",
 //			bson.D{{"$gte", time.Unix(int64(req.StartDateTime), 0).UTC()},
 //				{"$lte", time.Unix(int64(req.EndDataTime), 0).UTC()}}}}
@@ -1094,7 +1094,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //
 //			if sellerProfile, ok := sellerProfileMap[item.SellerInfo.PId]; !ok {
 //				userCtx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-//				ipromise := global.Singletons.UserService.GetSellerProfile(userCtx, strconv.Itoa(int(item.SellerInfo.PId)))
+//				ipromise := app.Globals.UserService.GetSellerProfile(userCtx, strconv.Itoa(int(item.SellerInfo.PId)))
 //				futureData := ipromise.Get()
 //				if futureData.Ex != nil {
 //					logger.Err("BackOfficeReportOrderItems() => get sellerProfile failed, orderId: %d, sid: %d, sellerId: %d",
@@ -1227,7 +1227,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //}
 //
 //func (flowManager iFlowManagerImpl) SchedulerEvents(event events.ISchedulerEvent) {
-//	order, err := global.Singletons.OrderRepository.FindById(event.OrderId)
+//	order, err := app.Globals.OrderRepository.FindById(event.OrderId)
 //	if err != nil {
 //		logger.Err("MessageHandler() => request orderId not found, OrderRepository.FindById failed, schedulerEvent: %v, error: %s",
 //			event, err)

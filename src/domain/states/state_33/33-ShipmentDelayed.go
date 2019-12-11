@@ -4,13 +4,13 @@ import (
 	"context"
 	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
-	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	"strconv"
 	"time"
@@ -62,7 +62,7 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 			return
 		}
 
-		_, err := global.Singletons.SubPkgRepository.Update(ctx, *subpkg)
+		_, err := app.Globals.SubPkgRepository.Update(ctx, *subpkg)
 		if err != nil {
 			logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
 				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
@@ -71,13 +71,13 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId)
 		}
 
-		order, err := global.Singletons.OrderRepository.FindById(ctx, pkgItem.OrderId)
+		order, err := app.Globals.OrderRepository.FindById(ctx, pkgItem.OrderId)
 		if err != nil {
 			logger.Err("Process() => OrderRepository.FindById failed, state: %s, orderId: %d, sellerId: %d, sid: %d, error: %s",
 				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
 		}
 
-		futureData := global.Singletons.UserService.GetSellerProfile(ctx, strconv.Itoa(int(pkgItem.PId))).Get()
+		futureData := app.Globals.UserService.GetSellerProfile(ctx, strconv.Itoa(int(pkgItem.PId))).Get()
 		if futureData.Error() != nil {
 			logger.Err("Process() => UserService.GetSellerProfile failed, state: %s, orderId: %d, sellerId: %d, sid: %d, error: %s",
 				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, futureData.Error().Reason())
@@ -96,13 +96,13 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 				Body:  "Shipment Delay",
 			}
 
-			futureData = global.Singletons.NotifyService.NotifyBySMS(ctx, sellerNotify).Get()
+			futureData = app.Globals.NotifyService.NotifyBySMS(ctx, sellerNotify).Get()
 			if futureData.Error() != nil {
 				logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, sellerId: %d, sid: %d, error: %s",
 					sellerNotify, state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, futureData.Error().Reason())
 			}
 
-			futureData = global.Singletons.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
+			futureData = app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
 			if futureData.Error() != nil {
 				logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, sellerId: %d, sid: %d, error: %s",
 					buyerNotify, state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, futureData.Error().Reason())
@@ -250,7 +250,7 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 
 				if len(pkgItem.Subpackages) != len(subpackages) {
 					pkgItem.Subpackages = subpackages
-					pkgItemUpdated, err := global.Singletons.PkgItemRepository.Update(ctx, *pkgItem)
+					pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 					if err != nil {
 						logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
 							pkgItem.OrderId, pkgItem.PId, event, err.Error())
@@ -263,7 +263,7 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 				}
 
 				state.UpdateSubPackage(ctx, newSubPackage, shipmentDelayedAction)
-				err := global.Singletons.SubPkgRepository.Save(ctx, newSubPackage)
+				err := app.Globals.SubPkgRepository.Save(ctx, newSubPackage)
 				if err != nil {
 					logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
 						newSubPackage.OrderId, newSubPackage.SellerId, event, err.Error())
@@ -277,7 +277,7 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 				}
 
 				if nextActionState != nil {
-					pkgItemUpdated, err := global.Singletons.PkgItemRepository.Update(ctx, *pkgItem)
+					pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 					if err != nil {
 						logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
 							pkgItem.OrderId, pkgItem.PId, event, err.Error())

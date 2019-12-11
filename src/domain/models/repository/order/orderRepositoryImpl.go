@@ -31,27 +31,8 @@ type iOrderRepositoryImpl struct {
 	mongoAdapter *mongoadapter.Mongo
 }
 
-func NewOrderRepository(mongoDriver *mongoadapter.Mongo) (IOrderRepository, error) {
-
-	_, err := mongoDriver.AddUniqueIndex(databaseName, collectionName, "orderId")
-	if err != nil {
-		logger.Err("create orderId index failed, error: %s", err.Error())
-		return nil, err
-	}
-
-	_, err = mongoDriver.AddTextV3Index(databaseName, collectionName, "packages.pkgId")
-	if err != nil {
-		logger.Err("create packages.pkgId index failed, error: %s", err.Error())
-		return nil, err
-	}
-
-	_, err = mongoDriver.AddUniqueIndex(databaseName, collectionName, "packages.subpackages.sid")
-	if err != nil {
-		logger.Err("create packages.subpackages.items.sid index failed, error: %s", err.Error())
-		return nil, err
-	}
-
-	return &iOrderRepositoryImpl{mongoDriver}, nil
+func NewOrderRepository(mongoDriver *mongoadapter.Mongo) IOrderRepository {
+	return &iOrderRepositoryImpl{mongoDriver}
 }
 
 func (repo iOrderRepositoryImpl) generateAndSetId(ctx context.Context, order entities.Order) *entities.Order {

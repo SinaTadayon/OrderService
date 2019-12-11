@@ -5,13 +5,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/go-framework/mongoadapter"
+	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain"
 	"gitlab.faza.io/order-project/order-service/domain/converter"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	order_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/order"
 	"gitlab.faza.io/order-project/order-service/domain/states"
-	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	pb "gitlab.faza.io/protos/order"
 	"os"
@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-var config *configs.Cfg
+var config *configs.Config
 var schedulerService iSchedulerServiceImpl
 
 func init() {
@@ -42,7 +42,7 @@ func init() {
 		Host:     config.Mongo.Host,
 		Port:     config.Mongo.Port,
 		Username: config.Mongo.User,
-		//Password:     App.Cfg.Mongo.Pass,
+		//Password:     App.Config.Mongo.Pass,
 		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout),
 		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout),
 		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout),
@@ -57,14 +57,14 @@ func init() {
 		panic("mongo adapter creation failed, " + err.Error())
 	}
 
-	global.Singletons.OrderRepository, err = order_repository.NewOrderRepository(mongoDriver)
+	app.Globals.OrderRepository, err = order_repository.NewOrderRepository(mongoDriver)
 	if err != nil {
 		logger.Err("repository creation failed, %s ", err.Error())
 		panic("order repository creation failed, " + err.Error())
 	}
 
-	global.Singletons.StockService = stock_service.NewStockServiceMock()
-	global.Singletons.Converter = converter.NewConverter()
+	app.Globals.StockService = stock_service.NewStockServiceMock()
+	app.Globals.Converter = converter.NewConverter()
 
 	// TODO create item repository
 	flowManager, err := domain.NewFlowManager()
@@ -322,13 +322,13 @@ func TestSchedulerSellerApprovalPending(t *testing.T) {
 
 	ctx, _ := context.WithCancel(context.Background())
 	requestNewOrder := createRequestNewOrder()
-	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(*requestNewOrder, entities.Order{})
 	assert.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "20.Seller_Approval_Pending", 20)
 	updateOrderItemsProgress(newOrder, nil, "ApprovalPending", true, states.OrderInProgressStatus)
-	order, err := global.Singletons.OrderRepository.Save(*newOrder)
+	order, err := app.Globals.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
 	defer removeCollection()
@@ -341,7 +341,7 @@ func TestSchedulerSellerApprovalPending(t *testing.T) {
 	time.Sleep(3 * time.Second)
 	schedulerService.doProcess(ctx, data)
 
-	changedOrder, err := global.Singletons.OrderRepository.FindById(order.OrderId)
+	changedOrder, err := app.Globals.OrderRepository.FindById(order.OrderId)
 	assert.Nil(t, err)
 
 	length := len(changedOrder.Items[0].Progress.StepsHistory) - 1
@@ -353,13 +353,13 @@ func TestSchedulerSellerShipmentPending(t *testing.T) {
 
 	ctx, _ := context.WithCancel(context.Background())
 	requestNewOrder := createRequestNewOrder()
-	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(*requestNewOrder, entities.Order{})
 	assert.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
 	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, states.OrderInProgressStatus)
-	order, err := global.Singletons.OrderRepository.Save(*newOrder)
+	order, err := app.Globals.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
 	defer removeCollection()
@@ -372,7 +372,7 @@ func TestSchedulerSellerShipmentPending(t *testing.T) {
 	time.Sleep(3 * time.Second)
 	schedulerService.doProcess(ctx, data)
 
-	changedOrder, err := global.Singletons.OrderRepository.FindById(order.OrderId)
+	changedOrder, err := app.Globals.OrderRepository.FindById(order.OrderId)
 	assert.Nil(t, err)
 
 	length := len(changedOrder.Items[0].Progress.StepsHistory) - 1
@@ -384,13 +384,13 @@ func TestSchedulerShipmentDeliveredPending(t *testing.T) {
 
 	ctx, _ := context.WithCancel(context.Background())
 	requestNewOrder := createRequestNewOrder()
-	value, err := global.Singletons.Converter.Map(*requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(*requestNewOrder, entities.Order{})
 	assert.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
 	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "32.Shipment_Delivered", 32)
 	updateOrderItemsProgress(newOrder, nil, "ShipmentDeliveredPending", true, states.OrderInProgressStatus)
-	order, err := global.Singletons.OrderRepository.Save(*newOrder)
+	order, err := app.Globals.OrderRepository.Save(*newOrder)
 	assert.Nil(t, err, "save failed")
 
 	defer removeCollection()
@@ -403,7 +403,7 @@ func TestSchedulerShipmentDeliveredPending(t *testing.T) {
 	time.Sleep(3 * time.Second)
 	schedulerService.doProcess(ctx, data)
 
-	changedOrder, err := global.Singletons.OrderRepository.FindById(order.OrderId)
+	changedOrder, err := app.Globals.OrderRepository.FindById(order.OrderId)
 	assert.Nil(t, err)
 
 	length := len(changedOrder.Items[0].Progress.StepsHistory) - 1
@@ -426,6 +426,6 @@ func TestSchedulerShipmentDeliveredPending(t *testing.T) {
 //}
 
 func removeCollection() {
-	if err := global.Singletons.OrderRepository.RemoveAll(); err != nil {
+	if err := app.Globals.OrderRepository.RemoveAll(); err != nil {
 	}
 }

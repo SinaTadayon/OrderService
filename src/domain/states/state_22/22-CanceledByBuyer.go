@@ -3,12 +3,12 @@ package state_22
 import (
 	"context"
 	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
-	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"time"
 )
 
@@ -54,7 +54,7 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 		}
 
 		state.UpdateSubPackage(ctx, subpkg, nextToAction)
-		subPkgUpdated, err := global.Singletons.SubPkgRepository.Update(ctx, *subpkg)
+		subPkgUpdated, err := app.Globals.SubPkgRepository.Update(ctx, *subpkg)
 		if err != nil {
 			logger.Err("SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
 				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())

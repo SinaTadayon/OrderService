@@ -3,12 +3,12 @@ package state_13
 import (
 	"context"
 	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
-	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"time"
 )
 
@@ -55,7 +55,7 @@ func (state orderPaymentVerificationState) Process(ctx context.Context, iFrame f
 		}
 
 		state.UpdateOrderAllStatus(ctx, order, states.OrderInProgressStatus, states.PackageInProgressStatus, orderVerifyAction)
-		orderUpdated, err := global.Singletons.OrderRepository.Save(ctx, *order)
+		orderUpdated, err := app.Globals.OrderRepository.Save(ctx, *order)
 		if err != nil {
 			logger.Err("OrderRepository.Save in %s state failed, orderId: %d, error: %s", state.Name(), order.OrderId, err.Error())
 		} else {

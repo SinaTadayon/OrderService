@@ -1,213 +1,1146 @@
 package domain
 
+import (
+	"context"
+	"fmt"
+	"github.com/pkg/errors"
+	"gitlab.faza.io/go-framework/logger"
+	"gitlab.faza.io/go-framework/mongoadapter"
+	"gitlab.faza.io/order-project/order-service/app"
+	"gitlab.faza.io/order-project/order-service/configs"
+	"gitlab.faza.io/order-project/order-service/domain/converter"
+	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	order_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/order"
+	"gitlab.faza.io/order-project/order-service/domain/states"
+	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
+	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
+	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
+	user_service "gitlab.faza.io/order-project/order-service/infrastructure/services/user"
+	voucher_service "gitlab.faza.io/order-project/order-service/infrastructure/services/voucher"
+	grpc_server "gitlab.faza.io/order-project/order-service/server/grpc"
+	stockProto "gitlab.faza.io/protos/stock-proto.git"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
+	"net"
+	"os"
+	"strconv"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	pb "gitlab.faza.io/protos/order"
+	pg "gitlab.faza.io/protos/payment-gateway"
+)
+
+func TestMain(m *testing.M) {
+	var err error
+	if os.Getenv("APP_ENV") == "dev" {
+		app.Globals.Config, err = configs.LoadConfig("./testdata/.env")
+	} else {
+		app.Globals.Config, err = configs.LoadConfig("")
+	}
+	if err != nil {
+		logger.Err("LoadConfig of main init failed, %s ", err.Error())
+		panic("LoadConfig of main init failed, " + err.Error())
+	}
+
+	// store in mongo
+	mongoConf := &mongoadapter.MongoConfig{
+		Host:     app.Globals.Config.Mongo.Host,
+		Port:     app.Globals.Config.Mongo.Port,
+		Username: app.Globals.Config.Mongo.User,
+		//Password:     app.Globals.Config.Mongo.Pass,
+		ConnTimeout:     time.Duration(app.Globals.Config.Mongo.ConnectionTimeout),
+		ReadTimeout:     time.Duration(app.Globals.Config.Mongo.ReadTimeout),
+		WriteTimeout:    time.Duration(app.Globals.Config.Mongo.WriteTimeout),
+		MaxConnIdleTime: time.Duration(app.Globals.Config.Mongo.MaxConnIdleTime),
+		MaxPoolSize:     uint64(app.Globals.Config.Mongo.MaxPoolSize),
+		MinPoolSize:     uint64(app.Globals.Config.Mongo.MinPoolSize),
+	}
+
+	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
+	if err != nil {
+		logger.Err("NewOrderRepository Mongo: %v", err.Error())
+		panic("mongo adapter creation failed, " + err.Error())
+	}
+
+	app.Globals.OrderRepository, err = order_repository.NewOrderRepository(mongoDriver)
+	if err != nil {
+		logger.Err("repository creation failed, %s ", err.Error())
+		panic("order repository creation failed, " + err.Error())
+	}
+
+	// TODO create item repository
+	flowManager, err := NewFlowManager()
+	if err != nil {
+		logger.Err("flowManager creation failed, %s ", err.Error())
+		panic("flowManager creation failed, " + err.Error())
+	}
+
+	grpcServer := grpc_server.NewServer(app.Globals.Config.GRPCServer.Address, uint16(app.Globals.Config.GRPCServer.Port), flowManager)
+
+	app.Globals.Converter = converter.NewConverter()
+
+	//if app.Globals.config.StockService.MockEnabled {
+	//	app.Globals.StockService = stock_service.NewStockServiceMock()
+	//} else {
+	app.Globals.StockService = stock_service.NewStockService(app.Globals.Config.StockService.Address, app.Globals.Config.StockService.Port)
+	//}
+
+	if app.Globals.Config.PaymentGatewayService.MockEnabled {
+		app.Globals.PaymentService = payment_service.NewPaymentServiceMock()
+	} else {
+		app.Globals.PaymentService = payment_service.NewPaymentService(app.Globals.Config.PaymentGatewayService.Address, app.Globals.Config.PaymentGatewayService.Port)
+	}
+
+	//if app.Globals.config.VoucherService.MockEnabled {
+	//	app.Globals.VoucherService = voucher_service.NewVoucherServiceMock()
+	//} else {
+	app.Globals.VoucherService = voucher_service.NewVoucherService(app.Globals.Config.VoucherService.Address, app.Globals.Config.VoucherService.Port)
+	//}
+
+	app.Globals.NotifyService = notify_service.NewNotificationService(app.Globals.Config.NotifyService.Address, app.Globals.Config.NotifyService.Port)
+
+	app.Globals.UserService = user_service.NewUserService(app.Globals.Config.UserService.Address, app.Globals.Config.UserService.Port)
+
+	if !checkTcpPort(app.Globals.Config.GRPCServer.Address, strconv.Itoa(app.Globals.Config.GRPCServer.Port)) {
+		logger.Audit("Start GRPC Server for testing . . . ")
+		go grpcServer.Start()
+	}
+}
+
+func checkTcpPort(host string, port string) bool {
+
+	timeout := time.Second
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(host, port), timeout)
+	if err != nil {
+		//	fmt.Println("Connecting error:", err)
+		return false
+	}
+	if conn != nil {
+		defer func() {
+			if err := conn.Close(); err != nil {
+			}
+		}()
+		//	fmt.Println("Opened", net.JoinHostPort(host, port))
+	}
+	return true
+}
+
+func createAuthenticatedContext() (context.Context, error) {
+	ctx, _ := context.WithTimeout(context.Background(), 15*time.Second)
+	futureData := app.Globals.UserService.UserLogin(ctx, "989100000002", "123456").Get()
+
+	if futureData.Error() != nil {
+		return nil, futureData.Error().Reason()
+	}
+
+	loginTokens, ok := futureData.Data().(user_service.LoginTokens)
+	if ok != true {
+		return nil, errors.New("data does not LoginTokens type")
+	}
+
+	var authorization = map[string]string{"authorization": fmt.Sprintf("Bearer %v", loginTokens.AccessToken)}
+	md := metadata.New(authorization)
+	ctxToken := metadata.NewOutgoingContext(ctx, md)
+
+	return ctxToken, nil
+}
+
+func createRequestNewOrder() *pb.RequestNewOrder {
+	order := &pb.RequestNewOrder{
+		Invoice: &pb.Invoice{},
+		Buyer: &pb.Buyer{
+			Finance:         &pb.FinanceInfo{},
+			ShippingAddress: &pb.Address{},
+		},
+	}
+
+	order.Invoice.GrandTotal = 600000
+	order.Invoice.Subtotal = 550000
+	order.Invoice.Discount = 50000
+	order.Invoice.Currency = "IRR"
+	order.Invoice.PaymentMethod = "IPG"
+	order.Invoice.PaymentOption = "AAP"
+	order.Invoice.ShipmentTotal = 700000
+	order.Invoice.Voucher = &pb.Voucher{
+		Amount: 40000,
+		Code:   "348",
+	}
+
+	order.Buyer.LastName = "Tadayon"
+	order.Buyer.FirstName = "Sina"
+	order.Buyer.Email = "Sina.Tadayon@baman.io"
+	order.Buyer.Mobile = "09124566788"
+	order.Buyer.NationalId = "005938404734"
+	order.Buyer.Ip = "127.0.0.1"
+	order.Buyer.Gender = "male"
+
+	order.Buyer.Finance.Iban = "IR165411211001514313143545"
+	order.Buyer.Finance.AccountNumber = "303.100.1269574.1"
+	order.Buyer.Finance.CardNumber = "4345345423533453"
+	order.Buyer.Finance.BankName = "pasargad"
+
+	order.Buyer.ShippingAddress.Address = "Sheikh bahaee, p 5"
+	order.Buyer.ShippingAddress.Province = "Tehran"
+	order.Buyer.ShippingAddress.Phone = "+98912193870"
+	order.Buyer.ShippingAddress.ZipCode = "1651764614"
+	order.Buyer.ShippingAddress.City = "Tehran"
+	order.Buyer.ShippingAddress.Country = "Iran"
+	order.Buyer.ShippingAddress.Neighbourhood = "Seool"
+	order.Buyer.ShippingAddress.Lat = "10.1345664"
+	order.Buyer.ShippingAddress.Long = "22.1345664"
+
+	order.Packages = make([]*pb.Package, 0, 2)
+
+	var pkg = &pb.Package{
+		SellerId: 6546345,
+		ShopName: "sazgar",
+		Shipment: &pb.ShippingSpec{
+			CarrierNames:   []string{"Post"},
+			CarrierProduct: "Post Express",
+			CarrierType:    "standard",
+			ShippingCost:   100000,
+			VoucherAmount:  0,
+			Currency:       "IRR",
+			ReactionTime:   24,
+			ShippingTime:   72,
+			ReturnTime:     72,
+			Details:        "پست پیشتاز و تیپاکس برای شهرستان ها و پیک برای تهران به صورت رایگان می باشد",
+		},
+		Invoice: &pb.PackageInvoice{
+			Subtotal:       9238443,
+			Discount:       9734234,
+			ShipmentAmount: 23123,
+		},
+	}
+	order.Packages = append(order.Packages, pkg)
+	pkg.Items = make([]*pb.Item, 0, 2)
+	var item = &pb.Item{
+		Sku:         "53456-2342",
+		InventoryId: "1243444",
+		Title:       "Asus",
+		Brand:       "Electronic/laptop",
+		Category:    "Asus G503 i7, 256SSD, 32G Ram",
+		Guaranty:    "ضمانت سلامت کالا",
+		Image:       "http://baman.io/image/asus.png",
+		Returnable:  true,
+		Quantity:    5,
+		Attributes: map[string]string{
+			"Quantity":  "10",
+			"Width":     "8cm",
+			"Height":    "10cm",
+			"Length":    "15cm",
+			"Weight":    "20kg",
+			"Color":     "blue",
+			"Materials": "stone",
+		},
+		Invoice: &pb.ItemInvoice{
+			Unit:             200000,
+			Total:            20000000,
+			Original:         220000,
+			Special:          200000,
+			Discount:         20000,
+			SellerCommission: 10,
+			Currency:         "IRR",
+		},
+	}
+	pkg.Items = append(pkg.Items, item)
+	item = &pb.Item{
+		Sku:         "dfg34534",
+		InventoryId: "57834534",
+		Title:       "Nexus",
+		Brand:       "Electronic/laptop",
+		Category:    "Nexus G503 i7, 256SSD, 32G Ram",
+		Guaranty:    "ضمانت سلامت کالا",
+		Image:       "http://baman.io/image/nexus.png",
+		Returnable:  true,
+		Quantity:    8,
+		Attributes: map[string]string{
+			"Quantity":  "20",
+			"Width":     "8cm",
+			"Height":    "10cm",
+			"Length":    "15cm",
+			"Weight":    "20kg",
+			"Color":     "blue",
+			"Materials": "stone",
+		},
+		Invoice: &pb.ItemInvoice{
+			Unit:             100000,
+			Total:            10000000,
+			Original:         120000,
+			Special:          100000,
+			Discount:         10000,
+			SellerCommission: 5,
+			Currency:         "IRR",
+		},
+	}
+	pkg.Items = append(pkg.Items, item)
+
+	pkg = &pb.Package{
+		SellerId: 111122223333,
+		Shipment: &pb.ShippingSpec{
+			CarrierNames:   []string{"Post"},
+			CarrierProduct: "Post Express",
+			CarrierType:    "standard",
+			ShippingCost:   100000,
+			VoucherAmount:  0,
+			Currency:       "IRR",
+			ReactionTime:   24,
+			ShippingTime:   72,
+			ReturnTime:     72,
+			Details:        "پست پیشتاز و تیپاکس برای شهرستان ها و پیک برای تهران به صورت رایگان می باشد",
+		},
+		Invoice: &pb.PackageInvoice{
+			Subtotal:       9238443,
+			Discount:       9734234,
+			ShipmentAmount: 23123,
+		},
+	}
+	order.Packages = append(order.Packages, pkg)
+	pkg.Items = make([]*pb.Item, 0, 2)
+	item = &pb.Item{
+		Sku:         "gffd-4534",
+		InventoryId: "7684034234",
+		Title:       "Asus",
+		Brand:       "Electronic/laptop",
+		Category:    "Asus G503 i7, 256SSD, 32G Ram",
+		Guaranty:    "ضمانت سلامت کالا",
+		Image:       "http://baman.io/image/asus.png",
+		Returnable:  true,
+		Quantity:    2,
+		Attributes: map[string]string{
+			"Quantity":  "10",
+			"Width":     "8cm",
+			"Height":    "10cm",
+			"Length":    "15cm",
+			"Weight":    "20kg",
+			"Color":     "blue",
+			"Materials": "stone",
+		},
+		Invoice: &pb.ItemInvoice{
+			Unit:             200000,
+			Total:            20000000,
+			Original:         220000,
+			Special:          200000,
+			Discount:         20000,
+			SellerCommission: 8,
+			Currency:         "IRR",
+		},
+		XXX_NoUnkeyedLiteral: struct{}{},
+		XXX_unrecognized:     nil,
+		XXX_sizecache:        0,
+	}
+	pkg.Items = append(pkg.Items, item)
+	item = &pb.Item{
+		Sku:         "dfg-54322",
+		InventoryId: "443353563463",
+		Title:       "Nexus",
+		Brand:       "Electronic/laptop",
+		Category:    "Nexus G503 i7, 256SSD, 32G Ram",
+		Guaranty:    "ضمانت سلامت کالا",
+		Image:       "http://baman.io/image/nexus.png",
+		Returnable:  true,
+		Quantity:    6,
+		Attributes: map[string]string{
+			"Quantity":  "20",
+			"Width":     "8cm",
+			"Height":    "10cm",
+			"Length":    "15cm",
+			"Weight":    "20kg",
+			"Color":     "blue",
+			"Materials": "stone",
+		},
+		Invoice: &pb.ItemInvoice{
+			Unit:             100000,
+			Total:            10000000,
+			Original:         120000,
+			Special:          100000,
+			Discount:         10000,
+			SellerCommission: 3,
+			Currency:         "IRR",
+		},
+	}
+	pkg.Items = append(pkg.Items, item)
+
+	return order
+}
+
+func addStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) error {
+	if err := app.Globals.StockService.ConnectToStockService(); err != nil {
+		return err
+	}
+
+	request := stockProto.StockRequest{
+		Quantity:    requestNewOrder.Packages[0].Items[0].Quantity + 100,
+		InventoryId: requestNewOrder.Packages[0].Items[0].InventoryId,
+	}
+
+	if _, err := app.Globals.StockService.GetStockClient().StockAllocate(ctx, &request); err != nil {
+		return err
+	} else {
+		logger.Audit("Add Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+	}
+
+	request = stockProto.StockRequest{
+		Quantity:    requestNewOrder.Packages[0].Items[1].Quantity + 100,
+		InventoryId: requestNewOrder.Packages[0].Items[1].InventoryId,
+	}
+
+	if _, err := app.Globals.StockService.GetStockClient().StockAllocate(ctx, &request); err != nil {
+		return err
+	} else {
+		logger.Audit("Add Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+	}
+
+	return nil
+}
+
+func reservedStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) error {
+	if err := app.Globals.StockService.ConnectToStockService(); err != nil {
+		return err
+	}
+
+	request := stockProto.StockRequest{
+		Quantity:    requestNewOrder.Packages[0].Items[0].Quantity,
+		InventoryId: requestNewOrder.Packages[0].Items[0].InventoryId,
+	}
+
+	if _, err := app.Globals.StockService.GetStockClient().StockReserve(ctx, &request); err != nil {
+		return err
+	} else {
+		logger.Audit("Reserve Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+	}
+
+	request = stockProto.StockRequest{
+		Quantity:    requestNewOrder.Packages[0].Items[1].Quantity,
+		InventoryId: requestNewOrder.Packages[0].Items[1].InventoryId,
+	}
+
+	if _, err := app.Globals.StockService.GetStockClient().StockReserve(ctx, &request); err != nil {
+		return err
+	} else {
+		logger.Audit("Reserve Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+	}
+
+	return nil
+}
+
+func TestNewOrderRequest(t *testing.T) {
+	//ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	assert.Nil(t, err)
+	defer grpcConn.Close()
+	defer removeCollection()
+
+	requestNewOrder := createRequestNewOrder()
+	err = addStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
+	//ctx, err = createAuthenticatedContext()
+	//assert.Nil(t, err)
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	resOrder, err := OrderService.NewOrder(ctx, requestNewOrder)
+
+	assert.Nil(t, err)
+	assert.NotEmpty(t, resOrder.CallbackUrl, "CallbackUrl is empty")
+}
+
+func SetOrderPkgStatus(ctx context.Context, order *entities.Order, status states.OrderStatus, pkgStatus states.PackageStatus) {
+	order.UpdatedAt = time.Now().UTC()
+	order.Status = string(status)
+	for i := 0; i < len(order.Packages); i++ {
+		order.Packages[i].UpdatedAt = time.Now().UTC()
+		order.Packages[i].Status = string(pkgStatus)
+	}
+}
+
+func TestNewOrderRequestWithZeroAmountAndVoucher(t *testing.T) {
+	//ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	assert.Nil(t, err)
+	defer grpcConn.Close()
+	defer removeCollection()
+
+	requestNewOrder := createRequestNewOrder()
+	requestNewOrder.Invoice.GrandTotal = 0
+	requestNewOrder.Invoice.Voucher.Amount = 1000000
+	err = addStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	resOrder, err := OrderService.NewOrder(ctx, requestNewOrder)
+
+	assert.Nil(t, err)
+	assert.NotEmpty(t, resOrder.CallbackUrl, "CallbackUrl is empty")
+}
+
+func TestPaymentGateway(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	assert.Nil(t, err, "DialContext failed")
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	err = addStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
+	err = reservedStock(ctx, requestNewOrder)
+	assert.Nil(t, err)
+
+	value, err := app.Globals.Converter.Map(*requestNewOrder, entities.Order{})
+	assert.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	newOrder.PaymentService = []entities.PaymentService{{
+		PaymentRequest: &entities.PaymentRequest{
+			Amount:    newOrder.Invoice.GrandTotal,
+			Currency:  "IRR",
+			Gateway:   "APP",
+			CreatedAt: time.Now().UTC(),
+		},
+	}}
+
+	SetOrderPkgStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus)
+	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	assert.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	request := pg.PaygateHookRequest{
+		OrderID:   strconv.Itoa(int(order.OrderId)),
+		PaymentId: "534545345",
+		InvoiceId: 3434234234,
+		Amount:    int64(order.Invoice.GrandTotal),
+		ReqBody:   "request test url",
+		ResBody:   "response test url",
+		CardMask:  "293488374****7234",
+		Result:    true,
+	}
+
+	paymentService := pg.NewBankResultHookClient(grpcConn)
+	response, err := paymentService.PaymentGatewayHook(ctx, &request)
+
+	assert.Nil(t, err)
+	assert.True(t, response.Ok, "payment result false")
+}
+
+//func TestOperatorShipmentPending_Success(t *testing.T) {
+//	ctx, _ := context.WithCancel(context.Background())
+//	grpcConn, err := grpc.DialContext(ctx, app.Globals.config.GRPCServer.Address+":"+
+//		strconv.Itoa(int(app.Globals.config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+//	assert.Nil(t, err)
+//	defer grpcConn.Close()
 //
-//import (
-//	"fmt"
-//	"github.com/pkg/errors"
-//	"github.com/stretchr/testify/assert"
-//	"gitlab.faza.io/order-project/order-service/domain/actions"
-//	"gitlab.faza.io/order-project/order-service/domain/states"
-//	"strconv"
-//	"testing"
-//)
+//	requestNewOrder := createRequestNewOrder()
+//	err = addStock(ctx, requestNewOrder)
+//	assert.Nil(t, err)
 //
-//func TestFlowManagerSteps(t *testing.T) {
+//	err = reservedStock(ctx, requestNewOrder)
+//	assert.Nil(t, err)
 //
-//	flowManager := iFlowManagerImpl{}
-//	flowManager.statesMap = make(map[states.IEnumState]states.IState, 64)
+//	value, err := app.Globals.Converter.Map(*requestNewOrder, entities.Order{})
+//	assert.Nil(t, err, "Converter failed")
+//	newOrder := value.(*entities.Order)
 //
-//	assert.Nil(t, flowManager.setupFlowManager())
+//	updateOrderStatus(newOrder, nil, states.OrderInProgressStatus, false, "32.Shipment_Delivered", 32)
+//	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, states.OrderInProgressStatus)
+//	order, err := app.Globals.OrderRepository.Save(*newOrder)
+//	assert.Nil(t, err, "save failed")
 //
-//	if err := stepValidation(flowManager.statesMap()[states.NewOrder].Index(), 1, "New_Order", []int{}); err != nil {
-//		t.Fatalf("validate step1 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[10], 10, "10.Payment_Pending", []int{11, 12}); err != nil {
-//		t.Fatalf("validate step10 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[12], 12, "12.Payment_Failed", []int{}); err != nil {
-//		t.Fatalf("validate step12 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[11], 11, "11.Payment_Success", []int{20, 14}); err != nil {
-//		t.Fatalf("validate step11 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[14], 14, "14.Payment_Rejected", []int{80}); err != nil {
-//		t.Fatalf("validate step14 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[20], 20, "20.Seller_Approval_Pending", []int{30, 21}); err != nil {
-//		t.Fatalf("validate step20 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[21], 21, "21.Shipment_Rejected_By_Seller", []int{80}); err != nil {
-//		t.Fatalf("validate step21 failed: %s\n", err)
-//	}
-//
-//	//if err := stepValidation(flowManager.GetIndexStepsMap()[30], 30, "30.Shipment_Pending", []int{31,33}); err != nil {
-//	//	t.Fatalf("validate step30 failed: %s\n", err)
+//	//for i:=0 ; i < len(order.Items); i++ {
+//	//	order.Items[i].Status = "32.Shipment_Delivered"
 //	//}
+//	_, err = app.Globals.OrderRepository.Save(*order)
+//	assert.Nil(t, err, "save failed")
 //
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[31], 31, "31.Shipped", []int{32, 34}); err != nil {
-//		t.Fatalf("validate step31 failed: %s\n", err)
+//	defer removeCollection()
+//
+//	request := pb.RequestBackOfficeOrderAction{
+//		ItemId:     order.Items[0].ItemId,
+//		ActionType: "shipmentDelivered",
+//		Action:     "success",
 //	}
 //
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[32], 32, "32.Shipment_Delivered", []int{40, 41, 43}); err != nil {
-//		t.Fatalf("validate step32 failed: %s\n", err)
-//	}
+//	ctx, err = createAuthenticatedContext()
+//	assert.Nil(t, err)
+//	OrderService := pb.NewOrderServiceClient(grpcConn)
+//	result, err := OrderService.BackOfficeOrderAction(ctx, &request)
 //
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[33], 33, "33.Shipment_Detail_Delayed", []int{31, 36}); err != nil {
-//		t.Fatalf("validate step33 failed: %s\n", err)
-//	}
+//	assert.Nil(t, err)
 //
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[34], 34, "34.Shipment_Delivery_Pending", []int{32, 35}); err != nil {
-//		t.Fatalf("validate step34 failed: %s\n", err)
-//	}
+//	lastOrder, err := app.Globals.OrderRepository.FindById(order.OrderId)
+//	assert.Nil(t, err, "failed")
 //
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[35], 35, "35.Shipment_Delivery_Delayed", []int{32, 36}); err != nil {
-//		t.Fatalf("validate step35 failed: %s\n", err)
-//	}
+//	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].Index, 90)
+//	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].ActionHistory[0].Name, "DELIVERED")
 //
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[36], 36, "36.Shipment_Canceled", []int{80}); err != nil {
-//		t.Fatalf("validate step36 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[40], 40, "40.Shipment_Success", []int{90}); err != nil {
-//		t.Fatalf("validate step40 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[41], 41, "41.Return_Shipment_Pending", []int{42, 44}); err != nil {
-//		t.Fatalf("validate step41 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[42], 42, "42.Return_Shipped", []int{50, 51}); err != nil {
-//		t.Fatalf("validate step42 failed: %s\n", err)
-//	}
-//
-//	//if err := stepValidation(flowManager.GetIndexStepsMap()[43], 43, "43.Shipment_Delivery_Problem", []int{40,41}); err != nil {
-//	//	t.Fatalf("validate step43 failed: %s\n", err)
-//	//}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[44], 44, "44.Return_Shipment_Detail_Delayed", []int{40, 42}); err != nil {
-//		t.Fatalf("validate step44 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[50], 50, "50.Return_Shipment_Delivered", []int{53, 55}); err != nil {
-//		t.Fatalf("validate step50 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[51], 51, "51.Return_Shipment_Delivery_Pending", []int{50, 52}); err != nil {
-//		t.Fatalf("validate step51 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[52], 52, "52.Return_Shipment_Delivery_Delayed", []int{50, 54}); err != nil {
-//		t.Fatalf("validate step52 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[53], 53, "53.Return_Shipment_Delivery_Problem", []int{54, 55}); err != nil {
-//		t.Fatalf("validate step53 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[54], 54, "54.Return_Shipment_Canceled", []int{90}); err != nil {
-//		t.Fatalf("validate step54 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[55], 55, "55.Return_Shipment_Success", []int{80}); err != nil {
-//		t.Fatalf("validate step55 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[80], 80, "80.Pay_To_Buyer", []int{81, 82}); err != nil {
-//		t.Fatalf("validate step80 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[81], 81, "81.Pay_To_Buyer_Success", []int{}); err != nil {
-//		t.Fatalf("validate step81 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[82], 82, "82.Pay_To_Buyer_Failed", []int{81}); err != nil {
-//		t.Fatalf("validate step82 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[90], 90, "90.Pay_To_Seller", []int{91, 92}); err != nil {
-//		t.Fatalf("validate step90 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[91], 91, "91.Pay_To_Seller_Success", []int{93}); err != nil {
-//		t.Fatalf("validate step91 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[92], 92, "92.Pay_To_Seller_Failed", []int{91}); err != nil {
-//		t.Fatalf("validate step92 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[93], 93, "93.Pay_To_Market", []int{94, 95}); err != nil {
-//		t.Fatalf("validate step93 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[94], 94, "94.Pay_To_Market_Success", []int{}); err != nil {
-//		t.Fatalf("validate step94 failed: %s\n", err)
-//	}
-//
-//	if err := stepValidation(flowManager.GetIndexStepsMap()[95], 95, "95.Pay_To_Market_Failed", []int{94}); err != nil {
-//		t.Fatalf("validate step95 failed: %s\n", err)
-//	}
+//	assert.True(t, result.Result)
 //}
 //
-//func traversState(states []states.IState) {
-//	for _, state := range states {
-//		fmt.Printf("################################################\n")
-//		fmt.Printf("************* => state.ActionName(): %s\n", state.Name())
-//		fmt.Printf("************* => state.Index(): %d\n", state.Index())
-//		fmt.Printf("************* => state.Actions Type: %s\n", state.Actions().ActionType())
+//func TestOperatorShipmentPending_Failed(t *testing.T) {
+//	ctx, _ := context.WithCancel(context.Background())
+//	grpcConn, err := grpc.DialContext(ctx, app.Globals.config.GRPCServer.Address+":"+
+//		strconv.Itoa(int(app.Globals.config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+//	assert.Nil(t, err)
+//	defer grpcConn.Close()
 //
-//		if state.Actions().ActionType() == actions.ActorAction {
-//			actorAction := state.Actions().(actors.IActorAction)
-//			fmt.Printf("************* => actor type: %s\n", actorAction.ActorType())
-//			fmt.Printf("************* => actor enum actions: %s\n", actorAction.ActionEnum())
-//		} else {
-//			activeAction := state.Actions().(actives.IActiveAction)
-//			fmt.Printf("************* => active type: %s\n", activeAction.ActiveType())
-//			if activeAction.ActiveType() == actives.NextToStepAction {
-//				nextToStepState := state.(next_to_step_state.INextToStep)
-//				for action, step := range nextToStepState.ActionStepMap() {
-//					fmt.Printf("************* => ActionMap -> action: %s, stepIndex: %d\n", action, step.Index())
-//				}
-//			} else {
-//				fmt.Printf("************* => active enum actions: %s\n", activeAction.ActionEnums())
-//			}
-//		}
-//		fmt.Printf("************* => state.Parents(): %s\n", state.Parents())
-//		fmt.Printf("************* => state.Childes(): %s\n", state.Childes())
+//	requestNewOrder := createRequestNewOrder()
+//	err = addStock(ctx, requestNewOrder)
+//	assert.Nil(t, err)
+//	err = reservedStock(ctx, requestNewOrder)
+//	assert.Nil(t, err)
+//
+//	value, err := app.Globals.Converter.Map(*requestNewOrder, entities.Order{})
+//	assert.Nil(t, err, "Converter failed")
+//	newOrder := value.(*entities.Order)
+//
+//	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "32.Shipment_Delivered", 32)
+//	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, states.OrderInProgressStatus)
+//	order, err := app.Globals.OrderRepository.Save(*newOrder)
+//	assert.Nil(t, err, "save failed")
+//
+//	//for i:=0 ; i < len(order.Items); i++ {
+//	//	order.Items[i].Status = "32.Shipment_Delivered"
+//	//}
+//	_, err = app.Globals.OrderRepository.Save(*order)
+//	assert.Nil(t, err, "save failed")
+//
+//	defer removeCollection()
+//
+//	request := pb.RequestBackOfficeOrderAction{
+//		ItemId:     order.Items[0].ItemId,
+//		ActionType: "shipmentDelivered",
+//		Action:     "cancel",
 //	}
+//
+//	ctx, err = createAuthenticatedContext()
+//	assert.Nil(t, err)
+//
+//	OrderService := pb.NewOrderServiceClient(grpcConn)
+//	result, err := OrderService.BackOfficeOrderAction(ctx, &request)
+//
+//	assert.Nil(t, err)
+//
+//	lastOrder, err := app.Globals.OrderRepository.FindById(order.OrderId)
+//	assert.Nil(t, err, "failed")
+//
+//	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].Index, 80)
+//	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].ActionHistory[0].Name, "CANCELED")
+//	assert.True(t, result.Result)
 //}
 //
-//func stepValidation(state states.IState, checkIndex int, checkName string, childesIndex []int) error {
-//	if checkIndex != state.Index() {
-//		return errors.New(state.Name() + " index invalid")
+//func TestSellerapp.GlobalsrovalPending_Success(t *testing.T) {
+//	ctx, _ := context.WithCancel(context.Background())
+//	grpcConn, err := grpc.DialContext(ctx, app.Globals.config.GRPCServer.Address+":"+
+//		strconv.Itoa(int(app.Globals.config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+//	assert.Nil(t, err)
+//	defer grpcConn.Close()
+//
+//	requestNewOrder := createRequestNewOrder()
+//
+//	err = addStock(ctx, requestNewOrder)
+//	assert.Nil(t, err)
+//
+//	err = reservedStock(ctx, requestNewOrder)
+//	assert.Nil(t, err)
+//
+//	value, err := app.Globals.Converter.Map(*requestNewOrder, entities.Order{})
+//	assert.Nil(t, err, "Converter failed")
+//	newOrder := value.(*entities.Order)
+//
+//	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "20.Seller_app.Globalsroval_Pending", 20)
+//	updateOrderItemsProgress(newOrder, nil, "app.GlobalsrovalPending", true, states.OrderInProgressStatus)
+//	order, err := app.Globals.OrderRepository.Save(*newOrder)
+//	assert.Nil(t, err, "save failed")
+//
+//	//for i:=0 ; i < len(order.Items); i++ {
+//	//	order.Items[i].Status = "20.Seller_app.Globalsroval_Pending"
+//	//}
+//	_, err = app.Globals.OrderRepository.Save(*order)
+//	assert.Nil(t, err, "save failed")
+//
+//	defer removeCollection()
+//
+//	request := pb.RequestSellerOrderAction{
+//		OrderId:    order.OrderId,
+//		SellerId:   order.Items[0].SellerInfo.SellerId,
+//		ActionType: "approved",
+//		Action:     "success",
+//		Data:       nil,
 //	}
 //
-//	if checkName != state.Name() {
-//		return errors.New(state.Name() + " name invalid")
+//	ctx, err = createAuthenticatedContext()
+//	assert.Nil(t, err)
+//
+//	OrderService := pb.NewOrderServiceClient(grpcConn)
+//	result, err := OrderService.SellerOrderAction(ctx, &request)
+//
+//	assert.Nil(t, err)
+//	lastOrder, err := app.Globals.OrderRepository.FindById(order.OrderId)
+//	assert.Nil(t, err, "failed")
+//
+//	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].Index, 30)
+//	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].ActionHistory[0].Name, "SellerShipmentPending")
+//
+//	assert.True(t, result.Result)
+//}
+//
+//func TestSellerapp.GlobalsrovalPending_Failed(t *testing.T) {
+//	ctx, _ := context.WithCancel(context.Background())
+//	grpcConn, err := grpc.DialContext(ctx, app.Globals.config.GRPCServer.Address+":"+
+//		strconv.Itoa(int(app.Globals.config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+//	assert.Nil(t, err)
+//	defer grpcConn.Close()
+//
+//	requestNewOrder := createRequestNewOrder()
+//	err = addStock(ctx, requestNewOrder)
+//	assert.Nil(t, err)
+//
+//	err = reservedStock(ctx, requestNewOrder)
+//	assert.Nil(t, err)
+//
+//	value, err := app.Globals.Converter.Map(*requestNewOrder, entities.Order{})
+//	assert.Nil(t, err, "Converter failed")
+//	newOrder := value.(*entities.Order)
+//
+//	order, err := app.Globals.OrderRepository.Save(*newOrder)
+//	assert.Nil(t, err, "save failed")
+//
+//	updateOrderStatus(order, nil, "IN_PROGRESS", false, "20.Seller_app.Globalsroval_Pending", 20)
+//	updateOrderItemsProgress(order, nil, "app.GlobalsrovalPending", true, states.OrderInProgressStatus)
+//	_, err = app.Globals.OrderRepository.Save(*order)
+//	assert.Nil(t, err, "save failed")
+//
+//	//for i:=0 ; i < len(order.Items); i++ {
+//	//	order.Items[i].Status = "20.Seller_app.Globalsroval_Pending"
+//	//}
+//	_, err = app.Globals.OrderRepository.Save(*order)
+//	assert.Nil(t, err, "save failed")
+//
+//	defer removeCollection()
+//
+//	request := pb.RequestSellerOrderAction{
+//		OrderId:    order.OrderId,
+//		SellerId:   order.Items[0].SellerInfo.SellerId,
+//		ActionType: "approved",
+//		Action:     "failed",
+//		Data: &pb.RequestSellerOrderAction_Failed{
+//			Failed: &pb.RequestSellerOrderActionFailed{Reason: "Not Enough Stuff"},
+//		},
 //	}
 //
-//	if len(state.Childes()) != len(childesIndex) {
-//		return errors.New(state.Name() + " invalid childes count")
+//	ctx, err = createAuthenticatedContext()
+//	assert.Nil(t, err)
+//
+//	OrderService := pb.NewOrderServiceClient(grpcConn)
+//	result, err := OrderService.SellerOrderAction(ctx, &request)
+//
+//	assert.Nil(t, err)
+//
+//	lastOrder, err := app.Globals.OrderRepository.FindById(order.OrderId)
+//	assert.Nil(t, err, "failed")
+//
+//	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].Index, 80)
+//	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].ActionHistory[0].Name, "CANCELED")
+//	assert.True(t, result.Result)
+//}
+//
+//func TestShipmentPending_Success(t *testing.T) {
+//	ctx, _ := context.WithCancel(context.Background())
+//	grpcConn, err := grpc.DialContext(ctx, app.Globals.config.GRPCServer.Address+":"+
+//		strconv.Itoa(int(app.Globals.config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+//	assert.Nil(t, err)
+//	defer grpcConn.Close()
+//
+//	requestNewOrder := createRequestNewOrder()
+//	err = addStock(ctx, requestNewOrder)
+//	assert.Nil(t, err)
+//
+//	err = reservedStock(ctx, requestNewOrder)
+//	assert.Nil(t, err)
+//
+//	value, err := app.Globals.Converter.Map(*requestNewOrder, entities.Order{})
+//	assert.Nil(t, err, "Converter failed")
+//	newOrder := value.(*entities.Order)
+//
+//	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+//	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, states.OrderInProgressStatus)
+//	order, err := app.Globals.OrderRepository.Save(*newOrder)
+//	assert.Nil(t, err, "save failed")
+//
+//	//for i:=0 ; i < len(order.Items); i++ {
+//	//	order.Items[i].Status = "30.Shipment_Pending"
+//	//}
+//	_, err = app.Globals.OrderRepository.Save(*order)
+//	assert.Nil(t, err, "save failed")
+//
+//	defer removeCollection()
+//	request := pb.RequestSellerOrderAction{
+//		OrderId:    order.OrderId,
+//		SellerId:   order.Items[0].SellerInfo.SellerId,
+//		ActionType: "shipped",
+//		Action:     "success",
+//		Data: &pb.RequestSellerOrderAction_Success{
+//			Success: &pb.RequestSellerOrderActionSuccess{ShipmentMethod: "Post", TrackingId: "839832742"},
+//		},
 //	}
 //
-//	for _, index := range childesIndex {
-//		var findIndex = false
-//		for _, childStep := range state.Childes() {
-//			if childStep.Index() == index {
-//				findIndex = true
+//	ctx, err = createAuthenticatedContext()
+//	assert.Nil(t, err)
+//
+//	OrderService := pb.NewOrderServiceClient(grpcConn)
+//	result, err := OrderService.SellerOrderAction(ctx, &request)
+//
+//	assert.Nil(t, err)
+//
+//	lastOrder, err := app.Globals.OrderRepository.FindById(order.OrderId)
+//	assert.Nil(t, err, "failed")
+//
+//	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].Index, 32)
+//	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].ActionHistory[0].Name, "ShipmentDeliveredPending")
+//
+//	assert.True(t, result.Result)
+//}
+//
+//func TestShipmentPending_Failed(t *testing.T) {
+//	ctx, _ := context.WithCancel(context.Background())
+//	grpcConn, err := grpc.DialContext(ctx, app.Globals.config.GRPCServer.Address+":"+
+//		strconv.Itoa(int(app.Globals.config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+//	assert.Nil(t, err)
+//	defer grpcConn.Close()
+//
+//	requestNewOrder := createRequestNewOrder()
+//	err = addStock(ctx, requestNewOrder)
+//	assert.Nil(t, err)
+//
+//	err = reservedStock(ctx, requestNewOrder)
+//	assert.Nil(t, err)
+//
+//	value, err := app.Globals.Converter.Map(*requestNewOrder, entities.Order{})
+//	assert.Nil(t, err, "Converter failed")
+//	newOrder := value.(*entities.Order)
+//
+//	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+//	updateOrderItemsProgress(newOrder, nil, "SellerShipmentPending", true, states.OrderInProgressStatus)
+//	order, err := app.Globals.OrderRepository.Save(*newOrder)
+//	assert.Nil(t, err, "save failed")
+//
+//	//for i:=0 ; i < len(order.Items); i++ {
+//	//	order.Items[i].Status = "30.Shipment_Pending"
+//	//}
+//	_, err = app.Globals.OrderRepository.Save(*order)
+//	assert.Nil(t, err, "save failed")
+//
+//	defer removeCollection()
+//
+//	request := pb.RequestSellerOrderAction{
+//		OrderId:    order.OrderId,
+//		SellerId:   order.Items[0].SellerInfo.SellerId,
+//		ActionType: "shipped",
+//		Action:     "failed",
+//		Data: &pb.RequestSellerOrderAction_Failed{
+//			Failed: &pb.RequestSellerOrderActionFailed{Reason: "Post Failed"},
+//		},
+//	}
+//
+//	ctx, err = createAuthenticatedContext()
+//	assert.Nil(t, err)
+//
+//	OrderService := pb.NewOrderServiceClient(grpcConn)
+//	result, err := OrderService.SellerOrderAction(ctx, &request)
+//
+//	assert.Nil(t, err)
+//
+//	lastOrder, err := app.Globals.OrderRepository.FindById(order.OrderId)
+//	assert.Nil(t, err, "failed")
+//	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].Index, 80)
+//	assert.Equal(t, lastOrder.Items[0].Progress.StepsHistory[len(lastOrder.Items[0].Progress.StepsHistory)-1].ActionHistory[0].Name, "CANCELED")
+//	assert.True(t, result.Result)
+//}
+//
+//func TestSellerFindAllItems(t *testing.T) {
+//	ctx, _ := context.WithCancel(context.Background())
+//	grpcConn, err := grpc.DialContext(ctx, app.Globals.config.GRPCServer.Address+":"+
+//		strconv.Itoa(int(app.Globals.config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+//	assert.Nil(t, err)
+//	defer grpcConn.Close()
+//
+//	requestNewOrder := createRequestNewOrder()
+//	value, err := app.Globals.Converter.Map(*requestNewOrder, entities.Order{})
+//	assert.Nil(t, err, "Converter failed")
+//	newOrder := value.(*entities.Order)
+//
+//	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+//	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.OrderInProgressStatus)
+//	order, err := app.Globals.OrderRepository.Save(*newOrder)
+//	assert.Nil(t, err, "save failed")
+//
+//	request := &pb.RequestIdentifier{
+//		Id: strconv.Itoa(int(order.Items[0].SellerInfo.SellerId)),
+//	}
+//
+//	defer removeCollection()
+//
+//	ctx, err = createAuthenticatedContext()
+//	assert.Nil(t, err)
+//
+//	OrderService := pb.NewOrderServiceClient(grpcConn)
+//	result, err := OrderService.SellerFindAllItems(ctx, request)
+//
+//	assert.Nil(t, err)
+//	assert.Equal(t, result.Items[0].Quantity, int32(5))
+//}
+//
+//func TestBuyerFindAllOrders(t *testing.T) {
+//	ctx, _ := context.WithCancel(context.Background())
+//	grpcConn, err := grpc.DialContext(ctx, app.Globals.config.GRPCServer.Address+":"+
+//		strconv.Itoa(int(app.Globals.config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+//	assert.Nil(t, err)
+//
+//	defer grpcConn.Close()
+//	requestNewOrder := createRequestNewOrder()
+//	value, err := app.Globals.Converter.Map(*requestNewOrder, entities.Order{})
+//	assert.Nil(t, err, "Converter failed")
+//	newOrder := value.(*entities.Order)
+//
+//	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+//	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.OrderInProgressStatus)
+//	order, err := app.Globals.OrderRepository.Save(*newOrder)
+//	assert.Nil(t, err, "save failed")
+//
+//	defer removeCollection()
+//
+//	request := &pb.RequestIdentifier{
+//		Id: strconv.Itoa(int(order.BuyerInfo.BuyerId)),
+//	}
+//
+//	ctx, err = createAuthenticatedContext()
+//	assert.Nil(t, err)
+//
+//	OrderService := pb.NewOrderServiceClient(grpcConn)
+//	result, err := OrderService.BuyerFindAllOrders(ctx, request)
+//
+//	assert.Nil(t, err)
+//	assert.Equal(t, len(result.Orders), 1)
+//
+//}
+//
+//func TestBackOfficeOrdersListView(t *testing.T) {
+//	ctx, _ := context.WithCancel(context.Background())
+//	grpcConn, err := grpc.DialContext(ctx, app.Globals.config.GRPCServer.Address+":"+
+//		strconv.Itoa(int(app.Globals.config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+//	assert.Nil(t, err)
+//
+//	defer grpcConn.Close()
+//	requestNewOrder := createRequestNewOrder()
+//	value, err := app.Globals.Converter.Map(*requestNewOrder, entities.Order{})
+//	assert.Nil(t, err, "Converter failed")
+//	newOrder := value.(*entities.Order)
+//
+//	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+//	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.OrderInProgressStatus)
+//	_, err = app.Globals.OrderRepository.Save(*newOrder)
+//	assert.Nil(t, err, "save failed")
+//
+//	time.Sleep(100 * time.Millisecond)
+//
+//	requestNewOrder2 := createRequestNewOrder()
+//	value2, err2 := app.Globals.Converter.Map(*requestNewOrder2, entities.Order{})
+//	assert.Nil(t, err2, "Converter failed")
+//	newOrder2 := value2.(*entities.Order)
+//
+//	updateOrderStatus(newOrder2, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+//	updateOrderItemsProgress(newOrder2, nil, "Shipped", true, states.OrderInProgressStatus)
+//	_, err = app.Globals.OrderRepository.Save(*newOrder2)
+//	assert.Nil(t, err2, "save failed")
+//
+//	time.Sleep(100 * time.Millisecond)
+//
+//	requestNewOrder1 := createRequestNewOrder()
+//	value1, err1 := app.Globals.Converter.Map(*requestNewOrder1, entities.Order{})
+//	assert.Nil(t, err1, "Converter failed")
+//	newOrder1 := value1.(*entities.Order)
+//
+//	updateOrderStatus(newOrder1, nil, "IN_PROGRESS", false, "20.Seller_app.Globalsroval_Pending", 20)
+//	updateOrderItemsProgress(newOrder1, nil, "app.Globalsroved", true, states.OrderInProgressStatus)
+//	_, err = app.Globals.OrderRepository.Save(*newOrder1)
+//	assert.Nil(t, err1, "save failed")
+//
+//	time.Sleep(100 * time.Millisecond)
+//
+//	requestNewOrder3 := createRequestNewOrder()
+//	value3, err3 := app.Globals.Converter.Map(*requestNewOrder3, entities.Order{})
+//	assert.Nil(t, err3, "Converter failed")
+//	newOrder3 := value3.(*entities.Order)
+//
+//	updateOrderStatus(newOrder3, nil, "IN_PROGRESS", false, "20.Seller_app.Globalsroval_Pending", 20)
+//	updateOrderItemsProgress(newOrder3, nil, "app.Globalsroved", true, states.OrderInProgressStatus)
+//	_, err = app.Globals.OrderRepository.Save(*newOrder3)
+//	assert.Nil(t, err3, "save failed")
+//
+//	defer removeCollection()
+//
+//	request := &pb.RequestBackOfficeOrdersList{
+//		Page:      1,
+//		PerPage:   3,
+//		Sort:      "createdAt",
+//		Direction: -1,
+//	}
+//
+//	ctx, err = createAuthenticatedContext()
+//	assert.Nil(t, err)
+//
+//	OrderService := pb.NewOrderServiceClient(grpcConn)
+//	result, err := OrderService.BackOfficeOrdersListView(ctx, request)
+//
+//	assert.Nil(t, err)
+//	assert.Equal(t, len(result.Orders), 3)
+//}
+//
+//func TestBackOfficeOrderDetailView(t *testing.T) {
+//	ctx, _ := context.WithCancel(context.Background())
+//	grpcConn, err := grpc.DialContext(ctx, app.Globals.config.GRPCServer.Address+":"+
+//		strconv.Itoa(int(app.Globals.config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+//	assert.Nil(t, err)
+//
+//	defer grpcConn.Close()
+//	requestNewOrder := createRequestNewOrder()
+//	value, err := app.Globals.Converter.Map(*requestNewOrder, entities.Order{})
+//	assert.Nil(t, err, "Converter failed")
+//	newOrder := value.(*entities.Order)
+//
+//	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+//	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.OrderInProgressStatus)
+//	newOrder, err = app.Globals.OrderRepository.Save(*newOrder)
+//	assert.Nil(t, err, "save failed")
+//
+//	defer removeCollection()
+//
+//	request := &pb.RequestIdentifier{
+//		Id: strconv.Itoa(int(newOrder.OrderId)),
+//	}
+//
+//	ctx, err = createAuthenticatedContext()
+//	assert.Nil(t, err)
+//
+//	OrderService := pb.NewOrderServiceClient(grpcConn)
+//	result, err := OrderService.BackOfficeOrderDetailView(ctx, request)
+//
+//	assert.Nil(t, err)
+//	assert.Equal(t, result.OrderId, newOrder.OrderId)
+//}
+//
+//func TestSellerReportOrders(t *testing.T) {
+//	ctx, _ := context.WithCancel(context.Background())
+//	grpcConn, err := grpc.DialContext(ctx, app.Globals.config.GRPCServer.Address+":"+
+//		strconv.Itoa(int(app.Globals.config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+//	assert.Nil(t, err)
+//	defer grpcConn.Close()
+//
+//	requestNewOrder := createRequestNewOrder()
+//	value, err := app.Globals.Converter.Map(*requestNewOrder, entities.Order{})
+//	assert.Nil(t, err, "Converter failed")
+//	newOrder := value.(*entities.Order)
+//
+//	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+//	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.OrderInProgressStatus)
+//	order, err := app.Globals.OrderRepository.Save(*newOrder)
+//	assert.Nil(t, err, "save failed")
+//	defer removeCollection()
+//
+//	request := &pb.RequestSellerReportOrders{
+//		StartDateTime: order.CreatedAt.Unix() - 10,
+//		SellerId:      order.Items[0].SellerInfo.SellerId,
+//		Status:        order.Items[0].Status,
+//	}
+//
+//	ctx, err = createAuthenticatedContext()
+//	assert.Nil(t, err)
+//
+//	OrderService := pb.NewOrderServiceClient(grpcConn)
+//	downloadStream, err := OrderService.SellerReportOrders(ctx, request)
+//	assert.Nil(t, err)
+//	defer downloadStream.CloseSend()
+//
+//	f, err := os.Create("/tmp/SellerReportOrder.csv")
+//	assert.Nil(t, err)
+//	defer f.Close()
+//	defer os.Remove("/tmp/" + "SellerReportOrder.csv")
+//
+//	for {
+//		res, err := downloadStream.Recv()
+//		if err != nil {
+//			if err == io.EOF {
 //				break
 //			}
+//			break
 //		}
-//		if !findIndex {
-//			return errors.New(state.Name() + " required child with index " + strconv.Itoa(index) + " not found")
-//		}
+//		_, err = f.Write(res.Data)
+//		assert.Nil(t, err)
 //	}
 //
-//	return nil
+//	assert.Nil(t, err)
 //}
+//
+//func TestBackOfficeReportOrderItems(t *testing.T) {
+//	ctx, _ := context.WithCancel(context.Background())
+//	grpcConn, err := grpc.DialContext(ctx, app.Globals.config.GRPCServer.Address+":"+
+//		strconv.Itoa(int(app.Globals.config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+//	assert.Nil(t, err)
+//	defer grpcConn.Close()
+//
+//	requestNewOrder := createRequestNewOrder()
+//	value, err := app.Globals.Converter.Map(*requestNewOrder, entities.Order{})
+//	assert.Nil(t, err, "Converter failed")
+//	newOrder := value.(*entities.Order)
+//
+//	updateOrderStatus(newOrder, nil, "IN_PROGRESS", false, "30.Shipment_Pending", 30)
+//	updateOrderItemsProgress(newOrder, nil, "Shipped", true, states.OrderInProgressStatus)
+//	order, err := app.Globals.OrderRepository.Save(*newOrder)
+//	assert.Nil(t, err, "save failed")
+//	defer removeCollection()
+//
+//	request := &pb.RequestBackOfficeReportOrderItems{
+//		StartDateTime: uint64(order.CreatedAt.Unix() - 10),
+//		EndDataTime:   uint64(order.CreatedAt.Unix() + 10),
+//	}
+//
+//	ctx, err = createAuthenticatedContext()
+//	assert.Nil(t, err)
+//
+//	OrderService := pb.NewOrderServiceClient(grpcConn)
+//	downloadStream, err := OrderService.BackOfficeReportOrderItems(ctx, request)
+//	assert.Nil(t, err)
+//	defer downloadStream.CloseSend()
+//
+//	f, err := os.Create("/tmp/BackOfficeReportOrderItems.csv")
+//	assert.Nil(t, err)
+//	defer f.Close()
+//	defer os.Remove("/tmp/" + "BackOfficeReportOrderItems.csv")
+//
+//	for {
+//		res, err := downloadStream.Recv()
+//		if err != nil {
+//			if err == io.EOF {
+//				break
+//			}
+//			break
+//		}
+//		_, err = f.Write(res.Data)
+//		assert.Nil(t, err)
+//	}
+//
+//	assert.Nil(t, err)
+//}
+
+func removeCollection() {
+	if err := app.Globals.OrderRepository.RemoveAll(context.Background()); err != nil {
+	}
+}

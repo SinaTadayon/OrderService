@@ -1,4 +1,4 @@
-package subpackage
+package subpkg_repository
 
 import (
 	"context"

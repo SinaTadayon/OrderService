@@ -19,8 +19,5 @@ func (payment iPaymentServiceMock) OrderPayment(ctx context.Context, request Pay
 		PaymentId:   "12345667788",
 	}
 
-	returnChannel := make(chan future.IDataFuture, 1)
-	defer close(returnChannel)
-	returnChannel <- future.IDataFuture{Data: paymentResponse, Ex: nil}
-	return future.NewFuture(returnChannel, 1, 1)
+	return future.Factory().SetCapacity(1).SetData(paymentResponse).BuildAndSend()
 }

@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-var config *configs.Cfg
+var config *configs.Config
 var stock *iStockServiceImpl
 
 func createOrder() *entities.Order {

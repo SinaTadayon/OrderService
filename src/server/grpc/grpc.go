@@ -17,9 +17,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
+	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
-	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	pb "gitlab.faza.io/protos/order"
 	pg "gitlab.faza.io/protos/payment-gateway"
 	"go.mongodb.org/mongo-driver/bson"
@@ -192,7 +192,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 
 func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
 
-	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
+	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
 		logger.Err("RequestHandler() => UserService.AuthenticateContextToken failed, error: %s ", err)
 		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
@@ -416,7 +416,7 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, pid uint64, fi
 		}
 	}
 
-	var totalCount, err = global.Singletons.PkgItemRepository.CountWithFilter(ctx, countFilter)
+	var totalCount, err = app.Globals.PkgItemRepository.CountWithFilter(ctx, countFilter)
 	if err != nil {
 		logger.Err("sellerOrderListHandler() => CountWithFilter failed,  sellerId: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
@@ -471,7 +471,7 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, pid uint64, fi
 		}
 	}
 
-	pkgList, err := global.Singletons.PkgItemRepository.FindByFilter(ctx, pkgFilter)
+	pkgList, err := app.Globals.PkgItemRepository.FindByFilter(ctx, pkgFilter)
 	if err != nil {
 		logger.Err("sellerOrderListHandler() => FindByFilter failed, sellerId: %d, filterValue: %s, page: %d, perPage: %d, error: %s", offset, pid, filter, page, perPage, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
@@ -517,7 +517,7 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, pid uint64, fi
 }
 
 func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId uint64, filter FilterValue) (*pb.MessageResponse, error) {
-	order, err := global.Singletons.OrderRepository.FindById(ctx, orderId)
+	order, err := app.Globals.OrderRepository.FindById(ctx, orderId)
 	if err != nil {
 		logger.Err("sellerOrderDetailHandler() => PkgItemRepository.FindById failed, orderId: %d, pid: %d, filter:%d , error: %s", orderId, pid, filter, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
@@ -625,7 +625,7 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 	//	}
 	//}
 	//
-	//var totalCount, err = global.Singletons.PkgItemRepository.CountWithFilter(ctx, countFilter)
+	//var totalCount, err = app.Globals.PkgItemRepository.CountWithFilter(ctx, countFilter)
 	//if err != nil {
 	//	logger.Err("sellerOrderReturnDetailListHandler() => CountWithFilter failed,  sellerId: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
 	//	return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
@@ -689,7 +689,7 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 		return []bson.M{{"$match": filters}}, sortName, sortDirect
 	}
 
-	orderList, total, err := global.Singletons.OrderRepository.FindByFilterWithPageAndSort(ctx, pkgFilter, int64(page), int64(perPage))
+	orderList, total, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, pkgFilter, int64(page), int64(perPage))
 	if err != nil {
 		logger.Err("sellerOrderReturnDetailListHandler() => FindByFilter failed, pid: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
@@ -828,7 +828,7 @@ func (server *Server) buyerOrderDetailHandler(ctx context.Context, userId uint64
 			sortName, sortDirect
 	}
 
-	orderList, total, err := global.Singletons.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+	orderList, total, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
 	if err != nil {
 		logger.Err("sellerOrderReturnDetailListHandler() => FindByFilter failed, userId: %d, page: %d, perPage: %d, error: %s", userId, page, perPage, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
@@ -1015,31 +1015,31 @@ func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId
 		}
 	}
 
-	returnRequestPendingCount, err := global.Singletons.SubPkgRepository.CountWithFilter(ctx, returnRequestPendingFilter)
+	returnRequestPendingCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnRequestPendingFilter)
 	if err != nil {
 		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnRequestPendingFilter failed, userId: %d, error: %s", userId, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
-	returnShipmentPendingCount, err := global.Singletons.SubPkgRepository.CountWithFilter(ctx, returnShipmentPendingFilter)
+	returnShipmentPendingCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnShipmentPendingFilter)
 	if err != nil {
 		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnShipmentPendingFilter failed, userId: %d, error: %s", userId, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
-	returnShippedCount, err := global.Singletons.SubPkgRepository.CountWithFilter(ctx, returnShippedFilter)
+	returnShippedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnShippedFilter)
 	if err != nil {
 		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnShippedFilter failed, userId: %d, error: %s", userId, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
-	returnDeliveredCount, err := global.Singletons.SubPkgRepository.CountWithFilter(ctx, returnDeliveredFilter)
+	returnDeliveredCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnDeliveredFilter)
 	if err != nil {
 		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnDeliveredFilter failed, userId: %d, error: %s", userId, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
-	returnDeliveryFailedCount, err := global.Singletons.SubPkgRepository.CountWithFilter(ctx, returnDeliveryFailedFilter)
+	returnDeliveryFailedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnDeliveryFailedFilter)
 	if err != nil {
 		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnDeliveryFailedFilter failed, userId: %d, error: %s", userId, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
@@ -1097,7 +1097,7 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 			sortName, sortDirect
 	}
 
-	orderList, total, err := global.Singletons.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+	orderList, total, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
 	if err != nil {
 		logger.Err("buyerReturnOrderDetailListHandler() => FindByFilter failed, userId: %d, filter: %s, page: %d, perPage: %d, error: %s", userId, filter, page, perPage, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
@@ -1259,7 +1259,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 // TODO Add checking acl
 //func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseSellerFindAllItems, error) {
 //
-//	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 //	if err != nil {
 //		logger.Err("SellerFindAllItems() => UserService.AuthenticateContextToken failed, error: %s ", err)
 //		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
@@ -1276,7 +1276,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 //		return nil, status.Error(codes.Code(future.BadRequest), "PID Invalid")
 //	}
 //
-//	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
+//	orders, err := app.Globals.OrderRepository.FindByFilter(func() interface{} {
 //		return bson.D{{"items.sellerInfo.sellerId", uint64(sellerId)}}
 //	})
 //
@@ -1360,7 +1360,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 // TODO Add checking acl
 //func (server Server) BuyerOrderAction(ctx context.Context, req *pb.RequestBuyerOrderAction) (*pb.ResponseBuyerOrderAction, error) {
 //
-//	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 //	if err != nil {
 //		logger.Err("BuyerOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
 //		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
@@ -1388,7 +1388,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 // TODO Add checking acl
 //func (server Server) SellerOrderAction(ctx context.Context, req *pb.RequestSellerOrderAction) (*pb.ResponseSellerOrderAction, error) {
 //
-//	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 //	if err != nil {
 //		logger.Err("SellerOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
 //		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
@@ -1416,7 +1416,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 // TODO Add checking acl
 //func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseBuyerFindAllOrders, error) {
 //
-//	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 //	if err != nil {
 //		logger.Err("BuyerFindAllOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
 //		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
@@ -1433,7 +1433,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 //		return nil, status.Error(codes.Code(future.BadRequest), "BuyerId Invalid")
 //	}
 //
-//	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
+//	orders, err := app.Globals.OrderRepository.FindByFilter(func() interface{} {
 //		return bson.D{{"buyerInfo.buyerId", uint64(buyerId)}}
 //	})
 //
@@ -1562,7 +1562,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 // TODO Add checking acl and authenticate
 //func (server Server) BackOfficeOrdersListView(ctx context.Context, req *pb.RequestBackOfficeOrdersList) (*pb.ResponseBackOfficeOrdersList, error) {
 //
-//	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 //	if err != nil {
 //		logger.Err("BackOfficeOrdersListView() => UserService.AuthenticateContextToken failed, error: %s ", err)
 //		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
@@ -1591,7 +1591,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 // TODO Add checking acl and authenticate
 //func (server Server) BackOfficeOrderDetailView(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseOrderDetailView, error) {
 //
-//	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 //	if err != nil {
 //		logger.Err("BackOfficeOrderDetailView() => UserService.AuthenticateContextToken failed, error: %s ", err)
 //		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
@@ -1620,7 +1620,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 // TODO Add checking acl and authenticate
 //func (server Server) BackOfficeOrderAction(ctx context.Context, req *pb.RequestBackOfficeOrderAction) (*pb.ResponseBackOfficeOrderAction, error) {
 //
-//	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 //	if err != nil {
 //		logger.Err("BackOfficeOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
 //		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
@@ -1650,7 +1650,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 // TODO Add checking acl and authenticate
 //func (server Server) SellerReportOrders(req *pb.RequestSellerReportOrders, srv pb.OrderService_SellerReportOrdersServer) error {
 //
-//	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(srv.Context())
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(srv.Context())
 //	if err != nil {
 //		logger.Err("SellerReportOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
 //		return status.Error(codes.Code(future.InternalError), "Unknown Error")
@@ -1678,7 +1678,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 // TODO Add checking acl and authenticate
 //func (server Server) BackOfficeReportOrderItems(req *pb.RequestBackOfficeReportOrderItems, srv pb.OrderService_BackOfficeReportOrderItemsServer) error {
 //
-//	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(srv.Context())
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(srv.Context())
 //	if err != nil {
 //		logger.Err("SellerReportOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
 //		return status.Error(codes.Code(future.InternalError), "Unknown Error")
