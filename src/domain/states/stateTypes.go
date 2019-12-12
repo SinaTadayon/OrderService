@@ -8,40 +8,40 @@ type stateEnum struct {
 }
 
 var stateTypeMap = map[int]stateEnum{
-	0: {"NewOrder", 1},
-	1: {"PaymentPending", 10},
-	2: {"PaymentSuccess", 11},
-	3: {"PaymentFailed", 12},
+	0: {"New_Order", 1},
+	1: {"Payment_Pending", 10},
+	2: {"Payment_Success", 11},
+	3: {"Payment_Failed", 12},
 
-	4: {"OrderVerificationPending", 13},
-	5: {"OrderVerificationSuccess", 14},
-	6: {"OrderVerificationFail", 15},
+	4: {"Order_Verification_Pending", 13},
+	5: {"Order_Verification_Success", 14},
+	6: {"Order_Verification_Fail", 15},
 
-	7: {"ApprovalPending", 20},
-	8: {"CanceledBySeller", 21},
-	9: {"CanceledByBuyer", 22},
+	7: {"Approval_Pending", 20},
+	8: {"Canceled_By_Seller", 21},
+	9: {"Canceled_By_Buyer", 22},
 
-	10: {"ShipmentPending", 30},
+	10: {"Shipment_Pending", 30},
 	11: {"Shipped", 31},
 	12: {"Delivered", 32},
-	13: {"ShipmentDelayed", 33},
-	14: {"DeliveryPending", 34},
-	15: {"DeliveryDelayed", 35},
-	16: {"DeliveryFailed", 36},
+	13: {"Shipment_Delayed", 33},
+	14: {"Delivery_Pending", 34},
+	15: {"Delivery_Delayed", 35},
+	16: {"Delivery_Failed", 36},
 
-	17: {"ReturnRequestPending", 40},
-	18: {"ReturnRequestRejected", 41},
+	17: {"Return_Request_Pending", 40},
+	18: {"Return_Request_Rejected", 41},
 
-	19: {"ReturnShipmentPending", 50},
-	20: {"ReturnShipped", 51},
-	21: {"ReturnDelivered", 52},
-	22: {"ReturnDeliveryPending", 53},
-	23: {"ReturnDeliveryDelayed", 54},
-	24: {"ReturnRejected", 55},
-	25: {"ReturnDeliveryFailed", 56},
+	19: {"Return_Shipment_Pending", 50},
+	20: {"Return_Shipped", 51},
+	21: {"Return_Delivered", 52},
+	22: {"Return_Delivery_Pending", 53},
+	23: {"Return_Delivery_Delayed", 54},
+	24: {"Return_Rejected", 55},
+	25: {"Return_Delivery_Failed", 56},
 
-	26: {"PayToBuyer", 80},
-	27: {"PayToSeller", 90},
+	26: {"Pay_To_Buyer", 80},
+	27: {"Pay_To_Seller", 90},
 }
 
 const (

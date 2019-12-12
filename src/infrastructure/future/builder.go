@@ -74,6 +74,11 @@ func (builder Builder) Send() {
 	if builder.iFuture.channel == nil {
 		builder.iFuture.channel = make(chan IDataFuture, builder.iFuture.capacity)
 	}
+
+	if builder.dataFuture == nil {
+		builder.dataFuture = &iDataFutureImpl{}
+	}
+
 	defer close(builder.iFuture.channel)
 	builder.iFuture.channel <- builder.dataFuture
 }
@@ -83,6 +88,9 @@ func (builder Builder) SendTimeout(duration time.Duration) error {
 		builder.iFuture.channel = make(chan IDataFuture, builder.iFuture.capacity)
 	}
 	defer close(builder.iFuture.channel)
+	if builder.dataFuture == nil {
+		builder.dataFuture = &iDataFutureImpl{}
+	}
 	select {
 	case builder.iFuture.channel <- builder.dataFuture:
 		return nil
@@ -96,6 +104,9 @@ func (builder Builder) BuildAndSend() IFuture {
 		builder.iFuture.channel = make(chan IDataFuture, builder.iFuture.capacity)
 	}
 	defer close(builder.iFuture.channel)
+	if builder.dataFuture == nil {
+		builder.dataFuture = &iDataFutureImpl{}
+	}
 	builder.iFuture.channel <- builder.dataFuture
 	return builder.iFuture
 }
@@ -105,6 +116,9 @@ func (builder Builder) BuildAndSendTimeout(duration time.Duration) (IFuture, err
 		builder.iFuture.channel = make(chan IDataFuture, builder.iFuture.capacity)
 	}
 	defer close(builder.iFuture.channel)
+	if builder.dataFuture == nil {
+		builder.dataFuture = &iDataFutureImpl{}
+	}
 	select {
 	case builder.iFuture.channel <- builder.dataFuture:
 		return builder.iFuture, nil
@@ -116,6 +130,9 @@ func (builder Builder) BuildAndSendTimeout(duration time.Duration) (IFuture, err
 func (builder Builder) Build() IFuture {
 	if builder.iFuture.channel == nil {
 		builder.iFuture.channel = make(chan IDataFuture, builder.iFuture.capacity)
+	}
+	if builder.dataFuture == nil {
+		builder.dataFuture = &iDataFutureImpl{}
 	}
 	return builder.iFuture
 }

@@ -84,7 +84,7 @@ func main() {
 
 	app.Globals.NotifyService = notify_service.NewNotificationService(app.Globals.Config.NotifyService.Address, app.Globals.Config.NotifyService.Port)
 	app.Globals.UserService = user_service.NewUserService(app.Globals.Config.UserService.Address, app.Globals.Config.UserService.Port)
-	MainApp.schedulerService = scheduler_service.NewScheduler(mongoDriver, MainApp.flowManager)
+	//MainApp.schedulerService = scheduler_service.NewScheduler(mongoDriver, MainApp.flowManager)
 
 	//brokers = strings.Split(app.Globals.Config.Kafka.Brokers, ",")
 	//if app.Globals.Config.MainApp.Port == "" {

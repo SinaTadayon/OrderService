@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/stretchr/testify/require"
 	"gitlab.faza.io/go-framework/logger"
-	"gitlab.faza.io/go-framework/mongoadapter"
+	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"go.mongodb.org/mongo-driver/bson"
@@ -24,37 +24,18 @@ func TestMain(m *testing.M) {
 		path = ""
 	}
 
-	config, err := configs.LoadConfig(path)
+	app.Globals.Config, err = configs.LoadConfig(path)
 	if err != nil {
 		logger.Err("configs.LoadConfig failed, %s", err.Error())
 		os.Exit(1)
 	}
 
-	// store in mongo
-	mongoConf := &mongoadapter.MongoConfig{
-		Host:     config.Mongo.Host,
-		Port:     config.Mongo.Port,
-		Username: config.Mongo.User,
-		//Password:     App.Config.Mongo.Pass,
-		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout),
-		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout),
-		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout),
-		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime),
-		MaxPoolSize:     uint64(config.Mongo.MaxPoolSize),
-		MinPoolSize:     uint64(config.Mongo.MinPoolSize),
-	}
-
-	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
+	mongoDriver, err := app.SetupMongoDriver(*app.Globals.Config)
 	if err != nil {
-		logger.Err("NewOrderRepository Mongo: %v", err.Error())
 		os.Exit(1)
 	}
 
-	orderRepository, err = NewOrderRepository(mongoDriver)
-	if err != nil {
-		logger.Err("create order repository failed")
-		os.Exit(1)
-	}
+	orderRepository = NewOrderRepository(mongoDriver)
 
 	// Running Tests
 	code := m.Run()
@@ -510,6 +491,7 @@ func createOrder() *entities.Order {
 			ShipmentTotal:  5700000,
 			PaymentMethod:  "IPG",
 			PaymentGateway: "APP",
+			PaymentOption:  nil,
 			CartRule:       nil,
 			Voucher: &entities.Voucher{
 				Amount: 230000,
@@ -612,10 +594,10 @@ func createOrder() *entities.Order {
 				},
 				Subpackages: []entities.Subpackage{
 					{
-						SId:      0,
-						SellerId: 129384234,
-						OrderId:  0,
-						Version:  0,
+						SId:     0,
+						PId:     129384234,
+						OrderId: 0,
+						Version: 0,
 						Items: []entities.Item{
 							{
 								SKU:         "yt545-34",
@@ -748,10 +730,10 @@ func createOrder() *entities.Order {
 						DeletedAt: nil,
 					},
 					{
-						SId:      0,
-						SellerId: 129384234,
-						OrderId:  0,
-						Version:  0,
+						SId:     0,
+						PId:     129384234,
+						OrderId: 0,
+						Version: 0,
 						Items: []entities.Item{
 							{
 								SKU:         "gd534-34344",
@@ -977,10 +959,10 @@ func createOrder() *entities.Order {
 				},
 				Subpackages: []entities.Subpackage{
 					{
-						SId:      0,
-						SellerId: 99988887777,
-						OrderId:  0,
-						Version:  0,
+						SId:     0,
+						PId:     99988887777,
+						OrderId: 0,
+						Version: 0,
 						Items: []entities.Item{
 							{
 								SKU:         "trrer-5343fdf",
@@ -1113,10 +1095,10 @@ func createOrder() *entities.Order {
 						DeletedAt: nil,
 					},
 					{
-						SId:      0,
-						SellerId: 99988887777,
-						OrderId:  0,
-						Version:  0,
+						SId:     0,
+						PId:     99988887777,
+						OrderId: 0,
+						Version: 0,
 						Items: []entities.Item{
 							{
 								SKU:         "5456",

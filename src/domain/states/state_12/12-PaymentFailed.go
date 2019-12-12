@@ -47,15 +47,6 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 			return
 		}
 
-		//paymentAction := &entities.Action{
-		//	Name:      payment_action.Fail.ActionName(),
-		//	Type:      actions.Payment.ActionName(),
-		//	Data:      nil,
-		//	Result:    string(states.ActionSuccess),
-		//	Reasons:   nil,
-		//	CreatedAt: time.Now().UTC(),
-		//}
-
 		var stockAction *entities.Action
 		if err := state.releasedStock(ctx, order); err != nil {
 			stockAction = &entities.Action{
@@ -102,10 +93,10 @@ func (state paymentFailedState) releasedStock(ctx context.Context, order *entiti
 		stock_action.New(stock_action.Release))
 	futureData := iFuture.Get()
 	if futureData.Error() != nil {
-		logger.Err("Reserved stock from stockService failed, state: %s, order: %v, error: %s", state.Name(), order, futureData.Error())
+		logger.Err("Reserved stock from stockService failed, state: %s, orderId: %d, error: %s", state.Name(), order.OrderId, futureData.Error())
 		return futureData.Error().Reason()
 	}
 
-	logger.Audit("Release stock success, state: %s, order: %v", state.Name(), order)
+	logger.Audit("Release stock success, state: %s, orderId: %d", state.Name(), order.OrderId)
 	return nil
 }

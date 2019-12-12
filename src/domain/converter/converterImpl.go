@@ -25,8 +25,8 @@ func NewConverter() IConverter {
 func (iconv iConverterImpl) Map(in interface{}, out interface{}) (interface{}, error) {
 
 	var ok bool
-	var newOrderDto ordersrv.RequestNewOrder
-	newOrderDto, ok = in.(ordersrv.RequestNewOrder)
+	var newOrderDto *ordersrv.RequestNewOrder
+	newOrderDto, ok = in.(*ordersrv.RequestNewOrder)
 	if ok == false {
 		return nil, errors.New("mapping from input type not supported")
 	}
@@ -36,7 +36,7 @@ func (iconv iConverterImpl) Map(in interface{}, out interface{}) (interface{}, e
 		return nil, errors.New("mapping to output type not supported")
 	}
 
-	return convert(&newOrderDto)
+	return convert(newOrderDto)
 }
 
 func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
@@ -96,7 +96,8 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	order.Invoice.ShipmentTotal = newOrderDto.Invoice.ShipmentTotal
 	order.Invoice.Currency = newOrderDto.Invoice.Currency
 	order.Invoice.PaymentMethod = newOrderDto.Invoice.PaymentMethod
-	order.Invoice.PaymentGateway = newOrderDto.Invoice.PaymentOption
+	order.Invoice.PaymentGateway = newOrderDto.Invoice.PaymentGateway
+	order.Invoice.PaymentOption = nil
 
 	if newOrderDto.Invoice.Voucher != nil {
 		order.Invoice.Voucher = &entities.Voucher{
@@ -168,8 +169,8 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 
 		pkgItem.Subpackages = []entities.Subpackage{
 			{
-				SellerId: pkgDto.SellerId,
-				Items:    make([]entities.Item, 0, len(pkgDto.Items)),
+				PId:   pkgDto.SellerId,
+				Items: make([]entities.Item, 0, len(pkgDto.Items)),
 			},
 		}
 		for _, itemDto := range pkgDto.Items {

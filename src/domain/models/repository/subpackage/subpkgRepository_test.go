@@ -116,7 +116,7 @@ func TestFindByOrderAndSellerId(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	subPkgList, err := subPkgRepo.FindByOrderAndSellerId(ctx, order.OrderId, order.Packages[1].PId)
 	require.Nil(t, err)
-	require.Equal(t, order.Packages[1].PId, subPkgList[0].SellerId)
+	require.Equal(t, order.Packages[1].PId, subPkgList[0].PId)
 	require.Equal(t, 2, len(subPkgList))
 }
 
@@ -132,8 +132,8 @@ func TestFindAll(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	subPkgList, err := subPkgRepo.FindAll(ctx, order.Packages[1].PId)
 	require.Nil(t, err)
-	require.Equal(t, order.Packages[1].PId, subPkgList[0].SellerId)
-	require.Equal(t, order.Packages[1].PId, subPkgList[1].SellerId)
+	require.Equal(t, order.Packages[1].PId, subPkgList[0].PId)
+	require.Equal(t, order.Packages[1].PId, subPkgList[1].PId)
 	require.Equal(t, 4, len(subPkgList))
 }
 
@@ -178,8 +178,8 @@ func TestFindAllWithPage(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	subPkgList, totalPage, err := subPkgRepo.FindAllWithPage(ctx, order.Packages[1].PId, 1, 2)
 	require.Nil(t, err)
-	require.Equal(t, order.Packages[1].PId, subPkgList[0].SellerId)
-	require.Equal(t, order.Packages[1].PId, subPkgList[1].SellerId)
+	require.Equal(t, order.Packages[1].PId, subPkgList[0].PId)
+	require.Equal(t, order.Packages[1].PId, subPkgList[1].PId)
 	require.Equal(t, 2, len(subPkgList))
 	require.Equal(t, int64(3), totalPage)
 }
@@ -243,8 +243,8 @@ func TestFindByFilter(t *testing.T) {
 
 	subPkgList, err := subPkgRepo.FindByFilter(ctx, func() (filter interface{}) { return totalPipeline }, func() (filter interface{}) { return pipeline })
 	require.Nil(t, err)
-	require.Equal(t, order.Packages[0].PId, subPkgList[0].SellerId)
-	require.Equal(t, order.Packages[0].PId, subPkgList[1].SellerId)
+	require.Equal(t, order.Packages[0].PId, subPkgList[0].PId)
+	require.Equal(t, order.Packages[0].PId, subPkgList[1].PId)
 	require.Equal(t, 4, len(subPkgList))
 }
 
@@ -278,8 +278,8 @@ func TestFindByFilterWithPage(t *testing.T) {
 	}
 	subPkgList, totalPages, err := subPkgRepo.FindByFilterWithPage(ctx, func() (filter interface{}) { return totalPipeline }, func() (filter interface{}) { return pipeline }, 1, 2)
 	require.Nil(t, err)
-	require.Equal(t, order.Packages[0].PId, subPkgList[0].SellerId)
-	require.Equal(t, order.Packages[0].PId, subPkgList[1].SellerId)
+	require.Equal(t, order.Packages[0].PId, subPkgList[0].PId)
+	require.Equal(t, order.Packages[0].PId, subPkgList[1].PId)
 	require.Equal(t, 2, len(subPkgList))
 	require.Equal(t, int64(2), totalPages)
 }
@@ -317,7 +317,7 @@ func insert(order *entities.Order) (*entities.Order, error) {
 					mapItemIds[random] = order.Packages[i].PId
 					sid, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + strconv.Itoa(random))
 					order.Packages[i].Subpackages[j].SId = uint64(sid)
-					order.Packages[i].Subpackages[j].SellerId = order.Packages[i].PId
+					order.Packages[i].Subpackages[j].PId = order.Packages[i].PId
 					order.Packages[i].Subpackages[j].OrderId = order.OrderId
 					order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
 					order.Packages[i].Subpackages[j].UpdatedAt = time.Now().UTC()
@@ -366,7 +366,7 @@ func insertWithoutChangeTime(order *entities.Order) (*entities.Order, error) {
 					mapItemIds[random] = order.Packages[i].PId
 					sid, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + strconv.Itoa(random))
 					order.Packages[i].Subpackages[j].SId = uint64(sid)
-					order.Packages[i].Subpackages[j].SellerId = order.Packages[i].PId
+					order.Packages[i].Subpackages[j].PId = order.Packages[i].PId
 					order.Packages[i].Subpackages[j].OrderId = order.OrderId
 					break
 				}
@@ -498,6 +498,7 @@ func createOrder() *entities.Order {
 			ShipmentTotal:  5700000,
 			PaymentMethod:  "IPG",
 			PaymentGateway: "APP",
+			PaymentOption:  nil,
 			CartRule:       nil,
 			Voucher: &entities.Voucher{
 				Amount: 230000,
@@ -600,10 +601,10 @@ func createOrder() *entities.Order {
 				},
 				Subpackages: []entities.Subpackage{
 					{
-						SId:      0,
-						SellerId: 129384234,
-						OrderId:  0,
-						Version:  0,
+						SId:     0,
+						PId:     129384234,
+						OrderId: 0,
+						Version: 0,
 						Items: []entities.Item{
 							{
 								SKU:         "yt545-34",
@@ -736,10 +737,10 @@ func createOrder() *entities.Order {
 						DeletedAt: nil,
 					},
 					{
-						SId:      0,
-						SellerId: 129384234,
-						OrderId:  0,
-						Version:  0,
+						SId:     0,
+						PId:     129384234,
+						OrderId: 0,
+						Version: 0,
 						Items: []entities.Item{
 							{
 								SKU:         "gd534-34344",
@@ -965,10 +966,10 @@ func createOrder() *entities.Order {
 				},
 				Subpackages: []entities.Subpackage{
 					{
-						SId:      0,
-						SellerId: 99988887777,
-						OrderId:  0,
-						Version:  0,
+						SId:     0,
+						PId:     99988887777,
+						OrderId: 0,
+						Version: 0,
 						Items: []entities.Item{
 							{
 								SKU:         "trrer-5343fdf",
@@ -1101,10 +1102,10 @@ func createOrder() *entities.Order {
 						DeletedAt: nil,
 					},
 					{
-						SId:      0,
-						SellerId: 99988887777,
-						OrderId:  0,
-						Version:  0,
+						SId:     0,
+						PId:     99988887777,
+						OrderId: 0,
+						Version: 0,
 						Items: []entities.Item{
 							{
 								SKU:         "5456",

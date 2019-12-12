@@ -13,7 +13,10 @@ func NewBodyOf(body interface{}) IFrameBody {
 }
 
 func NewBodyFrom(body IFrameBody) IFrameBody {
-	return &iFrameBodyImpl{body.Content()}
+	if body != nil {
+		return &iFrameBodyImpl{body.Content()}
+	}
+	return &iFrameBodyImpl{}
 }
 
 func (frame *iFrameBodyImpl) SetContent(body interface{}) {
@@ -29,5 +32,7 @@ func (frame *iFrameBodyImpl) Copy() IFrameBody {
 }
 
 func (frame *iFrameBodyImpl) CopyFrom(body IFrameBody) {
-	frame.body = body.Content()
+	if body != nil {
+		frame.body = body.Content()
+	}
 }

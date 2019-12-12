@@ -107,7 +107,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 			var newSubPackages []*entities.Subpackage
 			var requestAction *entities.Action
 			var newSubPkg *entities.Subpackage
-			var diffItems []*entities.Item
+			var fullItems []entities.Item
 			var nextActionState states.IState
 			var actionState actions.IAction
 
@@ -132,7 +132,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 				for i := 0; i < len(pkgItem.Subpackages); i++ {
 					if eventSubPkg.SId == pkgItem.Subpackages[i].SId && pkgItem.Subpackages[i].Status == state.Name() {
 						newSubPkg = nil
-						diffItems = nil
+						fullItems = nil
 						var findItem = false
 
 						// iterate items
@@ -177,10 +177,17 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 										return
 
 									} else {
-										if diffItems == nil {
-											diffItems = make([]*entities.Item, 0, len(pkgItem.Subpackages[i].Items))
+										if fullItems == nil {
+											fullItems = make([]entities.Item, 0, len(pkgItem.Subpackages[i].Items))
+											requestAction = &entities.Action{
+												Name:      actionState.ActionEnum().ActionName(),
+												Type:      actionState.ActionType().ActionName(),
+												Result:    string(states.ActionSuccess),
+												Reasons:   actionItem.Reasons,
+												CreatedAt: time.Now().UTC(),
+											}
 										}
-										diffItems = append(diffItems, &pkgItem.Subpackages[i].Items[j])
+										fullItems = append(fullItems, pkgItem.Subpackages[i].Items[j])
 										pkgItem.Subpackages[i].Items[len(pkgItem.Subpackages[i].Items)-1], pkgItem.Subpackages[i].Items[j] =
 											pkgItem.Subpackages[i].Items[j], pkgItem.Subpackages[i].Items[len(pkgItem.Subpackages[i].Items)-1]
 										pkgItem.Subpackages[i].Items = pkgItem.Subpackages[i].Items[:len(pkgItem.Subpackages[i].Items)-1]
@@ -195,20 +202,17 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 							}
 						}
 
-						//if newSubPackages == nil {
 						newSubPackages = make([]*entities.Subpackage, 0, len(actionData.SubPackages))
-						//}
-
 						if newSubPkg != nil {
-							if diffItems != nil {
-								for z := 0; z < len(diffItems); z++ {
-									newSubPkg.Items = append(newSubPkg.Items, *diffItems[z])
+							if fullItems != nil {
+								for z := 0; z < len(fullItems); z++ {
+									newSubPkg.Items = append(newSubPkg.Items, fullItems[z])
 								}
 							}
 							newSubPackages = append(newSubPackages, newSubPkg)
 						} else {
-							for z := 0; z < len(diffItems); z++ {
-								pkgItem.Subpackages[i].Items = append(pkgItem.Subpackages[i].Items, *diffItems[z])
+							for z := 0; z < len(fullItems); z++ {
+								pkgItem.Subpackages[i].Items = append(pkgItem.Subpackages[i].Items, fullItems[z])
 							}
 							newSubPackages = append(newSubPackages, &pkgItem.Subpackages[i])
 						}
@@ -216,42 +220,51 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 				}
 			}
 
-			//if newSubPackages != nil {
 			var sids = make([]uint64, 0, 32)
 			for i := 0; i < len(newSubPackages); i++ {
 				if newSubPackages[i].SId == 0 {
+					// TODO must be optimized performance
 					state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
 					err := app.Globals.SubPkgRepository.Save(ctx, newSubPackages[i])
 					if err != nil {
 						logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
-							newSubPackages[i].OrderId, newSubPackages[i].SellerId, event, err.Error())
+							newSubPackages[i].OrderId, newSubPackages[i].PId, event, err.Error())
 						// TODO must distinct system error from update version error
 						future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 							SetError(future.InternalError, "Unknown Err", err).Send()
 						return
-					} else {
-						logger.Audit("Process() => Status of new subpackage update to %v event, orderId: %d, sellerId: %d, sid: %d",
-							event, newSubPackages[i].OrderId, newSubPackages[i].SellerId, newSubPackages[i].SId)
 					}
+
+					pkgItem.Subpackages = append(pkgItem.Subpackages, *newSubPackages[i])
+					logger.Audit("Process() => Status of new subpackage update to %v event, orderId: %d, sellerId: %d, sid: %d",
+						event, newSubPackages[i].OrderId, newSubPackages[i].PId, newSubPackages[i].SId)
 				} else {
 					state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
 				}
 				sids = append(sids, newSubPackages[i].SId)
-				pkgItem.Subpackages = append(pkgItem.Subpackages, *newSubPackages[i])
 			}
 
 			if event.Action().ActionEnum() != seller_action.Approve {
 				var rejectedSubtotal uint64 = 0
 				var rejectedDiscount uint64 = 0
 
-				for i := 0; i < len(newSubPackages); i++ {
-					for j := 0; j < len(newSubPackages); j++ {
-						rejectedSubtotal += newSubPackages[i].Items[j].Invoice.Total
-						rejectedDiscount += newSubPackages[i].Items[j].Invoice.Discount
+				for _, subpackage := range newSubPackages {
+					for j := 0; j < len(subpackage.Items); j++ {
+						rejectedSubtotal += subpackage.Items[j].Invoice.Total
+						rejectedDiscount += subpackage.Items[j].Invoice.Discount
 					}
 				}
-				pkgItem.Invoice.Subtotal -= rejectedSubtotal
-				pkgItem.Invoice.Discount -= rejectedDiscount
+
+				if rejectedSubtotal < pkgItem.Invoice.Subtotal && rejectedDiscount < pkgItem.Invoice.Discount {
+					pkgItem.Invoice.Subtotal -= rejectedSubtotal
+					pkgItem.Invoice.Discount -= rejectedDiscount
+					logger.Audit("Process() => calculate package invoice success, orderId: %d, pid:%d, action: %s, subtotal: %d, discount: %d",
+						pkgItem.OrderId, pkgItem.PId, event.Action().ActionEnum().ActionName(), pkgItem.Invoice.Subtotal, pkgItem.Invoice.Discount)
+
+				} else if rejectedSubtotal > pkgItem.Invoice.Subtotal || rejectedDiscount > pkgItem.Invoice.Discount {
+					logger.Err("Process() => calculate package invoice failed, orderId: %d, pid:%d, action: %s, subtotal: %d, discount: %d",
+						pkgItem.OrderId, pkgItem.PId, event.Action().ActionEnum().ActionName(), pkgItem.Invoice.Subtotal, pkgItem.Invoice.Discount)
+				}
 			}
 			pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 			if err != nil {
@@ -271,15 +284,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 
 			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 				SetData(response).Send()
-			nextActionState.Process(ctx, frame.Factory().SetSubpackages(newSubPackages).SetBody(pkgItem).Build())
-
-			//} else {
-			//	logger.Err("Process() => result of event invalid, state: %s, event: %v, orderId: %d, sellerId: %d",
-			//		state.String(), event, pkgItem.OrderId, pkgItem.PId)
-			//	future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-			//		SetError(future.InternalError, "Unknown Err", errors.New("event type invalid")).Send()
-			//	return
-			//}
+			nextActionState.Process(ctx, frame.Factory().SetSIds(sids).SetSubpackages(newSubPackages).SetBody(pkgItem).Build())
 		} else {
 			logger.Err("Process() => event type not supported, state: %s, event: %v, frame: %v", state.String(), event, iFrame)
 			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).

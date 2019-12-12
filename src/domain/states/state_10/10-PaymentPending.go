@@ -85,15 +85,6 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				},
 			}
 
-			//paymentAction := &entities.Action{
-			//	Name:      payment_action.BuyerPaymentPendingRequest.ActionName(),
-			//	Type:      actions.Payment.ActionName(),
-			//	Data:      nil,
-			//	Result:    string(states.ActionSuccess),
-			//	Reasons:   nil,
-			//	CreatedAt: time.Now().UTC(),
-			//}
-
 			// TODO check it voucher amount and if voucherSettlement failed can be cancel order
 			var voucherAction *entities.Action
 			iFuture := app.Globals.VoucherService.VoucherSettlement(ctx, order.Invoice.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
@@ -127,6 +118,9 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 					SetError(future.InternalError, errStr, err).
 					Send()
 			} else {
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetData(order.PaymentService[0].PaymentResponse.CallBackUrl).
+					Send()
 				successAction := state.GetAction(payment_action.Success.ActionName())
 				state.StatesMap()[successAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(orderUpdated).Build())
 			}
@@ -195,16 +189,6 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 					CreatedAt:   time.Now().UTC(),
 				}
 
-				//paymentAction := &entities.Action{
-				//	Name:      payment_action.BuyerPaymentPendingRequest.ActionName(),
-				//	Type:      actions.Payment.ActionName(),
-				//	Data:      nil,
-				//	Result:    string(states.ActionSuccess),
-				//	Reasons:   nil,
-				//	CreatedAt: time.Now().UTC(),
-				//}
-				//
-				//state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
 				_, err := app.Globals.OrderRepository.Save(ctx, *order)
 				if err != nil {
 					logger.Err("Singletons.OrderRepository.Save failed, orderId: %d, error: %s", order.OrderId, err)
@@ -227,8 +211,15 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			logger.Err("Singletons.OrderRepository.Save failed, orderId: %d, paymentResult: %v, error: %s",
 				iFrame.Header().Value(string(frame.HeaderOrderId)).(uint64),
 				iFrame.Header().Value(string(frame.HeaderPaymentResult)).(*entities.PaymentResult), err)
+
+			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+				SetCapacity(1).SetError(future.NotFound, "OrderId Not Found", err).
+				Send()
 			return
 		}
+
+		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+			SetCapacity(1).Send()
 
 		order.PaymentService[0].PaymentResult = iFrame.Header().Value(string(frame.HeaderPaymentResult)).(*entities.PaymentResult)
 		logger.Audit("Order Received in %s state, orderId: %d", state.Name(), order.OrderId)
@@ -243,11 +234,12 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			}
 
 			state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
-			if _, err := app.Globals.OrderRepository.Save(ctx, *order); err != nil {
+			updatedOrder, err := app.Globals.OrderRepository.Save(ctx, *order)
+			if err != nil {
 				logger.Err("Singletons.OrderRepository.Save failed, orderId: %d, error: %s", order.OrderId, err)
 			}
 			failAction := state.GetAction(payment_action.Fail.ActionName())
-			state.StatesMap()[failAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
+			state.StatesMap()[failAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(updatedOrder).Build())
 			return
 		} else {
 			var voucherAction *entities.Action

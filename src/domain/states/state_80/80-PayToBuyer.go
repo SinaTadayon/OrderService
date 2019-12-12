@@ -6,7 +6,6 @@ import (
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/stock"
-	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
@@ -39,15 +38,15 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 }
 
 func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
-	if iFrame.Header().KeyExists(string(frame.HeaderSubpackage)) {
-		subpkg, ok := iFrame.Header().Value(string(frame.HeaderSubpackage)).(*entities.Subpackage)
+	if iFrame.Header().KeyExists(string(frame.HeaderSubpackages)) {
+		subpackages, ok := iFrame.Header().Value(string(frame.HeaderSubpackages)).([]*entities.Subpackage)
 		if !ok {
-			logger.Err("iFrame.Header() not a subpackage, frame: %v, %s state ", iFrame, state.Name())
+			logger.Err("iFrame.Header() not a subpackages, frame: %v, %s state ", iFrame, state.Name())
 			return
 		}
 
 		var releaseStockAction *entities.Action
-		if err := state.releasedStock(ctx, subpkg); err != nil {
+		if err := state.releasedStock(ctx, subpackages); err != nil {
 			releaseStockAction = &entities.Action{
 				Name:      stock_action.Release.ActionName(),
 				Type:      actions.Stock.ActionName(),
@@ -65,29 +64,21 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			}
 		}
 
-		nextToAction := &entities.Action{
-			Name:      system_action.NextToState.ActionName(),
-			Type:      actions.System.ActionName(),
-			Result:    string(states.ActionSuccess),
-			Reasons:   nil,
-			CreatedAt: time.Now().UTC(),
+		for _, subpackage := range subpackages {
+			state.UpdateSubPackage(ctx, subpackage, releaseStockAction)
+			_, err := app.Globals.SubPkgRepository.Update(ctx, *subpackage)
+			if err != nil {
+				logger.Err("SubPkgRepository.Update in %s state failed, orderId: %d, pid: %d, sid: %d, error: %s",
+					state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId, err.Error())
+				return
+			} else {
+				logger.Audit("%s state success, orderId: %d, pid: %d, sid: %d", state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId)
+			}
 		}
-
-		state.UpdateSubPackage(ctx, subpkg, releaseStockAction)
-		state.UpdateSubPackage(ctx, subpkg, nextToAction)
-		subPkgUpdated, err := app.Globals.SubPkgRepository.Update(ctx, *subpkg)
+		order, err := app.Globals.OrderRepository.FindById(ctx, subpackages[0].OrderId)
 		if err != nil {
-			logger.Err("SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
-		} else {
-			logger.Audit("Cancel by seller success, orderId: %d, sellerId: %d, sid: %d", subpkg.OrderId, subpkg.SellerId, subpkg.SId)
-			state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(subPkgUpdated).Build())
-		}
-
-		order, err := app.Globals.OrderRepository.FindById(ctx, subpkg.OrderId)
-		if err != nil {
-			logger.Err("OrderRepository.FindById in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
+			logger.Err("OrderRepository.FindById in %s state failed, orderId: %d, pid: %d, sid: %d, error: %s",
+				state.Name(), subpackages[0].OrderId, subpackages[0].PId, subpackages[0].SId, err.Error())
 			return
 		}
 
@@ -95,7 +86,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 		for i := 0; i < len(order.Packages); i++ {
 			findFlag = true
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-				if order.Packages[i].Subpackages[j].Status != states.PayToBuyer.StateName() ||
+				if order.Packages[i].Subpackages[j].Status != states.PayToBuyer.StateName() &&
 					order.Packages[i].Subpackages[j].Status != states.PayToSeller.StateName() {
 					findFlag = false
 					break
@@ -106,10 +97,10 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 				state.SetPkgStatus(ctx, &order.Packages[i], states.PackageClosedStatus)
 				_, err := app.Globals.PkgItemRepository.Update(ctx, order.Packages[i])
 				if err != nil {
-					logger.Err("update pkgItem status to closed failed, orderId: %d, sellerId: %d, error: %s",
+					logger.Err("update pkgItem status to closed failed, orderId: %d, pid: %d, error: %s",
 						state.Name(), order.Packages[i].OrderId, order.Packages[i].PId, err.Error())
 				} else {
-					logger.Audit("update pkgItem status to closed success, orderId: %d, sellerId: %d",
+					logger.Audit("update pkgItem status to closed success, orderId: %d, pid: %d",
 						state.Name(), order.Packages[i].OrderId, order.Packages[i].PId)
 				}
 			}
@@ -134,28 +125,31 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			}
 		}
 	} else {
-		logger.Err("iFrame.Header() not a subpackage or sellerId not found, state: %s iframe: %v", state.Name(), iFrame)
+		logger.Err("iFrame.Header() not a subpackage or pid not found, state: %s iframe: %v", state.Name(), iFrame)
 	}
 }
 
-func (state payToBuyerState) releasedStock(ctx context.Context, subpackage *entities.Subpackage) error {
+func (state payToBuyerState) releasedStock(ctx context.Context, subpackages []*entities.Subpackage) error {
 
+	var sids = make([]uint64, 0, len(subpackages))
 	var inventories = make(map[string]int, 32)
-	for z := 0; z < len(subpackage.Items); z++ {
-		item := subpackage.Items[z]
-		inventories[item.InventoryId] = int(item.Quantity)
+	for _, subpackage := range subpackages {
+		for z := 0; z < len(subpackage.Items); z++ {
+			item := subpackage.Items[z]
+			inventories[item.InventoryId] = int(item.Quantity)
+		}
+		sids = append(sids, subpackage.SId)
 	}
 
-	iFuture := app.Globals.StockService.BatchStockActions(ctx, inventories,
-		stock_action.New(stock_action.Release))
+	iFuture := app.Globals.StockService.BatchStockActions(ctx, inventories, stock_action.New(stock_action.Release))
 	futureData := iFuture.Get()
 	if futureData.Error() != nil {
-		logger.Err("Reserved stock from stockService failed, state: %s, orderId: %d, sellerId: %d, sid: %d, error: %s",
-			state.Name(), subpackage.OrderId, subpackage.SellerId, subpackage.SId, futureData.Error())
+		logger.Err("Reserved stock from stockService failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
+			state.Name(), subpackages[0].OrderId, subpackages[0].PId, sids, futureData.Error())
 		return futureData.Error().Reason()
 	}
 
-	logger.Audit("Release stock success, state: %s, orderId: %d, sellerId: %d, sid: %d",
-		state.Name(), subpackage.OrderId, subpackage.SellerId, subpackage.SId)
+	logger.Audit("Release stock success, state: %s, orderId: %d, pid: %d, sids: %v",
+		state.Name(), subpackages[0].OrderId, subpackages[0].PId, sids)
 	return nil
 }

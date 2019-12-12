@@ -42,23 +42,23 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 
 func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFrame) {
 
-	if iFrame.Header().KeyExists(string(frame.HeaderSubpackage)) {
-		subpkg, ok := iFrame.Header().Value(string(frame.HeaderSubpackage)).(*entities.Subpackage)
+	if iFrame.Header().KeyExists(string(frame.HeaderSubpackages)) {
+		subpackages, ok := iFrame.Header().Value(string(frame.HeaderSubpackages)).([]*entities.Subpackage)
 		if !ok {
-			logger.Err("iFrame.Header() not a subpackage, frame: %v, %s state ", iFrame, state.Name())
+			logger.Err("iFrame.Header() not a subpackages, frame: %v, %s state ", iFrame, state.Name())
 			return
 		}
 
 		if iFrame.Body().Content() == nil {
 			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, sellerId: %d, sid: %d, %s state ",
-				subpkg.OrderId, subpkg.SellerId, subpkg.SId, state.Name())
+				subpackages[0].OrderId, subpackages[0].PId, subpackages[0].SId, state.Name())
 			return
 		}
 
 		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
 		if !ok {
 			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, sellerId: %d, sid: %d, %s state ",
-				subpkg.OrderId, subpkg.SellerId, subpkg.SId, state.Name())
+				subpackages[0].OrderId, subpackages[0].PId, subpackages[0].SId, state.Name())
 			return
 		}
 
@@ -68,23 +68,25 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 			time.Minute*time.Duration(0) +
 			time.Second*time.Duration(0))
 
-		state.UpdateSubPackage(ctx, subpkg, nil)
-		if subpkg.Tracking.State != nil {
-			subpkg.Tracking.State.Data = map[string]interface{}{
-				"expiredTime": expiredTime,
+		for _, subpackage := range subpackages {
+			state.UpdateSubPackage(ctx, subpackage, nil)
+			if subpackage.Tracking.State != nil {
+				subpackage.Tracking.State.Data = map[string]interface{}{
+					"expiredTime": expiredTime,
+				}
+				logger.Audit("Process() => set expiredTime: %s , orderId: %d, sellerId: %d, sid: %d, %s state ",
+					expiredTime, subpackage.OrderId, subpackage.PId, subpackage.SId, state.Name())
 			}
-			logger.Audit("Process() => set expiredTime: %s , orderId: %d, sellerId: %d, sid: %d, %s state ",
-				expiredTime, subpkg.OrderId, subpkg.SellerId, subpkg.SId, state.Name())
+			_, err := app.Globals.SubPkgRepository.Update(ctx, *subpackage)
+			if err != nil {
+				logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
+					state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId, err.Error())
+			} else {
+				logger.Audit("Process() => Status of subpackages update to %s state, orderId: %d, sellerId: %d, sid: %d",
+					state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId)
+			}
 		}
 
-		_, err := app.Globals.SubPkgRepository.Update(ctx, *subpkg)
-		if err != nil {
-			logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
-		} else {
-			logger.Audit("Process() => Status of subpackage update to %s state, orderId: %d, sellerId: %d, sid: %d",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId)
-		}
 	} else if iFrame.Header().KeyExists(string(frame.HeaderEvent)) {
 		event, ok := iFrame.Header().Value(string(frame.HeaderEvent)).(events.IEvent)
 		if !ok {
@@ -239,14 +241,14 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 				err := app.Globals.SubPkgRepository.Save(ctx, newSubPackage)
 				if err != nil {
 					logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
-						newSubPackage.OrderId, newSubPackage.SellerId, event, err.Error())
+						newSubPackage.OrderId, newSubPackage.PId, event, err.Error())
 					// TODO must distinct system error from update version error
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 						SetError(future.InternalError, "Unknown Err", err).Send()
 					return
 				} else {
 					logger.Audit("Process() => Status of new subpackage update to %v event, orderId: %d, sellerId: %d, sid: %d",
-						event, newSubPackage.OrderId, newSubPackage.SellerId, newSubPackage.SId)
+						event, newSubPackage.OrderId, newSubPackage.PId, newSubPackage.SId)
 				}
 
 				if nextActionState != nil {

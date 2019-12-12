@@ -50,14 +50,14 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 
 		if iFrame.Body().Content() == nil {
 			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, sellerId: %d, sid: %d, %s state ",
-				subpkg.OrderId, subpkg.SellerId, subpkg.SId, state.Name())
+				subpkg.OrderId, subpkg.PId, subpkg.SId, state.Name())
 			return
 		}
 
 		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
 		if !ok {
 			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, sellerId: %d, sid: %d, %s state ",
-				subpkg.OrderId, subpkg.SellerId, subpkg.SId, state.Name())
+				subpkg.OrderId, subpkg.PId, subpkg.SId, state.Name())
 			return
 		}
 
@@ -73,24 +73,24 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 				"expiredTime": expiredTime,
 			}
 			logger.Audit("Process() => set expiredTime: %s , orderId: %d, sellerId: %d, sid: %d, %s state ",
-				expiredTime, subpkg.OrderId, subpkg.SellerId, subpkg.SId, state.Name())
+				expiredTime, subpkg.OrderId, subpkg.PId, subpkg.SId, state.Name())
 		}
 
 		// TODO check it
-		futureData := app.Globals.UserService.GetSellerProfile(ctx, strconv.Itoa(int(subpkg.SellerId))).Get()
+		futureData := app.Globals.UserService.GetSellerProfile(ctx, strconv.Itoa(int(subpkg.PId))).Get()
 		if futureData.Error() != nil {
 			logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, futureData.Error().Reason())
+				state.Name(), subpkg.OrderId, subpkg.PId, subpkg.SId, futureData.Error().Reason())
 		}
 
 		pkgItem.SellerInfo = futureData.Data().(*entities.SellerProfile)
 		_, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 		if err != nil {
 			logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
+				state.Name(), subpkg.OrderId, subpkg.PId, subpkg.SId, err.Error())
 		} else {
 			logger.Audit("Process() => Status of subpackage update to %s state and sellerProfile get from user service , orderId: %d, sellerId: %d, sid: %d",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId)
+				state.Name(), subpkg.OrderId, subpkg.PId, subpkg.SId)
 		}
 
 	} else if iFrame.Header().KeyExists(string(frame.HeaderEvent)) {
@@ -247,14 +247,14 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 				err := app.Globals.SubPkgRepository.Save(ctx, newSubPackage)
 				if err != nil {
 					logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
-						newSubPackage.OrderId, newSubPackage.SellerId, event, err.Error())
+						newSubPackage.OrderId, newSubPackage.PId, event, err.Error())
 					// TODO must distinct system error from update version error
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 						SetError(future.InternalError, "Unknown Err", err).Send()
 					return
 				} else {
 					logger.Audit("Process() => Status of new subpackage update to %v event, orderId: %d, sellerId: %d, sid: %d",
-						event, newSubPackage.OrderId, newSubPackage.SellerId, newSubPackage.SId)
+						event, newSubPackage.OrderId, newSubPackage.PId, newSubPackage.SId)
 				}
 
 				if nextActionState != nil {

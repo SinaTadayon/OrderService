@@ -57,10 +57,10 @@ func (state deliveryFailedState) Process(ctx context.Context, iFrame frame.IFram
 		subPkgUpdated, err := app.Globals.SubPkgRepository.Update(ctx, *subpkg)
 		if err != nil {
 			logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
+				state.Name(), subpkg.OrderId, subpkg.PId, subpkg.SId, err.Error())
 		} else {
 			logger.Audit("Process() => Status of subpackage update to %s state, orderId: %d, sellerId: %d, sid: %d",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId)
+				state.Name(), subpkg.OrderId, subpkg.PId, subpkg.SId)
 			state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(subPkgUpdated).Build())
 		}
 	} else {

@@ -4,8 +4,8 @@ import "time"
 
 // subpackage id same as sid
 type Subpackage struct {
-	SId       uint64     `bson:"sId"`
-	SellerId  uint64     `bson:"sellerId"`
+	SId       uint64     `bson:"sid"`
+	PId       uint64     `bson:"pid"`
 	OrderId   uint64     `bson:"orderId"`
 	Version   uint64     `bson:"version"`
 	Items     []Item     `bson:"item"`
@@ -133,7 +133,7 @@ func (item Item) DeepCopy() *Item {
 func (subpackage Subpackage) DeepCopy() *Subpackage {
 	var subPkg = Subpackage{
 		SId:       subpackage.SId,
-		SellerId:  subpackage.SellerId,
+		PId:       subpackage.PId,
 		OrderId:   subpackage.OrderId,
 		Version:   subpackage.Version,
 		Status:    subpackage.Status,
@@ -203,21 +203,34 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 	}
 
 	subPkg.Tracking = Progress{
-		State: &State{
+		State:  nil,
+		Action: nil,
+	}
+
+	if subpackage.Tracking.State != nil {
+		subPkg.Tracking.State = &State{
 			Name:      subpackage.Tracking.State.Name,
 			Index:     subpackage.Tracking.State.Index,
 			Data:      subpackage.Tracking.State.Data,
 			Actions:   nil,
 			CreatedAt: subpackage.Tracking.State.CreatedAt,
-		},
+		}
+	}
 
-		Action: &Action{
+	if subPkg.Tracking.Action != nil {
+		subPkg.Tracking.Action = &Action{
 			Name:      subpackage.Tracking.Action.Name,
 			Type:      subpackage.Tracking.Action.Type,
 			Result:    subpackage.Tracking.Action.Result,
 			Reasons:   nil,
 			CreatedAt: subpackage.Tracking.Action.CreatedAt,
-		},
+		}
+		if subpackage.Tracking.Action.Reasons != nil {
+			subPkg.Tracking.Action.Reasons = make([]string, 0, len(subpackage.Tracking.Action.Reasons))
+			for _, reason := range subpackage.Tracking.Action.Reasons {
+				subPkg.Tracking.Action.Reasons = append(subPkg.Tracking.Action.Reasons, reason)
+			}
+		}
 	}
 
 	if subPkg.Tracking.State.Actions != nil {
@@ -236,13 +249,6 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 				}
 			}
 			subPkg.Tracking.State.Actions = append(subPkg.Tracking.State.Actions, newAction)
-		}
-	}
-
-	if subpackage.Tracking.Action.Reasons != nil {
-		subPkg.Tracking.Action.Reasons = make([]string, 0, len(subpackage.Tracking.Action.Reasons))
-		for _, reason := range subpackage.Tracking.Action.Reasons {
-			subPkg.Tracking.Action.Reasons = append(subPkg.Tracking.Action.Reasons, reason)
 		}
 	}
 

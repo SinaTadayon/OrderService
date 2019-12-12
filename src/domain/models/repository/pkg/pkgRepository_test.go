@@ -179,7 +179,7 @@ func insert(order *entities.Order) (*entities.Order, error) {
 					mapItemIds[random] = order.Packages[i].PId
 					sid, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + strconv.Itoa(random))
 					order.Packages[i].Subpackages[j].SId = uint64(sid)
-					order.Packages[i].Subpackages[j].SellerId = order.Packages[i].PId
+					order.Packages[i].Subpackages[j].PId = order.Packages[i].PId
 					order.Packages[i].Subpackages[j].OrderId = order.OrderId
 					order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
 					order.Packages[i].Subpackages[j].UpdatedAt = time.Now().UTC()
@@ -309,6 +309,7 @@ func createOrder() *entities.Order {
 			ShipmentTotal:  5700000,
 			PaymentMethod:  "IPG",
 			PaymentGateway: "APP",
+			PaymentOption:  nil,
 			CartRule:       nil,
 			Voucher: &entities.Voucher{
 				Amount: 230000,
@@ -411,10 +412,10 @@ func createOrder() *entities.Order {
 				},
 				Subpackages: []entities.Subpackage{
 					{
-						SId:      0,
-						SellerId: 129384234,
-						OrderId:  0,
-						Version:  0,
+						SId:     0,
+						PId:     129384234,
+						OrderId: 0,
+						Version: 0,
 						Items: []entities.Item{
 							{
 								SKU:         "yt545-34",
@@ -547,10 +548,10 @@ func createOrder() *entities.Order {
 						DeletedAt: nil,
 					},
 					{
-						SId:      0,
-						SellerId: 129384234,
-						OrderId:  0,
-						Version:  0,
+						SId:     0,
+						PId:     129384234,
+						OrderId: 0,
+						Version: 0,
 						Items: []entities.Item{
 							{
 								SKU:         "gd534-34344",
@@ -776,10 +777,10 @@ func createOrder() *entities.Order {
 				},
 				Subpackages: []entities.Subpackage{
 					{
-						SId:      0,
-						SellerId: 99988887777,
-						OrderId:  0,
-						Version:  0,
+						SId:     0,
+						PId:     99988887777,
+						OrderId: 0,
+						Version: 0,
 						Items: []entities.Item{
 							{
 								SKU:         "trrer-5343fdf",
@@ -912,10 +913,10 @@ func createOrder() *entities.Order {
 						DeletedAt: nil,
 					},
 					{
-						SId:      0,
-						SellerId: 99988887777,
-						OrderId:  0,
-						Version:  0,
+						SId:     0,
+						PId:     99988887777,
+						OrderId: 0,
+						Version: 0,
 						Items: []entities.Item{
 							{
 								SKU:         "5456",

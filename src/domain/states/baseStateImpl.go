@@ -3,9 +3,9 @@ package states
 import (
 	"context"
 	"github.com/pkg/errors"
+	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
-	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"strconv"
 	"time"
 )
@@ -180,7 +180,12 @@ func (base BaseStateImpl) UpdateSubPackage(ctx context.Context, subpackage *enti
 			state.Actions = make([]entities.Action, 0, 8)
 			state.Actions = append(state.Actions, *action)
 		}
+
+		if subpackage.Tracking.History == nil {
+			subpackage.Tracking.History = make([]entities.State, 0, 3)
+		}
 		subpackage.Tracking.State = &state
+		subpackage.Tracking.History = append(subpackage.Tracking.History, state)
 	} else {
 		if subpackage.Tracking.State.Index != base.Index() {
 			newState := entities.State{
@@ -197,10 +202,14 @@ func (base BaseStateImpl) UpdateSubPackage(ctx context.Context, subpackage *enti
 			if subpackage.Tracking.History == nil {
 				subpackage.Tracking.History = make([]entities.State, 0, 3)
 			}
-			subpackage.Tracking.History = append(subpackage.Tracking.History, *subpackage.Tracking.State)
 			subpackage.Tracking.State = &newState
+			subpackage.Tracking.History = append(subpackage.Tracking.History, newState)
 		} else {
-			subpackage.Tracking.State.Actions = append(subpackage.Tracking.State.Actions, *action)
+			if action != nil {
+				subpackage.Tracking.State.Actions = append(subpackage.Tracking.State.Actions, *action)
+				subpackage.Tracking.Action = action
+			}
+			subpackage.Tracking.History[len(subpackage.Tracking.History)-1] = *subpackage.Tracking.State
 		}
 	}
 }

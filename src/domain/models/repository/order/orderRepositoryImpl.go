@@ -54,7 +54,7 @@ func (repo iOrderRepositoryImpl) generateAndSetId(ctx context.Context, order ent
 				mapItemIds[random] = order.Packages[i].PId
 				sid, _ := strconv.Atoi(strconv.Itoa(int(order.OrderId)) + strconv.Itoa(random))
 				order.Packages[i].Subpackages[j].SId = uint64(sid)
-				order.Packages[i].Subpackages[j].SellerId = order.Packages[i].PId
+				order.Packages[i].Subpackages[j].PId = order.Packages[i].PId
 				order.Packages[i].Subpackages[j].OrderId = order.OrderId
 				order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
 				order.Packages[i].Subpackages[j].UpdatedAt = time.Now().UTC()

@@ -1,21 +1,11 @@
-# github.com/DataDog/zstd v1.4.0
-github.com/DataDog/zstd
 # github.com/Netflix/go-env v0.0.0-20180529183433-1e80ef5003ef
 github.com/Netflix/go-env
-# github.com/Shopify/sarama v1.23.0
-github.com/Shopify/sarama
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/devfeel/mapper v0.7.2
 github.com/devfeel/mapper
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible
 github.com/dgrijalva/jwt-go
-# github.com/eapache/go-resiliency v1.2.0
-github.com/eapache/go-resiliency/breaker
-# github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21
-github.com/eapache/go-xerial-snappy
-# github.com/eapache/queue v1.1.0
-github.com/eapache/queue
 # github.com/go-stack/stack v1.8.0
 github.com/go-stack/stack
 # github.com/golang/protobuf v1.3.2
@@ -28,26 +18,16 @@ github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/snappy
 # github.com/google/uuid v1.1.1
 github.com/google/uuid
-# github.com/hashicorp/go-uuid v1.0.1
-github.com/hashicorp/go-uuid
-# github.com/jcmturner/gofork v1.0.0
-github.com/jcmturner/gofork/encoding/asn1
-github.com/jcmturner/gofork/x/crypto/pbkdf2
 # github.com/joho/godotenv v1.3.0
 github.com/joho/godotenv
 # github.com/konsorten/go-windows-terminal-sequences v1.0.1
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/matryer/resync v0.0.0-20161211202428-d39c09a11215
 github.com/matryer/resync
-# github.com/pierrec/lz4 v2.0.5+incompatible
-github.com/pierrec/lz4
-github.com/pierrec/lz4/internal/xxh32
 # github.com/pkg/errors v0.8.1
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
-# github.com/rcrowley/go-metrics v0.0.0-20190706150252-9beb055b7962
-github.com/rcrowley/go-metrics
 # github.com/rs/xid v1.2.1
 github.com/rs/xid
 # github.com/sirupsen/logrus v1.4.2
@@ -59,19 +39,17 @@ github.com/stretchr/testify/require
 github.com/xdg/scram
 # github.com/xdg/stringprep v1.0.0
 github.com/xdg/stringprep
-# github.com/yaa110/go-persian-calendar v0.5.0
-github.com/yaa110/go-persian-calendar
 # gitlab.faza.io/go-framework/acl v0.0.3
 gitlab.faza.io/go-framework/acl
-# gitlab.faza.io/go-framework/kafkaadapter v0.0.1
-gitlab.faza.io/go-framework/kafkaadapter
 # gitlab.faza.io/go-framework/logger v0.0.3
 gitlab.faza.io/go-framework/logger
 # gitlab.faza.io/go-framework/mongoadapter v0.0.8
 gitlab.faza.io/go-framework/mongoadapter
 # gitlab.faza.io/protos/cart v0.0.9
 gitlab.faza.io/protos/cart
-# gitlab.faza.io/protos/order v0.0.42
+# gitlab.faza.io/protos/notification v0.0.3
+gitlab.faza.io/protos/notification
+# gitlab.faza.io/protos/order v0.0.44
 gitlab.faza.io/protos/order
 # gitlab.faza.io/protos/payment-gateway v0.0.7
 gitlab.faza.io/protos/payment-gateway
@@ -111,16 +89,13 @@ go.mongodb.org/mongo-driver/x/mongo/driver/topology
 go.mongodb.org/mongo-driver/x/mongo/driver/uuid
 go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage
 # golang.org/x/crypto v0.0.0-20191029031824-8986dd9e96cf
-golang.org/x/crypto/md4
 golang.org/x/crypto/pbkdf2
 # golang.org/x/net v0.0.0-20191101175033-0deb6923b6d9
 golang.org/x/net/http/httpguts
 golang.org/x/net/http2
 golang.org/x/net/http2/hpack
 golang.org/x/net/idna
-golang.org/x/net/internal/socks
 golang.org/x/net/internal/timeseries
-golang.org/x/net/proxy
 golang.org/x/net/trace
 # golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 golang.org/x/sync/semaphore
@@ -167,43 +142,5 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-# gopkg.in/jcmturner/aescts.v1 v1.0.1
-gopkg.in/jcmturner/aescts.v1
-# gopkg.in/jcmturner/dnsutils.v1 v1.0.1
-gopkg.in/jcmturner/dnsutils.v1
-# gopkg.in/jcmturner/gokrb5.v7 v7.3.0
-gopkg.in/jcmturner/gokrb5.v7/asn1tools
-gopkg.in/jcmturner/gokrb5.v7/client
-gopkg.in/jcmturner/gokrb5.v7/config
-gopkg.in/jcmturner/gokrb5.v7/credentials
-gopkg.in/jcmturner/gokrb5.v7/crypto
-gopkg.in/jcmturner/gokrb5.v7/crypto/common
-gopkg.in/jcmturner/gokrb5.v7/crypto/etype
-gopkg.in/jcmturner/gokrb5.v7/crypto/rfc3961
-gopkg.in/jcmturner/gokrb5.v7/crypto/rfc3962
-gopkg.in/jcmturner/gokrb5.v7/crypto/rfc4757
-gopkg.in/jcmturner/gokrb5.v7/crypto/rfc8009
-gopkg.in/jcmturner/gokrb5.v7/gssapi
-gopkg.in/jcmturner/gokrb5.v7/iana
-gopkg.in/jcmturner/gokrb5.v7/iana/addrtype
-gopkg.in/jcmturner/gokrb5.v7/iana/adtype
-gopkg.in/jcmturner/gokrb5.v7/iana/asnAppTag
-gopkg.in/jcmturner/gokrb5.v7/iana/chksumtype
-gopkg.in/jcmturner/gokrb5.v7/iana/errorcode
-gopkg.in/jcmturner/gokrb5.v7/iana/etypeID
-gopkg.in/jcmturner/gokrb5.v7/iana/flags
-gopkg.in/jcmturner/gokrb5.v7/iana/keyusage
-gopkg.in/jcmturner/gokrb5.v7/iana/msgtype
-gopkg.in/jcmturner/gokrb5.v7/iana/nametype
-gopkg.in/jcmturner/gokrb5.v7/iana/patype
-gopkg.in/jcmturner/gokrb5.v7/kadmin
-gopkg.in/jcmturner/gokrb5.v7/keytab
-gopkg.in/jcmturner/gokrb5.v7/krberror
-gopkg.in/jcmturner/gokrb5.v7/messages
-gopkg.in/jcmturner/gokrb5.v7/pac
-gopkg.in/jcmturner/gokrb5.v7/types
-# gopkg.in/jcmturner/rpc.v1 v1.1.0
-gopkg.in/jcmturner/rpc.v1/mstypes
-gopkg.in/jcmturner/rpc.v1/ndr
 # gopkg.in/yaml.v2 v2.2.2
 gopkg.in/yaml.v2

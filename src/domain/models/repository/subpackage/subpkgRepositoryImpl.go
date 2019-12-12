@@ -42,7 +42,7 @@ func (repo iSubPkgRepositoryImpl) findAndUpdate(ctx context.Context, subPkg *ent
 	opt.SetUpsert(false)
 	opt.SetArrayFilters(options.ArrayFilters{
 		Filters: []interface{}{
-			bson.M{"package.sellerId": subPkg.SellerId},
+			bson.M{"package.pid": subPkg.PId},
 			bson.M{"subpackage.sid": subPkg.SId, "subpackage.version": currentVersion},
 		},
 	}).SetReturnDocument(options.After)
@@ -72,7 +72,7 @@ func (repo iSubPkgRepositoryImpl) Save(ctx context.Context, subPkg *entities.Sub
 			updateResult, err = repo.mongoAdapter.UpdateOne(databaseName, collectionName, bson.D{
 				{"orderId", subPkg.OrderId},
 				{"deletedAt", nil},
-				{"packages.pid", subPkg.SellerId}},
+				{"packages.pid", subPkg.PId}},
 				bson.D{{"$push", bson.D{{"packages.$.subpackages", subPkg}}}})
 
 			if err != nil {
@@ -92,7 +92,7 @@ func (repo iSubPkgRepositoryImpl) Save(ctx context.Context, subPkg *entities.Sub
 		updateResult, err := repo.mongoAdapter.UpdateOne(databaseName, collectionName, bson.D{
 			{"orderId", subPkg.OrderId},
 			{"deletedAt", nil},
-			{"packages.pid", subPkg.SellerId}},
+			{"packages.pid", subPkg.PId}},
 			bson.D{{"$push", bson.D{{"packages.$.subpackages", subPkg}}}})
 
 		if err != nil {
@@ -164,12 +164,12 @@ func (repo iSubPkgRepositoryImpl) FindByOrderAndItemId(ctx context.Context, orde
 
 }
 
-func (repo iSubPkgRepositoryImpl) FindByOrderAndSellerId(ctx context.Context, orderId, sellerId uint64) ([]*entities.Subpackage, error) {
+func (repo iSubPkgRepositoryImpl) FindByOrderAndSellerId(ctx context.Context, orderId, pid uint64) ([]*entities.Subpackage, error) {
 
 	pipeline := []bson.M{
 		{"$match": bson.M{"orderId": orderId, "deletedAt": nil}},
 		{"$unwind": "$packages"},
-		{"$match": bson.M{"packages.pid": sellerId}},
+		{"$match": bson.M{"packages.pid": pid}},
 		{"$project": bson.M{"_id": 0, "packages.subpackages": 1}},
 		{"$unwind": "$packages.subpackages"},
 		{"$replaceRoot": bson.M{"newRoot": "$packages"}},
@@ -197,11 +197,11 @@ func (repo iSubPkgRepositoryImpl) FindByOrderAndSellerId(ctx context.Context, or
 	return subpackages, nil
 }
 
-func (repo iSubPkgRepositoryImpl) FindAll(ctx context.Context, sellerId uint64) ([]*entities.Subpackage, error) {
+func (repo iSubPkgRepositoryImpl) FindAll(ctx context.Context, pid uint64) ([]*entities.Subpackage, error) {
 	pipeline := []bson.M{
-		{"$match": bson.M{"packages.pid": sellerId, "packages.deletedAt": nil}},
+		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
 		{"$unwind": "$packages"},
-		{"$match": bson.M{"packages.pid": sellerId, "packages.deletedAt": nil}},
+		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
 		{"$project": bson.M{"_id": 0, "packages.subpackages": 1}},
 		{"$unwind": "$packages.subpackages"},
 		{"$replaceRoot": bson.M{"newRoot": "$packages"}},
@@ -229,11 +229,11 @@ func (repo iSubPkgRepositoryImpl) FindAll(ctx context.Context, sellerId uint64) 
 	return subpackages, nil
 }
 
-func (repo iSubPkgRepositoryImpl) FindAllWithSort(ctx context.Context, sellerId uint64, fieldName string, direction int) ([]*entities.Subpackage, error) {
+func (repo iSubPkgRepositoryImpl) FindAllWithSort(ctx context.Context, pid uint64, fieldName string, direction int) ([]*entities.Subpackage, error) {
 	pipeline := []bson.M{
-		{"$match": bson.M{"packages.pid": sellerId, "packages.deletedAt": nil}},
+		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
 		{"$unwind": "$packages"},
-		{"$match": bson.M{"packages.pid": sellerId, "packages.deletedAt": nil}},
+		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
 		{"$project": bson.M{"_id": 0, "packages.subpackages": 1}},
 		{"$unwind": "$packages.subpackages"},
 		{"$sort": bson.M{"packages.subpackages." + fieldName: direction}},
@@ -262,13 +262,13 @@ func (repo iSubPkgRepositoryImpl) FindAllWithSort(ctx context.Context, sellerId 
 	return subpackages, nil
 }
 
-func (repo iSubPkgRepositoryImpl) FindAllWithPage(ctx context.Context, sellerId uint64, page, perPage int64) ([]*entities.Subpackage, int64, error) {
+func (repo iSubPkgRepositoryImpl) FindAllWithPage(ctx context.Context, pid uint64, page, perPage int64) ([]*entities.Subpackage, int64, error) {
 
 	if page < 0 || perPage == 0 {
 		return nil, 0, errors.New("neither offset nor start can be zero")
 	}
 
-	var totalCount, err = repo.Count(ctx, sellerId)
+	var totalCount, err = repo.Count(ctx, pid)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "FindAllWithPage Subpackage Failed")
 	}
@@ -300,9 +300,9 @@ func (repo iSubPkgRepositoryImpl) FindAllWithPage(ctx context.Context, sellerId 
 	}
 
 	pipeline := []bson.M{
-		{"$match": bson.M{"packages.pid": sellerId, "packages.deletedAt": nil}},
+		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
 		{"$unwind": "$packages"},
-		{"$match": bson.M{"packages.pid": sellerId, "packages.deletedAt": nil}},
+		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
 		{"$project": bson.M{"_id": 0, "packages.subpackages": 1}},
 		{"$unwind": "$packages.subpackages"},
 		{"$skip": offset},
@@ -332,12 +332,12 @@ func (repo iSubPkgRepositoryImpl) FindAllWithPage(ctx context.Context, sellerId 
 	return subpackages, availablePages, nil
 }
 
-func (repo iSubPkgRepositoryImpl) FindAllWithPageAndSort(ctx context.Context, sellerId uint64, page, perPage int64, fieldName string, direction int) ([]*entities.Subpackage, int64, error) {
+func (repo iSubPkgRepositoryImpl) FindAllWithPageAndSort(ctx context.Context, pid uint64, page, perPage int64, fieldName string, direction int) ([]*entities.Subpackage, int64, error) {
 	if page < 0 || perPage == 0 {
 		return nil, 0, errors.New("neither offset nor start can be zero")
 	}
 
-	var totalCount, err = repo.Count(ctx, sellerId)
+	var totalCount, err = repo.Count(ctx, pid)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "FindAllWithPageAndSort Subpackage Failed")
 	}
@@ -369,9 +369,9 @@ func (repo iSubPkgRepositoryImpl) FindAllWithPageAndSort(ctx context.Context, se
 	}
 
 	pipeline := []bson.M{
-		{"$match": bson.M{"packages.pid": sellerId, "packages.deletedAt": nil}},
+		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
 		{"$unwind": "$packages"},
-		{"$match": bson.M{"packages.pid": sellerId, "packages.deletedAt": nil}},
+		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
 		{"$project": bson.M{"_id": 0, "packages.subpackages": 1}},
 		{"$unwind": "$packages.subpackages"},
 		{"$sort": bson.M{"packages.subpackages." + fieldName: direction}},
@@ -508,13 +508,13 @@ func (repo iSubPkgRepositoryImpl) ExistsById(ctx context.Context, sid uint64) (b
 	return true, nil
 }
 
-func (repo iSubPkgRepositoryImpl) Count(ctx context.Context, sellerId uint64) (int64, error) {
+func (repo iSubPkgRepositoryImpl) Count(ctx context.Context, pid uint64) (int64, error) {
 	var total struct {
 		Count int
 	}
 
 	pipeline := []bson.M{
-		{"$match": bson.M{"packages.pid": sellerId, "packages.deletedAt": nil}},
+		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
 		{"$project": bson.M{"subSize": bson.M{"$size": "$packages.subpackages"}}},
 		{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
 		{"$project": bson.M{"_id": 0, "count": 1}},

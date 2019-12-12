@@ -88,8 +88,8 @@ func (builder Builder) SetOrder(order *entities.Order) Builder {
 	return builder
 }
 
-func (builder Builder) SetItemId(sid uint64) Builder {
-	builder.header[string(HeaderSId)] = sid
+func (builder Builder) SetSIds(sid []uint64) Builder {
+	builder.header[string(HeaderSIds)] = sid
 	return builder
 }
 

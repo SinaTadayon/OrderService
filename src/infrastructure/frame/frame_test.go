@@ -11,11 +11,11 @@ func TestFrameHeader(t *testing.T) {
 		SetBody(11111111).Build()
 
 	frame2 := Factory().
-		SetDefaultHeader(HeaderSId, 9999999).
+		SetDefaultHeader(HeaderSIds, 9999999).
 		SetBody(222222222).Build()
 
 	frame.Header().CopyFrom(frame2.Header())
-	require.True(t, frame.Header().KeyExists(string(HeaderSId)))
-	require.Equal(t, 9999999, frame.Header().Value(string(HeaderSId)))
+	require.True(t, frame.Header().KeyExists(string(HeaderSIds)))
+	require.Equal(t, 9999999, frame.Header().Value(string(HeaderSIds)))
 	require.Equal(t, 11111111, frame.Body().Content())
 }

@@ -44,7 +44,7 @@ func (repo iPkgItemRepositoryImpl) findAndUpdate(ctx context.Context, pkgItem *e
 			{"orderId", pkgItem.OrderId},
 			{"packages", bson.D{
 				{"$elemMatch", bson.D{
-					{"sellerId", pkgItem.PId},
+					{"pid", pkgItem.PId},
 					{"version", currentVersion},
 				}},
 			}},

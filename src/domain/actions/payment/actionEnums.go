@@ -8,8 +8,6 @@ type ActionEnums int
 
 var actionStrings = []string{
 	"Success",
-	"BuyerPaymentPendingRequest",
-	"BuyerPaymentPendingResponse",
 	"Fail",
 }
 
@@ -46,10 +44,6 @@ func (actionEnum ActionEnums) FromString(action string) actions.IEnumAction {
 	switch action {
 	case "Success":
 		return Success
-	case "BuyerPaymentPendingRequest":
-		return BuyerPaymentPendingRequest
-	case "BuyerPaymentPendingResponse":
-		return BuyerPaymentPendingResponse
 	case "Fail":
 		return Fail
 	default:

@@ -11,7 +11,6 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
-	"gitlab.faza.io/order-project/order-service/infrastructure/global"
 	"time"
 )
 
@@ -44,7 +43,7 @@ func (state newOrderState) Process(ctx context.Context, iFrame frame.IFrame) {
 	var errStr string
 	logger.Audit("New Order Received . . .")
 
-	order := iFrame.Header().Value(string(frame.HeaderOrder)).(entities.Order)
+	order := iFrame.Header().Value(string(frame.HeaderOrder)).(*entities.Order)
 	action := &entities.Action{
 		Name:      state.Actions()[0].ActionEnum().ActionName(),
 		Type:      state.Actions()[0].ActionType().ActionName(),
@@ -52,8 +51,8 @@ func (state newOrderState) Process(ctx context.Context, iFrame frame.IFrame) {
 		Reasons:   nil,
 		CreatedAt: time.Now().UTC(),
 	}
-	state.UpdateOrderAllStatus(ctx, &order, states.OrderNewStatus, states.PackageNewStatus, action)
-	newOrder, err := app.Globals.OrderRepository.Save(ctx, order)
+	state.UpdateOrderAllStatus(ctx, order, states.OrderNewStatus, states.PackageNewStatus, action)
+	newOrder, err := app.Globals.OrderRepository.Save(ctx, *order)
 	if err != nil {
 		errStr = fmt.Sprintf("OrderRepository.Save in %s state failed, order: %v, error: %s", state.Name(), order, err.Error())
 		logger.Err(errStr)
@@ -63,7 +62,11 @@ func (state newOrderState) Process(ctx context.Context, iFrame frame.IFrame) {
 			Send()
 
 	} else {
-		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetOrderId(newOrder.OrderId).SetBody(order).Build())
+		newFrame := frame.Factory().
+			SetFuture(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+			SetOrderId(newOrder.OrderId).SetBody(newOrder).Build()
+
+		state.StatesMap()[state.Actions()[0]].Process(ctx, newFrame)
 	}
 }
 

@@ -52,10 +52,10 @@ func (state DeliveryDelayedState) Process(ctx context.Context, iFrame frame.IFra
 		_, err := app.Globals.SubPkgRepository.Update(ctx, *subpkg)
 		if err != nil {
 			logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
+				state.Name(), subpkg.OrderId, subpkg.PId, subpkg.SId, err.Error())
 		} else {
 			logger.Audit("Process() => Status of subpackage update to %s state, orderId: %d, sellerId: %d, sid: %d",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId)
+				state.Name(), subpkg.OrderId, subpkg.PId, subpkg.SId)
 		}
 	} else if iFrame.Header().KeyExists(string(frame.HeaderEvent)) {
 		event, ok := iFrame.Header().Value(string(frame.HeaderEvent)).(events.IEvent)
@@ -211,14 +211,14 @@ func (state DeliveryDelayedState) Process(ctx context.Context, iFrame frame.IFra
 				err := app.Globals.SubPkgRepository.Save(ctx, newSubPackage)
 				if err != nil {
 					logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
-						newSubPackage.OrderId, newSubPackage.SellerId, event, err.Error())
+						newSubPackage.OrderId, newSubPackage.PId, event, err.Error())
 					// TODO must distinct system error from update version error
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 						SetError(future.InternalError, "Unknown Err", err).Send()
 					return
 				} else {
 					logger.Audit("Process() => Status of new subpackage update to %v event, orderId: %d, sellerId: %d, sid: %d",
-						event, newSubPackage.OrderId, newSubPackage.SellerId, newSubPackage.SId)
+						event, newSubPackage.OrderId, newSubPackage.PId, newSubPackage.SId)
 				}
 
 				if nextActionState != nil {

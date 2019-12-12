@@ -39,13 +39,18 @@ import (
 type RequestADT string
 type RequestType string
 type RequestName string
+type RequestMethod string
 type UserType string
 type SortDirection string
 type FilterType string
 type FilterValue string
-
-//type ActionType string
+type ActionType string
 type Action string
+
+const (
+	PostMethod RequestMethod = "POST"
+	GetMethod  RequestMethod = "GET"
+)
 
 const (
 	OrderStateFilterType FilterType = "OrderState"
@@ -63,17 +68,6 @@ const (
 	ReturnDeliveredFilter       FilterValue = "ReturnDelivered"
 	ReturnDeliveryFailedFilter  FilterValue = "ReturnDeliveryFailed"
 )
-
-//const (
-//	ApprovalPendingActionState       ActionType = "ApprovalPending"
-//	ShipmentPendingActionState       ActionType = "ShipmentPending"
-//	ShippedActionState               ActionType = "Shipped"
-//	DeliveredActionState             ActionType = "Delivered"
-//	ReturnRequestPendingActionState  ActionType = "ReturnRequestPending"
-//	ReturnShipmentPendingActionState ActionType = "ReturnShipmentPending"
-//	ReturnShippedActionState         ActionType = "ReturnShipped"
-//	ReturnDeliveredActionState       ActionType = "ReturnDelivered"
-//)
 
 const (
 	DeliverAction             Action = "Deliver"
@@ -200,7 +194,7 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 
 	// TODO check acl
 	if uint64(userAcl.User().UserID) != req.Meta.UID {
-		logger.Err("RequestHandler() => UserId mismatch with token userId, error: %s ", err)
+		logger.Err("RequestHandler() => request userId %d mismatch with token userId: %d", req.Meta.UID, userAcl.User().UserID)
 		return nil, status.Error(codes.Code(future.InternalError), "User Not Authorized")
 	}
 
@@ -267,17 +261,15 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 	//	return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with filterType")
 	//}
 
-	if userType == SellerUser && (reqName != SellerOrderList || reqName != SellerOrderDetail ||
-		reqName != SellerReturnOrderDetailList) {
-		logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
-		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
-	}
-
-	if userType == BuyerUser && (reqName != BuyerOrderDetailList ||
-		reqName != BuyerReturnOrderReports || reqName != BuyerReturnOrderDetailList) {
-		logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
-		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
-	}
+	//if userType == SellerUser && (reqName != SellerOrderList || reqName != SellerOrderDetail || reqName != SellerReturnOrderDetailList) {
+	//	logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
+	//	return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
+	//}
+	//
+	//if userType == BuyerUser && (reqName != BuyerOrderDetailList || reqName != BuyerReturnOrderReports || reqName != BuyerReturnOrderDetailList) {
+	//	logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
+	//	return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
+	//}
 
 	if req.Meta.OID > 0 && reqADT != SingleType {
 		logger.Err("requestDataHandler() => %s orderId mismatch with %s requestADT, request: %v", userType, reqADT, req)
@@ -473,7 +465,7 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, pid uint64, fi
 
 	pkgList, err := app.Globals.PkgItemRepository.FindByFilter(ctx, pkgFilter)
 	if err != nil {
-		logger.Err("sellerOrderListHandler() => FindByFilter failed, sellerId: %d, filterValue: %s, page: %d, perPage: %d, error: %s", offset, pid, filter, page, perPage, err)
+		logger.Err("sellerOrderListHandler() => FindByFilter failed, pid: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
@@ -519,7 +511,7 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, pid uint64, fi
 func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId uint64, filter FilterValue) (*pb.MessageResponse, error) {
 	order, err := app.Globals.OrderRepository.FindById(ctx, orderId)
 	if err != nil {
-		logger.Err("sellerOrderDetailHandler() => PkgItemRepository.FindById failed, orderId: %d, pid: %d, filter:%d , error: %s", orderId, pid, filter, err)
+		logger.Err("sellerOrderDetailHandler() => PkgItemRepository.FindById failed, orderId: %d, pid: %d, filter:%s , error: %s", orderId, pid, filter, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
@@ -889,7 +881,7 @@ func (server *Server) buyerOrderDetailHandler(ctx context.Context, userId uint64
 				if orderList[i].Packages[j].Subpackages[z].Shipments != nil &&
 					orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail != nil {
 					packageDetail.ShipmentInfo = &pb.BuyerOrderDetailList_OrderDetail_Package_Shipment{
-						DeliveryAt:     nil,
+						DeliveryAt:     "",
 						ShippedAt:      orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601),
 						ShipmentAmount: orderList[i].Packages[j].ShipmentSpec.ShippingCost,
 						CarrierName:    orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.CarrierName,
@@ -1234,9 +1226,6 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 	iFrame := frame.Factory().SetDefaultHeader(frame.HeaderNewOrder, req).SetFuture(iFuture).Build()
 	server.flowManager.MessageHandler(ctx, iFrame)
 	futureData := iFuture.Get()
-	if futureData == nil {
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-	}
 
 	if futureData.Error() != nil {
 		futureErr := futureData.Error()
@@ -1245,7 +1234,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 
 	callbackUrl, ok := futureData.Data().(string)
 	if ok != true {
-		logger.Err("NewOrder received data of futureData invalid, type: %T, value, %v", futureData.Data, futureData.Data)
+		logger.Err("NewOrder received data of futureData invalid, type: %T, value, %v", futureData.Data(), futureData.Data())
 		return nil, status.Error(500, "Unknown Error")
 	}
 
@@ -1289,7 +1278,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 //
 //	for _, order := range orders {
 //		for _, orderItem := range order.Items {
-//			if strconv.Itoa(int(orderItem.SellerInfo.SellerId)) == req.Id {
+//			if strconv.Itoa(int(orderItem.SellerInfo.PId)) == req.Id {
 //				if _, ok := sellerItemMap[orderItem.InventoryId]; !ok {
 //					newResponseItem := &pb.SellerFindAllItems{
 //						OrderId:     order.OrderId,
@@ -1394,8 +1383,8 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 //		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 //	}
 //
-//	if userAcl.User().UserID != int64(req.SellerId) {
-//		logger.Err("SellerOrderAction() => token userId %d not authorized for sellerId %d", userAcl.User().UserID, req.SellerId)
+//	if userAcl.User().UserID != int64(req.PId) {
+//		logger.Err("SellerOrderAction() => token userId %d not authorized for sellerId %d", userAcl.User().UserID, req.PId)
 //		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
 //	}
 //
@@ -1495,7 +1484,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 //					Guaranty:    item.Guaranty,
 //					Image:       item.Image,
 //					Returnable:  item.Returnable,
-//					SellerId:    item.SellerInfo.SellerId,
+//					PId:    item.SellerInfo.PId,
 //					Quantity:    item.Quantity,
 //					Attributes:  item.Attributes,
 //					ItemStatus:  item.Status,
@@ -1656,8 +1645,8 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 //		return status.Error(codes.Code(future.InternalError), "Unknown Error")
 //	}
 //
-//	if userAcl.User().UserID != int64(req.SellerId) {
-//		logger.Err(" SellerFindAllItems() => token userId %d not authorized for sellerId %d", userAcl.User().UserID, req.SellerId)
+//	if userAcl.User().UserID != int64(req.PId) {
+//		logger.Err(" SellerFindAllItems() => token userId %d not authorized for sellerId %d", userAcl.User().UserID, req.PId)
 //		return status.Error(codes.Code(future.Forbidden), "User token not authorized")
 //	}
 //

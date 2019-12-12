@@ -119,9 +119,7 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, inventori
 		}
 	}
 
-	return future.Factory().SetCapacity(1).
-		SetError(future.InternalError, "Unknown Error", errors.New("Invalid Action")).
-		BuildAndSend()
+	return future.Factory().SetCapacity(1).BuildAndSend()
 }
 
 func (stock *iStockServiceImpl) rollbackReservedStocks(ctx context.Context, reservedStock map[string]int, err error) future.IFuture {

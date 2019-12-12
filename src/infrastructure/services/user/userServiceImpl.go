@@ -57,13 +57,14 @@ func (userService *iUserServiceImpl) getUserService(ctx context.Context) error {
 }
 
 func (userService *iUserServiceImpl) UserLogin(ctx context.Context, username, password string) future.IFuture {
-	if err := userService.getUserService(ctx); err != nil {
+	ctx1, _ := context.WithCancel(context.Background())
+	if err := userService.getUserService(ctx1); err != nil {
 		return future.Factory().SetCapacity(1).
 			SetError(future.InternalError, "UnknownError", errors.Wrap(err, "Connect to UserService Failed")).
 			BuildAndSend()
 	}
 
-	result, err := userService.client.Login(username, password, ctx)
+	result, err := userService.client.Login(username, password, ctx1)
 	if err != nil {
 		logger.Err("UserLogin() => userService.client.Login failed, username: %s, password: %s, error: %s", username, password, err)
 		return future.Factory().SetCapacity(1).
@@ -88,7 +89,8 @@ func (userService *iUserServiceImpl) UserLogin(ctx context.Context, username, pa
 }
 
 func (userService iUserServiceImpl) AuthenticateContextToken(ctx context.Context) (*acl.Acl, error) {
-	if err := userService.getUserService(ctx); err != nil {
+	ctx1, _ := context.WithCancel(context.Background())
+	if err := userService.getUserService(ctx1); err != nil {
 		return nil, err
 	}
 	access, err := userService.client.VerifyAndGetUserFromContextToken(ctx)
@@ -96,7 +98,8 @@ func (userService iUserServiceImpl) AuthenticateContextToken(ctx context.Context
 }
 
 func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, sellerId string) future.IFuture {
-	if err := userService.getUserService(ctx); err != nil {
+	ctx1, _ := context.WithCancel(context.Background())
+	if err := userService.getUserService(ctx1); err != nil {
 		return future.Factory().SetCapacity(1).
 			SetError(future.InternalError, "UnknownError", errors.Wrap(err, "Connect to UserService Failed")).
 			BuildAndSend()

@@ -68,16 +68,16 @@ type PayToMarket struct {
 }
 
 type Invoice struct {
-	GrandTotal     uint64        `bson:"grandTotal"`
-	Subtotal       uint64        `bson:"subtotal"`
-	Discount       uint64        `bson:"discount"`
-	ShipmentTotal  uint64        `bson:"shipmentTotal"`
-	Currency       string        `bson:"currency"`
-	PaymentMethod  string        `bson:"paymentMethod"`
-	PaymentGateway string        `bson:"paymentGateway"`
-	PaymentOption  PaymentOption `bson:"paymentOption"`
-	Voucher        *Voucher      `bson:"voucher"`
-	CartRule       *CartRule     `bson:"cartRule"`
+	GrandTotal     uint64         `bson:"grandTotal"`
+	Subtotal       uint64         `bson:"subtotal"`
+	Discount       uint64         `bson:"discount"`
+	ShipmentTotal  uint64         `bson:"shipmentTotal"`
+	Currency       string         `bson:"currency"`
+	PaymentMethod  string         `bson:"paymentMethod"`
+	PaymentGateway string         `bson:"paymentGateway"`
+	PaymentOption  *PaymentOption `bson:"paymentOption"`
+	Voucher        *Voucher       `bson:"voucher"`
+	CartRule       *CartRule      `bson:"cartRule"`
 }
 
 type PaymentOption struct {

@@ -337,6 +337,7 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
 		scheduler_action.New(scheduler_action.Cancel): flowManager.statesMap[states.CanceledBySeller],
+		seller_action.New(seller_action.Approve):      flowManager.statesMap[states.ShipmentPending],
 		seller_action.New(seller_action.Reject):       flowManager.statesMap[states.CanceledBySeller],
 		buyer_action.New(buyer_action.Cancel):         flowManager.statesMap[states.CanceledByBuyer],
 	}
@@ -347,7 +348,7 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	}
 	state = state_20.New(childStates, emptyState, actionStateMap)
 	// add to flowManager maps
-	flowManager.statesMap[states.ShipmentPending] = state
+	flowManager.statesMap[states.ApprovalPending] = state
 
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
@@ -370,19 +371,6 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	state = state_15.New(childStates, emptyState, actionStateMap)
 	// add to flowManager maps
 	flowManager.statesMap[states.OrderVerificationFailed] = state
-
-	////////////////////////////////////////////////////////////////////
-	actionStateMap = map[actions.IAction]states.IState{
-		system_action.New(system_action.Success): flowManager.statesMap[states.OrderVerificationSuccess],
-		system_action.New(system_action.Fail):    flowManager.statesMap[states.OrderVerificationFailed],
-	}
-	childStates = []states.IState{
-		flowManager.statesMap[states.OrderVerificationSuccess],
-		flowManager.statesMap[states.OrderVerificationFailed],
-	}
-	state = state_13.New(childStates, emptyState, actionStateMap)
-	// add to flowManager maps
-	flowManager.statesMap[states.OrderVerificationPending] = state
 
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
@@ -463,31 +451,14 @@ func (flowManager iFlowManagerImpl) PaymentGatewayResult(ctx context.Context, re
 		CreatedAt:   time.Now().UTC(),
 	}
 
-	iframe := frame.Factory().SetDefaultHeader(frame.HeaderPaymentResult, paymentResult).SetOrderId(uint64(orderId)).Build()
-
-	//order, err := app.Globals.OrderRepository.FindById(ctx, uint64(orderId))
-	//if err != nil {
-	//	logger.Err("PaymentGatewayResult() => request orderId not found, OrderRepository.FindById failed, order: %s, error: %s",
-	//		req.OrderID, err)
-	//	returnChannel := make(chan future.FutureData, 1)
-	//	returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.NotFound, Reason: "OrderId Not Found"}}
-	//	defer close(returnChannel)
-	//	return future.NewPromise(returnChannel, 1, 1)
-	//}
-	//
-
-	//order.PaymentService[0].PaymentResult = &entities.PaymentResult{
-	//	Result:      req.Result,
-	//	Reason:      "",
-	//	PaymentId:   req.PaymentId,
-	//	InvoiceId:   req.InvoiceId,
-	//	Amount:      uint64(req.Amount),
-	//	CardNumMask: req.CardMask,
-	//	CreatedAt:   time.Now().UTC(),
-	//}
+	iFuture := future.Factory().SetCapacity(1).Build()
+	iframe := frame.Factory().SetOrderId(uint64(orderId)).
+		SetDefaultHeader(frame.HeaderPaymentResult, paymentResult).
+		SetFuture(iFuture).
+		SetOrderId(uint64(orderId)).Build()
 
 	flowManager.statesMap[states.PaymentPending].Process(ctx, iframe)
-	return future.Factory().BuildAndSend()
+	return iFuture
 }
 
 // TODO Must be refactored
@@ -528,6 +499,7 @@ func (flowManager iFlowManagerImpl) newOrderHandler(ctx context.Context, iFrame 
 		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 			SetError(future.BadRequest, "Received requestNewOrder invalid", err).
 			Send()
+		return
 	}
 
 	newOrder := value.(*entities.Order)
@@ -543,7 +515,7 @@ func (flowManager iFlowManagerImpl) newOrderHandler(ctx context.Context, iFrame 
 	}
 
 	iFuture := app.Globals.StockService.BatchStockActions(ctx, inventories,
-		stock_action.New(stock_action.Release))
+		stock_action.New(stock_action.Reserve))
 	futureData := iFuture.Get()
 	if futureData.Error() != nil {
 		logger.Err("Reserved stock from stockService failed, newOrder: %v, error: %s",

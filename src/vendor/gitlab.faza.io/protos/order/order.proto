@@ -160,8 +160,13 @@ message Invoice {
     uint64  shipmentTotal   = 6;
     string  currency        = 7;
     string  paymentMethod   = 8;
-    string  paymentOption   = 9;
-    Voucher voucher         = 10;
+    string  paymentGateway  = 9;
+    PaymentOption  paymentOption   = 10;
+    Voucher voucher         = 11;
+}
+
+message PaymentOption {
+
 }
 
 message Voucher {

@@ -51,36 +51,36 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 
 		if iFrame.Body().Content() == nil {
 			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, sellerId: %d, sid: %d, %s state ",
-				subpkg.OrderId, subpkg.SellerId, subpkg.SId, state.Name())
+				subpkg.OrderId, subpkg.PId, subpkg.SId, state.Name())
 			return
 		}
 
 		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
 		if !ok {
 			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, sellerId: %d, sid: %d, %s state ",
-				subpkg.OrderId, subpkg.SellerId, subpkg.SId, state.Name())
+				subpkg.OrderId, subpkg.PId, subpkg.SId, state.Name())
 			return
 		}
 
 		_, err := app.Globals.SubPkgRepository.Update(ctx, *subpkg)
 		if err != nil {
 			logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, sellerId: %d, sid: %d, error: %s",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
+				state.Name(), subpkg.OrderId, subpkg.PId, subpkg.SId, err.Error())
 		} else {
 			logger.Audit("Process() => Status of subpackage update to %s state, orderId: %d, sellerId: %d, sid: %d",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId)
+				state.Name(), subpkg.OrderId, subpkg.PId, subpkg.SId)
 		}
 
 		order, err := app.Globals.OrderRepository.FindById(ctx, pkgItem.OrderId)
 		if err != nil {
 			logger.Err("Process() => OrderRepository.FindById failed, state: %s, orderId: %d, sellerId: %d, sid: %d, error: %s",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, err.Error())
+				state.Name(), subpkg.OrderId, subpkg.PId, subpkg.SId, err.Error())
 		}
 
 		futureData := app.Globals.UserService.GetSellerProfile(ctx, strconv.Itoa(int(pkgItem.PId))).Get()
 		if futureData.Error() != nil {
 			logger.Err("Process() => UserService.GetSellerProfile failed, state: %s, orderId: %d, sellerId: %d, sid: %d, error: %s",
-				state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, futureData.Error().Reason())
+				state.Name(), subpkg.OrderId, subpkg.PId, subpkg.SId, futureData.Error().Reason())
 		}
 
 		// TODO Notification template must be load from file
@@ -99,17 +99,17 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 			futureData = app.Globals.NotifyService.NotifyBySMS(ctx, sellerNotify).Get()
 			if futureData.Error() != nil {
 				logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, sellerId: %d, sid: %d, error: %s",
-					sellerNotify, state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, futureData.Error().Reason())
+					sellerNotify, state.Name(), subpkg.OrderId, subpkg.PId, subpkg.SId, futureData.Error().Reason())
 			}
 
 			futureData = app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
 			if futureData.Error() != nil {
 				logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, sellerId: %d, sid: %d, error: %s",
-					buyerNotify, state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, futureData.Error().Reason())
+					buyerNotify, state.Name(), subpkg.OrderId, subpkg.PId, subpkg.SId, futureData.Error().Reason())
 			}
 
 			logger.Audit("Process() => NotifyService.NotifyBySMS success, sellerNotify: %v, buyerNotify: %v, state: %s, orderId: %d, sellerId: %d, sid: %d, error: %s",
-				sellerNotify, buyerNotify, state.Name(), subpkg.OrderId, subpkg.SellerId, subpkg.SId, futureData.Error().Reason())
+				sellerNotify, buyerNotify, state.Name(), subpkg.OrderId, subpkg.PId, subpkg.SId, futureData.Error().Reason())
 		}
 
 	} else if iFrame.Header().KeyExists(string(frame.HeaderEvent)) {
@@ -266,14 +266,14 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 				err := app.Globals.SubPkgRepository.Save(ctx, newSubPackage)
 				if err != nil {
 					logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
-						newSubPackage.OrderId, newSubPackage.SellerId, event, err.Error())
+						newSubPackage.OrderId, newSubPackage.PId, event, err.Error())
 					// TODO must distinct system error from update version error
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 						SetError(future.InternalError, "Unknown Err", err).Send()
 					return
 				} else {
 					logger.Audit("Process() => Status of new subpackage update to %v event, orderId: %d, sellerId: %d, sid: %d",
-						event, newSubPackage.OrderId, newSubPackage.SellerId, newSubPackage.SId)
+						event, newSubPackage.OrderId, newSubPackage.PId, newSubPackage.SId)
 				}
 
 				if nextActionState != nil {

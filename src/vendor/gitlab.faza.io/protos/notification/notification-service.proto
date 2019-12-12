@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package NotificationService;
+
+service NotificationService {
+    rpc sendEmail(Email) returns (Result);
+    rpc sendSms(Sms) returns (Result);
+    rpc sendEmailTemplate(EmailTemplate) returns (Result);
+}
+
+message EmailTemplate {
+    string templateName     = 1;
+    map<string,string> vars = 2;
+    Email email             = 3;
+}
+
+// Email message
+message Email {
+    string From = 1;
+    string To = 2;
+    string Subject = 3;
+    string Body = 4;
+    repeated string Attachment = 5;
+}
+
+// SMS message
+message Sms {
+    string To = 1;
+    string Body = 2;
+}
+
+message Result {
+    // HTTP STATUS
+    // 200 success
+    // 500 error
+    // 422 validation
+    int32 status = 1;
+    string message = 2;
+}

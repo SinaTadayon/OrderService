@@ -129,9 +129,10 @@ func createOrder() *entities.Order {
 		},
 		Packages: []entities.PackageItem{
 			{
-				PId:     129384234,
-				OrderId: 0,
-				Version: 0,
+				PId:      129384234,
+				OrderId:  0,
+				Version:  0,
+				ShopName: "Sazagar",
 				Invoice: entities.PackageInvoice{
 					Subtotal:       2873423,
 					Discount:       9283443,
@@ -215,10 +216,10 @@ func createOrder() *entities.Order {
 				},
 				Subpackages: []entities.Subpackage{
 					{
-						SId:      0,
-						SellerId: 129384234,
-						OrderId:  0,
-						Version:  0,
+						SId:     0,
+						PId:     129384234,
+						OrderId: 0,
+						Version: 0,
 						Items: []entities.Item{
 							{
 								SKU:         "yt545-34",
@@ -290,26 +291,39 @@ func createOrder() *entities.Order {
 								TrackingNumber: "545349534958349",
 								Image:          "",
 								Description:    "",
-								ShippedAt:      time.Now().UTC(),
+								ShippedAt:      nil,
 								CreatedAt:      time.Now().UTC(),
 							},
-							ReturnShipmentDetail: &entities.ShippingDetail{
+							ReturnShipmentDetail: &entities.ReturnShippingDetail{
 								CarrierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
 								Description:    "",
-								ShippedAt:      time.Now().UTC(),
+								ShippedAt:      nil,
+								RequestedAt:    nil,
 								CreatedAt:      time.Now().UTC(),
 							},
 						},
 						Tracking: entities.Progress{
-							StateName:  "0.NewOrder",
-							StateIndex: 0,
+							State: &entities.State{
+								Name:  "1.New",
+								Index: 1,
+								Data:  nil,
+								Actions: []entities.Action{
+									{
+										Name:      "BuyerCancel",
+										Type:      "OrderBuyerCancel",
+										Result:    "Success",
+										Reasons:   nil,
+										CreatedAt: time.Now().UTC(),
+									},
+								},
+								CreatedAt: time.Now().UTC(),
+							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
 								Type:      "OrderBuyerCancel",
-								Data:      nil,
 								Result:    "Success",
 								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
@@ -318,11 +332,11 @@ func createOrder() *entities.Order {
 								{
 									Name:  "1.New",
 									Index: 1,
+									Data:  nil,
 									Actions: []entities.Action{
 										{
 											Name:      "BuyerCancel",
 											Type:      "OrderBuyerCancel",
-											Data:      nil,
 											Result:    "Success",
 											Reasons:   nil,
 											CreatedAt: time.Now().UTC(),
@@ -332,16 +346,16 @@ func createOrder() *entities.Order {
 								},
 							},
 						},
-						Status:    "New",
+						Status:    "1.New",
 						CreatedAt: time.Now().UTC(),
 						UpdatedAt: time.Now().UTC(),
 						DeletedAt: nil,
 					},
 					{
-						SId:      0,
-						SellerId: 129384234,
-						OrderId:  0,
-						Version:  0,
+						SId:     0,
+						PId:     129384234,
+						OrderId: 0,
+						Version: 0,
 						Items: []entities.Item{
 							{
 								SKU:         "gd534-34344",
@@ -413,26 +427,39 @@ func createOrder() *entities.Order {
 								TrackingNumber: "545349534958349",
 								Image:          "",
 								Description:    "",
-								ShippedAt:      time.Now().UTC(),
+								ShippedAt:      nil,
 								CreatedAt:      time.Now().UTC(),
 							},
-							ReturnShipmentDetail: &entities.ShippingDetail{
+							ReturnShipmentDetail: &entities.ReturnShippingDetail{
 								CarrierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
 								Description:    "",
-								ShippedAt:      time.Now().UTC(),
+								ShippedAt:      nil,
+								RequestedAt:    nil,
 								CreatedAt:      time.Now().UTC(),
 							},
 						},
 						Tracking: entities.Progress{
-							StateName:  "0.NewOrder",
-							StateIndex: 0,
+							State: &entities.State{
+								Name:  "1.New",
+								Index: 1,
+								Data:  nil,
+								Actions: []entities.Action{
+									{
+										Name:      "BuyerCancel",
+										Type:      "OrderBuyerCancel",
+										Result:    "Success",
+										Reasons:   nil,
+										CreatedAt: time.Now().UTC(),
+									},
+								},
+								CreatedAt: time.Now().UTC(),
+							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
 								Type:      "OrderBuyerCancel",
-								Data:      nil,
 								Result:    "Success",
 								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
@@ -441,11 +468,11 @@ func createOrder() *entities.Order {
 								{
 									Name:  "1.New",
 									Index: 1,
+									Data:  nil,
 									Actions: []entities.Action{
 										{
 											Name:      "BuyerCancel",
 											Type:      "OrderBuyerCancel",
-											Data:      nil,
 											Result:    "Success",
 											Reasons:   nil,
 											CreatedAt: time.Now().UTC(),
@@ -455,7 +482,7 @@ func createOrder() *entities.Order {
 								},
 							},
 						},
-						Status:    "New",
+						Status:    "1.New",
 						CreatedAt: time.Now().UTC(),
 						UpdatedAt: time.Now().UTC(),
 						DeletedAt: nil,
@@ -467,9 +494,10 @@ func createOrder() *entities.Order {
 				DeletedAt: nil,
 			},
 			{
-				PId:     99988887777,
-				OrderId: 0,
-				Version: 0,
+				PId:      99988887777,
+				OrderId:  0,
+				Version:  0,
+				ShopName: "Sazgar",
 				Invoice: entities.PackageInvoice{
 					Subtotal:       2873423,
 					Discount:       9283443,
@@ -553,10 +581,10 @@ func createOrder() *entities.Order {
 				},
 				Subpackages: []entities.Subpackage{
 					{
-						SId:      0,
-						SellerId: 99988887777,
-						OrderId:  0,
-						Version:  0,
+						SId:     0,
+						PId:     99988887777,
+						OrderId: 0,
+						Version: 0,
 						Items: []entities.Item{
 							{
 								SKU:         "trrer-5343fdf",
@@ -628,26 +656,39 @@ func createOrder() *entities.Order {
 								TrackingNumber: "545349534958349",
 								Image:          "",
 								Description:    "",
-								ShippedAt:      time.Now().UTC(),
+								ShippedAt:      nil,
 								CreatedAt:      time.Now().UTC(),
 							},
-							ReturnShipmentDetail: &entities.ShippingDetail{
+							ReturnShipmentDetail: &entities.ReturnShippingDetail{
 								CarrierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
 								Description:    "",
-								ShippedAt:      time.Now().UTC(),
+								ShippedAt:      nil,
+								RequestedAt:    nil,
 								CreatedAt:      time.Now().UTC(),
 							},
 						},
 						Tracking: entities.Progress{
-							StateName:  "0.NewOrder",
-							StateIndex: 0,
+							State: &entities.State{
+								Name:  "1.New",
+								Index: 1,
+								Data:  nil,
+								Actions: []entities.Action{
+									{
+										Name:      "BuyerCancel",
+										Type:      "OrderBuyerCancel",
+										Result:    "Success",
+										Reasons:   nil,
+										CreatedAt: time.Now().UTC(),
+									},
+								},
+								CreatedAt: time.Now().UTC(),
+							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
 								Type:      "OrderBuyerCancel",
-								Data:      nil,
 								Result:    "Success",
 								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
@@ -656,11 +697,11 @@ func createOrder() *entities.Order {
 								{
 									Name:  "1.New",
 									Index: 1,
+									Data:  nil,
 									Actions: []entities.Action{
 										{
 											Name:      "BuyerCancel",
 											Type:      "OrderBuyerCancel",
-											Data:      nil,
 											Result:    "Success",
 											Reasons:   nil,
 											CreatedAt: time.Now().UTC(),
@@ -670,16 +711,16 @@ func createOrder() *entities.Order {
 								},
 							},
 						},
-						Status:    "New",
+						Status:    "1.New",
 						CreatedAt: time.Now().UTC(),
 						UpdatedAt: time.Now().UTC(),
 						DeletedAt: nil,
 					},
 					{
-						SId:      0,
-						SellerId: 99988887777,
-						OrderId:  0,
-						Version:  0,
+						SId:     0,
+						PId:     99988887777,
+						OrderId: 0,
+						Version: 0,
 						Items: []entities.Item{
 							{
 								SKU:         "5456",
@@ -751,26 +792,39 @@ func createOrder() *entities.Order {
 								TrackingNumber: "545349534958349",
 								Image:          "",
 								Description:    "",
-								ShippedAt:      time.Now().UTC(),
+								ShippedAt:      nil,
 								CreatedAt:      time.Now().UTC(),
 							},
-							ReturnShipmentDetail: &entities.ShippingDetail{
+							ReturnShipmentDetail: &entities.ReturnShippingDetail{
 								CarrierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
 								Description:    "",
-								ShippedAt:      time.Now().UTC(),
+								ShippedAt:      nil,
+								RequestedAt:    nil,
 								CreatedAt:      time.Now().UTC(),
 							},
 						},
 						Tracking: entities.Progress{
-							StateName:  "0.NewOrder",
-							StateIndex: 0,
+							State: &entities.State{
+								Name:  "1.New",
+								Index: 1,
+								Data:  nil,
+								Actions: []entities.Action{
+									{
+										Name:      "BuyerCancel",
+										Type:      "OrderBuyerCancel",
+										Result:    "Success",
+										Reasons:   nil,
+										CreatedAt: time.Now().UTC(),
+									},
+								},
+								CreatedAt: time.Now().UTC(),
+							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
 								Type:      "OrderBuyerCancel",
-								Data:      nil,
 								Result:    "Success",
 								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
@@ -779,11 +833,11 @@ func createOrder() *entities.Order {
 								{
 									Name:  "1.New",
 									Index: 1,
+									Data:  nil,
 									Actions: []entities.Action{
 										{
 											Name:      "BuyerCancel",
 											Type:      "OrderBuyerCancel",
-											Data:      nil,
 											Result:    "Success",
 											Reasons:   nil,
 											CreatedAt: time.Now().UTC(),
@@ -793,7 +847,7 @@ func createOrder() *entities.Order {
 								},
 							},
 						},
-						Status:    "New",
+						Status:    "1.New",
 						CreatedAt: time.Now().UTC(),
 						UpdatedAt: time.Now().UTC(),
 						DeletedAt: nil,

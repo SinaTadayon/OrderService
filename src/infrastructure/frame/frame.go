@@ -10,7 +10,7 @@ const (
 	HeaderItems         HeaderEnum = "ITEMS"
 	HeaderOrderId       HeaderEnum = "OID"
 	HeaderPId           HeaderEnum = "PID"
-	HeaderSId           HeaderEnum = "SID"
+	HeaderSIds          HeaderEnum = "SIDS"
 	HeaderIPAddress     HeaderEnum = "IP_ADDRESS"
 	HeaderInventoryId   HeaderEnum = "INVENTORY_ID"
 	HeaderFuture        HeaderEnum = "FUTURE"
