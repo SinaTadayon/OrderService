@@ -97,10 +97,10 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 				state.SetPkgStatus(ctx, &order.Packages[i], states.PackageClosedStatus)
 				_, err := app.Globals.PkgItemRepository.Update(ctx, order.Packages[i])
 				if err != nil {
-					logger.Err("update pkgItem status to closed failed, orderId: %d, pid: %d, error: %s",
+					logger.Err("update pkgItem status to closed failed, state: %s, orderId: %d, pid: %d, error: %s",
 						state.Name(), order.Packages[i].OrderId, order.Packages[i].PId, err.Error())
 				} else {
-					logger.Audit("update pkgItem status to closed success, orderId: %d, pid: %d",
+					logger.Audit("update pkgItem status to closed success, state: %s, orderId: %d, pid: %d",
 						state.Name(), order.Packages[i].OrderId, order.Packages[i].PId)
 				}
 			}
@@ -121,7 +121,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 				logger.Err("update order status to closed failed, orderId: %d, error: %s",
 					state.Name(), order.OrderId, err.Error())
 			} else {
-				logger.Audit("update order status to closed failed, orderId: %d", state.Name(), order.OrderId)
+				logger.Audit("update order status to closed success, state: %s, orderId: %d", state.Name(), order.OrderId)
 			}
 		}
 	} else {

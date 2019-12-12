@@ -118,9 +118,9 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
-		seller_action.New(seller_action.Reject):       flowManager.statesMap[states.ReturnRejected],
-		seller_action.New(seller_action.Accept):       flowManager.statesMap[states.PayToBuyer],
-		scheduler_action.New(scheduler_action.Accept): flowManager.statesMap[states.PayToBuyer],
+		seller_action.New(seller_action.Reject):      flowManager.statesMap[states.ReturnRejected],
+		seller_action.New(seller_action.Accept):      flowManager.statesMap[states.PayToBuyer],
+		scheduler_action.New(scheduler_action.Close): flowManager.statesMap[states.PayToBuyer],
 	}
 	childStates = []states.IState{
 		flowManager.statesMap[states.PayToBuyer],
@@ -136,8 +136,8 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 		operator_action.New(operator_action.DeliveryFail): flowManager.statesMap[states.ReturnDeliveryFailed],
 	}
 	childStates = []states.IState{
-		flowManager.statesMap[states.PayToBuyer],
-		flowManager.statesMap[states.PayToSeller],
+		flowManager.statesMap[states.ReturnDeliveryFailed],
+		flowManager.statesMap[states.ReturnDelivered],
 	}
 	state = state_54.New(childStates, emptyState, actionStateMap)
 	// add to flowManager maps
@@ -171,9 +171,9 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
-		buyer_action.New(buyer_action.Cancel):               flowManager.statesMap[states.PayToSeller],
-		scheduler_action.New(scheduler_action.Close):        flowManager.statesMap[states.PayToSeller],
-		buyer_action.New(buyer_action.EnterShipmentDetails): flowManager.statesMap[states.ReturnShipped],
+		buyer_action.New(buyer_action.Cancel):              flowManager.statesMap[states.PayToSeller],
+		scheduler_action.New(scheduler_action.Close):       flowManager.statesMap[states.PayToSeller],
+		buyer_action.New(buyer_action.EnterShipmentDetail): flowManager.statesMap[states.ReturnShipped],
 	}
 	childStates = []states.IState{
 		flowManager.statesMap[states.PayToSeller],
@@ -197,17 +197,6 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	flowManager.statesMap[states.ReturnRequestRejected] = state
 
 	////////////////////////////////////////////////////////////////////
-	//actionStateMap = map[actions.IAction]states.IState{
-	//	system_action.New(system_action.NextToState): flowManager.statesMap[states.PayToSeller],
-	//}
-	//childStates = []states.IState{
-	//	flowManager.statesMap[states.PayToSeller],
-	//}
-	//state = state_42.New(childStates, emptyState, actionStateMap)
-	//// add to flowManager maps
-	//flowManager.statesMap[states.ReturnCanceled] = state
-
-	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
 		buyer_action.New(buyer_action.Cancel):         flowManager.statesMap[states.PayToSeller],
 		seller_action.New(seller_action.Reject):       flowManager.statesMap[states.ReturnRequestRejected],
@@ -225,24 +214,26 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
 		buyer_action.New(buyer_action.SubmitReturnRequest): flowManager.statesMap[states.ReturnRequestPending],
+		scheduler_action.New(scheduler_action.Close):       flowManager.statesMap[states.PayToSeller],
 	}
 	childStates = []states.IState{
 		flowManager.statesMap[states.ReturnRequestPending],
+		flowManager.statesMap[states.PayToSeller],
 	}
 	state = state_32.New(childStates, emptyState, actionStateMap)
 	// add to flowManager maps
-	flowManager.statesMap[states.ReturnRequestPending] = state
+	flowManager.statesMap[states.Delivered] = state
 
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
-		system_action.New(system_action.NextToState): flowManager.statesMap[states.PayToSeller],
+		system_action.New(system_action.NextToState): flowManager.statesMap[states.PayToBuyer],
 	}
 	childStates = []states.IState{
-		flowManager.statesMap[states.PayToSeller],
+		flowManager.statesMap[states.PayToBuyer],
 	}
 	state = state_36.New(childStates, emptyState, actionStateMap)
 	// add to flowManager maps
-	flowManager.statesMap[states.ReturnRequestPending] = state
+	flowManager.statesMap[states.DeliveryFailed] = state
 
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
@@ -255,13 +246,14 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	}
 	state = state_35.New(childStates, emptyState, actionStateMap)
 	// add to flowManager maps
-	flowManager.statesMap[states.ReturnRequestPending] = state
+	flowManager.statesMap[states.DeliveryDelayed] = state
 
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
-		scheduler_action.New(scheduler_action.Deliver):     flowManager.statesMap[states.Delivered],
-		operator_action.New(operator_action.DeliveryDelay): flowManager.statesMap[states.DeliveryDelayed],
-		buyer_action.New(buyer_action.DeliveryDelay):       flowManager.statesMap[states.DeliveryDelayed],
+		scheduler_action.New(scheduler_action.Deliver):      flowManager.statesMap[states.Delivered],
+		scheduler_action.New(scheduler_action.Notification): nil,
+		operator_action.New(operator_action.DeliveryDelay):  flowManager.statesMap[states.DeliveryDelayed],
+		buyer_action.New(buyer_action.DeliveryDelay):        flowManager.statesMap[states.DeliveryDelayed],
 	}
 	childStates = []states.IState{
 		flowManager.statesMap[states.Delivered],
@@ -317,7 +309,7 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	}
 	state = state_33.New(childStates, emptyState, actionStateMap)
 	// add to flowManager maps
-	flowManager.statesMap[states.Shipped] = state
+	flowManager.statesMap[states.ShipmentDelayed] = state
 
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{

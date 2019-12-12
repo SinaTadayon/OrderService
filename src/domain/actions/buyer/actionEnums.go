@@ -10,14 +10,14 @@ var actionStrings = []string{
 	"DeliveryDelay",
 	"Cancel",
 	"SubmitReturnRequest",
-	"EnterShipmentDetails",
+	"EnterShipmentDetail",
 }
 
 const (
 	DeliveryDelay ActionEnums = iota
 	Cancel
 	SubmitReturnRequest
-	EnterShipmentDetails
+	EnterShipmentDetail
 )
 
 func (action ActionEnums) ActionName() string {
@@ -25,7 +25,7 @@ func (action ActionEnums) ActionName() string {
 }
 
 func (action ActionEnums) ActionOrdinal() int {
-	if action < DeliveryDelay || action > EnterShipmentDetails {
+	if action < DeliveryDelay || action > EnterShipmentDetail {
 		return -1
 	}
 
@@ -37,7 +37,7 @@ func (action ActionEnums) Values() []string {
 }
 
 func (action ActionEnums) String() string {
-	if action < DeliveryDelay || action > EnterShipmentDetails {
+	if action < DeliveryDelay || action > EnterShipmentDetail {
 		return ""
 	}
 
@@ -52,8 +52,8 @@ func (action ActionEnums) FromString(actionEnums string) actions.IEnumAction {
 		return Cancel
 	case "SubmitReturnRequest":
 		return SubmitReturnRequest
-	case "EnterShipmentDetails":
-		return EnterShipmentDetails
+	case "EnterShipmentDetail":
+		return EnterShipmentDetail
 
 	default:
 		return nil

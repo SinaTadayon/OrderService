@@ -57,21 +57,22 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 		}
 
 		// TODO must be read from reids config
-		expiredTime := time.Now().UTC().Add(time.Hour*
+		expireTime := time.Now().UTC().Add(time.Hour*
 			time.Duration(72) +
 			time.Minute*time.Duration(0) +
 			time.Second*time.Duration(0))
 
+		// TODO refactor it
 		state.UpdateOrderAllSubPkg(ctx, order)
 		for i := 0; i < len(order.Packages); i++ {
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-				if order.Packages[i].Subpackages[j].Tracking.State != nil {
-					order.Packages[i].Subpackages[j].Tracking.State.Data = map[string]interface{}{
-						"expiredTime": expiredTime,
-					}
+				order.Packages[i].Subpackages[j].Tracking.State.Data = map[string]interface{}{
+					"expireAt": expireTime,
 				}
+				state.UpdateSubPackage(ctx, &order.Packages[i].Subpackages[j], nil)
 			}
 		}
+
 		_, err := app.Globals.OrderRepository.Save(ctx, *order)
 		if err != nil {
 			logger.Err("Process() => OrderRepository.Save in %s state failed, orderId: %d, error: %s", state.Name(), order.OrderId, err.Error())
@@ -264,6 +265,9 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 				} else if rejectedSubtotal > pkgItem.Invoice.Subtotal || rejectedDiscount > pkgItem.Invoice.Discount {
 					logger.Err("Process() => calculate package invoice failed, orderId: %d, pid:%d, action: %s, subtotal: %d, discount: %d",
 						pkgItem.OrderId, pkgItem.PId, event.Action().ActionEnum().ActionName(), pkgItem.Invoice.Subtotal, pkgItem.Invoice.Discount)
+					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+						SetError(future.InternalError, "Unknown Error", errors.New("Package Invoice Invalid")).Send()
+					return
 				}
 			}
 			pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)

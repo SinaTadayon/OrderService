@@ -75,6 +75,6 @@ func (state canceledBySellerState) Process(ctx context.Context, iFrame frame.IFr
 		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetSubpackages(updatedSubpackages).Build())
 
 	} else {
-		logger.Err("iFrame.Header() not a subpackage or sellerId not found, state: %s iframe: %v", state.Name(), iFrame)
+		logger.Err("iFrame.Header() not a subpackage , state: %s iframe: %v", state.Name(), iFrame)
 	}
 }
