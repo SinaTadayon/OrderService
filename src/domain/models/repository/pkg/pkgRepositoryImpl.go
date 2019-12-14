@@ -152,11 +152,31 @@ func (repo iPkgItemRepositoryImpl) Count(ctx context.Context, id uint64) (int64,
 }
 
 func (repo iPkgItemRepositoryImpl) CountWithFilter(ctx context.Context, supplier func() (filter interface{})) (int64, error) {
-	total, err := repo.mongoAdapter.Count(databaseName, collectionName, supplier())
-	if err != nil {
-		return 0, errors.Wrap(err, "CountWithFilter failed")
+
+	var total struct {
+		Count int
 	}
-	return total, nil
+
+	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, supplier())
+	if err != nil {
+		return 0, errors.Wrap(err, "Aggregate Failed")
+	}
+
+	defer closeCursor(ctx, cursor)
+
+	if cursor.Next(ctx) {
+		if err := cursor.Decode(&total); err != nil {
+			return 0, errors.Wrap(err, "cursor.Decode failed")
+		}
+	}
+
+	return int64(total.Count), nil
+
+	//total, err := repo.mongoAdapter.Count(databaseName, collectionName, supplier())
+	//if err != nil {
+	//	return 0, errors.Wrap(err, "CountWithFilter failed")
+	//}
+	//return total, nil
 }
 
 func closeCursor(context context.Context, cursor *mongo.Cursor) {

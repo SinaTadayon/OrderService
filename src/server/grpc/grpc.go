@@ -126,11 +126,12 @@ const (
 type Server struct {
 	pb.UnimplementedOrderServiceServer
 	pg.UnimplementedBankResultHookServer
-	flowManager  domain.IFlowManager
-	address      string
-	port         uint16
-	filterStates map[FilterValue][]states.IEnumState
-	actionStates map[UserType][]actions.IAction
+	flowManager    domain.IFlowManager
+	address        string
+	port           uint16
+	requestFilters map[RequestName][]FilterValue
+	filterStates   map[FilterValue][]states.IEnumState
+	actionStates   map[UserType][]actions.IAction
 }
 
 func NewServer(address string, port uint16, flowManager domain.IFlowManager) Server {
@@ -140,7 +141,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	filterStatesMap[ShippedFilter] = []states.IEnumState{states.Shipped}
 	filterStatesMap[DeliveredFilter] = []states.IEnumState{states.DeliveryPending, states.DeliveryDelayed, states.Delivered}
 	filterStatesMap[DeliveryFailedFilter] = []states.IEnumState{states.DeliveryFailed}
-	filterStatesMap[ReturnRequestPendingFilter] = []states.IEnumState{states.ReturnRequestPending}
+	filterStatesMap[ReturnRequestPendingFilter] = []states.IEnumState{states.ReturnRequestPending, states.ReturnRequestRejected}
 	filterStatesMap[ReturnShipmentPendingFilter] = []states.IEnumState{states.ReturnShipmentPending}
 	filterStatesMap[ReturnShippedFilter] = []states.IEnumState{states.ReturnShipped}
 	filterStatesMap[ReturnDeliveredFilter] = []states.IEnumState{states.ReturnDeliveryPending, states.ReturnDeliveryDelayed, states.ReturnDelivered}
@@ -181,7 +182,21 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		scheduler_action.New(scheduler_action.Notification),
 	}
 
-	return Server{flowManager: flowManager, address: address, port: port, filterStates: filterStatesMap, actionStates: actionStateMap}
+	reqFilters := make(map[RequestName][]FilterValue, 8)
+	reqFilters[SellerOrderList] = []FilterValue{ApprovalPendingFilter, ShipmentPendingFilter, ShippedFilter,
+		DeliveredFilter, DeliveryFailedFilter}
+	reqFilters[SellerOrderDetail] = []FilterValue{ApprovalPendingFilter, ShipmentPendingFilter, ShippedFilter,
+		DeliveredFilter, DeliveryFailedFilter}
+	reqFilters[BuyerOrderDetailList] = []FilterValue{ApprovalPendingFilter, ShipmentPendingFilter, ShippedFilter,
+		DeliveredFilter, DeliveryFailedFilter}
+
+	reqFilters[SellerReturnOrderDetailList] = []FilterValue{ReturnRequestPendingFilter, ReturnShipmentPendingFilter,
+		ReturnShippedFilter, ReturnDeliveredFilter, ReturnDeliveryFailedFilter}
+	reqFilters[BuyerReturnOrderReports] = []FilterValue{}
+	reqFilters[BuyerReturnOrderDetailList] = []FilterValue{ReturnRequestPendingFilter, ReturnShipmentPendingFilter,
+		ReturnShippedFilter, ReturnDeliveredFilter, ReturnDeliveryFailedFilter}
+
+	return Server{flowManager: flowManager, address: address, port: port, requestFilters: reqFilters, filterStates: filterStatesMap, actionStates: actionStateMap}
 }
 
 func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
@@ -206,30 +221,90 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	}
 }
 
-func (server *Server) generateFilter(ctx context.Context, filter FilterValue) bson.M {
+//func (server *Server) generateFilter(ctx context.Context, filter FilterValue) bson.D {
+//
+//	newFilter := make([]interface{}, 2)
+//
+//	if filter == ApprovalPendingFilter {
+//		newFilter[0] = "packages.subpackages.status"
+//		newFilter[1] = server.filterStates[filter][0].StateName()
+//	} else if filter == ShipmentPendingFilter {
+//		newFilter[0] = "packages.subpackages.status"
+//		newFilter[1] = bson.M{"$or": bson.A{states.ShipmentPending.StateName(), states.ShipmentDelayed.StateName()}}
+//	} else if filter == ShippedFilter {
+//		newFilter[0] = "packages.subpackages.status"
+//		newFilter[1] = server.filterStates[filter][0].StateName()
+//	} else if filter == DeliveredFilter {
+//		newFilter[0] = "packages.subpackages.status"
+//		newFilter[1] = bson.M{"$or": bson.A{states.DeliveryPending.StateName(), states.DeliveryDelayed.StateName(), states.Delivered.StateName()}}
+//	} else if filter == DeliveryFailedFilter {
+//		newFilter[0] = "packages.subpackages.tracking.history.name"
+//		newFilter[1] = server.filterStates[filter][0].StateName()
+//	} else if filter == ReturnRequestPendingFilter {
+//		newFilter[0] = "packages.subpackages.status"
+//		newFilter[1] = server.filterStates[filter][0].StateName()
+//	} else if filter == ReturnShipmentPendingFilter {
+//		newFilter[0] = "packages.subpackages.status"
+//		newFilter[1] = server.filterStates[filter][0].StateName()
+//	} else if filter == ReturnShippedFilter {
+//		newFilter[0] = "packages.subpackages.status"
+//		newFilter[1] = server.filterStates[filter][0].StateName()
+//	} else if filter == ReturnDeliveredFilter {
+//		newFilter[0] = "packages.subpackages.status"
+//		newFilter[1] = bson.M{"$or": bson.A{states.ReturnDeliveryPending.StateName(), states.ReturnDeliveryDelayed.StateName(), states.ReturnDelivered.StateName()}}
+//	} else if filter == DeliveryFailedFilter {
+//		newFilter[0] = "packages.subpackages.tracking.history.name"
+//		newFilter[1] = server.filterStates[filter][0].StateName()
+//	}
+//	return newFilter
+//}
+
+func (server *Server) generatePipelineFilter(ctx context.Context, filter FilterValue) []interface{} {
+
+	newFilter := make([]interface{}, 2)
 
 	if filter == ApprovalPendingFilter {
-		return bson.M{"packages.subpackages.status": server.filterStates[filter][0].StateName()}
+		newFilter[0] = "packages.subpackages.status"
+		newFilter[1] = server.filterStates[filter][0].StateName()
 	} else if filter == ShipmentPendingFilter {
-		return bson.M{"packages.subpackages.status": bson.M{"$or": bson.A{states.ShipmentPending.StateName(), states.ShipmentDelayed.StateName()}}}
+		newFilter[0] = "$or"
+		newFilter[1] = bson.A{
+			bson.M{"packages.subpackages.status": states.ShipmentPending.StateName()},
+			bson.M{"packages.subpackages.status": states.ShipmentDelayed.StateName()}}
 	} else if filter == ShippedFilter {
-		return bson.M{"packages.subpackages.status": server.filterStates[filter][0].StateName()}
+		newFilter[0] = "packages.subpackages.status"
+		newFilter[1] = server.filterStates[filter][0].StateName()
 	} else if filter == DeliveredFilter {
-		return bson.M{"packages.subpackages.status": bson.M{"$or": bson.A{states.DeliveryPending.StateName(), states.DeliveryDelayed.StateName(), states.Delivered.StateName()}}}
+		newFilter[0] = "$or"
+		newFilter[1] = bson.A{
+			bson.M{"packages.subpackages.status": states.DeliveryPending.StateName()},
+			bson.M{"packages.subpackages.status": states.DeliveryDelayed.StateName()},
+			bson.M{"packages.subpackages.status": states.Delivered.StateName()}}
 	} else if filter == DeliveryFailedFilter {
-		return bson.M{"packages.subpackages.tracking.history.name": server.filterStates[filter][0].StateName()}
+		newFilter[0] = "packages.subpackages.tracking.history.name"
+		newFilter[1] = server.filterStates[filter][0].StateName()
 	} else if filter == ReturnRequestPendingFilter {
-		return bson.M{"packages.subpackages.status": server.filterStates[filter][0].StateName()}
+		newFilter[0] = "$or"
+		newFilter[1] = bson.A{
+			bson.M{"packages.subpackages.status": states.ReturnRequestPending.StateName()},
+			bson.M{"packages.subpackages.status": states.ReturnRequestRejected.StateName()}}
 	} else if filter == ReturnShipmentPendingFilter {
-		return bson.M{"packages.subpackages.status": server.filterStates[filter][0].StateName()}
+		newFilter[0] = "packages.subpackages.status"
+		newFilter[1] = server.filterStates[filter][0].StateName()
 	} else if filter == ReturnShippedFilter {
-		return bson.M{"packages.subpackages.status": server.filterStates[filter][0].StateName()}
+		newFilter[0] = "packages.subpackages.status"
+		newFilter[1] = server.filterStates[filter][0].StateName()
 	} else if filter == ReturnDeliveredFilter {
-		return bson.M{"packages.subpackages.status": bson.M{"$or": bson.A{states.ReturnDeliveryPending.StateName(), states.ReturnDeliveryDelayed.StateName(), states.ReturnDelivered.StateName()}}}
+		newFilter[0] = "$or"
+		newFilter[1] = bson.A{
+			bson.M{"packages.subpackages.status": states.ReturnDeliveryPending.StateName()},
+			bson.M{"packages.subpackages.status": states.ReturnDeliveryDelayed.StateName()},
+			bson.M{"packages.subpackages.status": states.ReturnDelivered.StateName()}}
 	} else if filter == DeliveryFailedFilter {
-		return bson.M{"packages.subpackages.tracking.history.name": server.filterStates[filter][0].StateName()}
+		newFilter[0] = "packages.subpackages.tracking.history.name"
+		newFilter[1] = server.filterStates[filter][0].StateName()
 	}
-	return nil
+	return newFilter
 }
 
 func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
@@ -237,12 +312,12 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 	userType := UserType(req.Meta.UTP)
 	reqADT := RequestADT(req.ADT)
 
-	var filterType FilterType
+	//var filterType FilterType
 	var filterValue FilterValue
 	var sortName string
 	var sortDirection SortDirection
 	if req.Meta.Filters != nil {
-		filterType = FilterType(req.Meta.Filters[0].Type)
+		//filterType = FilterType(req.Meta.Filters[0].Type)
 		filterValue = FilterValue(req.Meta.Filters[0].Value)
 	}
 
@@ -251,10 +326,10 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 		sortDirection = SortDirection(req.Meta.Sorts[0].Direction)
 	}
 
-	if reqName == SellerOrderList && filterType != OrderStateFilterType {
-		logger.Err("requestDataHandler() => request name %s mismatch with %s filter, request: %v", reqName, filterType, req)
-		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with filter")
-	}
+	//if reqName == SellerOrderList && filterType != OrderStateFilterType {
+	//	logger.Err("requestDataHandler() => request name %s mismatch with %s filter, request: %v", reqName, filterType, req)
+	//	return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with filter")
+	//}
 
 	//if (reqName == SellerReturnOrderDetailList || reqName == BuyerReturnOrderDetailList) && filterType != OrderReturnStateFilter {
 	//	logger.Err("requestDataHandler() => request name %s mismatch with %s filterType, request: %v", reqName, filterType, req)
@@ -271,9 +346,24 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 	//	return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
 	//}
 
-	if req.Meta.OID > 0 && reqADT != SingleType {
+	if req.Meta.OID > 0 && reqADT == ListType {
 		logger.Err("requestDataHandler() => %s orderId mismatch with %s requestADT, request: %v", userType, reqADT, req)
 		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestADT")
+	}
+
+	if reqName != BuyerReturnOrderReports {
+		var findFlag = false
+		for _, filter := range server.requestFilters[reqName] {
+			if filter == filterValue {
+				findFlag = true
+				break
+			}
+		}
+
+		if !findFlag {
+			logger.Err("requestDataHandler() => %s requestName mismatch with %s Filter, request: %v", reqName, filterValue, req)
+			return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with Filter")
+		}
 	}
 
 	switch reqName {
@@ -394,16 +484,18 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, pid uint64, fi
 		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
 	}
 
-	filters := make([]bson.M, 0, 3)
-	filters = append(filters, bson.M{"packages.pid": pid})
-	filters = append(filters, bson.M{"packages.deletedAt": nil})
-	filters = append(filters, server.generateFilter(ctx, filter))
+	genFilter := server.generatePipelineFilter(ctx, filter)
+	filters := make(bson.M, 3)
+	filters["packages.pid"] = pid
+	filters["packages.deletedAt"] = nil
+	filters[genFilter[0].(string)] = genFilter[1]
 	countFilter := func() interface{} {
 
 		return []bson.M{
 			{"$match": filters},
-			{"$project": bson.M{"subSize": 1}},
-			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
+			{"$unwind": "$packages"},
+			{"$match": filters},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
@@ -454,7 +546,7 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, pid uint64, fi
 		return []bson.M{
 			{"$match": filters},
 			{"$unwind": "$packages"},
-			{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
+			{"$match": filters},
 			{"$project": bson.M{"_id": 0, "packages": 1}},
 			{"$sort": bson.M{"packages.subpackages." + sortName: sortDirect}},
 			{"$skip": offset},
@@ -508,6 +600,7 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, pid uint64, fi
 	return response, nil
 }
 
+// todo refactor to support projection
 func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId uint64, filter FilterValue) (*pb.MessageResponse, error) {
 	order, err := app.Globals.OrderRepository.FindById(ctx, orderId)
 	if err != nil {
@@ -525,32 +618,34 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId
 
 	sellerOrderDetailItems := make([]*pb.SellerOrderDetail_ItemDetail, 0, 32)
 	for i := 0; i < len(pkgItem.Subpackages); i++ {
-		if pkgItem.Subpackages[i].Status == string(filter) {
-			for j := 0; j < len(pkgItem.Subpackages[i].Items); j++ {
-				itemDetail := &pb.SellerOrderDetail_ItemDetail{
-					SID:         pkgItem.Subpackages[i].SId,
-					Sku:         pkgItem.Subpackages[i].Items[j].SKU,
-					Status:      pkgItem.Subpackages[i].Status,
-					SIdx:        int32(states.FromString(pkgItem.Subpackages[i].Status).StateIndex()),
-					InventoryId: pkgItem.Subpackages[i].Items[j].InventoryId,
-					Title:       pkgItem.Subpackages[i].Items[j].Title,
-					Brand:       pkgItem.Subpackages[i].Items[j].Brand,
-					Category:    pkgItem.Subpackages[i].Items[j].Category,
-					Guaranty:    pkgItem.Subpackages[i].Items[j].Guaranty,
-					Image:       pkgItem.Subpackages[i].Items[j].Image,
-					Returnable:  pkgItem.Subpackages[i].Items[j].Returnable,
-					Quantity:    pkgItem.Subpackages[i].Items[j].Quantity,
-					Attributes:  pkgItem.Subpackages[i].Items[j].Attributes,
-					Invoice: &pb.SellerOrderDetail_ItemDetail_Invoice{
-						Unit:             pkgItem.Subpackages[i].Items[j].Invoice.Unit,
-						Total:            pkgItem.Subpackages[i].Items[j].Invoice.Total,
-						Original:         pkgItem.Subpackages[i].Items[j].Invoice.Original,
-						Special:          pkgItem.Subpackages[i].Items[j].Invoice.Special,
-						Discount:         pkgItem.Subpackages[i].Items[j].Invoice.Discount,
-						SellerCommission: pkgItem.Subpackages[i].Items[j].Invoice.SellerCommission,
-					},
+		for _, state := range server.filterStates[filter] {
+			if pkgItem.Subpackages[i].Status == state.StateName() {
+				for j := 0; j < len(pkgItem.Subpackages[i].Items); j++ {
+					itemDetail := &pb.SellerOrderDetail_ItemDetail{
+						SID:         pkgItem.Subpackages[i].SId,
+						Sku:         pkgItem.Subpackages[i].Items[j].SKU,
+						Status:      pkgItem.Subpackages[i].Status,
+						SIdx:        int32(states.FromString(pkgItem.Subpackages[i].Status).StateIndex()),
+						InventoryId: pkgItem.Subpackages[i].Items[j].InventoryId,
+						Title:       pkgItem.Subpackages[i].Items[j].Title,
+						Brand:       pkgItem.Subpackages[i].Items[j].Brand,
+						Category:    pkgItem.Subpackages[i].Items[j].Category,
+						Guaranty:    pkgItem.Subpackages[i].Items[j].Guaranty,
+						Image:       pkgItem.Subpackages[i].Items[j].Image,
+						Returnable:  pkgItem.Subpackages[i].Items[j].Returnable,
+						Quantity:    pkgItem.Subpackages[i].Items[j].Quantity,
+						Attributes:  pkgItem.Subpackages[i].Items[j].Attributes,
+						Invoice: &pb.SellerOrderDetail_ItemDetail_Invoice{
+							Unit:             pkgItem.Subpackages[i].Items[j].Invoice.Unit,
+							Total:            pkgItem.Subpackages[i].Items[j].Invoice.Total,
+							Original:         pkgItem.Subpackages[i].Items[j].Invoice.Original,
+							Special:          pkgItem.Subpackages[i].Items[j].Invoice.Special,
+							Discount:         pkgItem.Subpackages[i].Items[j].Invoice.Discount,
+							SellerCommission: pkgItem.Subpackages[i].Items[j].Invoice.SellerCommission,
+						},
+					}
+					sellerOrderDetailItems = append(sellerOrderDetailItems, itemDetail)
 				}
-				sellerOrderDetailItems = append(sellerOrderDetailItems, itemDetail)
 			}
 		}
 	}
@@ -672,13 +767,33 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 	//	}
 	//}
 
-	filters := make([]bson.M, 0, 3)
-	filters = append(filters, bson.M{"packages.pid": pid})
-	filters = append(filters, bson.M{"packages.deletedAt": nil})
-	filters = append(filters, server.generateFilter(ctx, filter))
+	var returnFilter bson.D
+	if filter == ReturnDeliveredFilter {
+		returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"$or", bson.A{
+			bson.D{{"packages.subpackages.status", states.ReturnDeliveryPending.StateName()}},
+			bson.D{{"packages.subpackages.status", states.ReturnDeliveryDelayed.StateName()}},
+			bson.D{{"packages.subpackages.status", states.ReturnDelivered.StateName()}}}}}
+	} else if filter == DeliveryFailedFilter {
+		returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.filterStates[filter][0].StateName()}}
+	} else if filter == ReturnRequestPendingFilter {
+		returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"$or", bson.A{
+			bson.D{{"packages.subpackages.status", states.ReturnRequestPending.StateName()}},
+			bson.D{{"packages.subpackages.status", states.ReturnRequestRejected.StateName()}}}}}
+	} else {
+		returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"packages.subpackages.status", server.filterStates[filter][0].StateName()}}
+	}
+
+	//genFilter := server.generatePipelineFilter(ctx, filter)
+	//filters := make(bson.M, 3)
+	//filters["packages.pid"] = pid
+	//filters["packages.deletedAt"] = nil
+	//filters[genFilter[0].(string)] = genFilter[1]
+	//pkgFilter := func() (interface{}, string, int) {
+	//	return []bson.M{{"$match": filters}}, sortName, sortDirect
+	//}
 
 	pkgFilter := func() (interface{}, string, int) {
-		return []bson.M{{"$match": filters}}, sortName, sortDirect
+		return returnFilter, sortName, sortDirect
 	}
 
 	orderList, total, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, pkgFilter, int64(page), int64(perPage))
@@ -693,13 +808,15 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 	}
 
 	sellerReturnOrderList := make([]*pb.SellerReturnOrderDetailList_ReturnOrderDetail, 0, len(orderList))
+	var itemDetailList []*pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item
 
 	for i := 0; i < len(orderList); i++ {
+		itemDetailList = nil
 		for j := 0; j < len(orderList[i].Packages); j++ {
 			if orderList[i].Packages[j].PId == pid {
 				for z := 0; z < len(orderList[i].Packages[j].Subpackages); z++ {
 					if _, ok := filterMap[orderList[i].Packages[j].Subpackages[z].Status]; ok {
-						itemDetailList := make([]*pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item, 0, len(orderList[i].Packages[j].Subpackages[z].Items))
+						itemDetailList = make([]*pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item, 0, len(orderList[i].Packages[j].Subpackages[z].Items))
 						for t := 0; t < len(orderList[i].Packages[j].Subpackages[z].Items); t++ {
 							itemOrder := &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item{
 								SID:    orderList[i].Packages[j].Subpackages[z].SId,
@@ -742,39 +859,44 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 
 							itemDetailList = append(itemDetailList, itemOrder)
 						}
-
 					}
 				}
-				returnOrderDetail := &pb.SellerReturnOrderDetailList_ReturnOrderDetail{
-					OID:       orderList[i].Packages[j].OrderId,
-					PID:       orderList[i].Packages[j].PId,
-					Amount:    orderList[i].Packages[j].Invoice.Subtotal,
-					RequestAt: orderList[i].Packages[j].CreatedAt.Format(ISO8601),
-					Address: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_ShipmentAddress{
-						FirstName:     orderList[i].BuyerInfo.ShippingAddress.FirstName,
-						LastName:      orderList[i].BuyerInfo.ShippingAddress.LastName,
-						Address:       orderList[i].BuyerInfo.ShippingAddress.Address,
-						Phone:         orderList[i].BuyerInfo.ShippingAddress.Phone,
-						Mobile:        orderList[i].BuyerInfo.ShippingAddress.Mobile,
-						Country:       orderList[i].BuyerInfo.ShippingAddress.Country,
-						City:          orderList[i].BuyerInfo.ShippingAddress.City,
-						Province:      orderList[i].BuyerInfo.ShippingAddress.Province,
-						Neighbourhood: orderList[i].BuyerInfo.ShippingAddress.Neighbourhood,
-						Lat:           "",
-						Long:          "",
-						ZipCode:       orderList[i].BuyerInfo.ShippingAddress.ZipCode,
-					},
+
+				if itemDetailList != nil {
+					returnOrderDetail := &pb.SellerReturnOrderDetailList_ReturnOrderDetail{
+						OID:       orderList[i].Packages[j].OrderId,
+						Amount:    orderList[i].Packages[j].Invoice.Subtotal,
+						RequestAt: orderList[i].Packages[j].CreatedAt.Format(ISO8601),
+						Items:     itemDetailList,
+						Address: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_ShipmentAddress{
+							FirstName:     orderList[i].BuyerInfo.ShippingAddress.FirstName,
+							LastName:      orderList[i].BuyerInfo.ShippingAddress.LastName,
+							Address:       orderList[i].BuyerInfo.ShippingAddress.Address,
+							Phone:         orderList[i].BuyerInfo.ShippingAddress.Phone,
+							Mobile:        orderList[i].BuyerInfo.ShippingAddress.Mobile,
+							Country:       orderList[i].BuyerInfo.ShippingAddress.Country,
+							City:          orderList[i].BuyerInfo.ShippingAddress.City,
+							Province:      orderList[i].BuyerInfo.ShippingAddress.Province,
+							Neighbourhood: orderList[i].BuyerInfo.ShippingAddress.Neighbourhood,
+							Lat:           "",
+							Long:          "",
+							ZipCode:       orderList[i].BuyerInfo.ShippingAddress.ZipCode,
+						},
+					}
+					if orderList[i].BuyerInfo.ShippingAddress.Location != nil {
+						returnOrderDetail.Address.Lat = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[0]))
+						returnOrderDetail.Address.Long = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[1]))
+					}
+					sellerReturnOrderList = append(sellerReturnOrderList, returnOrderDetail)
+				} else {
+					logger.Err("sellerOrderReturnDetailListHandler() => get item from orderList failed, orderId: %d pid: %d, filterValue: %s, page: %d, perPage: %d", orderList[i].OrderId, pid, filter, page, perPage)
 				}
-				if orderList[i].BuyerInfo.ShippingAddress.Location != nil {
-					returnOrderDetail.Address.Lat = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[0]))
-					returnOrderDetail.Address.Long = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[1]))
-				}
-				sellerReturnOrderList = append(sellerReturnOrderList, returnOrderDetail)
 			}
 		}
 	}
 
 	sellerReturnOrderDetailList := &pb.SellerReturnOrderDetailList{
+		PID:               pid,
 		ReturnOrderDetail: sellerReturnOrderList,
 	}
 
@@ -815,8 +937,8 @@ func (server *Server) buyerOrderDetailHandler(ctx context.Context, userId uint64
 	}
 
 	orderFilter := func() (interface{}, string, int) {
-		return []bson.M{
-				{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "order.status": bson.M{"$or": bson.A{states.OrderInProgressStatus, states.NewOrder}}}}},
+		return bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}},
+			//{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "order.status": bson.M{"$or": bson.A{states.OrderInProgressStatus, states.NewOrder}}}}},
 			sortName, sortDirect
 	}
 
@@ -933,6 +1055,7 @@ func (server *Server) buyerOrderDetailHandler(ctx context.Context, userId uint64
 	}
 
 	buyerOrderDetailList := &pb.BuyerOrderDetailList{
+		BuyerId:      userId,
 		OrderDetails: orderDetailList,
 	}
 
@@ -962,9 +1085,16 @@ func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId
 
 	returnRequestPendingFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnRequestPending.StateName()}},
-			{"$project": bson.M{"subSize": 1}},
-			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
+			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ReturnRequestPending.StateName()},
+				bson.M{"packages.subpackages.status": states.ReturnRequestRejected.StateName()}}}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ReturnRequestPending.StateName()},
+				bson.M{"packages.subpackages.status": states.ReturnRequestRejected.StateName()}},
+				"packages.deletedAt": nil}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
@@ -972,8 +1102,10 @@ func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId
 	returnShipmentPendingFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnShipmentPending.StateName()}},
-			{"$project": bson.M{"subSize": 1}},
-			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.subpackages.status": states.ReturnShipmentPending.StateName(), "packages.deletedAt": nil}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
@@ -981,8 +1113,10 @@ func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId
 	returnShippedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnShipped.StateName()}},
-			{"$project": bson.M{"subSize": 1}},
-			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.subpackages.status": states.ReturnShipped.StateName(), "packages.deletedAt": nil}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
@@ -990,9 +1124,18 @@ func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId
 	// TODO check correct result
 	returnDeliveredFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnDelivered.StateName()}},
-			{"$project": bson.M{"subSize": 1}},
-			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
+			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ReturnDelivered.StateName()},
+				bson.M{"packages.subpackages.status": states.ReturnDeliveryDelayed.StateName()},
+				bson.M{"packages.subpackages.status": states.ReturnDeliveryPending.StateName()}}}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ReturnDelivered.StateName()},
+				bson.M{"packages.subpackages.status": states.ReturnDeliveryDelayed.StateName()},
+				bson.M{"packages.subpackages.status": states.ReturnDeliveryPending.StateName()}},
+				"packages.deletedAt": nil}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
@@ -1001,8 +1144,10 @@ func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId
 	returnDeliveryFailedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnDeliveryFailed.StateName()}},
-			{"$project": bson.M{"subSize": 1}},
-			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.subpackages.status": states.ReturnDeliveryFailed.StateName(), "packages.deletedAt": nil}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
@@ -1038,6 +1183,7 @@ func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId
 	}
 
 	buyerReturnOrderReports := &pb.BuyerReturnOrderReports{
+		BuyerId:               userId,
 		ReturnRequestPending:  int32(returnRequestPendingCount),
 		ReturnShipmentPending: int32(returnShipmentPendingCount),
 		ReturnShipped:         int32(returnShippedCount),
@@ -1078,15 +1224,29 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 		sortDirect = -1
 	}
 
-	filters := make([]bson.M, 0, 3)
-	filters = append(filters, bson.M{"buyerInfo.buyerId": userId})
-	filters = append(filters, bson.M{"deletedAt": nil})
-	filters = append(filters, server.generateFilter(ctx, filter))
+	var returnFilter bson.D
+	if filter == ReturnDeliveredFilter {
+		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
+			bson.D{{"packages.subpackages.status", states.ReturnDeliveryPending.StateName()}},
+			bson.D{{"packages.subpackages.status", states.ReturnDeliveryDelayed.StateName()}},
+			bson.D{{"packages.subpackages.status", states.ReturnDelivered.StateName()}}}}}
+	} else if filter == DeliveryFailedFilter {
+		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.filterStates[filter][0].StateName()}}
+	} else if filter == ReturnRequestPendingFilter {
+		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
+			bson.D{{"packages.subpackages.status", states.ReturnRequestPending.StateName()}},
+			bson.D{{"packages.subpackages.status", states.ReturnRequestRejected.StateName()}}}}}
+	} else {
+		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"packages.subpackages.status", server.filterStates[filter][0].StateName()}}
+	}
 
+	//genFilter := server.generatePipelineFilter(ctx, filter)
+	//filters := make(bson.M, 3)
+	//filters["buyerInfo.buyerId"] = userId
+	//filters["deletedAt"] = nil
+	//filters[genFilter[0].(string)] = genFilter[1]
 	orderFilter := func() (interface{}, string, int) {
-		return []bson.M{
-				{"$match": filters}},
-			sortName, sortDirect
+		return returnFilter, sortName, sortDirect
 	}
 
 	orderList, total, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
@@ -1116,7 +1276,7 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 						Quantity:        orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
 						Attributes:      orderList[i].Packages[j].Subpackages[z].Items[t].Attributes,
 						Reason:          "",
-						ReturnRequestAt: orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt.Format(ISO8601),
+						ReturnRequestAt: "",
 						Invoice: &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Invoice{
 							Unit:     orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit,
 							Total:    orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total,
@@ -1129,6 +1289,10 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 
 					if orderList[i].Packages[j].Subpackages[z].Items[t].Reasons != nil {
 						returnItemPackageDetail.Reason = orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0]
+					}
+
+					if orderList[i].Packages[j].Subpackages[z].Shipments != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt != nil {
+						returnItemPackageDetail.ReturnRequestAt = orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt.Format(ISO8601)
 					}
 
 					if returnItemPackageDetail.Status == states.ReturnRequestPending.StateName() {
@@ -1182,6 +1346,7 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 	}
 
 	buyerReturnOrderDetailList := &pb.BuyerReturnOrderDetailList{
+		BuyerId:           userId,
 		ReturnOrderDetail: returnOrderDetailList,
 	}
 

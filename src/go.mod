@@ -16,7 +16,7 @@ require (
 	gitlab.faza.io/go-framework/mongoadapter v0.0.8
 	gitlab.faza.io/protos/cart v0.0.9
 	gitlab.faza.io/protos/notification v0.0.3
-	gitlab.faza.io/protos/order v0.0.44
+	gitlab.faza.io/protos/order v0.0.46
 	gitlab.faza.io/protos/payment-gateway v0.0.7
 	gitlab.faza.io/protos/stock-proto.git v0.0.8
 	gitlab.faza.io/services/user-app-client v0.0.17

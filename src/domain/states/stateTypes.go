@@ -179,61 +179,61 @@ func FromIndex(index int32) IEnumState {
 
 func FromString(stateType string) IEnumState {
 	switch stateType {
-	case "NewOrder":
+	case "New_Order":
 		return NewOrder
-	case "PaymentPending":
+	case "Payment_Pending":
 		return PaymentPending
-	case "PaymentSuccess":
+	case "Payment_Success":
 		return PaymentSuccess
-	case "PaymentFailed":
+	case "Payment_Failed":
 		return PaymentFailed
-	case "OrderVerificationPending":
+	case "Order_Verification_Pending":
 		return OrderVerificationPending
-	case "OrderVerificationSuccess":
+	case "Order_Verification_Success":
 		return OrderVerificationSuccess
-	case "OrderVerificationFailed":
+	case "Order_Verification_Failed":
 		return OrderVerificationFailed
-	case "ApprovalPending":
+	case "Approval_Pending":
 		return ApprovalPending
-	case "CanceledBySeller":
+	case "Canceled_By_Seller":
 		return CanceledBySeller
-	case "CanceledByBuyer":
+	case "Canceled_By_Buyer":
 		return CanceledByBuyer
-	case "ShipmentPending":
+	case "Shipment_Pending":
 		return ShipmentPending
 	case "Shipped":
 		return Shipped
 	case "Delivered":
 		return Delivered
-	case "ShipmentDelayed":
+	case "Shipment_Delayed":
 		return ShipmentDelayed
-	case "DeliveryPending":
+	case "Delivery_Pending":
 		return DeliveryPending
-	case "DeliveryDelayed":
+	case "Delivery_Delayed":
 		return DeliveryDelayed
-	case "DeliveryFailed":
+	case "Delivery_Failed":
 		return DeliveryFailed
-	case "ReturnRequestPending":
+	case "Return_Request_Pending":
 		return ReturnRequestPending
-	case "ReturnRequestRejected":
+	case "Return_Request_Rejected":
 		return ReturnRequestRejected
-	case "ReturnShipmentPending":
+	case "Return_Shipment_Pending":
 		return ReturnShipmentPending
-	case "ReturnShipped":
+	case "Return_Shipped":
 		return ReturnShipped
-	case "ReturnDelivered":
+	case "Return_Delivered":
 		return ReturnDelivered
-	case "ReturnDeliveryPending":
+	case "Return_Delivery_Pending":
 		return ReturnDeliveryPending
-	case "ReturnDeliveryDelayed":
+	case "Return_Delivery_Delayed":
 		return ReturnDeliveryDelayed
-	case "ReturnRejected":
+	case "Return_Rejected":
 		return ReturnRejected
-	case "ReturnDeliveryFailed":
+	case "Return_Delivery_Failed":
 		return ReturnDeliveryFailed
-	case "PayToBuyer":
+	case "Pay_To_Buyer":
 		return PayToBuyer
-	case "PayToSeller":
+	case "Pay_To_Seller":
 		return PayToSeller
 
 	default:

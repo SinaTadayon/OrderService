@@ -191,11 +191,11 @@ message SellerOrderDetail {
 //}
 
 message SellerReturnOrderDetailList {
+    uint64 PID = 1;
     message ReturnOrderDetail {
         uint64 OID = 1;
-        uint64 PID = 2;
-        uint64 amount = 3;
-        string RequestAt = 6;
+        uint64 amount = 2;
+        string RequestAt = 3;
         message ShipmentAddress {
             string firstName = 1;
             string lastName = 2;
@@ -210,7 +210,7 @@ message SellerReturnOrderDetailList {
             string long = 11;
             string zipCode = 12;
         }
-        ShipmentAddress address = 7;
+        ShipmentAddress address = 4;
 
         message Item {
             uint64 SID = 1;
@@ -247,7 +247,7 @@ message SellerReturnOrderDetailList {
         repeated Item items = 8;
     }
 
-    repeated ReturnOrderDetail returnOrderDetail = 1;
+    repeated ReturnOrderDetail returnOrderDetail = 2;
 }
 
 /////////////////////////////////////////////////////////////
@@ -264,6 +264,7 @@ message SellerReturnOrderDetailList {
 
 message BuyerOrderDetailList {
 
+    uint64 buyerId = 1;
     message OrderDetail {
         message BuyerAddress {
             string firstName = 1;
@@ -330,15 +331,16 @@ message BuyerOrderDetailList {
 
         repeated Package Packages = 9;
     }
-    repeated OrderDetail orderDetails = 1;
+    repeated OrderDetail orderDetails = 2;
 }
 
 message BuyerReturnOrderReports {
-    int32 returnRequestPending = 1;
-    int32 returnShipmentPending = 2;
-    int32 returnShipped = 3;
-    int32 returnDelivered = 4;
-    int32 returnDeliveryFailed = 5;
+    uint64 buyerId = 1;
+    int32 returnRequestPending = 3;
+    int32 returnShipmentPending = 4;
+    int32 returnShipped = 5;
+    int32 returnDelivered = 6;
+    int32 returnDeliveryFailed = 7;
 }
 
 //message BuyerReturnOrderList {
@@ -354,6 +356,7 @@ message BuyerReturnOrderReports {
 
 message BuyerReturnOrderDetailList {
 
+    uint64 buyerId = 1;
     message ReturnOrderDetail {
         uint64 OID = 1;
         string createdAt = 2;
@@ -407,5 +410,5 @@ message BuyerReturnOrderDetailList {
         repeated ReturnPackageDetail returnPackageDetail = 5;
     }
 
-    repeated ReturnOrderDetail returnOrderDetail = 1;
+    repeated ReturnOrderDetail returnOrderDetail = 2;
 }

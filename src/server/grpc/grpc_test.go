@@ -150,6 +150,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Code:   "348",
 	}
 
+	order.Buyer.BuyerId = 1000002
 	order.Buyer.LastName = "Tadayon"
 	order.Buyer.FirstName = "Sina"
 	order.Buyer.Email = "Sina.Tadayon@baman.io"
@@ -176,7 +177,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order.Packages = make([]*pb.Package, 0, 2)
 
 	var pkg = &pb.Package{
-		SellerId: 6546345,
+		SellerId: 1000002,
 		ShopName: "sazgar",
 		Shipment: &pb.ShippingSpec{
 			CarrierNames:   []string{"Post"},
@@ -587,6 +588,518 @@ func UpdateSubPackage(ctx context.Context, subPkgState states.IEnumState, subpac
 	}
 }
 
+func TestSellerOrderDetail(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   string(SellerOrderDetail),
+		Type:   string(DataReqType),
+		ADT:    string(SingleType),
+		Method: string(GetMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       1000002,
+			UTP:       string(SellerUser),
+			OID:       order.OrderId,
+			PID:       1000002,
+			SIDs:      nil,
+			Page:      0,
+			PerPage:   0,
+			IpAddress: "",
+			Action:    nil,
+			Sorts:     nil,
+			Filters: []*pb.MetaFilter{
+				{
+					Type:  string(OrderStateFilterType),
+					Opt:   "eq",
+					Value: string(ApprovalPendingFilter),
+				},
+			},
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+
+	var sellerOrderDetail pb.SellerOrderDetail
+	err = ptypes.UnmarshalAny(response.Data, &sellerOrderDetail)
+	require.Nil(t, err)
+
+	require.NotNil(t, sellerOrderDetail)
+	require.Equal(t, 2, len(sellerOrderDetail.Items))
+	require.Equal(t, uint64(1000002), sellerOrderDetail.PID)
+}
+
+func TestSellerOrderList(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   string(SellerOrderList),
+		Type:   string(DataReqType),
+		ADT:    string(ListType),
+		Method: string(GetMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       1000002,
+			UTP:       string(SellerUser),
+			OID:       0,
+			PID:       1000002,
+			SIDs:      nil,
+			Page:      1,
+			PerPage:   2,
+			IpAddress: "",
+			Action:    nil,
+			Sorts: []*pb.MetaSorts{
+				{
+					Name:      "createdAt",
+					Direction: "ASC",
+				},
+			},
+			Filters: []*pb.MetaFilter{
+				{
+					Type:  string(OrderStateFilterType),
+					Opt:   "eq",
+					Value: string(ApprovalPendingFilter),
+				},
+			},
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+
+	var sellerOrderList pb.SellerOrderList
+	err = ptypes.UnmarshalAny(response.Data, &sellerOrderList)
+	require.Nil(t, err)
+
+	require.NotNil(t, sellerOrderList)
+	require.Equal(t, 1, len(sellerOrderList.Items))
+	require.Equal(t, uint64(1000002), sellerOrderList.PID)
+}
+
+func TestSellerOrderList_ShipmentDelayedFilter(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
+	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   string(SellerOrderList),
+		Type:   string(DataReqType),
+		ADT:    string(ListType),
+		Method: string(GetMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       1000002,
+			UTP:       string(SellerUser),
+			OID:       0,
+			PID:       1000002,
+			SIDs:      nil,
+			Page:      1,
+			PerPage:   2,
+			IpAddress: "",
+			Action:    nil,
+			Sorts: []*pb.MetaSorts{
+				{
+					Name:      "createdAt",
+					Direction: "ASC",
+				},
+			},
+			Filters: []*pb.MetaFilter{
+				{
+					Type:  string(OrderStateFilterType),
+					Opt:   "eq",
+					Value: string(ShipmentPendingFilter),
+				},
+			},
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+
+	var sellerOrderList pb.SellerOrderList
+	err = ptypes.UnmarshalAny(response.Data, &sellerOrderList)
+	require.Nil(t, err)
+
+	require.NotNil(t, sellerOrderList)
+	require.Equal(t, 1, len(sellerOrderList.Items))
+	require.Equal(t, uint64(1000002), sellerOrderList.PID)
+}
+
+func TestSellerReturnOrderDetailList(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestPending)
+	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   string(SellerReturnOrderDetailList),
+		Type:   string(DataReqType),
+		ADT:    string(ListType),
+		Method: string(GetMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       1000002,
+			UTP:       string(SellerUser),
+			OID:       0,
+			PID:       1000002,
+			SIDs:      nil,
+			Page:      1,
+			PerPage:   2,
+			IpAddress: "",
+			Action:    nil,
+			Sorts: []*pb.MetaSorts{
+				{
+					Name:      "createdAt",
+					Direction: "ASC",
+				},
+			},
+			Filters: []*pb.MetaFilter{
+				{
+					Type:  string(OrderStateFilterType),
+					Opt:   "eq",
+					Value: string(ReturnRequestPendingFilter),
+				},
+			},
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+
+	var sellerReturnOrderDetailList pb.SellerReturnOrderDetailList
+	err = ptypes.UnmarshalAny(response.Data, &sellerReturnOrderDetailList)
+	require.Nil(t, err)
+
+	require.NotNil(t, sellerReturnOrderDetailList)
+	require.Equal(t, 1, len(sellerReturnOrderDetailList.ReturnOrderDetail))
+	require.Equal(t, uint64(1000002), sellerReturnOrderDetailList.PID)
+}
+
+func TestBuyerOrderDetailList(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   string(BuyerOrderDetailList),
+		Type:   string(DataReqType),
+		ADT:    string(ListType),
+		Method: string(GetMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       1000002,
+			UTP:       string(BuyerUser),
+			OID:       0,
+			PID:       1000002,
+			SIDs:      nil,
+			Page:      1,
+			PerPage:   2,
+			IpAddress: "",
+			Action:    nil,
+			Sorts: []*pb.MetaSorts{
+				{
+					Name:      "createdAt",
+					Direction: "ASC",
+				},
+			},
+			Filters: []*pb.MetaFilter{
+				{
+					Type:  string(OrderStateFilterType),
+					Opt:   "eq",
+					Value: string(ApprovalPendingFilter),
+				},
+			},
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+
+	var buyerOrderDetailList pb.BuyerOrderDetailList
+	err = ptypes.UnmarshalAny(response.Data, &buyerOrderDetailList)
+	require.Nil(t, err)
+
+	require.NotNil(t, buyerOrderDetailList)
+	require.Equal(t, 1, len(buyerOrderDetailList.OrderDetails))
+	require.Equal(t, uint64(1000002), buyerOrderDetailList.BuyerId)
+}
+
+func TestBuyerReturnOrderDetailList(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipped)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDelivered)
+
+	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   string(BuyerReturnOrderDetailList),
+		Type:   string(DataReqType),
+		ADT:    string(ListType),
+		Method: string(GetMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       1000002,
+			UTP:       string(BuyerUser),
+			OID:       0,
+			PID:       1000002,
+			SIDs:      nil,
+			Page:      1,
+			PerPage:   2,
+			IpAddress: "",
+			Action:    nil,
+			Sorts: []*pb.MetaSorts{
+				{
+					Name:      "createdAt",
+					Direction: "ASC",
+				},
+			},
+			Filters: []*pb.MetaFilter{
+				{
+					Type:  string(OrderStateFilterType),
+					Opt:   "eq",
+					Value: string(ReturnDeliveredFilter),
+				},
+			},
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+
+	var buyerReturnOrderDetailList pb.BuyerReturnOrderDetailList
+	err = ptypes.UnmarshalAny(response.Data, &buyerReturnOrderDetailList)
+	require.Nil(t, err)
+
+	require.NotNil(t, buyerReturnOrderDetailList)
+	require.Equal(t, 1, len(buyerReturnOrderDetailList.ReturnOrderDetail))
+	require.Equal(t, uint64(1000002), buyerReturnOrderDetailList.BuyerId)
+}
+
+func TestBuyerReturnOrderReports(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipped)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDelivered)
+
+	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   string(BuyerReturnOrderReports),
+		Type:   string(DataReqType),
+		ADT:    string(SingleType),
+		Method: string(GetMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       1000002,
+			UTP:       string(BuyerUser),
+			OID:       0,
+			PID:       1000002,
+			SIDs:      nil,
+			Page:      1,
+			PerPage:   2,
+			IpAddress: "",
+			Action:    nil,
+			Sorts:     nil,
+			Filters:   nil,
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+
+	var buyerReturnOrderReports pb.BuyerReturnOrderReports
+	err = ptypes.UnmarshalAny(response.Data, &buyerReturnOrderReports)
+	require.Nil(t, err)
+
+	require.NotNil(t, buyerReturnOrderReports)
+	require.Equal(t, int32(2), buyerReturnOrderReports.ReturnDelivered)
+	require.Equal(t, uint64(1000002), buyerReturnOrderReports.BuyerId)
+}
+
 func TestNewOrderRequest(t *testing.T) {
 	//ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
 	ctx, _ := context.WithCancel(context.Background())
@@ -813,7 +1326,7 @@ func TestApprovalPending_SellerApproved_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -933,7 +1446,7 @@ func TestApprovalPending_SellerApproved_Diff(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -1059,7 +1572,7 @@ func TestApprovalPending_SellerApproved_DiffAndFullItem(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -1187,7 +1700,7 @@ func TestApprovalPending_SellerReject_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -1307,7 +1820,7 @@ func TestApprovalPending_BuyerCancel_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -1428,7 +1941,7 @@ func TestShipmentPending_SellerShipmentDetail_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -1549,7 +2062,7 @@ func TestShipmentPending_SellerCancel_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -1670,7 +2183,7 @@ func TestShipmentPending_SchedulerCancel_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -1792,7 +2305,7 @@ func TestShipmentDelayed_SellerShipmentDetail_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -1914,7 +2427,7 @@ func TestShipmentDelayed_SellerCancel_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -2036,7 +2549,7 @@ func TestShipmentDelayed_BuyerCancel_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -2159,7 +2672,7 @@ func TestShipped_SchedulerDeliveryPending_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -2283,7 +2796,7 @@ func TestDeliveryPending_SchedulerDelivered_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -2407,7 +2920,7 @@ func TestDeliveryPending_SchedulerNotification_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -2531,7 +3044,7 @@ func TestDeliveryPending_OperatorDeliveryDelayed_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -2656,7 +3169,7 @@ func TestDeliveryDelayed_OperatorDelivery_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -2781,7 +3294,7 @@ func TestDeliveryDelayed_OperatorDeliveryFailed_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -2907,7 +3420,7 @@ func TestDelivered_BuyerSubmitReturnRequest_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -3033,7 +3546,7 @@ func TestDelivered_SchedulerClose_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -3160,7 +3673,7 @@ func TestReturnRequestPending_SellerReject_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -3287,7 +3800,7 @@ func TestReturnRequestPending_BuyerCancel_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -3414,7 +3927,7 @@ func TestReturnRequestPending_SchedulerAccept_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -3541,7 +4054,7 @@ func TestReturnRequestPending_SellerAccept_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -3669,7 +4182,7 @@ func TestReturnShipmentPending_BuyerEnterShipment_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -3797,7 +4310,7 @@ func TestReturnShipmentPending_SchedulerClose_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -3925,7 +4438,7 @@ func TestReturnRejectRequest_OperatorAccept_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -4053,7 +4566,7 @@ func TestReturnRejectRequest_OperatorReject_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -4183,7 +4696,7 @@ func TestReturnShipped_SellerDeliver_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -4313,7 +4826,7 @@ func TestReturnShipped_SchedulerDeliveryPending_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -4444,7 +4957,7 @@ func TestReturnDelivered_SchedulerClose_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -4575,7 +5088,7 @@ func TestReturnDelivered_SellerReject_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -4706,7 +5219,7 @@ func TestReturnDeliveryPending_SellerDeliver_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -4837,7 +5350,7 @@ func TestReturnDeliveryPending_SellerDeliveryFailed_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -4969,7 +5482,7 @@ func TestReturnDeliveryDelayed_OperatorDeliver_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -5101,7 +5614,7 @@ func TestReturnDeliveryDelayed_OperatorDeliveryFailed_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -5235,7 +5748,7 @@ func TestReturnRejected_OperatorAccept_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,
@@ -5369,7 +5882,7 @@ func TestReturnRejected_OperatorReject_All(t *testing.T) {
 		Name:   "",
 		Type:   string(ActionReqType),
 		ADT:    string(SingleType),
-		Method: string(GetMethod),
+		Method: string(PostMethod),
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000002,

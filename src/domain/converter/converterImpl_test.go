@@ -31,13 +31,15 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order.Invoice.Discount = 50000
 	order.Invoice.Currency = "IRR"
 	order.Invoice.PaymentMethod = "IPG"
-	order.Invoice.PaymentOption = "AAP"
+	order.Invoice.PaymentGateway = "AAP"
+	order.Invoice.PaymentOption = nil
 	order.Invoice.ShipmentTotal = 700000
 	order.Invoice.Voucher = &pb.Voucher{
 		Amount: 40000,
 		Code:   "348",
 	}
 
+	order.Buyer.BuyerId = 1000002
 	order.Buyer.LastName = "Tadayon"
 	order.Buyer.FirstName = "Sina"
 	order.Buyer.Email = "Sina.Tadayon@baman.io"

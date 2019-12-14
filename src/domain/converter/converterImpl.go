@@ -51,6 +51,10 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 		return nil, errors.New("Packages of RequestNewOrder empty")
 	}
 
+	if newOrderDto.Buyer.BuyerId <= 0 {
+		return nil, errors.New("BuyerId of NewOrder invalid")
+	}
+
 	order.BuyerInfo.BuyerId = newOrderDto.Buyer.BuyerId
 	order.BuyerInfo.FirstName = newOrderDto.Buyer.FirstName
 	order.BuyerInfo.LastName = newOrderDto.Buyer.LastName

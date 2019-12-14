@@ -97,7 +97,7 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 
 		// TODO Notification template must be load from file
 		if order != nil && futureData.Data() != nil {
-			sellerProfile := futureData.Data().(entities.SellerProfile)
+			sellerProfile := futureData.Data().(*entities.SellerProfile)
 			sellerNotify := notify_service.SMSRequest{
 				Phone: sellerProfile.GeneralInfo.MobilePhone,
 				Body:  "Shipment Delay",
