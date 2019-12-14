@@ -5,6 +5,13 @@ package NotificationService;
 service NotificationService {
     rpc sendEmail(Email) returns (Result);
     rpc sendSms(Sms) returns (Result);
+    rpc sendEmailTemplate(EmailTemplate) returns (Result);
+}
+
+message EmailTemplate {
+    string templateName     = 1;
+    map<string,string> vars = 2;
+    Email email             = 3;
 }
 
 // Email message

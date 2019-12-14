@@ -24,12 +24,13 @@ func init() {
 type Order struct {
 	ID             primitive.ObjectID `bson:"-"`
 	OrderId        uint64             `bson:"orderId"`
+	Version        uint64             `bson:"version"`
 	PaymentService []PaymentService   `bson:"paymentService"`
 	SystemPayment  SystemPayment      `bson:"systemPayment"`
 	Status         string             `bson:"status"`
 	BuyerInfo      BuyerInfo          `bson:"buyerInfo"`
-	Amount         Amount             `bson:"amount"`
-	Items          []Item             `bson:"items"`
+	Invoice        Invoice            `bson:"invoice"`
+	Packages       []PackageItem      `bson:"packages"`
 	CreatedAt      time.Time          `bson:"createdAt"`
 	UpdatedAt      time.Time          `bson:"updatedAt"`
 	DeletedAt      *time.Time         `bson:"deletedAt"`
@@ -66,25 +67,65 @@ type PayToMarket struct {
 	PaymentResult   *PaymentResult   `bson:"paymentResult"`
 }
 
-type Amount struct {
-	Total         uint64   `bson:"total"`
-	Subtotal      uint64   `bson:"subtotal"`
-	Discount      uint64   `bson:"discount"`
-	ShipmentTotal uint64   `bson:"shipmentTotal"`
-	Currency      string   `bson:"currency"`
-	PaymentMethod string   `bson:"paymentMethod"`
-	PaymentOption string   `bson:"paymentOption"`
-	Voucher       *Voucher `bson:"voucher"`
+type Invoice struct {
+	GrandTotal     uint64         `bson:"grandTotal"`
+	Subtotal       uint64         `bson:"subtotal"`
+	Discount       uint64         `bson:"discount"`
+	ShipmentTotal  uint64         `bson:"shipmentTotal"`
+	Currency       string         `bson:"currency"`
+	PaymentMethod  string         `bson:"paymentMethod"`
+	PaymentGateway string         `bson:"paymentGateway"`
+	PaymentOption  *PaymentOption `bson:"paymentOption"`
+	Voucher        *Voucher       `bson:"voucher"`
+	CartRule       *CartRule      `bson:"cartRule"`
+}
+
+type PaymentOption struct {
 }
 
 type Voucher struct {
-	Amount  uint64          `bson:"amount"`
+	Amount  float64         `bson:"amount"`
 	Code    string          `bson:"code"`
 	Details *VoucherDetails `bson:"details"`
 }
 
-// TODO will be complete
+type CartRule struct {
+	Amount uint64 `bson:"amount"`
+}
+
 type VoucherDetails struct {
+	StartDate        time.Time `bson:"startDate"`
+	EndDate          time.Time `bson:"endDate"`
+	Type             string    `bson:"type"`
+	MaxDiscountValue uint64    `bson:"maxDiscountValue"`
+	MinBasketValue   uint64    `bson:"minBasketValue"`
+}
+
+type PaymentRequest struct {
+	Amount    uint64    `bson:"amount"`
+	Currency  string    `bson:"currency"`
+	Gateway   string    `bson:"gateway"`
+	CreatedAt time.Time `bson:"createdAt"`
+}
+
+type PaymentResponse struct {
+	Result      bool      `bson:"result"`
+	Reason      string    `bson:"reason"`
+	Description string    `bson:"description"`
+	CallBackUrl string    `bson:"callbackUrl"`
+	InvoiceId   int64     `bson:"invoiceId"`
+	PaymentId   string    `bson:"paymentId"`
+	CreatedAt   time.Time `bson:"createdAt"`
+}
+
+type PaymentResult struct {
+	Result      bool      `bson:"result"`
+	Reason      string    `bson:"reason"`
+	PaymentId   string    `bson:"paymentId"`
+	InvoiceId   int64     `bson:"invoiceId"`
+	Amount      uint64    `bson:"amount"`
+	CardNumMask string    `bson:"cardNumMask"`
+	CreatedAt   time.Time `bson:"createdAt"`
 }
 
 func (order Order) IsIdEmpty() bool {

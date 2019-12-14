@@ -3,8 +3,9 @@ package notify_service
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	"gitlab.faza.io/protos/notification"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -43,13 +44,11 @@ func NewNotificationService(address string, port int) INotificationService {
 	return &iNotificationServiceImpl{serverAddress: address, serverPort: port}
 }
 
-func (notification iNotificationServiceImpl) NotifyBySMS(ctx context.Context, request SMSRequest) promise.IPromise {
+func (notification iNotificationServiceImpl) NotifyBySMS(ctx context.Context, request SMSRequest) future.IFuture {
 	if err := notification.ConnectToNotifyService(); err != nil {
-		returnChannel := make(chan promise.FutureData, 1)
-		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{
-			Code: promise.InternalError, Reason: "Unknown Error"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "UnknownError", errors.Wrap(err, "Connect to NotifyService Failed")).
+			BuildAndSend()
 	}
 
 	req := &NotificationService.Sms{
@@ -60,35 +59,26 @@ func (notification iNotificationServiceImpl) NotifyBySMS(ctx context.Context, re
 	result, err := notification.notifyService.SendSms(ctx, req)
 	if err != nil {
 		logger.Err("NotifyBySMS() => failed, request: %v, error: %s ", request, err.Error())
-		returnChannel := make(chan promise.FutureData, 1)
-		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{
-			Code: promise.InternalError, Reason: "Unknown Error"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "UnknownError", errors.Wrap(err, "NotifyBySMS Failed")).
+			BuildAndSend()
 	}
 
 	if result.Status != 200 {
 		logger.Err("NotifyBySMS() => failed, request: %v, status: %d, error: %s", request, result.Status, result.Message)
-		returnChannel := make(chan promise.FutureData, 1)
-		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{
-			Code: promise.InternalError, Reason: "Unknown Error"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.Factory().SetCapacity(1).
+			SetError(future.ErrorCode(result.Status), result.Message, errors.Wrap(err, "NotifyBySMS Failed")).
+			BuildAndSend()
 	}
 
-	returnChannel := make(chan promise.FutureData, 1)
-	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data: nil, Ex: nil}
-	return promise.NewPromise(returnChannel, 1, 1)
+	return future.Factory().SetCapacity(1).BuildAndSend()
 }
 
-func (notification iNotificationServiceImpl) NotifyByMail(ctx context.Context, request EmailRequest) promise.IPromise {
+func (notification iNotificationServiceImpl) NotifyByMail(ctx context.Context, request EmailRequest) future.IFuture {
 	if err := notification.ConnectToNotifyService(); err != nil {
-		returnChannel := make(chan promise.FutureData, 1)
-		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{
-			Code: promise.InternalError, Reason: "Unknown Error"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "UnknownError", errors.Wrap(err, "Connect to NotifyService Failed")).
+			BuildAndSend()
 	}
 
 	req := &NotificationService.Email{
@@ -101,25 +91,19 @@ func (notification iNotificationServiceImpl) NotifyByMail(ctx context.Context, r
 
 	result, err := notification.notifyService.SendEmail(ctx, req)
 	if err != nil {
-		logger.Err("NotifyByMail() => failed, request: %v, error: %s ", request, err.Error())
-		returnChannel := make(chan promise.FutureData, 1)
-		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{
-			Code: promise.InternalError, Reason: "Unknown Error"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		logger.Err("NotifyByMail() =>=> failed, request: %v, error: %s ", request, err.Error())
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "UnknownError", errors.Wrap(err, "NotifyByMail => Failed")).
+			BuildAndSend()
 	}
-
 	if result.Status != 200 {
 		logger.Err("NotifyByMail() => failed, request: %v, status: %d, error: %s", request, result.Status, result.Message)
-		returnChannel := make(chan promise.FutureData, 1)
-		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{
-			Code: promise.InternalError, Reason: "Unknown Error"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.Factory().SetCapacity(1).
+			SetError(future.ErrorCode(result.Status), result.Message, errors.Wrap(err, "NotifyByMail Failed")).
+			BuildAndSend()
 	}
 
-	returnChannel := make(chan promise.FutureData, 1)
-	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data: nil, Ex: nil}
-	return promise.NewPromise(returnChannel, 1, 1)
+	return future.Factory().SetCapacity(1).
+		SetError(future.ErrorCode(result.Status), result.Message, errors.Wrap(err, "NotifyBySMS Failed")).
+		BuildAndSend()
 }

@@ -1,7 +1,8 @@
 package actions
 
 type IEnumAction interface {
-	Name() string
-	Ordinal() int
+	ActionName() string
+	ActionOrdinal() int
 	Values() []string
+	FromString(action string) IEnumAction
 }

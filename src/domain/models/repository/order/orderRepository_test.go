@@ -1,7 +1,8 @@
 package order_repository
 
 import (
-	"github.com/stretchr/testify/assert"
+	"context"
+	"github.com/stretchr/testify/require"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/configs"
@@ -12,10 +13,9 @@ import (
 	"time"
 )
 
-var config *configs.Cfg
 var orderRepository IOrderRepository
 
-func init() {
+func TestMain(m *testing.M) {
 	var err error
 	var path string
 	if os.Getenv("APP_ENV") == "dev" {
@@ -24,10 +24,10 @@ func init() {
 		path = ""
 	}
 
-	config, err = configs.LoadConfig(path)
+	config, err := configs.LoadConfig(path)
 	if err != nil {
-		logger.Err(err.Error())
-		panic("configs.LoadConfig failed, " + err.Error())
+		logger.Err("configs.LoadConfig failed, %s", err.Error())
+		os.Exit(1)
 	}
 
 	// store in mongo
@@ -44,44 +44,48 @@ func init() {
 		MinPoolSize:     uint64(config.Mongo.MinPoolSize),
 	}
 
-	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
+	mongoAdapter, err := mongoadapter.NewMongo(mongoConf)
 	if err != nil {
-		logger.Err("NewOrderRepository Mongo: %v", err.Error())
-		panic("mongo adapter creation failed, " + err.Error())
+		logger.Err("IPkgItemRepository Mongo: %v", err.Error())
+		os.Exit(1)
 	}
 
-	orderRepository, err = NewOrderRepository(mongoDriver)
-	if err != nil {
-		panic("create order repository failed")
-	}
+	orderRepository = NewOrderRepository(mongoAdapter)
+
+	// Running Tests
+	code := m.Run()
+	removeCollection()
+	os.Exit(code)
 }
 
 func TestSaveOrderRepository(t *testing.T) {
 
-	//defer removeCollection()
+	defer removeCollection()
 	order := createOrder()
 	//res, _ := json.Marshal(order)
 	//logger.Audit("order model: %s",res)
-	order1, err := orderRepository.Save(order)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
+	ctx, _ := context.WithCancel(context.Background())
+	order1, err := orderRepository.Save(ctx, *order)
+	require.Nil(t, err, "orderRepository.Save failed")
+	require.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
 }
 
 func TestUpdateOrderRepository(t *testing.T) {
 
 	defer removeCollection()
 	order := createOrder()
-	order1, err := orderRepository.Save(order)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
+	ctx, _ := context.WithCancel(context.Background())
+	order1, err := orderRepository.Save(ctx, *order)
+	require.Nil(t, err, "orderRepository.Save failed")
+	require.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
 
 	order1.BuyerInfo.FirstName = "Siamak"
 	order1.BuyerInfo.LastName = "Marjoeee"
 
-	order2, err := orderRepository.Save(*order1)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.Equal(t, "Siamak", order2.BuyerInfo.FirstName)
-	assert.Equal(t, "Marjoeee", order2.BuyerInfo.LastName)
+	order2, err := orderRepository.Save(ctx, *order1)
+	require.Nil(t, err, "orderRepository.Save failed")
+	require.Equal(t, order2.BuyerInfo.FirstName, "Siamak")
+	require.Equal(t, order2.BuyerInfo.LastName, "Marjoeee")
 }
 
 func TestUpdateOrderRepository_Failed(t *testing.T) {
@@ -90,189 +94,204 @@ func TestUpdateOrderRepository_Failed(t *testing.T) {
 	order := createOrder()
 	timeTmp := time.Now().UTC()
 	order.DeletedAt = &timeTmp
-	order1, err := orderRepository.Save(order)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
+	ctx, _ := context.WithCancel(context.Background())
+	order1, err := orderRepository.Save(ctx, *order)
+	require.Nil(t, err, "orderRepository.Save failed")
+	require.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
 
 	order1.BuyerInfo.FirstName = "Siamak"
-	_, err = orderRepository.Save(*order1)
-	assert.Error(t, err)
-	assert.Equal(t, err, errorUpdateFailed)
+	_, err = orderRepository.Save(ctx, *order1)
+	require.Error(t, err)
+	require.Equal(t, ErrorUpdateFailed, err)
 }
 
 func TestInsertOrderRepository_Success(t *testing.T) {
 	//defer removeCollection()
 	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
+	ctx, _ := context.WithCancel(context.Background())
+	order, err := orderRepository.Insert(ctx, *order)
+	require.Nil(t, err, "orderRepository.Save failed")
+	require.NotEmpty(t, order.OrderId, "orderRepository.Save failed, order id not generated")
 }
 
 func TestInsertOrderRepository_Failed(t *testing.T) {
 	defer removeCollection()
 	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err, "orderRepository.Save failed")
-	assert.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
-	_, err1 := orderRepository.Insert(*order1)
-	assert.NotNil(t, err1)
+	ctx, _ := context.WithCancel(context.Background())
+	order, err := orderRepository.Insert(ctx, *order)
+	require.Nil(t, err, "orderRepository.Save failed")
+	require.NotEmpty(t, order.OrderId, "orderRepository.Save failed, order id not generated")
+	_, err1 := orderRepository.Insert(ctx, *order)
+	require.NotNil(t, err1)
 }
 
 func TestFindAllOrderRepository(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 
-	orders, err := orderRepository.FindAll()
-	assert.Nil(t, err)
-	assert.Equal(t, len(orders), 3)
+	orders, err := orderRepository.FindAll(ctx)
+	require.Nil(t, err)
+	require.Equal(t, 3, len(orders))
 }
 
 func TestFindAllWithSortOrderRepository(t *testing.T) {
+
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
 	order.BuyerInfo.FirstName = "AAAA"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 
-	orders, err := orderRepository.FindAllWithSort("buyerInfo.firstName", 1)
-	assert.Nil(t, err)
-	assert.Equal(t, orders[0].BuyerInfo.FirstName, "AAAA")
+	orders, err := orderRepository.FindAllWithSort(ctx, "buyerInfo.firstName", 1)
+	require.Nil(t, err)
+	require.Equal(t, orders[0].BuyerInfo.FirstName, "AAAA")
 }
 
 func TestFindAllWithPageAndPerPageRepository_success(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	orders, _, err := orderRepository.FindAllWithPage(2, 2)
-	assert.Nil(t, err)
-	assert.Equal(t, len(orders), 1)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
+	orders, _, err := orderRepository.FindAllWithPage(ctx, 2, 2)
+	require.Nil(t, err)
+	require.Equal(t, 1, len(orders))
 }
 
 func TestFindAllWithPageAndPerPageRepository_failed(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	_, _, err = orderRepository.FindAllWithPage(1002, 2000)
-	assert.NotNil(t, err)
-	assert.Equal(t, err, errorPageNotAvailable)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
+	_, _, err = orderRepository.FindAllWithPage(ctx, 1002, 2000)
+	require.NotNil(t, err)
+	require.Equal(t, ErrorPageNotAvailable, err)
 }
 
 func TestFindAllWithPageAndPerPageAndSortRepository_success(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
 	order.BuyerInfo.FirstName = "AAAA"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 
-	orders, _, err := orderRepository.FindAllWithPageAndSort(1, 2, "buyerInfo.firstName", 1)
-	assert.Nil(t, err)
-	assert.Equal(t, len(orders), 2)
-	assert.Equal(t, orders[0].BuyerInfo.FirstName, "AAAA")
+	orders, _, err := orderRepository.FindAllWithPageAndSort(ctx, 1, 2, "buyerInfo.firstName", 1)
+	require.Nil(t, err)
+	require.Equal(t, 2, len(orders))
+	require.Equal(t, "AAAA", orders[0].BuyerInfo.FirstName)
 }
 
 func TestFindByIdRepository(t *testing.T) {
 	defer removeCollection()
 	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err)
-	_, err1 := orderRepository.FindById(order1.OrderId)
-	assert.Nil(t, err1)
+	ctx, _ := context.WithCancel(context.Background())
+	order, err := orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
+	_, err1 := orderRepository.FindById(ctx, order.OrderId)
+	require.Nil(t, err1)
 }
 
 func TestExistsByIdRepository(t *testing.T) {
 	defer removeCollection()
 	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err)
-	res, err1 := orderRepository.ExistsById(order1.OrderId)
-	assert.Nil(t, err1)
-	assert.Equal(t, res, true)
+	ctx, _ := context.WithCancel(context.Background())
+	order, err := orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
+	res, err1 := orderRepository.ExistsById(ctx, order.OrderId)
+	require.Nil(t, err1)
+	require.Equal(t, true, res)
 }
 
 func TestCountRepository(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 
-	total, err := orderRepository.Count()
-	assert.Nil(t, err)
-	assert.Equal(t, total, int64(2))
+	total, err := orderRepository.Count(ctx)
+	require.Nil(t, err)
+	require.Equal(t, int64(2), total)
 }
 
 func TestDeleteOrderRepository(t *testing.T) {
 	defer removeCollection()
 	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err)
-	order1, err1 := orderRepository.Delete(*order1)
-	assert.Nil(t, err1)
-	assert.NotNil(t, order1.DeletedAt)
+	ctx, _ := context.WithCancel(context.Background())
+	order, err := orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
+	order1, err1 := orderRepository.Delete(ctx, *order)
+	require.Nil(t, err1)
+	require.NotNil(t, order1.DeletedAt)
 }
 
 func TestDeleteAllRepository(t *testing.T) {
 	defer removeCollection()
-	var order entities.Order
+	var order *entities.Order
 	order = createOrder()
-	_, err := orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	_, err := orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	err = orderRepository.DeleteAll()
-	assert.Nil(t, err)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
+	err = orderRepository.DeleteAll(ctx)
+	require.Nil(t, err)
 }
 
 func TestRemoveOrderRepository(t *testing.T) {
 	defer removeCollection()
 	order := createOrder()
-	order1, err := orderRepository.Insert(order)
-	assert.Nil(t, err)
-	err = orderRepository.Remove(*order1)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	order, err := orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
+	err = orderRepository.Remove(ctx, *order)
+	require.Nil(t, err)
 }
 
 func TestFindByFilterRepository(t *testing.T) {
@@ -280,108 +299,116 @@ func TestFindByFilterRepository(t *testing.T) {
 	var err error
 	order := createOrder()
 	order.BuyerInfo.FirstName = "Reza"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
 	order.BuyerInfo.FirstName = "Hosein"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 
-	orders, err := orderRepository.FindByFilter(func() interface{} {
+	orders, err := orderRepository.FindByFilter(ctx, func() interface{} {
 		return bson.D{{"buyerInfo.firstName", "Reza"}, {"deletedAt", nil}}
 	})
 
-	assert.Nil(t, err)
-	assert.Equal(t, orders[0].BuyerInfo.FirstName, "Reza")
+	require.Nil(t, err)
+	require.Equal(t, "Reza", orders[0].BuyerInfo.FirstName)
 }
 
 func TestFindByFilterWithSortOrderRepository(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
 	order.BuyerInfo.FirstName = "AAAA"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 
-	orders, err := orderRepository.FindByFilterWithSort(func() (interface{}, string, int) {
+	orders, err := orderRepository.FindByFilterWithSort(ctx, func() (interface{}, string, int) {
 		return bson.D{{"buyerInfo.firstName", "AAAA"}, {"deletedAt", nil}}, "buyerInfo.firstName", 1
 	})
-	assert.Nil(t, err)
-	assert.Equal(t, orders[0].BuyerInfo.FirstName, "AAAA")
+	require.Nil(t, err)
+	require.Equal(t, "AAAA", orders[0].BuyerInfo.FirstName)
 }
 
 func TestFindByFilterWithPageAndPerPageRepository_success(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	orders, _, err := orderRepository.FindByFilterWithPage(func() interface{} {
+	order.BuyerInfo.FirstName = "AAAA"
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
+	orders, _, err := orderRepository.FindByFilterWithPage(ctx, func() interface{} {
 		return bson.D{{}, {"deletedAt", nil}}
 	}, 2, 2)
-	assert.Nil(t, err)
-	assert.Equal(t, len(orders), 1)
+	require.Nil(t, err)
+	require.Equal(t, 1, len(orders))
 }
 
 func TestFindByFilterWithPageAndPerPageRepository_failed(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
-	_, _, err = orderRepository.FindByFilterWithPage(func() interface{} {
+	order.BuyerInfo.FirstName = "AAAA"
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
+	_, _, err = orderRepository.FindByFilterWithPage(ctx, func() interface{} {
 		return bson.D{{}, {"deletedAt", nil}}
 	}, 20002, 2000)
-	assert.NotNil(t, err)
-	assert.Equal(t, err, errorPageNotAvailable)
+	require.NotNil(t, err)
+	require.Equal(t, err, ErrorPageNotAvailable)
 }
 
 func TestFindByFilterWithPageAndPerPageAndSortRepository_success(t *testing.T) {
 	defer removeCollection()
 	var err error
 	order := createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	ctx, _ := context.WithCancel(context.Background())
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 	order = createOrder()
 	order.BuyerInfo.FirstName = "AAAA"
-	_, err = orderRepository.Insert(order)
-	assert.Nil(t, err)
+	_, err = orderRepository.Insert(ctx, *order)
+	require.Nil(t, err)
 
-	orders, _, err := orderRepository.FindByFilterWithPageAndSort(func() (interface{}, string, int) {
+	orders, _, err := orderRepository.FindByFilterWithPageAndSort(ctx, func() (interface{}, string, int) {
 		return bson.D{{}, {"deletedAt", nil}}, "buyerInfo.firstName", 1
 	}, 1, 2)
-	assert.Nil(t, err)
-	assert.Equal(t, len(orders), 2)
-	assert.Equal(t, orders[0].BuyerInfo.FirstName, "AAAA")
+	require.Nil(t, err)
+	require.Equal(t, 2, len(orders))
+	require.Equal(t, "AAAA", orders[0].BuyerInfo.FirstName)
 }
 
 func removeCollection() {
-	orderRepository.RemoveAll()
+	ctx, _ := context.WithCancel(context.Background())
+	if err := orderRepository.RemoveAll(ctx); err != nil {
+	}
 }
 
-func createOrder() entities.Order {
-	//currentTime := time.Now().UTC()
+func createOrder() *entities.Order {
 
 	paymentRequest := entities.PaymentRequest{
 		Amount:    75400000,
@@ -406,15 +433,15 @@ func createOrder() entities.Order {
 		PaymentId:   "r3r434ef45d",
 		InvoiceId:   12345678946,
 		Amount:      75400000,
-		ReqBody:     "",
-		ResBody:     "",
 		CardNumMask: "545498******4553",
 		CreatedAt:   time.Now().UTC(),
 	}
 
 	buyerInfo := entities.BuyerInfo{
+		BuyerId:    6453563,
 		FirstName:  "Sina",
 		LastName:   "Tadayon",
+		Phone:      "09124234234",
 		Mobile:     "09123343534",
 		Email:      "sina.tadayon@baman.io",
 		NationalId: "00598342521",
@@ -427,8 +454,11 @@ func createOrder() entities.Order {
 			BankName:      "passargad",
 		},
 		ShippingAddress: entities.AddressInfo{
+			FirstName:     "Ali Reza",
+			LastName:      "Rastegar",
 			Address:       "Tehran, Narmak, Golestan.st",
 			Phone:         "0217734873",
+			Mobile:        "091284345",
 			Country:       "Iran",
 			City:          "Tehran",
 			Province:      "Tehran",
@@ -443,6 +473,7 @@ func createOrder() entities.Order {
 
 	newOrder := entities.Order{
 		OrderId: 0,
+		Version: 0,
 		PaymentService: []entities.PaymentService{{
 			PaymentRequest:  &paymentRequest,
 			PaymentResponse: &paymentResponse,
@@ -465,234 +496,472 @@ func createOrder() entities.Order {
 				PaymentResult:   &paymentResult,
 			}},
 		},
+		Status:    "New",
 		BuyerInfo: buyerInfo,
-		Amount: entities.Amount{
-			Total:         75400000,
-			Subtotal:      73000000,
-			Discount:      15600000,
-			Currency:      "IRR",
-			ShipmentTotal: 5700000,
-			PaymentMethod: "IPG",
-			PaymentOption: "APP",
+		Invoice: entities.Invoice{
+			GrandTotal:     75400000,
+			Subtotal:       73000000,
+			Discount:       15600000,
+			Currency:       "IRR",
+			ShipmentTotal:  5700000,
+			PaymentMethod:  "IPG",
+			PaymentGateway: "APP",
+			PaymentOption:  nil,
+			CartRule:       nil,
 			Voucher: &entities.Voucher{
-				Amount:  230000,
-				Code:    "Market",
-				Details: nil,
+				Amount: 230000,
+				Code:   "Market",
+				Details: &entities.VoucherDetails{
+					StartDate:        time.Now().UTC(),
+					EndDate:          time.Now().UTC(),
+					Type:             "Value",
+					MaxDiscountValue: 1000,
+					MinBasketValue:   13450,
+				},
 			},
 		},
-		Items: []entities.Item{
+		Packages: []entities.PackageItem{
 			{
-				ItemId:      0,
-				InventoryId: "1111111111",
-				Title:       "Mobile",
-				Brand:       "Nokia",
-				Guaranty:    "Sazegar",
-				Category:    "Electronic",
-				Image:       "",
-				Returnable:  false,
-				DeletedAt:   nil,
-				Attributes: map[string]string{
-					"Quantity":  "0",
-					"Width":     "5cm",
-					"Height":    "7cm",
-					"Length":    "2m",
-					"Weight":    "5kg",
-					"Color":     "Blue",
-					"Materials": "Stone",
+				PId:      129384234,
+				OrderId:  0,
+				Version:  0,
+				ShopName: "Sazagar",
+				Invoice: entities.PackageInvoice{
+					Subtotal:       2873423,
+					Discount:       9283443,
+					ShipmentAmount: 98734,
 				},
-				SellerInfo: entities.SellerInfo{
+				SellerInfo: &entities.SellerProfile{
 					SellerId: 129384234,
-					Profile: &entities.SellerProfile{
-						SellerId: 129384234,
-						GeneralInfo: &entities.GeneralSellerInfo{
-							ShopDisplayName:          "Sazgar",
-							Type:                     "",
-							Email:                    "info@sazgar.com",
-							LandPhone:                "02834709",
-							MobilePhone:              "1836491827346",
-							Website:                  "www.sazgar.com",
-							Province:                 "tehran",
-							City:                     "tehran",
-							Neighborhood:             "joradan",
-							PostalAddress:            "jordan, shaghayegh",
-							PostalCode:               "1254754",
-							IsVATObliged:             false,
-							VATCertificationImageURL: "http://test.faza.io",
+					GeneralInfo: &entities.GeneralSellerInfo{
+						ShopDisplayName:          "Sazgar",
+						Type:                     "",
+						Email:                    "info@sazgar.com",
+						LandPhone:                "02834709",
+						MobilePhone:              "1836491827346",
+						Website:                  "www.sazgar.com",
+						Province:                 "tehran",
+						City:                     "tehran",
+						Neighborhood:             "joradan",
+						PostalAddress:            "jordan, shaghayegh",
+						PostalCode:               "1254754",
+						IsVATObliged:             false,
+						VATCertificationImageURL: "http://test.faza.io",
+					},
+					CorporationInfo: &entities.CorporateSellerInfo{
+						CompanyRegisteredName:     "avazhang",
+						CompanyRegistrationNumber: "10237128366",
+						CompanyRationalId:         "1823128434",
+						TradeNumber:               "19293712937",
+					},
+					IndividualInfo: &entities.IndividualSellerInfo{
+						FirstName:          "Sazgar",
+						FamilyName:         "Sazgar",
+						NationalId:         "3254534334",
+						NationalIdFrontURL: "http://adkuhfadlf",
+						NationalIdBackURL:  "http://adkuhfadlf",
+					},
+					ReturnInfo: &entities.ReturnInfo{
+						Country:       "Iran",
+						Province:      "Tehran",
+						City:          "Tehran",
+						Neighborhood:  "Tehran",
+						PostalAddress: "joradan",
+						PostalCode:    "28349394332",
+					},
+					ContactPerson: &entities.SellerContactPerson{
+						FirstName:   "Sazgar",
+						FamilyName:  "Sazgar",
+						MobilePhone: "9324729348",
+						Email:       "sazgar@sazgar.com",
+					},
+					ShipmentInfo: &entities.SellerShipmentInfo{
+						SameCity: &entities.PricePlan{
+							Threshold:        934858,
+							BelowPrice:       92384729,
+							ReactionTimeDays: 98293484,
 						},
-						CorporationInfo: &entities.CorporateSellerInfo{
-							CompanyRegisteredName:     "avazhang",
-							CompanyRegistrationNumber: "10237128366",
-							CompanyRationalId:         "1823128434",
-							TradeNumber:               "19293712937",
+						DifferentCity: &entities.PricePlan{
+							Threshold:        934858,
+							BelowPrice:       92384729,
+							ReactionTimeDays: 98293484,
 						},
-						IndividualInfo: &entities.IndividualSellerInfo{
-							FirstName:          "Sazgar",
-							FamilyName:         "Sazgar",
-							NationalId:         "3254534334",
-							NationalIdFrontURL: "http://adkuhfadlf",
-							NationalIdBackURL:  "http://adkuhfadlf",
-						},
-						ReturnInfo: &entities.ReturnInfo{
-							Country:       "Iran",
-							Province:      "Tehran",
-							City:          "Tehran",
-							Neighborhood:  "Tehran",
-							PostalAddress: "joradan",
-							PostalCode:    "28349394332",
-						},
-						ContactPerson: &entities.SellerContactPerson{
-							FirstName:   "Sazgar",
-							FamilyName:  "Sazgar",
-							MobilePhone: "9324729348",
-							Email:       "sazgar@sazgar.com",
-						},
-						ShipmentInfo: &entities.SellerShipmentInfo{
-							SameCity: &entities.PricePlan{
-								Threshold:        934858,
-								BelowPrice:       92384729,
-								ReactionTimeDays: 98293484,
+					},
+					FinanceData: &entities.SellerFinanceData{
+						Iban:                    "405872058724850",
+						AccountHolderFirstName:  "sazgar",
+						AccountHolderFamilyName: "sazgar",
+					},
+					CreatedAt: time.Now().UTC(),
+					UpdatedAt: time.Now().UTC(),
+				},
+				ShipmentSpec: entities.ShipmentSpec{
+					CarrierNames:   []string{"Post", "Snap"},
+					CarrierProduct: "Post Express",
+					CarrierType:    "Standard",
+					ShippingCost:   1249348,
+					VoucherAmount:  3242344,
+					Currency:       "IRR",
+					ReactionTime:   2,
+					ShippingTime:   8,
+					ReturnTime:     24,
+					Details:        "no return",
+				},
+				Subpackages: []entities.Subpackage{
+					{
+						SId:     0,
+						PId:     129384234,
+						OrderId: 0,
+						Version: 0,
+						Items: []entities.Item{
+							{
+								SKU:         "yt545-34",
+								InventoryId: "1111111111",
+								Title:       "Mobile",
+								Brand:       "Nokia",
+								Guaranty:    "Sazegar",
+								Category:    "Electronic",
+								Image:       "",
+								Returnable:  false,
+								Quantity:    5,
+								Reasons:     nil,
+								Attributes: map[string]string{
+									"Quantity":  "0",
+									"Width":     "5cm",
+									"Height":    "7cm",
+									"Length":    "2m",
+									"Weight":    "5kg",
+									"Color":     "Blue",
+									"Materials": "Stone",
+								},
+								Invoice: entities.ItemInvoice{
+									Unit:              1270000,
+									Total:             7450000,
+									Original:          1270000,
+									Special:           1000000,
+									Discount:          23000,
+									SellerCommission:  5334444,
+									Currency:          "IRR",
+									ApplicableVoucher: false,
+								},
 							},
-							DifferentCity: &entities.PricePlan{
-								Threshold:        934858,
-								BelowPrice:       92384729,
-								ReactionTimeDays: 98293484,
+							{
+								SKU:         "ye-564634",
+								InventoryId: "11111999999",
+								Title:       "TV",
+								Brand:       "Nokia",
+								Guaranty:    "Sazegar",
+								Category:    "Electronic",
+								Image:       "",
+								Returnable:  false,
+								Quantity:    2,
+								Reasons:     nil,
+								Attributes: map[string]string{
+									"Quantity":  "2",
+									"Width":     "120cm",
+									"Height":    "110cm",
+									"Length":    "2m",
+									"Weight":    "5kg",
+									"Color":     "Blue",
+									"Materials": "Stone",
+								},
+								Invoice: entities.ItemInvoice{
+									Unit:              3270000,
+									Total:             87450000,
+									Original:          21270000,
+									Special:           10000000,
+									Discount:          230000,
+									SellerCommission:  5334444,
+									Currency:          "IRR",
+									ApplicableVoucher: false,
+								},
 							},
 						},
-						FinanceData: &entities.SellerFinanceData{
-							Iban:                    "405872058724850",
-							AccountHolderFirstName:  "sazgar",
-							AccountHolderFamilyName: "sazgar",
+						Shipments: &entities.Shipment{
+							ShipmentDetail: &entities.ShippingDetail{
+								CarrierName:    "Post",
+								ShippingMethod: "Normal",
+								TrackingNumber: "545349534958349",
+								Image:          "",
+								Description:    "",
+								ShippedAt:      nil,
+								CreatedAt:      time.Now().UTC(),
+							},
+							ReturnShipmentDetail: &entities.ReturnShippingDetail{
+								CarrierName:    "Post",
+								ShippingMethod: "Normal",
+								TrackingNumber: "545349534958349",
+								Image:          "",
+								Description:    "",
+								ShippedAt:      nil,
+								RequestedAt:    nil,
+								CreatedAt:      time.Now().UTC(),
+							},
 						},
+						Tracking: entities.Progress{
+							State: &entities.State{
+								Name:  "1.New",
+								Index: 1,
+								Data:  nil,
+								Actions: []entities.Action{
+									{
+										Name:      "BuyerCancel",
+										Type:      "OrderBuyerCancel",
+										Result:    "Success",
+										Reasons:   nil,
+										CreatedAt: time.Now().UTC(),
+									},
+								},
+								CreatedAt: time.Now().UTC(),
+							},
+							Action: &entities.Action{
+								Name:      "BuyerCancel",
+								Type:      "OrderBuyerCancel",
+								Result:    "Success",
+								Reasons:   nil,
+								CreatedAt: time.Now().UTC(),
+							},
+							History: []entities.State{
+								{
+									Name:  "1.New",
+									Index: 1,
+									Data:  nil,
+									Actions: []entities.Action{
+										{
+											Name:      "BuyerCancel",
+											Type:      "OrderBuyerCancel",
+											Result:    "Success",
+											Reasons:   nil,
+											CreatedAt: time.Now().UTC(),
+										},
+									},
+									CreatedAt: time.Now().UTC(),
+								},
+							},
+						},
+						Status:    "1.New",
 						CreatedAt: time.Now().UTC(),
 						UpdatedAt: time.Now().UTC(),
+						DeletedAt: nil,
 					},
-				},
-				Price: entities.Price{
-					Unit:             1270000,
-					Original:         7340000,
-					Special:          1000000,
-					SellerCommission: 5334444,
-					Currency:         "IRR",
-				},
-				ShipmentSpec: entities.ShipmentSpec{
-					CarrierName:    "Post",
-					CarrierProduct: "Post Express",
-					CarrierType:    "Standard",
-					ShippingCost:   1249348,
-					VoucherAmount:  3242344,
-					Currency:       "IRR",
-					ReactionTime:   2,
-					ShippingTime:   8,
-					ReturnTime:     24,
-					Details:        "no return",
-				},
-				ShipmentDetails: entities.ShipmentDetails{
-					SellerShipmentDetail: entities.ShipmentDetail{
-						CarrierName:    "Post",
-						TrackingNumber: "545349534958349",
-						Image:          "",
-						Description:    "",
-						CreatedAt:      time.Now().UTC(),
-					},
-					BuyerReturnShipmentDetail: entities.ShipmentDetail{
-						CarrierName:    "Post",
-						TrackingNumber: "545349534958349",
-						Image:          "",
-						Description:    "",
-						CreatedAt:      time.Now().UTC(),
-					},
-				},
-				Progress: entities.Progress{
-					CurrentStepName:  "0.NewOrder",
-					CurrentStepIndex: 0,
-					//CurrentState: entities.State {
-					//	Name:  "0.New_Order_Process_State",
-					//	Index: 0,
-					//	Type: "LauncherAction",
-					//	Actions: []entities.Action {{
-					//		Name: "Success",
-					//		Type: "NewOrder",
-					//		Base: "Active",
-					//		Data: nil,
-					//		Time: &currentTime,
-					//	}},
-					//	AcceptedAction:entities.Action {
-					//		Name: "Success",
-					//		Type: "NewOrder",
-					//		Base: "Active",
-					//		Data: nil,
-					//		Time: &currentTime,
-					//	},
-					//	Result: false,
-					//	Reason:       "",
-					//	CreatedAt:    time.Now().UTC(),
-					//},
-					CreatedAt: time.Now().UTC(),
-					StepsHistory: []entities.StepHistory{{
-						Name:      "0.NewOrder",
-						Index:     0,
+					{
+						SId:     0,
+						PId:     129384234,
+						OrderId: 0,
+						Version: 0,
+						Items: []entities.Item{
+							{
+								SKU:         "gd534-34344",
+								InventoryId: "2222222222",
+								Title:       "Laptop",
+								Brand:       "Lenovo",
+								Guaranty:    "Iranargham",
+								Category:    "Electronic",
+								Image:       "",
+								Returnable:  true,
+								Quantity:    5,
+								Reasons:     nil,
+								Attributes: map[string]string{
+									"Quantity":  "0",
+									"Width":     "5cm",
+									"Height":    "7cm",
+									"Length":    "2m",
+									"Weight":    "5kg",
+									"Color":     "Blue",
+									"Materials": "Stone",
+								},
+								Invoice: entities.ItemInvoice{
+									Unit:              1270000,
+									Total:             8750000,
+									Original:          1270000,
+									Special:           1000000,
+									Discount:          2355434,
+									SellerCommission:  5334444,
+									Currency:          "IRR",
+									ApplicableVoucher: true,
+								},
+							},
+							{
+								SKU:         "5645-yer434",
+								InventoryId: "22222888888",
+								Title:       "AllInOne",
+								Brand:       "Lazada",
+								Guaranty:    "Iranargham",
+								Category:    "Electronic",
+								Image:       "",
+								Returnable:  true,
+								Quantity:    2,
+								Reasons:     nil,
+								Attributes: map[string]string{
+									"Quantity":  "2",
+									"Width":     "5cm",
+									"Height":    "7cm",
+									"Length":    "2m",
+									"Weight":    "5kg",
+									"Color":     "Blue",
+									"Materials": "Stone",
+								},
+								Invoice: entities.ItemInvoice{
+									Unit:              3270000,
+									Total:             12750000,
+									Original:          2270000,
+									Special:           100000,
+									Discount:          2355434,
+									SellerCommission:  5334444,
+									Currency:          "IRR",
+									ApplicableVoucher: true,
+								},
+							},
+						},
+						Shipments: &entities.Shipment{
+							ShipmentDetail: &entities.ShippingDetail{
+								CarrierName:    "Post",
+								ShippingMethod: "Normal",
+								TrackingNumber: "545349534958349",
+								Image:          "",
+								Description:    "",
+								ShippedAt:      nil,
+								CreatedAt:      time.Now().UTC(),
+							},
+							ReturnShipmentDetail: &entities.ReturnShippingDetail{
+								CarrierName:    "Post",
+								ShippingMethod: "Normal",
+								TrackingNumber: "545349534958349",
+								Image:          "",
+								Description:    "",
+								ShippedAt:      nil,
+								RequestedAt:    nil,
+								CreatedAt:      time.Now().UTC(),
+							},
+						},
+						Tracking: entities.Progress{
+							State: &entities.State{
+								Name:  "1.New",
+								Index: 1,
+								Data:  nil,
+								Actions: []entities.Action{
+									{
+										Name:      "BuyerCancel",
+										Type:      "OrderBuyerCancel",
+										Result:    "Success",
+										Reasons:   nil,
+										CreatedAt: time.Now().UTC(),
+									},
+								},
+								CreatedAt: time.Now().UTC(),
+							},
+							Action: &entities.Action{
+								Name:      "BuyerCancel",
+								Type:      "OrderBuyerCancel",
+								Result:    "Success",
+								Reasons:   nil,
+								CreatedAt: time.Now().UTC(),
+							},
+							History: []entities.State{
+								{
+									Name:  "1.New",
+									Index: 1,
+									Data:  nil,
+									Actions: []entities.Action{
+										{
+											Name:      "BuyerCancel",
+											Type:      "OrderBuyerCancel",
+											Result:    "Success",
+											Reasons:   nil,
+											CreatedAt: time.Now().UTC(),
+										},
+									},
+									CreatedAt: time.Now().UTC(),
+								},
+							},
+						},
+						Status:    "1.New",
 						CreatedAt: time.Now().UTC(),
-						//StatesHistory: []entities.StateHistory{{
-						//	Name:  "0.New_Order_Process_State",
-						//	Index: 0,
-						//	Type: "ListenerAction",
-						//	Action: entities.Action{
-						//		Name:           "Success",
-						//		Type:           "NewOrder",
-						//		Base:           "Active",
-						//		Data:           nil,
-						//		Time: 			&currentTime,
-						//	},
-						//	Result: 	  false,
-						//	Reason:       "",
-						//	CreatedAt:    time.Now().UTC(),
-						//}},
-					}},
+						UpdatedAt: time.Now().UTC(),
+						DeletedAt: nil,
+					},
 				},
+				Status:    "NEW",
+				CreatedAt: time.Now().UTC(),
+				UpdatedAt: time.Now().UTC(),
+				DeletedAt: nil,
 			},
 			{
-				ItemId:      0,
-				InventoryId: "2222222222",
-				Title:       "Laptop",
-				Brand:       "Lenovo",
-				Guaranty:    "Iranargham",
-				Category:    "Electronic",
-				Image:       "",
-				Returnable:  true,
-				DeletedAt:   nil,
-				Attributes: map[string]string{
-					"Quantity":  "0",
-					"Width":     "5cm",
-					"Height":    "7cm",
-					"Length":    "2m",
-					"Weight":    "5kg",
-					"Color":     "Blue",
-					"Materials": "Stone",
+				PId:      99988887777,
+				OrderId:  0,
+				Version:  0,
+				ShopName: "Sazgar",
+				Invoice: entities.PackageInvoice{
+					Subtotal:       2873423,
+					Discount:       9283443,
+					ShipmentAmount: 98734,
 				},
-				SellerInfo: entities.SellerInfo{
-					SellerId: 2384723083,
-					Profile: &entities.SellerProfile{
-						SellerId:        2384723083,
-						GeneralInfo:     nil,
-						CorporationInfo: nil,
-						IndividualInfo:  nil,
-						ReturnInfo:      nil,
-						ContactPerson:   nil,
-						ShipmentInfo:    nil,
-						FinanceData:     nil,
-						CreatedAt:       time.Now().UTC(),
-						UpdatedAt:       time.Now().UTC(),
+				SellerInfo: &entities.SellerProfile{
+					SellerId: 99988887777,
+					GeneralInfo: &entities.GeneralSellerInfo{
+						ShopDisplayName:          "Sazgar",
+						Type:                     "",
+						Email:                    "info@sazgar.com",
+						LandPhone:                "02834709",
+						MobilePhone:              "1836491827346",
+						Website:                  "www.sazgar.com",
+						Province:                 "tehran",
+						City:                     "tehran",
+						Neighborhood:             "joradan",
+						PostalAddress:            "jordan, shaghayegh",
+						PostalCode:               "1254754",
+						IsVATObliged:             false,
+						VATCertificationImageURL: "http://test.faza.io",
 					},
-				},
-				Price: entities.Price{
-					Unit:             1270000,
-					Original:         7340000,
-					Special:          1000000,
-					SellerCommission: 5334444,
-					Currency:         "IRR",
+					CorporationInfo: &entities.CorporateSellerInfo{
+						CompanyRegisteredName:     "avazhang",
+						CompanyRegistrationNumber: "10237128366",
+						CompanyRationalId:         "1823128434",
+						TradeNumber:               "19293712937",
+					},
+					IndividualInfo: &entities.IndividualSellerInfo{
+						FirstName:          "Sazgar",
+						FamilyName:         "Sazgar",
+						NationalId:         "3254534334",
+						NationalIdFrontURL: "http://adkuhfadlf",
+						NationalIdBackURL:  "http://adkuhfadlf",
+					},
+					ReturnInfo: &entities.ReturnInfo{
+						Country:       "Iran",
+						Province:      "Tehran",
+						City:          "Tehran",
+						Neighborhood:  "Tehran",
+						PostalAddress: "joradan",
+						PostalCode:    "28349394332",
+					},
+					ContactPerson: &entities.SellerContactPerson{
+						FirstName:   "Sazgar",
+						FamilyName:  "Sazgar",
+						MobilePhone: "9324729348",
+						Email:       "sazgar@sazgar.com",
+					},
+					ShipmentInfo: &entities.SellerShipmentInfo{
+						SameCity: &entities.PricePlan{
+							Threshold:        934858,
+							BelowPrice:       92384729,
+							ReactionTimeDays: 98293484,
+						},
+						DifferentCity: &entities.PricePlan{
+							Threshold:        934858,
+							BelowPrice:       92384729,
+							ReactionTimeDays: 98293484,
+						},
+					},
+					FinanceData: &entities.SellerFinanceData{
+						Iban:                    "405872058724850",
+						AccountHolderFirstName:  "sazgar",
+						AccountHolderFamilyName: "sazgar",
+					},
+					CreatedAt: time.Now().UTC(),
+					UpdatedAt: time.Now().UTC(),
 				},
 				ShipmentSpec: entities.ShipmentSpec{
-					CarrierName:    "Post",
+					CarrierNames:   []string{"Post", "Snap"},
 					CarrierProduct: "Post Express",
 					CarrierType:    "Standard",
 					ShippingCost:   1249348,
@@ -703,69 +972,284 @@ func createOrder() entities.Order {
 					ReturnTime:     24,
 					Details:        "no return",
 				},
-				ShipmentDetails: entities.ShipmentDetails{
-					SellerShipmentDetail: entities.ShipmentDetail{
-						CarrierName:    "Post",
-						TrackingNumber: "545349534958349",
-						Image:          "",
-						Description:    "",
-						CreatedAt:      time.Now().UTC(),
-					},
-					BuyerReturnShipmentDetail: entities.ShipmentDetail{
-						CarrierName:    "Post",
-						TrackingNumber: "545349534958349",
-						Image:          "",
-						Description:    "",
-						CreatedAt:      time.Now().UTC(),
-					},
-				},
-				Progress: entities.Progress{
-					CurrentStepName:  "0.NewOrder",
-					CurrentStepIndex: 0,
-					//CurrentState: entities.State{
-					//	Name:  "0.New_Order_Process_State",
-					//	Index: 0,
-					//	Actions: []entities.Action{{
-					//		Name:           "Success",
-					//		Type:           "NewOrder",
-					//		Base:           "Active",
-					//		Data:           nil,
-					//		Time: 			&currentTime,
-					//	}},
-					//	AcceptedAction: entities.Action{
-					//		Name:           "Success",
-					//		Type:           "NewOrder",
-					//		Base:           "Active",
-					//		Data:           nil,
-					//		Time: 			&currentTime,
-					//	},
-					//	Result: false,
-					//	Reason:       "",
-					//	CreatedAt:    time.Now().UTC(),
-					//},
-					CreatedAt: time.Now().UTC(),
-					StepsHistory: []entities.StepHistory{{
-						Name:      "0.NewOrder",
-						Index:     0,
+				Subpackages: []entities.Subpackage{
+					{
+						SId:     0,
+						PId:     99988887777,
+						OrderId: 0,
+						Version: 0,
+						Items: []entities.Item{
+							{
+								SKU:         "trrer-5343fdf",
+								InventoryId: "55555555555",
+								Title:       "Mobile",
+								Brand:       "Nokia",
+								Guaranty:    "Sazegar",
+								Category:    "Electronic",
+								Image:       "",
+								Returnable:  false,
+								Quantity:    5,
+								Reasons:     nil,
+								Attributes: map[string]string{
+									"Quantity":  "0",
+									"Width":     "5cm",
+									"Height":    "7cm",
+									"Length":    "2m",
+									"Weight":    "5kg",
+									"Color":     "Blue",
+									"Materials": "Stone",
+								},
+								Invoice: entities.ItemInvoice{
+									Unit:              1270000,
+									Total:             7340000,
+									Original:          1270000,
+									Special:           1000000,
+									Discount:          23000,
+									SellerCommission:  5334444,
+									Currency:          "IRR",
+									ApplicableVoucher: false,
+								},
+							},
+							{
+								SKU:         "uer5434-5343",
+								InventoryId: "555554444444",
+								Title:       "MobileMini",
+								Brand:       "Mac",
+								Guaranty:    "Sazegar",
+								Category:    "Electronic",
+								Image:       "",
+								Returnable:  false,
+								Quantity:    3,
+								Reasons:     nil,
+								Attributes: map[string]string{
+									"Quantity":  "3",
+									"Width":     "5cm",
+									"Height":    "7cm",
+									"Length":    "2m",
+									"Weight":    "5kg",
+									"Color":     "Blue",
+									"Materials": "Stone",
+								},
+								Invoice: entities.ItemInvoice{
+									Unit:              2270000,
+									Total:             6340000,
+									Original:          4270000,
+									Special:           100000,
+									Discount:          2343000,
+									SellerCommission:  533444,
+									Currency:          "IRR",
+									ApplicableVoucher: false,
+								},
+							},
+						},
+						Shipments: &entities.Shipment{
+							ShipmentDetail: &entities.ShippingDetail{
+								CarrierName:    "Post",
+								ShippingMethod: "Normal",
+								TrackingNumber: "545349534958349",
+								Image:          "",
+								Description:    "",
+								ShippedAt:      nil,
+								CreatedAt:      time.Now().UTC(),
+							},
+							ReturnShipmentDetail: &entities.ReturnShippingDetail{
+								CarrierName:    "Post",
+								ShippingMethod: "Normal",
+								TrackingNumber: "545349534958349",
+								Image:          "",
+								Description:    "",
+								ShippedAt:      nil,
+								RequestedAt:    nil,
+								CreatedAt:      time.Now().UTC(),
+							},
+						},
+						Tracking: entities.Progress{
+							State: &entities.State{
+								Name:  "1.New",
+								Index: 1,
+								Data:  nil,
+								Actions: []entities.Action{
+									{
+										Name:      "BuyerCancel",
+										Type:      "OrderBuyerCancel",
+										Result:    "Success",
+										Reasons:   nil,
+										CreatedAt: time.Now().UTC(),
+									},
+								},
+								CreatedAt: time.Now().UTC(),
+							},
+							Action: &entities.Action{
+								Name:      "BuyerCancel",
+								Type:      "OrderBuyerCancel",
+								Result:    "Success",
+								Reasons:   nil,
+								CreatedAt: time.Now().UTC(),
+							},
+							History: []entities.State{
+								{
+									Name:  "1.New",
+									Index: 1,
+									Data:  nil,
+									Actions: []entities.Action{
+										{
+											Name:      "BuyerCancel",
+											Type:      "OrderBuyerCancel",
+											Result:    "Success",
+											Reasons:   nil,
+											CreatedAt: time.Now().UTC(),
+										},
+									},
+									CreatedAt: time.Now().UTC(),
+								},
+							},
+						},
+						Status:    "1.New",
 						CreatedAt: time.Now().UTC(),
-						//StatesHistory: []entities.StateHistory{{
-						//	Name:  "0.New_Order_Process_State",
-						//	Index: 0,
-						//	Type: "ListenerAction",
-						//	Action: entities.Action{
-						//		Name:           "Success",
-						//		Type:           "NewOrder",
-						//		Base:           "Active",
-						//		Data:           nil,
-						//		Time: 			&currentTime,
-						//	},
-						//
-						//	Result: false,
-						//	Reason:       "",
-						//	CreatedAt:    time.Now().UTC(),
-						//}},
-					}},
+						UpdatedAt: time.Now().UTC(),
+						DeletedAt: nil,
+					},
+					{
+						SId:     0,
+						PId:     99988887777,
+						OrderId: 0,
+						Version: 0,
+						Items: []entities.Item{
+							{
+								SKU:         "5456",
+								InventoryId: "3333333333333",
+								Title:       "PC",
+								Brand:       "HP",
+								Guaranty:    "Iranargham",
+								Category:    "Electronic",
+								Image:       "",
+								Returnable:  true,
+								Quantity:    3,
+								Reasons:     nil,
+								Attributes: map[string]string{
+									"Quantity":  "3",
+									"Width":     "5cm",
+									"Height":    "7cm",
+									"Length":    "2m",
+									"Weight":    "5kg",
+									"Color":     "Blue",
+									"Materials": "Stone",
+								},
+								Invoice: entities.ItemInvoice{
+									Unit:              1270000,
+									Total:             5646700,
+									Original:          7340000,
+									Special:           1000000,
+									Discount:          2355434,
+									SellerCommission:  5334444,
+									Currency:          "IRR",
+									ApplicableVoucher: true,
+								},
+							},
+							{
+								SKU:         "uet-54634",
+								InventoryId: "33333666666",
+								Title:       "ZeroClient",
+								Brand:       "Lardan",
+								Guaranty:    "Iranargham",
+								Category:    "Electronic",
+								Image:       "",
+								Returnable:  true,
+								Quantity:    3,
+								Reasons:     nil,
+								Attributes: map[string]string{
+									"Quantity":  "3",
+									"Width":     "5cm",
+									"Height":    "7cm",
+									"Length":    "2m",
+									"Weight":    "5kg",
+									"Color":     "Blue",
+									"Materials": "Stone",
+								},
+								Invoice: entities.ItemInvoice{
+									Unit:              7270000,
+									Total:             4646700,
+									Original:          2340000,
+									Special:           1000000,
+									Discount:          45355434,
+									SellerCommission:  5334444,
+									Currency:          "IRR",
+									ApplicableVoucher: true,
+								},
+							},
+						},
+						Shipments: &entities.Shipment{
+							ShipmentDetail: &entities.ShippingDetail{
+								CarrierName:    "Post",
+								ShippingMethod: "Normal",
+								TrackingNumber: "545349534958349",
+								Image:          "",
+								Description:    "",
+								ShippedAt:      nil,
+								CreatedAt:      time.Now().UTC(),
+							},
+							ReturnShipmentDetail: &entities.ReturnShippingDetail{
+								CarrierName:    "Post",
+								ShippingMethod: "Normal",
+								TrackingNumber: "545349534958349",
+								Image:          "",
+								Description:    "",
+								ShippedAt:      nil,
+								RequestedAt:    nil,
+								CreatedAt:      time.Now().UTC(),
+							},
+						},
+						Tracking: entities.Progress{
+							State: &entities.State{
+								Name:  "1.New",
+								Index: 1,
+								Data:  nil,
+								Actions: []entities.Action{
+									{
+										Name:      "BuyerCancel",
+										Type:      "OrderBuyerCancel",
+										Result:    "Success",
+										Reasons:   nil,
+										CreatedAt: time.Now().UTC(),
+									},
+								},
+								CreatedAt: time.Now().UTC(),
+							},
+							Action: &entities.Action{
+								Name:      "BuyerCancel",
+								Type:      "OrderBuyerCancel",
+								Result:    "Success",
+								Reasons:   nil,
+								CreatedAt: time.Now().UTC(),
+							},
+							History: []entities.State{
+								{
+									Name:  "1.New",
+									Index: 1,
+									Data:  nil,
+									Actions: []entities.Action{
+										{
+											Name:      "BuyerCancel",
+											Type:      "OrderBuyerCancel",
+											Result:    "Success",
+											Reasons:   nil,
+											CreatedAt: time.Now().UTC(),
+										},
+									},
+									CreatedAt: time.Now().UTC(),
+								},
+							},
+						},
+						Status:    "1.New",
+						CreatedAt: time.Now().UTC(),
+						UpdatedAt: time.Now().UTC(),
+						DeletedAt: nil,
+					},
 				},
+				Status:    "NEW",
+				CreatedAt: time.Now().UTC(),
+				UpdatedAt: time.Now().UTC(),
+				DeletedAt: nil,
 			},
 		},
 		CreatedAt: time.Now().UTC(),
@@ -773,5 +1257,5 @@ func createOrder() entities.Order {
 		DeletedAt: nil,
 	}
 
-	return newOrder
+	return &newOrder
 }

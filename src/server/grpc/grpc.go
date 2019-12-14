@@ -2,23 +2,31 @@ package grpc_server
 
 import (
 	"context"
-	"fmt"
+	"gitlab.faza.io/order-project/order-service/domain/actions"
+	buyer_action "gitlab.faza.io/order-project/order-service/domain/actions/buyer"
+	operator_action "gitlab.faza.io/order-project/order-service/domain/actions/operator"
+	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
+	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
+	"gitlab.faza.io/order-project/order-service/domain/events"
+	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	"gitlab.faza.io/order-project/order-service/domain/states"
+	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"strconv"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
+	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain"
-	"gitlab.faza.io/order-project/order-service/infrastructure/global"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	pb "gitlab.faza.io/protos/order"
 	pg "gitlab.faza.io/protos/payment-gateway"
 	"go.mongodb.org/mongo-driver/bson"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	//"errors"
+	//"github.com/pkg/errors"
 	"net"
 	//"net/http"
 	//"time"
@@ -26,6 +34,88 @@ import (
 	_ "github.com/devfeel/mapper"
 	"gitlab.faza.io/go-framework/logger"
 	"google.golang.org/grpc"
+)
+
+type RequestADT string
+type RequestType string
+type RequestName string
+type RequestMethod string
+type UserType string
+type SortDirection string
+type FilterType string
+type FilterValue string
+type ActionType string
+type Action string
+
+const (
+	PostMethod RequestMethod = "POST"
+	GetMethod  RequestMethod = "GET"
+)
+
+const (
+	OrderStateFilterType FilterType = "OrderState"
+)
+
+const (
+	ApprovalPendingFilter       FilterValue = "ApprovalPending"
+	ShipmentPendingFilter       FilterValue = "ShipmentPending"
+	ShippedFilter               FilterValue = "Shipped"
+	DeliveredFilter             FilterValue = "Delivered"
+	DeliveryFailedFilter        FilterValue = "DeliveryFailed"
+	ReturnRequestPendingFilter  FilterValue = "ReturnRequestPending"
+	ReturnShipmentPendingFilter FilterValue = "ReturnShipmentPending"
+	ReturnShippedFilter         FilterValue = "ReturnShipped"
+	ReturnDeliveredFilter       FilterValue = "ReturnDelivered"
+	ReturnDeliveryFailedFilter  FilterValue = "ReturnDeliveryFailed"
+)
+
+const (
+	DeliverAction             Action = "Deliver"
+	DeliveryFailAction        Action = "DeliveryFail"
+	DeliveryDelayAction       Action = "DeliveryDelay"
+	DeliveryPendingAction     Action = "DeliveryPending"
+	SubmitReturnRequestAction Action = "SubmitReturnRequest"
+	EnterShipmentDetailAction Action = "EnterShipmentDetail"
+	ApproveAction             Action = "Approve"
+	RejectAction              Action = "Reject"
+	CancelAction              Action = "Cancel"
+	AcceptAction              Action = "Accept"
+	CloseAction               Action = "Close"
+)
+
+const (
+	DataReqType   RequestType = "Data"
+	ActionReqType RequestType = "Action"
+)
+
+const (
+	ListType   RequestADT = "List"
+	SingleType RequestADT = "Single"
+)
+
+const (
+	OperatorUser  UserType = "Operator"
+	SellerUser    UserType = "Seller"
+	BuyerUser     UserType = "Buyer"
+	SchedulerUser UserType = "Scheduler"
+)
+
+const (
+	SellerOrderList             RequestName = "SellerOrderList"
+	SellerOrderDetail           RequestName = "SellerOrderDetail"
+	SellerReturnOrderDetailList RequestName = "SellerReturnOrderDetailList"
+	//SellerOrderReturnDetail     RequestName = "SellerOrderReturnDetail"
+
+	//BuyerOrderList             RequestName = "BuyerOrderList"
+	BuyerOrderDetailList       RequestName = "BuyerOrderDetailList"
+	BuyerReturnOrderReports    RequestName = "BuyerReturnOrderReports"
+	BuyerReturnOrderDetailList RequestName = "BuyerReturnOrderDetailList"
+	//BuyerReturnOrderDetail  RequestName = "BuyerReturnOrderDetail"
+)
+
+const (
+	ASC  SortDirection = "ASC"
+	DESC SortDirection = "DESC"
 )
 
 const (
@@ -36,119 +126,1258 @@ const (
 type Server struct {
 	pb.UnimplementedOrderServiceServer
 	pg.UnimplementedBankResultHookServer
-	flowManager domain.IFlowManager
-	address     string
-	port        uint16
+	flowManager    domain.IFlowManager
+	address        string
+	port           uint16
+	requestFilters map[RequestName][]FilterValue
+	filterStates   map[FilterValue][]states.IEnumState
+	actionStates   map[UserType][]actions.IAction
 }
 
 func NewServer(address string, port uint16, flowManager domain.IFlowManager) Server {
-	return Server{flowManager: flowManager, address: address, port: port}
+	filterStatesMap := make(map[FilterValue][]states.IEnumState, 8)
+	filterStatesMap[ApprovalPendingFilter] = []states.IEnumState{states.ApprovalPending}
+	filterStatesMap[ShipmentPendingFilter] = []states.IEnumState{states.ShipmentPending, states.ShipmentDelayed}
+	filterStatesMap[ShippedFilter] = []states.IEnumState{states.Shipped}
+	filterStatesMap[DeliveredFilter] = []states.IEnumState{states.DeliveryPending, states.DeliveryDelayed, states.Delivered}
+	filterStatesMap[DeliveryFailedFilter] = []states.IEnumState{states.DeliveryFailed}
+	filterStatesMap[ReturnRequestPendingFilter] = []states.IEnumState{states.ReturnRequestPending, states.ReturnRequestRejected}
+	filterStatesMap[ReturnShipmentPendingFilter] = []states.IEnumState{states.ReturnShipmentPending}
+	filterStatesMap[ReturnShippedFilter] = []states.IEnumState{states.ReturnShipped}
+	filterStatesMap[ReturnDeliveredFilter] = []states.IEnumState{states.ReturnDeliveryPending, states.ReturnDeliveryDelayed, states.ReturnDelivered}
+	filterStatesMap[ReturnDeliveryFailedFilter] = []states.IEnumState{states.ReturnDeliveryFailed}
+
+	actionStateMap := make(map[UserType][]actions.IAction, 8)
+	actionStateMap[SellerUser] = []actions.IAction{
+		seller_action.New(seller_action.Approve),
+		seller_action.New(seller_action.Reject),
+		seller_action.New(seller_action.Cancel),
+		seller_action.New(seller_action.Accept),
+		seller_action.New(seller_action.Deliver),
+		seller_action.New(seller_action.DeliveryFail),
+		seller_action.New(seller_action.EnterShipmentDetail),
+	}
+	actionStateMap[BuyerUser] = []actions.IAction{
+		buyer_action.New(buyer_action.DeliveryDelay),
+		buyer_action.New(buyer_action.Cancel),
+		buyer_action.New(buyer_action.SubmitReturnRequest),
+		buyer_action.New(buyer_action.EnterShipmentDetail),
+	}
+	actionStateMap[OperatorUser] = []actions.IAction{
+		operator_action.New(operator_action.DeliveryDelay),
+		operator_action.New(operator_action.Deliver),
+		operator_action.New(operator_action.DeliveryFail),
+		operator_action.New(operator_action.Accept),
+		operator_action.New(operator_action.Reject),
+		operator_action.New(operator_action.Deliver),
+	}
+	actionStateMap[SchedulerUser] = []actions.IAction{
+		scheduler_action.New(scheduler_action.Cancel),
+		scheduler_action.New(scheduler_action.Close),
+		scheduler_action.New(scheduler_action.DeliveryDelay),
+		scheduler_action.New(scheduler_action.Deliver),
+		scheduler_action.New(scheduler_action.DeliveryPending),
+		scheduler_action.New(scheduler_action.Reject),
+		scheduler_action.New(scheduler_action.Accept),
+		scheduler_action.New(scheduler_action.Notification),
+	}
+
+	reqFilters := make(map[RequestName][]FilterValue, 8)
+	reqFilters[SellerOrderList] = []FilterValue{ApprovalPendingFilter, ShipmentPendingFilter, ShippedFilter,
+		DeliveredFilter, DeliveryFailedFilter}
+	reqFilters[SellerOrderDetail] = []FilterValue{ApprovalPendingFilter, ShipmentPendingFilter, ShippedFilter,
+		DeliveredFilter, DeliveryFailedFilter}
+	reqFilters[BuyerOrderDetailList] = []FilterValue{ApprovalPendingFilter, ShipmentPendingFilter, ShippedFilter,
+		DeliveredFilter, DeliveryFailedFilter}
+
+	reqFilters[SellerReturnOrderDetailList] = []FilterValue{ReturnRequestPendingFilter, ReturnShipmentPendingFilter,
+		ReturnShippedFilter, ReturnDeliveredFilter, ReturnDeliveryFailedFilter}
+	reqFilters[BuyerReturnOrderReports] = []FilterValue{}
+	reqFilters[BuyerReturnOrderDetailList] = []FilterValue{ReturnRequestPendingFilter, ReturnShipmentPendingFilter,
+		ReturnShippedFilter, ReturnDeliveredFilter, ReturnDeliveryFailedFilter}
+
+	return Server{flowManager: flowManager, address: address, port: port, requestFilters: reqFilters, filterStates: filterStatesMap, actionStates: actionStateMap}
 }
 
-func (server *Server) OrderRequestsHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
+func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
 
-	flowManagerCtx, _ := context.WithTimeout(context.Background(), 3*time.Second)
-	promiseHandler := server.flowManager.MessageHandler(flowManagerCtx, req)
-	futureData := <-promiseHandler.Channel()
-	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
-		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
+	if err != nil {
+		logger.Err("RequestHandler() => UserService.AuthenticateContextToken failed, error: %s ", err)
+		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
 	}
 
-	response, ok := futureData.Data.(pb.MessageResponse)
-	if ok != true {
-		logger.Err("received data of futureData invalid, type: %T, value, %v", futureData.Data, futureData.Data)
-		return nil, status.Error(500, "Unknown Error")
+	// TODO check acl
+	if uint64(userAcl.User().UserID) != req.Meta.UID {
+		logger.Err("RequestHandler() => request userId %d mismatch with token userId: %d", req.Meta.UID, userAcl.User().UserID)
+		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
 	}
 
-	return &response, nil
+	reqType := RequestType(req.Type)
+	if reqType == DataReqType {
+		return server.requestDataHandler(ctx, req)
+	} else {
+		return server.requestActionHandler(ctx, req)
+	}
+}
 
-	//logger.Audit("Req Order Id: %v", req.GetOrderId())
-	//logger.Audit("Req Item Id: %v", req.GetItemId())
-	//logger.Audit("Req timestamp: %v", req.GetTime())
-	//logger.Audit("Req Meta Page: %v", req.GetMeta().GetPage())
-	//logger.Audit("Req Meta PerPage %v", req.GetMeta().GetPerPage())
-	//logger.Audit("Req Meta Sorts: ")
-	//for index, sort := range req.GetMeta().GetSorts() {
-	//	logger.Audit("Req Meta Sort[%d].name: %v", index, sort.GetName())
-	//	logger.Audit("Req Meta Sort[%d].name: %v", index, sort.GetDirection())
+//func (server *Server) generateFilter(ctx context.Context, filter FilterValue) bson.D {
+//
+//	newFilter := make([]interface{}, 2)
+//
+//	if filter == ApprovalPendingFilter {
+//		newFilter[0] = "packages.subpackages.status"
+//		newFilter[1] = server.filterStates[filter][0].StateName()
+//	} else if filter == ShipmentPendingFilter {
+//		newFilter[0] = "packages.subpackages.status"
+//		newFilter[1] = bson.M{"$or": bson.A{states.ShipmentPending.StateName(), states.ShipmentDelayed.StateName()}}
+//	} else if filter == ShippedFilter {
+//		newFilter[0] = "packages.subpackages.status"
+//		newFilter[1] = server.filterStates[filter][0].StateName()
+//	} else if filter == DeliveredFilter {
+//		newFilter[0] = "packages.subpackages.status"
+//		newFilter[1] = bson.M{"$or": bson.A{states.DeliveryPending.StateName(), states.DeliveryDelayed.StateName(), states.Delivered.StateName()}}
+//	} else if filter == DeliveryFailedFilter {
+//		newFilter[0] = "packages.subpackages.tracking.history.name"
+//		newFilter[1] = server.filterStates[filter][0].StateName()
+//	} else if filter == ReturnRequestPendingFilter {
+//		newFilter[0] = "packages.subpackages.status"
+//		newFilter[1] = server.filterStates[filter][0].StateName()
+//	} else if filter == ReturnShipmentPendingFilter {
+//		newFilter[0] = "packages.subpackages.status"
+//		newFilter[1] = server.filterStates[filter][0].StateName()
+//	} else if filter == ReturnShippedFilter {
+//		newFilter[0] = "packages.subpackages.status"
+//		newFilter[1] = server.filterStates[filter][0].StateName()
+//	} else if filter == ReturnDeliveredFilter {
+//		newFilter[0] = "packages.subpackages.status"
+//		newFilter[1] = bson.M{"$or": bson.A{states.ReturnDeliveryPending.StateName(), states.ReturnDeliveryDelayed.StateName(), states.ReturnDelivered.StateName()}}
+//	} else if filter == DeliveryFailedFilter {
+//		newFilter[0] = "packages.subpackages.tracking.history.name"
+//		newFilter[1] = server.filterStates[filter][0].StateName()
+//	}
+//	return newFilter
+//}
+
+func (server *Server) generatePipelineFilter(ctx context.Context, filter FilterValue) []interface{} {
+
+	newFilter := make([]interface{}, 2)
+
+	if filter == ApprovalPendingFilter {
+		newFilter[0] = "packages.subpackages.status"
+		newFilter[1] = server.filterStates[filter][0].StateName()
+	} else if filter == ShipmentPendingFilter {
+		newFilter[0] = "$or"
+		newFilter[1] = bson.A{
+			bson.M{"packages.subpackages.status": states.ShipmentPending.StateName()},
+			bson.M{"packages.subpackages.status": states.ShipmentDelayed.StateName()}}
+	} else if filter == ShippedFilter {
+		newFilter[0] = "packages.subpackages.status"
+		newFilter[1] = server.filterStates[filter][0].StateName()
+	} else if filter == DeliveredFilter {
+		newFilter[0] = "$or"
+		newFilter[1] = bson.A{
+			bson.M{"packages.subpackages.status": states.DeliveryPending.StateName()},
+			bson.M{"packages.subpackages.status": states.DeliveryDelayed.StateName()},
+			bson.M{"packages.subpackages.status": states.Delivered.StateName()}}
+	} else if filter == DeliveryFailedFilter {
+		newFilter[0] = "packages.subpackages.tracking.history.name"
+		newFilter[1] = server.filterStates[filter][0].StateName()
+	} else if filter == ReturnRequestPendingFilter {
+		newFilter[0] = "$or"
+		newFilter[1] = bson.A{
+			bson.M{"packages.subpackages.status": states.ReturnRequestPending.StateName()},
+			bson.M{"packages.subpackages.status": states.ReturnRequestRejected.StateName()}}
+	} else if filter == ReturnShipmentPendingFilter {
+		newFilter[0] = "packages.subpackages.status"
+		newFilter[1] = server.filterStates[filter][0].StateName()
+	} else if filter == ReturnShippedFilter {
+		newFilter[0] = "packages.subpackages.status"
+		newFilter[1] = server.filterStates[filter][0].StateName()
+	} else if filter == ReturnDeliveredFilter {
+		newFilter[0] = "$or"
+		newFilter[1] = bson.A{
+			bson.M{"packages.subpackages.status": states.ReturnDeliveryPending.StateName()},
+			bson.M{"packages.subpackages.status": states.ReturnDeliveryDelayed.StateName()},
+			bson.M{"packages.subpackages.status": states.ReturnDelivered.StateName()}}
+	} else if filter == DeliveryFailedFilter {
+		newFilter[0] = "packages.subpackages.tracking.history.name"
+		newFilter[1] = server.filterStates[filter][0].StateName()
+	}
+	return newFilter
+}
+
+func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
+	reqName := RequestName(req.Name)
+	userType := UserType(req.Meta.UTP)
+	reqADT := RequestADT(req.ADT)
+
+	//var filterType FilterType
+	var filterValue FilterValue
+	var sortName string
+	var sortDirection SortDirection
+	if req.Meta.Filters != nil {
+		//filterType = FilterType(req.Meta.Filters[0].Type)
+		filterValue = FilterValue(req.Meta.Filters[0].Value)
+	}
+
+	if req.Meta.Sorts != nil {
+		sortName = req.Meta.Sorts[0].Name
+		sortDirection = SortDirection(req.Meta.Sorts[0].Direction)
+	}
+
+	//if reqName == SellerOrderList && filterType != OrderStateFilterType {
+	//	logger.Err("requestDataHandler() => request name %s mismatch with %s filter, request: %v", reqName, filterType, req)
+	//	return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with filter")
 	//}
-	//logger.Audit("Req Meta Filters: ")
-	//for index, filter := range req.GetMeta().GetFilters() {
-	//	logger.Audit("Req Meta Filter.filters[%d].name = %v", index, filter.GetName())
-	//	logger.Audit("Req Meta Filter.filters[%d].opt = %v", index, filter.GetOpt())
-	//	logger.Audit("Req Meta Filter.filters[%d].values = %v", index, filter.GetValue())
+
+	//if (reqName == SellerReturnOrderDetailList || reqName == BuyerReturnOrderDetailList) && filterType != OrderReturnStateFilter {
+	//	logger.Err("requestDataHandler() => request name %s mismatch with %s filterType, request: %v", reqName, filterType, req)
+	//	return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with filterType")
+	//}
+
+	//if userType == SellerUser && (reqName != SellerOrderList || reqName != SellerOrderDetail || reqName != SellerReturnOrderDetailList) {
+	//	logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
+	//	return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
 	//}
 	//
-	//var RequestNewOrder pb.RequestNewOrder
-	//if err := ptypes.UnmarshalAny(req.Data, &RequestNewOrder); err != nil {
-	//	logger.Err("Could not unmarshal OrderRequest from anything field: %s", err)
-	//	return &message.Response{}, err
+	//if userType == BuyerUser && (reqName != BuyerOrderDetailList || reqName != BuyerReturnOrderReports || reqName != BuyerReturnOrderDetailList) {
+	//	logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
+	//	return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
+	//}
+
+	if req.Meta.OID > 0 && reqADT == ListType {
+		logger.Err("requestDataHandler() => %s orderId mismatch with %s requestADT, request: %v", userType, reqADT, req)
+		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestADT")
+	}
+
+	if reqName != BuyerReturnOrderReports {
+		var findFlag = false
+		for _, filter := range server.requestFilters[reqName] {
+			if filter == filterValue {
+				findFlag = true
+				break
+			}
+		}
+
+		if !findFlag {
+			logger.Err("requestDataHandler() => %s requestName mismatch with %s Filter, request: %v", reqName, filterValue, req)
+			return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with Filter")
+		}
+	}
+
+	switch reqName {
+	case SellerOrderList:
+		return server.sellerOrderListHandler(ctx, req.Meta.PID, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+	case SellerOrderDetail:
+		return server.sellerOrderDetailHandler(ctx, req.Meta.PID, req.Meta.OID, filterValue)
+	case SellerReturnOrderDetailList:
+		return server.sellerOrderReturnDetailListHandler(ctx, req.Meta.PID, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+	case BuyerOrderDetailList:
+		return server.buyerOrderDetailHandler(ctx, req.Meta.UID, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+	case BuyerReturnOrderReports:
+		return server.buyerReturnOrderReportsHandler(ctx, req.Meta.UID)
+	case BuyerReturnOrderDetailList:
+		return server.buyerReturnOrderDetailListHandler(ctx, req.Meta.UID, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+	}
+
+	return nil, status.Error(codes.Code(future.BadRequest), "Invalid Request")
+}
+
+func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
+	userType := UserType(req.Meta.UTP)
+	var userAction actions.IAction
+
+	userActions, ok := server.actionStates[userType]
+	if !ok {
+		logger.Err("requestActionHandler() => action %s user not supported, request: %v", userType, req)
+		return nil, status.Error(codes.Code(future.BadRequest), "User Action Invalid")
+	}
+
+	for _, action := range userActions {
+		if action.ActionEnum().ActionName() == req.Meta.Action.ActionState {
+			userAction = action
+			break
+		}
+	}
+
+	if userAction == nil {
+		logger.Err("requestActionHandler() => %s action invalid, request: %v", req.Meta.Action.ActionState, req)
+		return nil, status.Error(codes.Code(future.BadRequest), "Action Invalid")
+	}
+
+	var reqActionData pb.ActionData
+	if err := ptypes.UnmarshalAny(req.Data, &reqActionData); err != nil {
+		logger.Err("Could not unmarshal reqActionData from request anything field, request: %v, error %s", req, err)
+		return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
+	}
+
+	subpackages := make([]events.ActionSubpackage, 0, len(reqActionData.Subpackages))
+	for _, reqSubpackage := range reqActionData.Subpackages {
+		subpackage := events.ActionSubpackage{
+			SId: reqSubpackage.SID,
+		}
+		subpackage.Items = make([]events.ActionItem, 0, len(reqSubpackage.Items))
+		for _, item := range reqSubpackage.Items {
+			actionItem := events.ActionItem{
+				InventoryId: item.InventoryId,
+				Quantity:    item.Quantity,
+			}
+			if item.Reasons != nil {
+				actionItem.Reasons = make([]string, 0, len(item.Reasons))
+				for _, reason := range item.Reasons {
+					actionItem.Reasons = append(actionItem.Reasons, reason)
+				}
+			}
+			subpackage.Items = append(subpackage.Items, actionItem)
+		}
+		subpackages = append(subpackages, subpackage)
+	}
+
+	actionData := events.ActionData{
+		SubPackages:    subpackages,
+		Carrier:        reqActionData.Carrier,
+		TrackingNumber: reqActionData.TrackingNumber,
+	}
+
+	event := events.New(events.Action, req.Meta.OID, req.Meta.PID, req.Meta.UID,
+		req.Meta.Action.StateIndex, userAction,
+		time.Unix(req.Time.GetSeconds(), int64(req.Time.GetNanos())), actionData)
+
+	iFuture := future.Factory().SetCapacity(1).Build()
+	iFrame := frame.Factory().SetFuture(iFuture).SetEvent(event).Build()
+	server.flowManager.MessageHandler(ctx, iFrame)
+	futureData := iFuture.Get()
+	if futureData.Error() != nil {
+		return nil, status.Error(codes.Code(futureData.Error().Code()), futureData.Error().Message())
+	}
+
+	eventResponse := futureData.Data().(events.ActionResponse)
+
+	actionResponse := &pb.ActionResponse{
+		OID:  eventResponse.OrderId,
+		SIDs: eventResponse.SIds,
+	}
+
+	serializedResponse, err := proto.Marshal(actionResponse)
+	if err != nil {
+		logger.Err("could not serialize timestamp")
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "ActionResponse",
+		Meta:   nil,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(actionResponse),
+			Value:   serializedResponse,
+		},
+	}
+
+	return response, nil
+}
+
+func (server *Server) sellerOrderListHandler(ctx context.Context, pid uint64, filter FilterValue, page, perPage uint32,
+	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
+	if page <= 0 || perPage <= 0 {
+		logger.Err("sellerOrderListHandler() => page or perPage invalid, pid: %d, filterValue: %s, page: %d, perPage: %d", pid, filter, page, perPage)
+		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
+	}
+
+	genFilter := server.generatePipelineFilter(ctx, filter)
+	filters := make(bson.M, 3)
+	filters["packages.pid"] = pid
+	filters["packages.deletedAt"] = nil
+	filters[genFilter[0].(string)] = genFilter[1]
+	countFilter := func() interface{} {
+
+		return []bson.M{
+			{"$match": filters},
+			{"$unwind": "$packages"},
+			{"$match": filters},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	var totalCount, err = app.Globals.PkgItemRepository.CountWithFilter(ctx, countFilter)
+	if err != nil {
+		logger.Err("sellerOrderListHandler() => CountWithFilter failed,  pid: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	if totalCount == 0 {
+		logger.Err("sellerOrderListHandler() => total count is zero,  pid: %d, filterValue: %s, page: %d, perPage: %d", pid, filter, page, perPage)
+		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	}
+
+	// total 160 page=6 perPage=30
+	var availablePages int64
+
+	if totalCount%int64(perPage) != 0 {
+		availablePages = (totalCount / int64(perPage)) + 1
+	} else {
+		availablePages = totalCount / int64(perPage)
+	}
+
+	if totalCount < int64(perPage) {
+		availablePages = 1
+	}
+
+	if availablePages < int64(page) {
+		logger.Err("sellerOrderListHandler() => availablePages less than page, availablePages: %d, pid: %d, filterValue: %s, page: %d, perPage: %d", availablePages, pid, filter, page, perPage)
+		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	}
+
+	var offset = (page - 1) * perPage
+	if int64(offset) >= totalCount {
+		logger.Err("sellerOrderListHandler() => offset invalid, offset: %d, pid: %d, filterValue: %s, page: %d, perPage: %d", offset, pid, filter, page, perPage)
+		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	}
+
+	var sortDirect int
+	if direction == "ASC" {
+		sortDirect = 1
+	} else {
+		sortDirect = -1
+	}
+
+	pkgFilter := func() interface{} {
+		return []bson.M{
+			{"$match": filters},
+			{"$unwind": "$packages"},
+			{"$match": filters},
+			{"$project": bson.M{"_id": 0, "packages": 1}},
+			{"$sort": bson.M{"packages.subpackages." + sortName: sortDirect}},
+			{"$skip": offset},
+			{"$limit": perPage},
+			{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+		}
+	}
+
+	pkgList, err := app.Globals.PkgItemRepository.FindByFilter(ctx, pkgFilter)
+	if err != nil {
+		logger.Err("sellerOrderListHandler() => FindByFilter failed, pid: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	itemList := make([]*pb.SellerOrderList_ItemList, 0, perPage)
+
+	for _, pkgItem := range pkgList {
+		sellerOrderItem := &pb.SellerOrderList_ItemList{
+			OID:       pkgItem.OrderId,
+			RequestAt: pkgItem.CreatedAt.Format(ISO8601),
+			Amount:    pkgItem.Invoice.Subtotal,
+		}
+		itemList = append(itemList, sellerOrderItem)
+	}
+
+	sellerOrderList := &pb.SellerOrderList{
+		PID:   pid,
+		Items: itemList,
+	}
+
+	serializedData, err := proto.Marshal(sellerOrderList)
+	if err != nil {
+		logger.Err("could not serialize timestamp")
+	}
+
+	meta := &pb.ResponseMetadata{
+		Total:   uint32(availablePages),
+		Page:    page,
+		PerPage: perPage,
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "SellerOrderList",
+		Meta:   meta,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(sellerOrderList),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
+// todo refactor to support projection
+func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId uint64, filter FilterValue) (*pb.MessageResponse, error) {
+	order, err := app.Globals.OrderRepository.FindById(ctx, orderId)
+	if err != nil {
+		logger.Err("sellerOrderDetailHandler() => PkgItemRepository.FindById failed, orderId: %d, pid: %d, filter:%s , error: %s", orderId, pid, filter, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	var pkgItem entities.PackageItem
+	for i := 0; i < len(order.Packages); i++ {
+		if order.Packages[i].PId == pid {
+			pkgItem = order.Packages[i]
+			break
+		}
+	}
+
+	sellerOrderDetailItems := make([]*pb.SellerOrderDetail_ItemDetail, 0, 32)
+	for i := 0; i < len(pkgItem.Subpackages); i++ {
+		for _, state := range server.filterStates[filter] {
+			if pkgItem.Subpackages[i].Status == state.StateName() {
+				for j := 0; j < len(pkgItem.Subpackages[i].Items); j++ {
+					itemDetail := &pb.SellerOrderDetail_ItemDetail{
+						SID:         pkgItem.Subpackages[i].SId,
+						Sku:         pkgItem.Subpackages[i].Items[j].SKU,
+						Status:      pkgItem.Subpackages[i].Status,
+						SIdx:        int32(states.FromString(pkgItem.Subpackages[i].Status).StateIndex()),
+						InventoryId: pkgItem.Subpackages[i].Items[j].InventoryId,
+						Title:       pkgItem.Subpackages[i].Items[j].Title,
+						Brand:       pkgItem.Subpackages[i].Items[j].Brand,
+						Category:    pkgItem.Subpackages[i].Items[j].Category,
+						Guaranty:    pkgItem.Subpackages[i].Items[j].Guaranty,
+						Image:       pkgItem.Subpackages[i].Items[j].Image,
+						Returnable:  pkgItem.Subpackages[i].Items[j].Returnable,
+						Quantity:    pkgItem.Subpackages[i].Items[j].Quantity,
+						Attributes:  pkgItem.Subpackages[i].Items[j].Attributes,
+						Invoice: &pb.SellerOrderDetail_ItemDetail_Invoice{
+							Unit:             pkgItem.Subpackages[i].Items[j].Invoice.Unit,
+							Total:            pkgItem.Subpackages[i].Items[j].Invoice.Total,
+							Original:         pkgItem.Subpackages[i].Items[j].Invoice.Original,
+							Special:          pkgItem.Subpackages[i].Items[j].Invoice.Special,
+							Discount:         pkgItem.Subpackages[i].Items[j].Invoice.Discount,
+							SellerCommission: pkgItem.Subpackages[i].Items[j].Invoice.SellerCommission,
+						},
+					}
+					sellerOrderDetailItems = append(sellerOrderDetailItems, itemDetail)
+				}
+			}
+		}
+	}
+
+	sellerOrderDetail := &pb.SellerOrderDetail{
+		OID:       orderId,
+		PID:       pid,
+		Amount:    pkgItem.Invoice.Subtotal,
+		RequestAt: order.CreatedAt.Format(ISO8601),
+		Address: &pb.SellerOrderDetail_ShipmentAddress{
+			FirstName:     order.BuyerInfo.ShippingAddress.FirstName,
+			LastName:      order.BuyerInfo.ShippingAddress.LastName,
+			Address:       order.BuyerInfo.ShippingAddress.Address,
+			Phone:         order.BuyerInfo.ShippingAddress.Phone,
+			Mobile:        order.BuyerInfo.ShippingAddress.Mobile,
+			Country:       order.BuyerInfo.ShippingAddress.Country,
+			City:          order.BuyerInfo.ShippingAddress.City,
+			Province:      order.BuyerInfo.ShippingAddress.Province,
+			Neighbourhood: order.BuyerInfo.ShippingAddress.Neighbourhood,
+			Lat:           "",
+			Long:          "",
+			ZipCode:       order.BuyerInfo.ShippingAddress.ZipCode,
+		},
+		Items: sellerOrderDetailItems,
+	}
+
+	if order.BuyerInfo.ShippingAddress.Location != nil {
+		sellerOrderDetail.Address.Lat = strconv.Itoa(int(order.BuyerInfo.ShippingAddress.Location.Coordinates[0]))
+		sellerOrderDetail.Address.Long = strconv.Itoa(int(order.BuyerInfo.ShippingAddress.Location.Coordinates[1]))
+	}
+
+	serializedData, err := proto.Marshal(sellerOrderDetail)
+	if err != nil {
+		logger.Err("sellerOrderDetailHandler() => could not serialize sellerOrderDetail, sellerOrderDetail: %v, error:%s", sellerOrderDetail, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "SellerOrderDetail",
+		Meta:   nil,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(sellerOrderDetail),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
+// TODO should be refactor and projection pkg
+func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pid uint64, filter FilterValue, page, perPage uint32,
+	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
+	if page <= 0 || perPage <= 0 {
+		logger.Err("sellerOrderReturnDetailListHandler() => page or perPage invalid, pid: %d, filterValue: %s, page: %d, perPage: %d", pid, filter, page, perPage)
+		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
+	}
+	//
+	//countFilter := func() interface{} {
+	//	return []bson.M{
+	//		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil, "packages.subpackages.status": filter}},
+	//		{"$project": bson.M{"subSize": 1}},
+	//		{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
+	//		{"$project": bson.M{"_id": 0, "count": 1}},
+	//	}
 	//}
 	//
-	//logger.Audit("Req RequestNewOrder Buyer.firstName: %v", RequestNewOrder.GetBuyer().GetFirstName())
-	//logger.Audit("Req RequestNewOrder Buyer.lastName: %v", RequestNewOrder.GetBuyer().GetLastName())
-	//logger.Audit("Req RequestNewOrder Buyer.finance: %v", RequestNewOrder.GetBuyer().GetFinance())
-	//logger.Audit("Req RequestNewOrder Buyer.Address: %v", RequestNewOrder.GetBuyer().GetShippingAddress())
-	//
-	//res1 , err1 := json.Marshal(RequestNewOrder)
-	//if err1 != nil {
-	//	logger.Err("json.Marshal failed, %s", err1)
-	//}
-	//
-	//logger.Audit("json request: %s	", res1)
-	//
-	////status.Error(codes.NotFound, "Product Not found")
-	//
-	//st := status.New(codes.InvalidArgument, "invalid username")
-	////desc := "The username must only contain alphanumeric characters"
-	//
-	//validations := []*message.ValidationErr {
-	//	{
-	//		Field: "username",
-	//		Desc: "value2",
-	//	},
-	//	{
-	//		Field: "password",
-	//		Desc: "value2",
-	//	},
-	//}
-	//
-	//errDetails := message.ErrorDetails {
-	//	Validation: validations,
-	//}
-	//
-	////serializedOrder, err := proto.Marshal(&errDetails)
-	////if err != nil {
-	////	logger.Err("could not serialize timestamp")
-	////}
-	////
-	////errors.Data = &any.Any{
-	////TypeUrl: "baman.io/" + proto.MessageName(&errDetails),
-	////Value:   serializedOrder,
-	////}
-	//
-	//st, err := st.WithDetails(&errDetails)
+	//var totalCount, err = app.Globals.PkgItemRepository.CountWithFilter(ctx, countFilter)
 	//if err != nil {
-	//	// If this errored, it will always error
-	//	// here, so better panic so we can figure
-	//	// out why than have this silently passing.
-	//	panic(fmt.Sprintf("Unexpected error attaching metadata: %v", err))
+	//	logger.Err("sellerOrderReturnDetailListHandler() => CountWithFilter failed,  sellerId: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
+	//	return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	//}
 	//
-	//return &message.Response{}, st.Err()
+	//if totalCount == 0 {
+	//	logger.Err("sellerOrderReturnDetailListHandler() => total count is zero,  sellerId: %d, filterValue: %s, page: %d, perPage: %d", pid, filter, page, perPage)
+	//	return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	//}
+	//
+	//// total 160 page=6 perPage=30
+	//var availablePages int64
+	//
+	//if totalCount%int64(perPage) != 0 {
+	//	availablePages = (totalCount / int64(perPage)) + 1
+	//} else {
+	//	availablePages = totalCount / int64(perPage)
+	//}
+	//
+	//if totalCount < int64(perPage) {
+	//	availablePages = 1
+	//}
+	//
+	//if availablePages < int64(page) {
+	//	logger.Err("sellerOrderListHandler() => availablePages less than page, availablePages: %d, sellerId: %d, filterValue: %s, page: %d, perPage: %d", availablePages, pid, filter, page, perPage)
+	//	return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	//}
+	//
+	//var offset = (page - 1) * perPage
+	//if int64(offset) >= totalCount {
+	//	logger.Err("sellerOrderListHandler() => offset invalid, offset: %d, sellerId: %d, filterValue: %s, page: %d, perPage: %d", offset, pid, filter, page, perPage)
+	//	return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	//}
+
+	var sortDirect int
+	if direction == "ASC" {
+		sortDirect = 1
+	} else {
+		sortDirect = -1
+	}
+
+	//pkgFilter := func() interface{} {
+	//	return []bson.M{
+	//		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil, "packages.subpackages.status": filter}},
+	//		{"$unwind": "$packages"},
+	//		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
+	//		{"$project": bson.M{"_id": 0, "packages": 1}},
+	//		{"$sort": bson.M{"packages.subpackages." + sortName: sortDirect}},
+	//		{"$skip": offset},
+	//		{"$limit": perPage},
+	//		{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+	//	}
+	//}
+
+	var returnFilter bson.D
+	if filter == ReturnDeliveredFilter {
+		returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"$or", bson.A{
+			bson.D{{"packages.subpackages.status", states.ReturnDeliveryPending.StateName()}},
+			bson.D{{"packages.subpackages.status", states.ReturnDeliveryDelayed.StateName()}},
+			bson.D{{"packages.subpackages.status", states.ReturnDelivered.StateName()}}}}}
+	} else if filter == DeliveryFailedFilter {
+		returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.filterStates[filter][0].StateName()}}
+	} else if filter == ReturnRequestPendingFilter {
+		returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"$or", bson.A{
+			bson.D{{"packages.subpackages.status", states.ReturnRequestPending.StateName()}},
+			bson.D{{"packages.subpackages.status", states.ReturnRequestRejected.StateName()}}}}}
+	} else {
+		returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"packages.subpackages.status", server.filterStates[filter][0].StateName()}}
+	}
+
+	//genFilter := server.generatePipelineFilter(ctx, filter)
+	//filters := make(bson.M, 3)
+	//filters["packages.pid"] = pid
+	//filters["packages.deletedAt"] = nil
+	//filters[genFilter[0].(string)] = genFilter[1]
+	//pkgFilter := func() (interface{}, string, int) {
+	//	return []bson.M{{"$match": filters}}, sortName, sortDirect
+	//}
+
+	pkgFilter := func() (interface{}, string, int) {
+		return returnFilter, sortName, sortDirect
+	}
+
+	orderList, total, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, pkgFilter, int64(page), int64(perPage))
+	if err != nil {
+		logger.Err("sellerOrderReturnDetailListHandler() => FindByFilter failed, pid: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	filterMap := make(map[string]string, 3)
+	for _, enumState := range server.filterStates[filter] {
+		filterMap[enumState.StateName()] = enumState.StateName()
+	}
+
+	sellerReturnOrderList := make([]*pb.SellerReturnOrderDetailList_ReturnOrderDetail, 0, len(orderList))
+	var itemDetailList []*pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item
+
+	for i := 0; i < len(orderList); i++ {
+		itemDetailList = nil
+		for j := 0; j < len(orderList[i].Packages); j++ {
+			if orderList[i].Packages[j].PId == pid {
+				for z := 0; z < len(orderList[i].Packages[j].Subpackages); z++ {
+					if _, ok := filterMap[orderList[i].Packages[j].Subpackages[z].Status]; ok {
+						itemDetailList = make([]*pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item, 0, len(orderList[i].Packages[j].Subpackages[z].Items))
+						for t := 0; t < len(orderList[i].Packages[j].Subpackages[z].Items); t++ {
+							itemOrder := &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item{
+								SID:    orderList[i].Packages[j].Subpackages[z].SId,
+								Sku:    orderList[i].Packages[j].Subpackages[z].Items[t].SKU,
+								Status: orderList[i].Packages[j].Subpackages[z].Status,
+								SIdx:   int32(states.FromString(orderList[i].Packages[j].Subpackages[z].Status).StateIndex()),
+								Detail: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item_Detail{
+									InventoryId:     orderList[i].Packages[j].Subpackages[z].Items[t].InventoryId,
+									Title:           orderList[i].Packages[j].Subpackages[z].Items[t].Title,
+									Brand:           orderList[i].Packages[j].Subpackages[z].Items[t].Brand,
+									Category:        orderList[i].Packages[j].Subpackages[z].Items[t].Category,
+									Guaranty:        orderList[i].Packages[j].Subpackages[z].Items[t].Guaranty,
+									Image:           orderList[i].Packages[j].Subpackages[z].Items[t].Image,
+									Returnable:      orderList[i].Packages[j].Subpackages[z].Items[t].Returnable,
+									Quantity:        orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
+									Attributes:      orderList[i].Packages[j].Subpackages[z].Items[t].Attributes,
+									ReturnRequestAt: "",
+									ReturnShippedAt: "",
+									Invoice: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item_Detail_Invoice{
+										Unit:             orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit,
+										Total:            orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total,
+										Original:         orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original,
+										Special:          orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special,
+										Discount:         orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount,
+										SellerCommission: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.SellerCommission,
+										Currency:         orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Currency,
+									},
+								},
+							}
+
+							if orderList[i].Packages[j].Subpackages[z].Shipments != nil &&
+								orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail != nil {
+								if orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt != nil {
+									itemOrder.Detail.ReturnRequestAt = orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt.Format(ISO8601)
+								}
+								if orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.ShippedAt != nil {
+									itemOrder.Detail.ReturnShippedAt = orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.ShippedAt.Format(ISO8601)
+								}
+							}
+
+							itemDetailList = append(itemDetailList, itemOrder)
+						}
+					}
+				}
+
+				if itemDetailList != nil {
+					returnOrderDetail := &pb.SellerReturnOrderDetailList_ReturnOrderDetail{
+						OID:       orderList[i].Packages[j].OrderId,
+						Amount:    orderList[i].Packages[j].Invoice.Subtotal,
+						RequestAt: orderList[i].Packages[j].CreatedAt.Format(ISO8601),
+						Items:     itemDetailList,
+						Address: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_ShipmentAddress{
+							FirstName:     orderList[i].BuyerInfo.ShippingAddress.FirstName,
+							LastName:      orderList[i].BuyerInfo.ShippingAddress.LastName,
+							Address:       orderList[i].BuyerInfo.ShippingAddress.Address,
+							Phone:         orderList[i].BuyerInfo.ShippingAddress.Phone,
+							Mobile:        orderList[i].BuyerInfo.ShippingAddress.Mobile,
+							Country:       orderList[i].BuyerInfo.ShippingAddress.Country,
+							City:          orderList[i].BuyerInfo.ShippingAddress.City,
+							Province:      orderList[i].BuyerInfo.ShippingAddress.Province,
+							Neighbourhood: orderList[i].BuyerInfo.ShippingAddress.Neighbourhood,
+							Lat:           "",
+							Long:          "",
+							ZipCode:       orderList[i].BuyerInfo.ShippingAddress.ZipCode,
+						},
+					}
+					if orderList[i].BuyerInfo.ShippingAddress.Location != nil {
+						returnOrderDetail.Address.Lat = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[0]))
+						returnOrderDetail.Address.Long = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[1]))
+					}
+					sellerReturnOrderList = append(sellerReturnOrderList, returnOrderDetail)
+				} else {
+					logger.Err("sellerOrderReturnDetailListHandler() => get item from orderList failed, orderId: %d pid: %d, filterValue: %s, page: %d, perPage: %d", orderList[i].OrderId, pid, filter, page, perPage)
+				}
+			}
+		}
+	}
+
+	sellerReturnOrderDetailList := &pb.SellerReturnOrderDetailList{
+		PID:               pid,
+		ReturnOrderDetail: sellerReturnOrderList,
+	}
+
+	serializedData, err := proto.Marshal(sellerReturnOrderDetailList)
+	if err != nil {
+		logger.Err("sellerOrderDetailHandler() => could not serialize sellerReturnOrderDetailList, sellerReturnOrderDetailList: %v, error:%s", sellerReturnOrderDetailList, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "SellerReturnOrderDetailList",
+		Meta: &pb.ResponseMetadata{
+			Total:   uint32(total),
+			Page:    page,
+			PerPage: perPage,
+		},
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(sellerReturnOrderDetailList),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
+func (server *Server) buyerOrderDetailHandler(ctx context.Context, userId uint64, page, perPage uint32,
+	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
+	if page <= 0 || perPage <= 0 {
+		logger.Err("buyerOrderDetailHandler() => page or perPage invalid, userId: %d, page: %d, perPage: %d", userId, page, perPage)
+		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
+	}
+
+	var sortDirect int
+	if direction == "ASC" {
+		sortDirect = 1
+	} else {
+		sortDirect = -1
+	}
+
+	orderFilter := func() (interface{}, string, int) {
+		return bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}},
+			//{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "order.status": bson.M{"$or": bson.A{states.OrderInProgressStatus, states.NewOrder}}}}},
+			sortName, sortDirect
+	}
+
+	orderList, total, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+	if err != nil {
+		logger.Err("sellerOrderReturnDetailListHandler() => FindByFilter failed, userId: %d, page: %d, perPage: %d, error: %s", userId, page, perPage, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	orderDetailList := make([]*pb.BuyerOrderDetailList_OrderDetail, 0, len(orderList))
+	for i := 0; i < len(orderList); i++ {
+		packageDetailList := make([]*pb.BuyerOrderDetailList_OrderDetail_Package, 0, len(orderList[i].Packages))
+		for j := 0; j < len(orderList[i].Packages); j++ {
+			for z := 0; z < len(orderList[i].Packages[j].Subpackages); z++ {
+				itemPackageDetailList := make([]*pb.BuyerOrderDetailList_OrderDetail_Package_Item, 0, len(orderList[i].Packages[j].Subpackages[z].Items))
+				for t := 0; t < len(orderList[i].Packages[j].Subpackages[z].Items); t++ {
+					itemPackageDetail := &pb.BuyerOrderDetailList_OrderDetail_Package_Item{
+						SID:                orderList[i].Packages[j].Subpackages[z].SId,
+						Status:             orderList[i].Packages[j].Subpackages[z].Status,
+						SIdx:               int32(states.FromString(orderList[i].Packages[j].Subpackages[z].Status).StateIndex()),
+						IsCancelable:       false,
+						IsReturnable:       false,
+						IsReturnCancelable: false,
+						InventoryId:        orderList[i].Packages[j].Subpackages[z].Items[t].InventoryId,
+						Title:              orderList[i].Packages[j].Subpackages[z].Items[t].Title,
+						Brand:              orderList[i].Packages[j].Subpackages[z].Items[t].Brand,
+						Image:              orderList[i].Packages[j].Subpackages[z].Items[t].Image,
+						Returnable:         orderList[i].Packages[j].Subpackages[z].Items[t].Returnable,
+						Quantity:           orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
+						Attributes:         orderList[i].Packages[j].Subpackages[z].Items[t].Attributes,
+						Invoice: &pb.BuyerOrderDetailList_OrderDetail_Package_Item_Invoice{
+							Unit:     orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit,
+							Total:    orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total,
+							Original: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original,
+							Special:  orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special,
+							Discount: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount,
+							Currency: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Currency,
+						},
+					}
+					if itemPackageDetail.Status == states.ApprovalPending.StateName() ||
+						itemPackageDetail.Status == states.ShipmentPending.StateName() ||
+						itemPackageDetail.Status == states.ShipmentDelayed.StateName() {
+						itemPackageDetail.IsCancelable = true
+
+					} else if itemPackageDetail.Status == states.Delivered.StateName() {
+						itemPackageDetail.IsReturnable = true
+
+					} else if itemPackageDetail.Status == states.ReturnRequestPending.StateName() {
+						itemPackageDetail.IsReturnCancelable = true
+					}
+
+					itemPackageDetailList = append(itemPackageDetailList, itemPackageDetail)
+				}
+
+				packageDetail := &pb.BuyerOrderDetailList_OrderDetail_Package{
+					PID:          orderList[i].Packages[j].PId,
+					ShopName:     orderList[i].Packages[j].ShopName,
+					Items:        itemPackageDetailList,
+					ShipmentInfo: nil,
+				}
+
+				if orderList[i].Packages[j].Subpackages[z].Shipments != nil &&
+					orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail != nil {
+					packageDetail.ShipmentInfo = &pb.BuyerOrderDetailList_OrderDetail_Package_Shipment{
+						DeliveryAt:     "",
+						ShippedAt:      orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601),
+						ShipmentAmount: orderList[i].Packages[j].ShipmentSpec.ShippingCost,
+						CarrierName:    orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.CarrierName,
+						TrackingNumber: orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.TrackingNumber,
+					}
+
+					packageDetail.ShipmentInfo.DeliveryAt = orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.
+						Add(time.Duration(orderList[i].Packages[j].ShipmentSpec.ShippingTime) * time.Hour).Format(ISO8601)
+				}
+
+				packageDetailList = append(packageDetailList, packageDetail)
+			}
+		}
+
+		orderDetail := &pb.BuyerOrderDetailList_OrderDetail{
+			Address: &pb.BuyerOrderDetailList_OrderDetail_BuyerAddress{
+				FirstName:     orderList[i].BuyerInfo.ShippingAddress.FirstName,
+				LastName:      orderList[i].BuyerInfo.ShippingAddress.LastName,
+				Address:       orderList[i].BuyerInfo.ShippingAddress.Address,
+				Phone:         orderList[i].BuyerInfo.ShippingAddress.Phone,
+				Mobile:        orderList[i].BuyerInfo.ShippingAddress.Mobile,
+				Country:       orderList[i].BuyerInfo.ShippingAddress.Country,
+				City:          orderList[i].BuyerInfo.ShippingAddress.City,
+				Province:      orderList[i].BuyerInfo.ShippingAddress.Province,
+				Neighbourhood: orderList[i].BuyerInfo.ShippingAddress.Neighbourhood,
+				Lat:           "",
+				Long:          "",
+				ZipCode:       orderList[i].BuyerInfo.ShippingAddress.ZipCode,
+			},
+			PackageCount:     int32(len(orderList[i].Packages)),
+			TotalAmount:      orderList[i].Invoice.Subtotal,
+			PayableAmount:    orderList[i].Invoice.GrandTotal,
+			Discounts:        orderList[i].Invoice.Discount,
+			ShipmentAmount:   orderList[i].Invoice.ShipmentTotal,
+			IsPaymentSuccess: false,
+			RequestAt:        orderList[i].CreatedAt.Format(ISO8601),
+			Packages:         packageDetailList,
+		}
+		if orderList[i].BuyerInfo.ShippingAddress.Location != nil {
+			orderDetail.Address.Lat = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[0]))
+			orderDetail.Address.Long = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[1]))
+		}
+
+		if orderList[i].PaymentService != nil && orderList[i].PaymentService[0].PaymentResult != nil {
+			orderDetail.IsPaymentSuccess = orderList[i].PaymentService[0].PaymentResult.Result
+		}
+
+		orderDetailList = append(orderDetailList, orderDetail)
+	}
+
+	buyerOrderDetailList := &pb.BuyerOrderDetailList{
+		BuyerId:      userId,
+		OrderDetails: orderDetailList,
+	}
+
+	serializedData, err := proto.Marshal(buyerOrderDetailList)
+	if err != nil {
+		logger.Err("buyerOrderDetailHandler() => could not serialize buyerOrderDetailList, userId: %d, error:%s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "buyerOrderDetailList",
+		Meta: &pb.ResponseMetadata{
+			Total:   uint32(total),
+			Page:    page,
+			PerPage: perPage,
+		},
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(buyerOrderDetailList),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
+func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
+
+	returnRequestPendingFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ReturnRequestPending.StateName()},
+				bson.M{"packages.subpackages.status": states.ReturnRequestRejected.StateName()}}}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ReturnRequestPending.StateName()},
+				bson.M{"packages.subpackages.status": states.ReturnRequestRejected.StateName()}},
+				"packages.deletedAt": nil}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	returnShipmentPendingFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnShipmentPending.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.subpackages.status": states.ReturnShipmentPending.StateName(), "packages.deletedAt": nil}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	returnShippedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnShipped.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.subpackages.status": states.ReturnShipped.StateName(), "packages.deletedAt": nil}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	// TODO check correct result
+	returnDeliveredFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ReturnDelivered.StateName()},
+				bson.M{"packages.subpackages.status": states.ReturnDeliveryDelayed.StateName()},
+				bson.M{"packages.subpackages.status": states.ReturnDeliveryPending.StateName()}}}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ReturnDelivered.StateName()},
+				bson.M{"packages.subpackages.status": states.ReturnDeliveryDelayed.StateName()},
+				bson.M{"packages.subpackages.status": states.ReturnDeliveryPending.StateName()}},
+				"packages.deletedAt": nil}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	// TODO check correct result
+	returnDeliveryFailedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnDeliveryFailed.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.subpackages.status": states.ReturnDeliveryFailed.StateName(), "packages.deletedAt": nil}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	returnRequestPendingCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnRequestPendingFilter)
+	if err != nil {
+		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnRequestPendingFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnShipmentPendingCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnShipmentPendingFilter)
+	if err != nil {
+		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnShipmentPendingFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnShippedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnShippedFilter)
+	if err != nil {
+		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnShippedFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnDeliveredCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnDeliveredFilter)
+	if err != nil {
+		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnDeliveredFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnDeliveryFailedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnDeliveryFailedFilter)
+	if err != nil {
+		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnDeliveryFailedFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	buyerReturnOrderReports := &pb.BuyerReturnOrderReports{
+		BuyerId:               userId,
+		ReturnRequestPending:  int32(returnRequestPendingCount),
+		ReturnShipmentPending: int32(returnShipmentPendingCount),
+		ReturnShipped:         int32(returnShippedCount),
+		ReturnDelivered:       int32(returnDeliveredCount),
+		ReturnDeliveryFailed:  int32(returnDeliveryFailedCount),
+	}
+
+	serializedData, err := proto.Marshal(buyerReturnOrderReports)
+	if err != nil {
+		logger.Err("buyerReturnOrderReportsHandler() => could not serialize buyerReturnOrderReports, userId: %d, error:%s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "BuyerReturnOrderReports",
+		Meta:   nil,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(buyerReturnOrderReports),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
+func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, userId uint64, filter FilterValue, page, perPage uint32,
+	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
+	if page <= 0 || perPage <= 0 {
+		logger.Err("buyerReturnOrderDetailListHandler() => page or perPage invalid, userId: %d, filter: %s, page: %d, perPage: %d", userId, filter, page, perPage)
+		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
+	}
+
+	var sortDirect int
+	if direction == "ASC" {
+		sortDirect = 1
+	} else {
+		sortDirect = -1
+	}
+
+	var returnFilter bson.D
+	if filter == ReturnDeliveredFilter {
+		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
+			bson.D{{"packages.subpackages.status", states.ReturnDeliveryPending.StateName()}},
+			bson.D{{"packages.subpackages.status", states.ReturnDeliveryDelayed.StateName()}},
+			bson.D{{"packages.subpackages.status", states.ReturnDelivered.StateName()}}}}}
+	} else if filter == DeliveryFailedFilter {
+		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.filterStates[filter][0].StateName()}}
+	} else if filter == ReturnRequestPendingFilter {
+		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
+			bson.D{{"packages.subpackages.status", states.ReturnRequestPending.StateName()}},
+			bson.D{{"packages.subpackages.status", states.ReturnRequestRejected.StateName()}}}}}
+	} else {
+		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"packages.subpackages.status", server.filterStates[filter][0].StateName()}}
+	}
+
+	//genFilter := server.generatePipelineFilter(ctx, filter)
+	//filters := make(bson.M, 3)
+	//filters["buyerInfo.buyerId"] = userId
+	//filters["deletedAt"] = nil
+	//filters[genFilter[0].(string)] = genFilter[1]
+	orderFilter := func() (interface{}, string, int) {
+		return returnFilter, sortName, sortDirect
+	}
+
+	orderList, total, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+	if err != nil {
+		logger.Err("buyerReturnOrderDetailListHandler() => FindByFilter failed, userId: %d, filter: %s, page: %d, perPage: %d, error: %s", userId, filter, page, perPage, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnOrderDetailList := make([]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail, 0, len(orderList))
+	for i := 0; i < len(orderList); i++ {
+		returnPackageDetailList := make([]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail, 0, len(orderList[i].Packages))
+		for j := 0; j < len(orderList[i].Packages); j++ {
+			for z := 0; z < len(orderList[i].Packages[j].Subpackages); z++ {
+				returnItemPackageDetailList := make([]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item, 0, len(orderList[i].Packages[j].Subpackages[z].Items))
+				for t := 0; t < len(orderList[i].Packages[j].Subpackages[z].Items); t++ {
+					returnItemPackageDetail := &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item{
+						SID:             orderList[i].Packages[j].Subpackages[z].SId,
+						Status:          orderList[i].Packages[j].Subpackages[z].Status,
+						SIdx:            int32(states.FromString(orderList[i].Packages[j].Subpackages[z].Status).StateIndex()),
+						IsCancelable:    false,
+						IsAccepted:      false,
+						InventoryId:     orderList[i].Packages[j].Subpackages[z].Items[t].InventoryId,
+						Title:           orderList[i].Packages[j].Subpackages[z].Items[t].Title,
+						Brand:           orderList[i].Packages[j].Subpackages[z].Items[t].Brand,
+						Image:           orderList[i].Packages[j].Subpackages[z].Items[t].Image,
+						Returnable:      orderList[i].Packages[j].Subpackages[z].Items[t].Returnable,
+						Quantity:        orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
+						Attributes:      orderList[i].Packages[j].Subpackages[z].Items[t].Attributes,
+						Reason:          "",
+						ReturnRequestAt: "",
+						Invoice: &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Invoice{
+							Unit:     orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit,
+							Total:    orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total,
+							Original: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original,
+							Special:  orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special,
+							Discount: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount,
+							Currency: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Currency,
+						},
+					}
+
+					if orderList[i].Packages[j].Subpackages[z].Items[t].Reasons != nil {
+						returnItemPackageDetail.Reason = orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0]
+					}
+
+					if orderList[i].Packages[j].Subpackages[z].Shipments != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt != nil {
+						returnItemPackageDetail.ReturnRequestAt = orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt.Format(ISO8601)
+					}
+
+					if returnItemPackageDetail.Status == states.ReturnRequestPending.StateName() {
+						returnItemPackageDetail.IsCancelable = true
+
+					} else if returnItemPackageDetail.Status == states.ReturnShipmentPending.StateName() {
+						returnItemPackageDetail.IsAccepted = true
+
+					}
+
+					returnItemPackageDetailList = append(returnItemPackageDetailList, returnItemPackageDetail)
+				}
+
+				returnPackageDetail := &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail{
+					PID:      orderList[i].Packages[j].PId,
+					ShopName: orderList[i].Packages[j].ShopName,
+					Mobile:   "",
+					Phone:    "",
+					Shipment: nil,
+					Items:    returnItemPackageDetailList,
+				}
+
+				if orderList[i].Packages[j].SellerInfo != nil {
+					if orderList[i].Packages[j].SellerInfo.ReturnInfo != nil {
+						returnPackageDetail.Shipment = &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_SellerReturnShipment{
+							Country:      orderList[i].Packages[j].SellerInfo.ReturnInfo.Country,
+							Province:     orderList[i].Packages[j].SellerInfo.ReturnInfo.Province,
+							City:         orderList[i].Packages[j].SellerInfo.ReturnInfo.City,
+							Neighborhood: orderList[i].Packages[j].SellerInfo.ReturnInfo.Neighborhood,
+							Address:      orderList[i].Packages[j].SellerInfo.ReturnInfo.PostalAddress,
+							ZipCode:      orderList[i].Packages[j].SellerInfo.ReturnInfo.PostalCode}
+					}
+					if orderList[i].Packages[j].SellerInfo.GeneralInfo != nil {
+						returnPackageDetail.Mobile = orderList[i].Packages[j].SellerInfo.GeneralInfo.MobilePhone
+						returnPackageDetail.Phone = orderList[i].Packages[j].SellerInfo.GeneralInfo.LandPhone
+					}
+				}
+
+				returnPackageDetailList = append(returnPackageDetailList, returnPackageDetail)
+			}
+		}
+
+		returnOrderDetail := &pb.BuyerReturnOrderDetailList_ReturnOrderDetail{
+			OID:                 orderList[i].OrderId,
+			CreatedAt:           orderList[i].CreatedAt.Format(ISO8601),
+			TotalAmount:         orderList[i].Invoice.Subtotal,
+			ReturnPackageDetail: returnPackageDetailList,
+		}
+
+		returnOrderDetailList = append(returnOrderDetailList, returnOrderDetail)
+	}
+
+	buyerReturnOrderDetailList := &pb.BuyerReturnOrderDetailList{
+		BuyerId:           userId,
+		ReturnOrderDetail: returnOrderDetailList,
+	}
+
+	serializedData, err := proto.Marshal(buyerReturnOrderDetailList)
+	if err != nil {
+		logger.Err("buyerReturnOrderDetailListHandler() => could not serialize buyerReturnOrderDetailList, userId: %d, filter: %s, error:%s", userId, filter, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "buyerReturnOrderDetailList",
+		Meta: &pb.ResponseMetadata{
+			Total:   uint32(total),
+			Page:    page,
+			PerPage: perPage,
+		},
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(buyerReturnOrderDetailList),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+
 }
 
 func (server *Server) PaymentGatewayHook(ctx context.Context, req *pg.PaygateHookRequest) (*pg.PaygateHookResponse, error) {
-	promiseHandler := server.flowManager.PaymentGatewayResult(ctx, req)
-	futureData := promiseHandler.Data()
-	if futureData == nil {
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
+	futureData := server.flowManager.PaymentGatewayResult(ctx, req).Get()
 
-	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
-		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+	if futureData.Error() != nil {
+		return nil, status.Error(codes.Code(futureData.Error().Code()), futureData.Error().Message())
 	}
 
 	return &pg.PaygateHookResponse{Ok: true}, nil
@@ -156,26 +1385,21 @@ func (server *Server) PaymentGatewayHook(ctx context.Context, req *pg.PaygateHoo
 
 func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb.ResponseNewOrder, error) {
 
-	//var request *pb.MessageRequest
-	//var response *pb.MessageResponse
-
-	messageRequest := server.convertNewOrderRequestToMessage(req)
-
 	//ctx, _ = context.WithTimeout(context.Background(), 3*time.Second)
-	promiseHandler := server.flowManager.MessageHandler(ctx, messageRequest)
-	futureData := promiseHandler.Data()
-	if futureData == nil {
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
+
+	iFuture := future.Factory().SetCapacity(1).Build()
+	iFrame := frame.Factory().SetDefaultHeader(frame.HeaderNewOrder, req).SetFuture(iFuture).Build()
+	server.flowManager.MessageHandler(ctx, iFrame)
+	futureData := iFuture.Get()
+
+	if futureData.Error() != nil {
+		futureErr := futureData.Error()
+		return nil, status.Error(codes.Code(futureErr.Code()), futureErr.Message())
 	}
 
-	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
-		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-	}
-
-	callbackUrl, ok := futureData.Data.(string)
+	callbackUrl, ok := futureData.Data().(string)
 	if ok != true {
-		logger.Err("NewOrder received data of futureData invalid, type: %T, value, %v", futureData.Data, futureData.Data)
+		logger.Err("NewOrder received data of futureData invalid, type: %T, value, %v", futureData.Data(), futureData.Data())
 		return nil, status.Error(500, "Unknown Error")
 	}
 
@@ -184,454 +1408,455 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 	}
 
 	return &responseNewOrder, nil
-
 }
 
 // TODO Add checking acl
-func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseSellerFindAllItems, error) {
-
-	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
-	if err != nil {
-		logger.Err("SellerFindAllItems() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
-
-	if strconv.Itoa(int(userAcl.User().UserID)) != req.Id {
-		logger.Err(" SellerFindAllItems() => token userId %d not authorized for sellerId %s", userAcl.User().UserID, req.Id)
-		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
-	}
-
-	sellerId, err := strconv.Atoi(req.Id)
-	if err != nil {
-		logger.Err(" SellerFindAllItems() => sellerId invalid: %s", req.Id)
-		return nil, status.Error(codes.Code(promise.BadRequest), "SellerId Invalid")
-	}
-
-	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
-		return bson.D{{"items.sellerInfo.sellerId", uint64(sellerId)}}
-	})
-
-	if err != nil {
-		logger.Err("SellerFindAllItems failed, sellerId: %s, error: %s", req.Id, err.Error())
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
-
-	sellerItemMap := make(map[string]*pb.SellerFindAllItems, 16)
-
-	for _, order := range orders {
-		for _, orderItem := range order.Items {
-			if strconv.Itoa(int(orderItem.SellerInfo.SellerId)) == req.Id {
-				if _, ok := sellerItemMap[orderItem.InventoryId]; !ok {
-					newResponseItem := &pb.SellerFindAllItems{
-						OrderId:     order.OrderId,
-						ItemId:      orderItem.ItemId,
-						InventoryId: orderItem.InventoryId,
-						Title:       orderItem.Title,
-						Image:       orderItem.Image,
-						Returnable:  orderItem.Returnable,
-						Status: &pb.Status{
-							OrderStatus: order.Status,
-							ItemStatus:  orderItem.Status,
-							StepStatus:  "none",
-						},
-						CreatedAt:  orderItem.CreatedAt.Format(ISO8601),
-						UpdatedAt:  orderItem.UpdatedAt.Format(ISO8601),
-						Quantity:   orderItem.Quantity,
-						Attributes: orderItem.Attributes,
-						Price: &pb.SellerFindAllItems_Price{
-							Unit:             orderItem.Price.Unit,
-							Total:            orderItem.Price.Original,
-							SellerCommission: orderItem.Price.SellerCommission,
-							Currency:         orderItem.Price.Currency,
-						},
-						DeliveryAddress: &pb.Address{
-							FirstName:     order.BuyerInfo.ShippingAddress.FirstName,
-							LastName:      order.BuyerInfo.ShippingAddress.LastName,
-							Address:       order.BuyerInfo.ShippingAddress.Address,
-							Phone:         order.BuyerInfo.ShippingAddress.Phone,
-							Mobile:        order.BuyerInfo.ShippingAddress.Mobile,
-							Country:       order.BuyerInfo.ShippingAddress.Country,
-							City:          order.BuyerInfo.ShippingAddress.City,
-							Province:      order.BuyerInfo.ShippingAddress.Province,
-							Neighbourhood: order.BuyerInfo.ShippingAddress.Neighbourhood,
-							ZipCode:       order.BuyerInfo.ShippingAddress.ZipCode,
-						},
-					}
-
-					if order.BuyerInfo.ShippingAddress.Location != nil {
-						newResponseItem.DeliveryAddress.Lat = fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[1])
-						newResponseItem.DeliveryAddress.Long = fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[0])
-					}
-
-					lastStep := orderItem.Progress.StepsHistory[len(orderItem.Progress.StepsHistory)-1]
-					if lastStep.ActionHistory != nil {
-						lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
-						newResponseItem.Status.StepStatus = lastAction.Name
-					} else {
-						newResponseItem.Status.StepStatus = "none"
-						logger.Audit("SellerFindAllItems() => Action History is nil, orderId: %d, itemId: %d", order.OrderId, orderItem.ItemId)
-					}
-
-					sellerItemMap[orderItem.InventoryId] = newResponseItem
-				}
-			}
-		}
-	}
-
-	var response = pb.ResponseSellerFindAllItems{}
-	response.Items = make([]*pb.SellerFindAllItems, 0, len(sellerItemMap))
-
-	for _, item := range sellerItemMap {
-		response.Items = append(response.Items, item)
-	}
-
-	return &response, nil
-}
-
-// TODO Add checking acl
-func (server Server) BuyerOrderAction(ctx context.Context, req *pb.RequestBuyerOrderAction) (*pb.ResponseBuyerOrderAction, error) {
-
-	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
-	if err != nil {
-		logger.Err("BuyerOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
-
-	if userAcl.User().UserID != int64(req.BuyerId) {
-		logger.Err(" BuyerOrderAction() => token userId %d not authorized for buyerId %d", userAcl.User().UserID, req.BuyerId)
-		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
-	}
-
-	promiseHandler := server.flowManager.BuyerApprovalPending(ctx, req)
-	futureData := promiseHandler.Data()
-	if futureData == nil {
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
-
-	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
-		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-	}
-
-	return &pb.ResponseBuyerOrderAction{Result: true}, nil
-}
+//func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseSellerFindAllItems, error) {
+//
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
+//	if err != nil {
+//		logger.Err("SellerFindAllItems() => UserService.AuthenticateContextToken failed, error: %s ", err)
+//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	if strconv.Itoa(int(userAcl.User().UserID)) != req.Id {
+//		logger.Err(" SellerFindAllItems() => token userId %d not authorized for sellerId %s", userAcl.User().UserID, req.Id)
+//		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
+//	}
+//
+//	sellerId, err := strconv.Atoi(req.Id)
+//	if err != nil {
+//		logger.Err(" SellerFindAllItems() => sellerId invalid: %s", req.Id)
+//		return nil, status.Error(codes.Code(future.BadRequest), "PID Invalid")
+//	}
+//
+//	orders, err := app.Globals.OrderRepository.FindByFilter(func() interface{} {
+//		return bson.D{{"items.sellerInfo.sellerId", uint64(sellerId)}}
+//	})
+//
+//	if err != nil {
+//		logger.Err("SellerFindAllItems failed, sellerId: %s, error: %s", req.Id, err.Error())
+//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	sellerItemMap := make(map[string]*pb.SellerFindAllItems, 16)
+//
+//	for _, order := range orders {
+//		for _, orderItem := range order.Items {
+//			if strconv.Itoa(int(orderItem.SellerInfo.PId)) == req.Id {
+//				if _, ok := sellerItemMap[orderItem.InventoryId]; !ok {
+//					newResponseItem := &pb.SellerFindAllItems{
+//						OrderId:     order.OrderId,
+//						ItemId:      orderItem.ItemId,
+//						InventoryId: orderItem.InventoryId,
+//						Title:       orderItem.Title,
+//						Image:       orderItem.Image,
+//						Returnable:  orderItem.Returnable,
+//						Status: &pb.Status{
+//							OrderStatus: order.Status,
+//							ItemStatus:  orderItem.Status,
+//							StepStatus:  "none",
+//						},
+//						CreatedAt:  orderItem.CreatedAt.Format(ISO8601),
+//						UpdatedAt:  orderItem.UpdatedAt.Format(ISO8601),
+//						Quantity:   orderItem.Quantity,
+//						Attributes: orderItem.Attributes,
+//						Price: &pb.SellerFindAllItems_Price{
+//							Unit:             orderItem.Invoice.Unit,
+//							Total:            orderItem.Invoice.Original,
+//							SellerCommission: orderItem.Invoice.SellerCommission,
+//							Currency:         orderItem.Invoice.Currency,
+//						},
+//						DeliveryAddress: &pb.Address{
+//							FirstName:     order.BuyerInfo.ShippingAddress.FirstName,
+//							LastName:      order.BuyerInfo.ShippingAddress.LastName,
+//							Address:       order.BuyerInfo.ShippingAddress.Address,
+//							Phone:         order.BuyerInfo.ShippingAddress.Phone,
+//							Mobile:        order.BuyerInfo.ShippingAddress.Mobile,
+//							Country:       order.BuyerInfo.ShippingAddress.Country,
+//							City:          order.BuyerInfo.ShippingAddress.City,
+//							Province:      order.BuyerInfo.ShippingAddress.Province,
+//							Neighbourhood: order.BuyerInfo.ShippingAddress.Neighbourhood,
+//							ZipCode:       order.BuyerInfo.ShippingAddress.ZipCode,
+//						},
+//					}
+//
+//					if order.BuyerInfo.ShippingAddress.Location != nil {
+//						newResponseItem.DeliveryAddress.Lat = fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[1])
+//						newResponseItem.DeliveryAddress.Long = fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[0])
+//					}
+//
+//					lastStep := orderItem.Progress.StepsHistory[len(orderItem.Progress.StepsHistory)-1]
+//					if lastStep.ActionHistory != nil {
+//						lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
+//						newResponseItem.Status.StepStatus = lastAction.Name
+//					} else {
+//						newResponseItem.Status.StepStatus = "none"
+//						logger.Audit("SellerFindAllItems() => Actions History is nil, orderId: %d, sid: %d", order.OrderId, orderItem.ItemId)
+//					}
+//
+//					sellerItemMap[orderItem.InventoryId] = newResponseItem
+//				}
+//			}
+//		}
+//	}
+//
+//	var response = pb.ResponseSellerFindAllItems{}
+//	response.Items = make([]*pb.SellerFindAllItems, 0, len(sellerItemMap))
+//
+//	for _, item := range sellerItemMap {
+//		response.Items = append(response.Items, item)
+//	}
+//
+//	return &response, nil
+//}
 
 // TODO Add checking acl
-func (server Server) SellerOrderAction(ctx context.Context, req *pb.RequestSellerOrderAction) (*pb.ResponseSellerOrderAction, error) {
-
-	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
-	if err != nil {
-		logger.Err("SellerOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
-
-	if userAcl.User().UserID != int64(req.SellerId) {
-		logger.Err("SellerOrderAction() => token userId %d not authorized for sellerId %d", userAcl.User().UserID, req.SellerId)
-		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
-	}
-
-	promiseHandler := server.flowManager.SellerApprovalPending(ctx, req)
-	futureData := promiseHandler.Data()
-	if futureData == nil {
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
-
-	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
-		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-	}
-
-	return &pb.ResponseSellerOrderAction{Result: true}, nil
-}
+//func (server Server) BuyerOrderAction(ctx context.Context, req *pb.RequestBuyerOrderAction) (*pb.ResponseBuyerOrderAction, error) {
+//
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
+//	if err != nil {
+//		logger.Err("BuyerOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
+//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	if userAcl.User().UserID != int64(req.BuyerId) {
+//		logger.Err(" BuyerOrderAction() => token userId %d not authorized for buyerId %d", userAcl.User().UserID, req.BuyerId)
+//		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
+//	}
+//
+//	promiseHandler := server.flowManager.BuyerApprovalPending(ctx, req)
+//	futureData := promiseHandler.Get()
+//	if futureData == nil {
+//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	if futureData.Ex != nil {
+//		futureErr := futureData.Ex.(future.FutureError)
+//		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+//	}
+//
+//	return &pb.ResponseBuyerOrderAction{Result: true}, nil
+//}
 
 // TODO Add checking acl
-func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseBuyerFindAllOrders, error) {
+//func (server Server) SellerOrderAction(ctx context.Context, req *pb.RequestSellerOrderAction) (*pb.ResponseSellerOrderAction, error) {
+//
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
+//	if err != nil {
+//		logger.Err("SellerOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
+//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	if userAcl.User().UserID != int64(req.PId) {
+//		logger.Err("SellerOrderAction() => token userId %d not authorized for sellerId %d", userAcl.User().UserID, req.PId)
+//		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
+//	}
+//
+//	promiseHandler := server.flowManager.SellerApprovalPending(ctx, req)
+//	futureData := promiseHandler.Get()
+//	if futureData == nil {
+//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	if futureData.Ex != nil {
+//		futureErr := futureData.Ex.(future.FutureError)
+//		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+//	}
+//
+//	return &pb.ResponseSellerOrderAction{Result: true}, nil
+//}
 
-	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
-	if err != nil {
-		logger.Err("BuyerFindAllOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
+// TODO Add checking acl
+//func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseBuyerFindAllOrders, error) {
+//
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
+//	if err != nil {
+//		logger.Err("BuyerFindAllOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
+//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	if strconv.Itoa(int(userAcl.User().UserID)) != req.Id {
+//		logger.Err(" BuyerFindAllOrders() => token userId %d not authorized of buyerId %s", userAcl.User().UserID, req.Id)
+//		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
+//	}
+//
+//	buyerId, err := strconv.Atoi(req.Id)
+//	if err != nil {
+//		logger.Err(" SellerFindAllItems() => buyerId invalid: %s", req.Id)
+//		return nil, status.Error(codes.Code(future.BadRequest), "BuyerId Invalid")
+//	}
+//
+//	orders, err := app.Globals.OrderRepository.FindByFilter(func() interface{} {
+//		return bson.D{{"buyerInfo.buyerId", uint64(buyerId)}}
+//	})
+//
+//	if err != nil {
+//		logger.Err("SellerFindAllItems failed, buyerId: %s, error: %s", req.Id, err.Error())
+//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	var response pb.ResponseBuyerFindAllOrders
+//	responseOrders := make([]*pb.BuyerAllOrders, 0, len(orders))
+//
+//	for _, order := range orders {
+//		responseOrder := &pb.BuyerAllOrders{
+//			OrderId:     order.OrderId,
+//			CreatedAt:   order.CreatedAt.Format(ISO8601),
+//			UpdatedAt:   order.UpdatedAt.Format(ISO8601),
+//			OrderStatus: order.Status,
+//			Amount: &pb.Amount{
+//				Total:         order.Invoice.Total,
+//				Subtotal:      order.Invoice.Subtotal,
+//				Discount:      order.Invoice.Discount,
+//				Currency:      order.Invoice.Currency,
+//				ShipmentTotal: order.Invoice.ShipmentTotal,
+//				PaymentMethod: order.Invoice.PaymentMethod,
+//				PaymentOption: order.Invoice.PaymentGateway,
+//				Voucher: &pb.Voucher{
+//					Amount: order.Invoice.Voucher.Amount,
+//					Code:   order.Invoice.Voucher.Code,
+//				},
+//			},
+//			ShippingAddress: &pb.Address{
+//				FirstName:     order.BuyerInfo.ShippingAddress.FirstName,
+//				LastName:      order.BuyerInfo.ShippingAddress.LastName,
+//				Address:       order.BuyerInfo.ShippingAddress.Address,
+//				Phone:         order.BuyerInfo.ShippingAddress.Phone,
+//				Mobile:        order.BuyerInfo.ShippingAddress.Mobile,
+//				Country:       order.BuyerInfo.ShippingAddress.Country,
+//				City:          order.BuyerInfo.ShippingAddress.City,
+//				Province:      order.BuyerInfo.ShippingAddress.Province,
+//				Neighbourhood: order.BuyerInfo.ShippingAddress.Neighbourhood,
+//			},
+//			Items: make([]*pb.BuyerOrderItems, 0, len(order.Items)),
+//		}
+//
+//		if order.BuyerInfo.ShippingAddress.Location != nil {
+//			responseOrder.ShippingAddress.Lat = fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[1])
+//			responseOrder.ShippingAddress.Long = fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[0])
+//		}
+//
+//		orderItemMap := make(map[string]*pb.BuyerOrderItems, 16)
+//
+//		for _, item := range order.Items {
+//			if _, ok := orderItemMap[item.InventoryId]; !ok {
+//				newResponseOrderItem := &pb.BuyerOrderItems{
+//					InventoryId: item.InventoryId,
+//					Title:       item.Title,
+//					Brand:       item.Brand,
+//					Category:    item.Category,
+//					Guaranty:    item.Guaranty,
+//					Image:       item.Image,
+//					Returnable:  item.Returnable,
+//					PId:    item.SellerInfo.PId,
+//					Quantity:    item.Quantity,
+//					Attributes:  item.Attributes,
+//					ItemStatus:  item.Status,
+//					Price: &pb.BuyerOrderItems_Price{
+//						Unit:     item.Invoice.Unit,
+//						Total:    item.Invoice.Total,
+//						Original: item.Invoice.Original,
+//						Special:  item.Invoice.Special,
+//						Currency: item.Invoice.Currency,
+//					},
+//					Shipment: &pb.BuyerOrderItems_ShipmentSpec{
+//						CarrierName:  item.ShipmentSpec.CarrierName,
+//						ShippingCost: item.ShipmentSpec.ShippingCost,
+//					},
+//				}
+//
+//				lastStep := item.Progress.StepsHistory[len(item.Progress.StepsHistory)-1]
+//
+//				if lastStep.ActionHistory != nil {
+//					lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
+//					newResponseOrderItem.StepStatus = lastAction.Name
+//				} else {
+//					newResponseOrderItem.StepStatus = "none"
+//					logger.Audit("BuyerFindAllOrders() => Actions History is nil, orderId: %d, sid: %d", order.OrderId, item.ItemId)
+//				}
+//				orderItemMap[item.InventoryId] = newResponseOrderItem
+//			}
+//		}
+//
+//		for _, orderItem := range orderItemMap {
+//			responseOrder.Items = append(responseOrder.Items, orderItem)
+//		}
+//
+//		responseOrders = append(responseOrders, responseOrder)
+//	}
+//
+//	response.Orders = responseOrders
+//	return &response, nil
+//}
 
-	if strconv.Itoa(int(userAcl.User().UserID)) != req.Id {
-		logger.Err(" BuyerFindAllOrders() => token userId %d not authorized of buyerId %s", userAcl.User().UserID, req.Id)
-		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
-	}
-
-	buyerId, err := strconv.Atoi(req.Id)
-	if err != nil {
-		logger.Err(" SellerFindAllItems() => buyerId invalid: %s", req.Id)
-		return nil, status.Error(codes.Code(promise.BadRequest), "BuyerId Invalid")
-	}
-
-	orders, err := global.Singletons.OrderRepository.FindByFilter(func() interface{} {
-		return bson.D{{"buyerInfo.buyerId", uint64(buyerId)}}
-	})
-
-	if err != nil {
-		logger.Err("SellerFindAllItems failed, buyerId: %s, error: %s", req.Id, err.Error())
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
-
-	var response pb.ResponseBuyerFindAllOrders
-	responseOrders := make([]*pb.BuyerAllOrders, 0, len(orders))
-
-	for _, order := range orders {
-		responseOrder := &pb.BuyerAllOrders{
-			OrderId:     order.OrderId,
-			CreatedAt:   order.CreatedAt.Format(ISO8601),
-			UpdatedAt:   order.UpdatedAt.Format(ISO8601),
-			OrderStatus: order.Status,
-			Amount: &pb.Amount{
-				Total:         order.Amount.Total,
-				Subtotal:      order.Amount.Subtotal,
-				Discount:      order.Amount.Discount,
-				Currency:      order.Amount.Currency,
-				ShipmentTotal: order.Amount.ShipmentTotal,
-				PaymentMethod: order.Amount.PaymentMethod,
-				PaymentOption: order.Amount.PaymentOption,
-				Voucher: &pb.Voucher{
-					Amount: order.Amount.Voucher.Amount,
-					Code:   order.Amount.Voucher.Code,
-				},
-			},
-			ShippingAddress: &pb.Address{
-				FirstName:     order.BuyerInfo.ShippingAddress.FirstName,
-				LastName:      order.BuyerInfo.ShippingAddress.LastName,
-				Address:       order.BuyerInfo.ShippingAddress.Address,
-				Phone:         order.BuyerInfo.ShippingAddress.Phone,
-				Mobile:        order.BuyerInfo.ShippingAddress.Mobile,
-				Country:       order.BuyerInfo.ShippingAddress.Country,
-				City:          order.BuyerInfo.ShippingAddress.City,
-				Province:      order.BuyerInfo.ShippingAddress.Province,
-				Neighbourhood: order.BuyerInfo.ShippingAddress.Neighbourhood,
-			},
-			Items: make([]*pb.BuyerOrderItems, 0, len(order.Items)),
-		}
-
-		if order.BuyerInfo.ShippingAddress.Location != nil {
-			responseOrder.ShippingAddress.Lat = fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[1])
-			responseOrder.ShippingAddress.Long = fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[0])
-		}
-
-		orderItemMap := make(map[string]*pb.BuyerOrderItems, 16)
-
-		for _, item := range order.Items {
-			if _, ok := orderItemMap[item.InventoryId]; !ok {
-				newResponseOrderItem := &pb.BuyerOrderItems{
-					InventoryId: item.InventoryId,
-					Title:       item.Title,
-					Brand:       item.Brand,
-					Category:    item.Category,
-					Guaranty:    item.Guaranty,
-					Image:       item.Image,
-					Returnable:  item.Returnable,
-					SellerId:    item.SellerInfo.SellerId,
-					Quantity:    item.Quantity,
-					Attributes:  item.Attributes,
-					ItemStatus:  item.Status,
-					Price: &pb.BuyerOrderItems_Price{
-						Unit:     item.Price.Unit,
-						Total:    item.Price.Total,
-						Original: item.Price.Original,
-						Special:  item.Price.Special,
-						Currency: item.Price.Currency,
-					},
-					Shipment: &pb.BuyerOrderItems_ShipmentSpec{
-						CarrierName:  item.ShipmentSpec.CarrierName,
-						ShippingCost: item.ShipmentSpec.ShippingCost,
-					},
-				}
-
-				lastStep := item.Progress.StepsHistory[len(item.Progress.StepsHistory)-1]
-
-				if lastStep.ActionHistory != nil {
-					lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
-					newResponseOrderItem.StepStatus = lastAction.Name
-				} else {
-					newResponseOrderItem.StepStatus = "none"
-					logger.Audit("BuyerFindAllOrders() => Action History is nil, orderId: %d, itemId: %d", order.OrderId, item.ItemId)
-				}
-				orderItemMap[item.InventoryId] = newResponseOrderItem
-			}
-		}
-
-		for _, orderItem := range orderItemMap {
-			responseOrder.Items = append(responseOrder.Items, orderItem)
-		}
-
-		responseOrders = append(responseOrders, responseOrder)
-	}
-
-	response.Orders = responseOrders
-	return &response, nil
-}
-
-func (server Server) convertNewOrderRequestToMessage(req *pb.RequestNewOrder) *pb.MessageRequest {
-
-	serializedOrder, err := proto.Marshal(req)
-	if err != nil {
-		logger.Err("could not serialize timestamp")
-	}
-
-	request := pb.MessageRequest{
-		OrderId: "",
-		//ItemId: orderId + strconv.Itoa(int(entities.GenerateRandomNumber())),
-		Time: ptypes.TimestampNow(),
-		Meta: nil,
-		Data: &any.Any{
-			TypeUrl: "baman.io/" + proto.MessageName(req),
-			Value:   serializedOrder,
-		},
-	}
-
-	return &request
-}
-
-// TODO Add checking acl and authenticate
-func (server Server) BackOfficeOrdersListView(ctx context.Context, req *pb.RequestBackOfficeOrdersList) (*pb.ResponseBackOfficeOrdersList, error) {
-
-	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
-	if err != nil {
-		logger.Err("BackOfficeOrdersListView() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
-
-	// TODO Must Be changed
-	if userAcl.User().UserID <= 0 {
-		logger.Err("BackOfficeOrdersListView() => token userId %d not authorized", userAcl.User().UserID)
-		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
-	}
-
-	promiseHandler := server.flowManager.BackOfficeOrdersListView(ctx, req)
-	futureData := promiseHandler.Data()
-	if futureData == nil {
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
-
-	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
-		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-	}
-
-	return futureData.Data.(*pb.ResponseBackOfficeOrdersList), nil
-}
-
-// TODO Add checking acl and authenticate
-func (server Server) BackOfficeOrderDetailView(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseOrderDetailView, error) {
-
-	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
-	if err != nil {
-		logger.Err("BackOfficeOrderDetailView() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
-
-	// TODO Must Be changed
-	if userAcl.User().UserID <= 0 {
-		logger.Err("BackOfficeOrderDetailView() => token userId %d not authorized", userAcl.User().UserID)
-		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
-	}
-
-	promiseHandler := server.flowManager.BackOfficeOrderDetailView(ctx, req)
-	futureData := promiseHandler.Data()
-	if futureData == nil {
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
-
-	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
-		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-	}
-
-	return futureData.Data.(*pb.ResponseOrderDetailView), nil
-}
+//func (server Server) convertNewOrderRequestToMessage(req *pb.RequestNewOrder) *pb.MessageRequest {
+//
+//	serializedOrder, err := proto.Marshal(req)
+//	if err != nil {
+//		logger.Err("could not serialize timestamp")
+//	}
+//
+//	request := pb.MessageRequest{
+//		Name:   "NewOrder",
+//		Type:   string(DataReqType),
+//		ADT:    "Single",
+//		Method: "GRPC",
+//		Time: ptypes.TimestampNow(),
+//		Meta: nil,
+//		Data: &any.Any{
+//			TypeUrl: "baman.io/" + proto.MessageName(req),
+//			Value:   serializedOrder,
+//		},
+//	}
+//
+//	return &request
+//}
 
 // TODO Add checking acl and authenticate
-func (server Server) BackOfficeOrderAction(ctx context.Context, req *pb.RequestBackOfficeOrderAction) (*pb.ResponseBackOfficeOrderAction, error) {
-
-	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(ctx)
-	if err != nil {
-		logger.Err("BackOfficeOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
-
-	// TODO Must Be changed
-	if userAcl.User().UserID <= 0 {
-		logger.Err("BackOfficeOrderAction() => token userId %d not authorized", userAcl.User().UserID)
-		return nil, status.Error(codes.Code(promise.Forbidden), "User token not authorized")
-	}
-
-	promiseHandler := server.flowManager.OperatorActionPending(ctx, req)
-	futureData := promiseHandler.Data()
-	if futureData == nil {
-		return nil, status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
-
-	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
-		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-	}
-
-	return &pb.ResponseBackOfficeOrderAction{Result: true}, nil
-
-}
-
-// TODO Add checking acl and authenticate
-func (server Server) SellerReportOrders(req *pb.RequestSellerReportOrders, srv pb.OrderService_SellerReportOrdersServer) error {
-
-	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(srv.Context())
-	if err != nil {
-		logger.Err("SellerReportOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
-
-	if userAcl.User().UserID != int64(req.SellerId) {
-		logger.Err(" SellerFindAllItems() => token userId %d not authorized for sellerId %d", userAcl.User().UserID, req.SellerId)
-		return status.Error(codes.Code(promise.Forbidden), "User token not authorized")
-	}
-
-	promiseHandler := server.flowManager.SellerReportOrders(req, srv)
-	futureData := promiseHandler.Data()
-	if futureData == nil {
-		return status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
-
-	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
-		return status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-	}
-
-	return nil
-}
+//func (server Server) BackOfficeOrdersListView(ctx context.Context, req *pb.RequestBackOfficeOrdersList) (*pb.ResponseBackOfficeOrdersList, error) {
+//
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
+//	if err != nil {
+//		logger.Err("BackOfficeOrdersListView() => UserService.AuthenticateContextToken failed, error: %s ", err)
+//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	// TODO Must Be changed
+//	if userAcl.User().UserID <= 0 {
+//		logger.Err("BackOfficeOrdersListView() => token userId %d not authorized", userAcl.User().UserID)
+//		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
+//	}
+//
+//	promiseHandler := server.flowManager.BackOfficeOrdersListView(ctx, req)
+//	futureData := promiseHandler.Get()
+//	if futureData == nil {
+//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	if futureData.Ex != nil {
+//		futureErr := futureData.Ex.(future.FutureError)
+//		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+//	}
+//
+//	return futureData.Data.(*pb.ResponseBackOfficeOrdersList), nil
+//}
 
 // TODO Add checking acl and authenticate
-func (server Server) BackOfficeReportOrderItems(req *pb.RequestBackOfficeReportOrderItems, srv pb.OrderService_BackOfficeReportOrderItemsServer) error {
+//func (server Server) BackOfficeOrderDetailView(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseOrderDetailView, error) {
+//
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
+//	if err != nil {
+//		logger.Err("BackOfficeOrderDetailView() => UserService.AuthenticateContextToken failed, error: %s ", err)
+//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	// TODO Must Be changed
+//	if userAcl.User().UserID <= 0 {
+//		logger.Err("BackOfficeOrderDetailView() => token userId %d not authorized", userAcl.User().UserID)
+//		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
+//	}
+//
+//	promiseHandler := server.flowManager.BackOfficeOrderDetailView(ctx, req)
+//	futureData := promiseHandler.Get()
+//	if futureData == nil {
+//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	if futureData.Ex != nil {
+//		futureErr := futureData.Ex.(future.FutureError)
+//		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+//	}
+//
+//	return futureData.Data.(*pb.ResponseOrderDetailView), nil
+//}
 
-	userAcl, err := global.Singletons.UserService.AuthenticateContextToken(srv.Context())
-	if err != nil {
-		logger.Err("SellerReportOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
+// TODO Add checking acl and authenticate
+//func (server Server) BackOfficeOrderAction(ctx context.Context, req *pb.RequestBackOfficeOrderAction) (*pb.ResponseBackOfficeOrderAction, error) {
+//
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
+//	if err != nil {
+//		logger.Err("BackOfficeOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
+//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	// TODO Must Be changed
+//	if userAcl.User().UserID <= 0 {
+//		logger.Err("BackOfficeOrderAction() => token userId %d not authorized", userAcl.User().UserID)
+//		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
+//	}
+//
+//	promiseHandler := server.flowManager.OperatorActionPending(ctx, req)
+//	futureData := promiseHandler.Get()
+//	if futureData == nil {
+//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	if futureData.Ex != nil {
+//		futureErr := futureData.Ex.(future.FutureError)
+//		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+//	}
+//
+//	return &pb.ResponseBackOfficeOrderAction{Result: true}, nil
+//
+//}
 
-	// TODO Must Be changed
-	if userAcl.User().UserID <= 0 {
-		logger.Err("BackOfficeOrderAction() => token userId %d not authorized", userAcl.User().UserID)
-		return status.Error(codes.Code(promise.Forbidden), "User token not authorized")
-	}
+// TODO Add checking acl and authenticate
+//func (server Server) SellerReportOrders(req *pb.RequestSellerReportOrders, srv pb.OrderService_SellerReportOrdersServer) error {
+//
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(srv.Context())
+//	if err != nil {
+//		logger.Err("SellerReportOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
+//		return status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	if userAcl.User().UserID != int64(req.PId) {
+//		logger.Err(" SellerFindAllItems() => token userId %d not authorized for sellerId %d", userAcl.User().UserID, req.PId)
+//		return status.Error(codes.Code(future.Forbidden), "User token not authorized")
+//	}
+//
+//	promiseHandler := server.flowManager.SellerReportOrders(req, srv)
+//	futureData := promiseHandler.Get()
+//	if futureData == nil {
+//		return status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	if futureData.Ex != nil {
+//		futureErr := futureData.Ex.(future.FutureError)
+//		return status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+//	}
+//
+//	return nil
+//}
 
-	promiseHandler := server.flowManager.BackOfficeReportOrderItems(req, srv)
-	futureData := promiseHandler.Data()
-	if futureData == nil {
-		return status.Error(codes.Code(promise.InternalError), "Unknown Error")
-	}
-
-	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(promise.FutureError)
-		return status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-	}
-
-	return nil
-}
+// TODO Add checking acl and authenticate
+//func (server Server) BackOfficeReportOrderItems(req *pb.RequestBackOfficeReportOrderItems, srv pb.OrderService_BackOfficeReportOrderItemsServer) error {
+//
+//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(srv.Context())
+//	if err != nil {
+//		logger.Err("SellerReportOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
+//		return status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	// TODO Must Be changed
+//	if userAcl.User().UserID <= 0 {
+//		logger.Err("BackOfficeOrderAction() => token userId %d not authorized", userAcl.User().UserID)
+//		return status.Error(codes.Code(future.Forbidden), "User token not authorized")
+//	}
+//
+//	promiseHandler := server.flowManager.BackOfficeReportOrderItems(req, srv)
+//	futureData := promiseHandler.Get()
+//	if futureData == nil {
+//		return status.Error(codes.Code(future.InternalError), "Unknown Error")
+//	}
+//
+//	if futureData.Ex != nil {
+//		futureErr := futureData.Ex.(future.FutureError)
+//		return status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+//	}
+//
+//	return nil
+//}
 
 func (server Server) Start() {
 	//addGrpcStateRule()

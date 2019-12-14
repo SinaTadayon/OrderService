@@ -1,45 +1,78 @@
 package actions
 
-import "errors"
+import (
+	"github.com/pkg/errors"
+)
 
 type ActionType int
 
-var actionTypeStrings = []string{"ActorAction", "ActiveAction"}
+var actionTypeStrings = []string{
+	"Payment",
+	"Operator",
+	"Seller",
+	"Buyer",
+	"Scheduler",
+	"Stock",
+	"Notification",
+	"Voucher",
+	"System",
+}
 
 const (
-	ActorAction ActionType = iota
-	ActiveAction
+	Payment ActionType = iota
+	Operator
+	Seller
+	Buyer
+	Scheduler
+	Stock
+	Notification
+	Voucher
+	System
 )
 
-func (actionType ActionType) Name() string {
-	return actionType.String()
+func (actorType ActionType) ActionName() string {
+	return actorType.String()
 }
 
-func (actionType ActionType) Ordinal() int {
-	if actionType < ActorAction || actionType > ActiveAction {
+func (actorType ActionType) ActionOrdinal() int {
+	if actorType < Payment || actorType > System {
 		return -1
 	}
-	return int(actionType)
+	return int(actorType)
 }
 
-func (actionType ActionType) Values() []string {
+func (actorType ActionType) Values() []string {
 	return actionTypeStrings
 }
 
-func (actionType ActionType) String() string {
-	if actionType < ActorAction || actionType > ActiveAction {
+func (actorType ActionType) String() string {
+	if actorType < Payment || actorType > System {
 		return ""
 	}
 
-	return actionTypeStrings[actionType]
+	return actionTypeStrings[actorType]
 }
 
-func actionFromString(actionType string) (ActionType, error) {
+func FromString(actionType string) (ActionType, error) {
 	switch actionType {
-	case "ActorAction":
-		return ActorAction, nil
-	case "ActiveAction":
-		return ActiveAction, nil
+	case "Payment":
+		return Payment, nil
+	case "Operator":
+		return Operator, nil
+	case "Seller":
+		return Seller, nil
+	case "Buyer":
+		return Buyer, nil
+	case "Scheduler":
+		return Scheduler, nil
+	case "Stock":
+		return Stock, nil
+	case "Notification":
+		return Notification, nil
+	case "Voucher":
+		return Voucher, nil
+	case "System":
+		return System, nil
 	default:
 		return -1, errors.New("invalid actionType string")
 	}

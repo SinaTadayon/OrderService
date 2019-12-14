@@ -1,46 +1,45 @@
 package events
 
-import "errors"
+import "github.com/pkg/errors"
 
 type EventType int
 
-var actorTypeStrings = []string{"ActorEvent", "ActiveEvent"}
+var eventTypeStrings = []string{
+	"Action",
+}
 
 const (
-	ActorEvent EventType = iota
-	ActiveEvent
+	Action EventType = iota
 )
 
-func (activeType EventType) Name() string {
-	return activeType.String()
+func (eventType EventType) ActionName() string {
+	return eventType.String()
 }
 
-func (activeType EventType) Ordinal() int {
-	if activeType < ActorEvent || activeType > ActiveEvent {
+func (eventType EventType) ActionOrdinal() int {
+	if eventType != Action {
 		return -1
 	}
-	return int(activeType)
+	return int(eventType)
 }
 
-func (activeType EventType) Values() []string {
-	return actorTypeStrings
+func (eventType EventType) Values() []string {
+	return eventTypeStrings
 }
 
-func (activeType EventType) String() string {
-	if activeType < ActorEvent || activeType > ActiveEvent {
+func (eventType EventType) String() string {
+	if eventType != Action {
 		return ""
 	}
 
-	return actorTypeStrings[activeType]
+	return eventTypeStrings[eventType]
 }
 
-func FromString(actorType string) (EventType, error) {
-	switch actorType {
-	case "ActorEvent":
-		return ActorEvent, nil
-	case "ActiveEvent":
-		return ActiveEvent, nil
+func FromString(eventType string) (EventType, error) {
+	switch eventType {
+	case "Action":
+		return Action, nil
 	default:
-		return -1, errors.New("invalid actorType string")
+		return -1, errors.New("invalid eventType string")
 	}
 }

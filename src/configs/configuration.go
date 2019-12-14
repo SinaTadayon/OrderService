@@ -8,7 +8,7 @@ import (
 	"os"
 )
 
-type Cfg struct {
+type Config struct {
 	App struct {
 		ServiceMode                          string `env:"ORDER_SERVICE_MODE"`
 		SmsTemplateDir                       string `env:"NOTIFICATION_SMS_TEMPLATES"`
@@ -70,8 +70,8 @@ type Cfg struct {
 	}
 }
 
-func LoadConfig(path string) (*Cfg, error) {
-	var config = &Cfg{}
+func LoadConfig(path string) (*Config, error) {
+	var config = &Config{}
 	currntPath, err := os.Getwd()
 	if err != nil {
 		logger.Err("get current working directory failed, error %s", err)
@@ -106,7 +106,7 @@ func LoadConfig(path string) (*Cfg, error) {
 	//	}
 	//}
 
-	// Get environment variables for Cfg
+	// Get environment variables for Config
 	_, err = env.UnmarshalFromEnviron(config)
 	if err != nil {
 		return nil, err
@@ -115,8 +115,8 @@ func LoadConfig(path string) (*Cfg, error) {
 	return config, nil
 }
 
-//func LoadConfigWithPath(path string) (*Cfg, error) {
-//	var config = &Cfg{}
+//func LoadConfigWithPath(path string) (*Config, error) {
+//	var config = &Config{}
 //
 //	if os.Getenv("APP_ENV") == "dev" {
 //		if flag.Lookup("test.v") != nil {
@@ -138,7 +138,7 @@ func LoadConfig(path string) (*Cfg, error) {
 //		}
 //	}
 //
-//	// Get environment variables for Cfg
+//	// Get environment variables for Config
 //	_, err1 := env.UnmarshalFromEnviron(config)
 //	if err1 != nil {
 //		return nil, err1

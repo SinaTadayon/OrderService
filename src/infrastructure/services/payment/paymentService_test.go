@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-var config *configs.Cfg
+var config *configs.Config
 var payment iPaymentServiceImpl
 
 func init() {
@@ -34,9 +34,9 @@ func init() {
 func TestOrderPayment_Success(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 
-	if err := payment.ConnectToStockService(); err != nil {
+	if err := payment.ConnectToPaymentService(); err != nil {
 		logger.Err(err.Error())
-		panic("stockService.ConnectToStockService() failed")
+		panic("stockService.ConnectToPaymentService() failed")
 	}
 
 	defer func() {
@@ -51,11 +51,11 @@ func TestOrderPayment_Success(t *testing.T) {
 		OrderId:  123456789,
 	}
 
-	ipromise := payment.OrderPayment(ctx, request)
-	futureData := ipromise.Data()
+	iFuture := payment.OrderPayment(ctx, request)
+	futureData := iFuture.Get()
 	assert.NotNil(t, futureData)
-	assert.Nil(t, futureData.Ex)
+	assert.Nil(t, futureData.Error())
 
-	paymentResponse := futureData.Data.(PaymentResponse)
+	paymentResponse := futureData.Data().(PaymentResponse)
 	assert.NotEmpty(t, paymentResponse.CallbackUrl)
 }

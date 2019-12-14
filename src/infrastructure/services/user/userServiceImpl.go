@@ -2,10 +2,11 @@ package user_service
 
 import (
 	"context"
+	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/acl"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	userclient "gitlab.faza.io/services/user-app-client"
 	"google.golang.org/grpc"
 	"time"
@@ -55,29 +56,28 @@ func (userService *iUserServiceImpl) getUserService(ctx context.Context) error {
 	return nil
 }
 
-func (userService *iUserServiceImpl) UserLogin(ctx context.Context, username, password string) promise.IPromise {
-	if err := userService.getUserService(ctx); err != nil {
-		returnChannel := make(chan promise.FutureData, 1)
-		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Connect to UserService failed"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+func (userService *iUserServiceImpl) UserLogin(ctx context.Context, username, password string) future.IFuture {
+	ctx1, _ := context.WithCancel(context.Background())
+	if err := userService.getUserService(ctx1); err != nil {
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "UnknownError", errors.Wrap(err, "Connect to UserService Failed")).
+			BuildAndSend()
 	}
 
-	result, err := userService.client.Login(username, password, ctx)
+	result, err := userService.client.Login(username, password, ctx1)
 	if err != nil {
 		logger.Err("UserLogin() => userService.client.Login failed, username: %s, password: %s, error: %s", username, password, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Unknown Error"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "UnknownError", errors.Wrap(err, "userService.client.Login Failed")).
+			BuildAndSend()
 	}
 
 	if int(result.Code) != 200 {
 		logger.Err("UserLogin() => userService.client.Login failed, username: %s, password: %s, error: %s", username, password, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.Forbidden, Reason: "User Login Failed"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+
+		return future.Factory().SetCapacity(1).
+			SetError(future.Forbidden, "User Login Failed", errors.Wrap(err, "User Login Failed")).
+			BuildAndSend()
 	}
 
 	loginTokens := LoginTokens{
@@ -85,35 +85,32 @@ func (userService *iUserServiceImpl) UserLogin(ctx context.Context, username, pa
 		RefreshToken: result.Data.RefreshToken,
 	}
 
-	returnChannel := make(chan promise.FutureData, 1)
-	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data: loginTokens, Ex: nil}
-	return promise.NewPromise(returnChannel, 1, 1)
+	return future.Factory().SetCapacity(1).SetData(loginTokens).BuildAndSend()
 }
 
 func (userService iUserServiceImpl) AuthenticateContextToken(ctx context.Context) (*acl.Acl, error) {
-	if err := userService.getUserService(ctx); err != nil {
+	ctx1, _ := context.WithCancel(context.Background())
+	if err := userService.getUserService(ctx1); err != nil {
 		return nil, err
 	}
 	access, err := userService.client.VerifyAndGetUserFromContextToken(ctx)
 	return access, err
 }
 
-func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, sellerId string) promise.IPromise {
-	if err := userService.getUserService(ctx); err != nil {
-		returnChannel := make(chan promise.FutureData, 1)
-		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.InternalError, Reason: "Connect to UserService failed"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, sellerId string) future.IFuture {
+	ctx1, _ := context.WithCancel(context.Background())
+	if err := userService.getUserService(ctx1); err != nil {
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "UnknownError", errors.Wrap(err, "Connect to UserService Failed")).
+			BuildAndSend()
 	}
 
 	userProfile, err := userService.client.InternalUserGetOne("userId", sellerId, "", ctx)
 	if err != nil {
 		logger.Err("userService.client.InternalUserGetOne failed, sellerId: %s, error: %s", sellerId, err)
-		returnChannel := make(chan promise.FutureData, 1)
-		defer close(returnChannel)
-		returnChannel <- promise.FutureData{Data: nil, Ex: promise.FutureError{Code: promise.NotFound, Reason: "sellerId Not Found"}}
-		return promise.NewPromise(returnChannel, 1, 1)
+		return future.Factory().SetCapacity(1).
+			SetError(future.NotFound, "sellerId Not Found", errors.Wrap(err, "sellerId Not Found")).
+			BuildAndSend()
 	}
 
 	sellerProfile := &entities.SellerProfile{
@@ -239,9 +236,5 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 		timestamp = time.Now()
 	}
 	sellerProfile.UpdatedAt = timestamp
-
-	returnChannel := make(chan promise.FutureData, 1)
-	defer close(returnChannel)
-	returnChannel <- promise.FutureData{Data: sellerProfile, Ex: nil}
-	return promise.NewPromise(returnChannel, 1, 1)
+	return future.Factory().SetCapacity(1).SetData(sellerProfile).BuildAndSend()
 }

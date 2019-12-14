@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-var config *configs.Cfg
+var config *configs.Config
 var notify iNotificationServiceImpl
 
 func init() {
@@ -37,11 +37,11 @@ func TestNotifySMS(t *testing.T) {
 		Phone: "09373969041",
 		Body:  "سلام، این اس ام اس تستی هست",
 	}
-	iPromise := notify.NotifyBySMS(ctx, request)
-	futureData := iPromise.Data()
+	iFuture := notify.NotifyBySMS(ctx, request)
+	futureData := iFuture.Get()
 
-	assert.Nil(t, futureData.Ex)
-	assert.Nil(t, futureData.Data)
+	assert.Nil(t, futureData.Data())
+	assert.Nil(t, futureData.Error())
 }
 
 func TestNotifyEmail(t *testing.T) {

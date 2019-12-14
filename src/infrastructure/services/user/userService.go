@@ -3,13 +3,13 @@ package user_service
 import (
 	"context"
 	"gitlab.faza.io/go-framework/acl"
-	"gitlab.faza.io/order-project/order-service/infrastructure/promise"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 )
 
 type IUserService interface {
-	UserLogin(ctx context.Context, username, password string) promise.IPromise
+	UserLogin(ctx context.Context, username, password string) future.IFuture
 	AuthenticateContextToken(ctx context.Context) (*acl.Acl, error)
-	GetSellerProfile(ctx context.Context, sellerId string) promise.IPromise
+	GetSellerProfile(ctx context.Context, sellerId string) future.IFuture
 }
 
 type LoginTokens struct {

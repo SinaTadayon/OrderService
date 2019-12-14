@@ -6,7 +6,7 @@ import "message.proto";
 import "google/protobuf/any.proto";
 
 service OrderService {
-    rpc OrderRequestsHandler (MessageRequest) returns (MessageResponse);
+    rpc RequestHandler (MessageRequest) returns (MessageResponse);
 
     rpc NewOrder (RequestNewOrder) returns (ResponseNewOrder);
     rpc SellerFindAllItems (RequestIdentifier) returns (ResponseSellerFindAllItems);
@@ -75,7 +75,7 @@ message ItemInfo {
     string itemStatus = 5;
     string stepStatus = 6;
     int64 updatedAt = 7;
-    PriceInfo price = 8;
+    ItemInvoice price = 8;
     repeated string actions = 9;
 }
 
@@ -135,40 +135,66 @@ message ResponseNewOrder {
 
 message RequestNewOrder {
     Buyer buyer = 1;
-    Amount amount = 2;
-    repeated Item items = 3;
+    Invoice invoice = 2;
+    repeated Package packages = 3;
 }
 
-message Amount {
-    uint64  total           = 1;
+message Package {
+    uint64 sellerId = 1;
+    string shopName = 2;
+    ShippingSpec shipment = 3;
+    PackageInvoice invoice = 4;
+    repeated Item items = 5;
+}
+
+message PackageInvoice {
+    uint64 subtotal = 1;
+    uint64 discount = 2;
+    uint64 shipmentAmount = 3;
+}
+
+message Invoice {
+    uint64  grandTotal      = 1;
     uint64  subtotal        = 2;
     uint64  discount        = 3;
     uint64  shipmentTotal   = 6;
     string  currency        = 7;
     string  paymentMethod   = 8;
-    string  paymentOption   = 9;
-    Voucher voucher         = 10;
+    string  paymentGateway  = 9;
+    PaymentOption  paymentOption   = 10;
+    Voucher voucher         = 11;
+}
+
+message PaymentOption {
+
 }
 
 message Voucher {
-    uint64  amount  = 1;
+    float   amount  = 1;
     string  code    = 2;
-    google.protobuf.Any details = 3;
+    VoucherDetails details = 3;
+}
+
+message VoucherDetails {
+    string startDate = 1;
+    string endDate = 2;
+    string type = 3;
+    uint64 maxDiscountValue = 4;
+    uint64 minBasketValue = 5;
 }
 
 message Item {
-    string inventoryId = 1;
-    string title = 2;
-    string brand = 3;
-    string category = 4;
-    string guaranty = 5;
-    string image = 6;
-    bool returnable = 7;
-    uint64 sellerId = 8;
+    string sku = 1;
+    string inventoryId = 2;
+    string title = 3;
+    string brand = 4;
+    string category = 5;
+    string guaranty = 6;
+    string image = 7;
+    bool returnable = 8;
     int32 quantity = 9;
     map<string, string> attributes = 10;
-    PriceInfo price = 11;
-    ShippingSpec shipment = 12;
+    ItemInvoice invoice = 11;
 }
 
 message Buyer {
@@ -207,7 +233,7 @@ message Address {
     string zipCode = 12;
 }
 
-message PriceInfo {
+message ItemInvoice {
     uint64 unit = 1;
     uint64 total = 2;
     uint64 original = 3;
@@ -218,7 +244,7 @@ message PriceInfo {
 }
 
 message ShippingSpec {
-    string carrierName = 1;
+    repeated string carrierNames = 1;
     string carrierProduct = 2;
     string carrierType = 3;
     uint64 shippingCost = 4;
@@ -251,7 +277,7 @@ message BuyerAllOrders {
     string  createdAt   = 3;
     string  updatedAt   = 4;
     string  orderStatus = 5;
-    Amount  amount      = 6;
+    Invoice amount = 6;
     Address shippingAddress = 7;
     repeated BuyerOrderItems items = 8;
 }
