@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	_ "github.com/devfeel/mapper"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
@@ -119,28 +118,28 @@ func main() {
 	//}
 
 	if app.Globals.Config.App.ServiceMode == "server" {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		//ctx, cancel := context.WithCancel(context.Background())
+		//defer cancel()
 
-		scheduleDataList := []scheduler_service.ScheduleModel{
-			{
-				Step:   "20.Seller_Approval_Pending",
-				Action: "ApprovalPending",
-			},
-			{
-				Step:   "30.Shipment_Pending",
-				Action: "SellerShipmentPending",
-			},
-			{
-				Step:   "32.Shipment_Delivered",
-				Action: "ShipmentDeliveredPending",
-			},
-		}
+		//scheduleDataList := []scheduler_service.ScheduleModel{
+		//	{
+		//		Step:   "20.Seller_Approval_Pending",
+		//		Action: "ApprovalPending",
+		//	},
+		//	{
+		//		Step:   "30.Shipment_Pending",
+		//		Action: "SellerShipmentPending",
+		//	},
+		//	{
+		//		Step:   "32.Shipment_Delivered",
+		//		Action: "ShipmentDeliveredPending",
+		//	},
+		//}
 
-		if err := MainApp.schedulerService.Scheduler(ctx, scheduleDataList); err != nil {
-			logger.Err("SchedulerService.Scheduler failed, error: %s", err)
-			return
-		}
+		//if err := MainApp.schedulerService.Scheduler(ctx, scheduleDataList); err != nil {
+		//	logger.Err("SchedulerService.Scheduler failed, error: %s", err)
+		//	return
+		//}
 		MainApp.grpcServer.Start()
 	}
 

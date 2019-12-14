@@ -71,9 +71,7 @@ func (notification iNotificationServiceImpl) NotifyBySMS(ctx context.Context, re
 			BuildAndSend()
 	}
 
-	return future.Factory().SetCapacity(1).
-		SetError(future.ErrorCode(result.Status), result.Message, errors.Wrap(err, "NotifyBySMS Failed")).
-		BuildAndSend()
+	return future.Factory().SetCapacity(1).BuildAndSend()
 }
 
 func (notification iNotificationServiceImpl) NotifyByMail(ctx context.Context, request EmailRequest) future.IFuture {

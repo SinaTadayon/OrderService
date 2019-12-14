@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/stretchr/testify/require"
 	"gitlab.faza.io/go-framework/logger"
-	"gitlab.faza.io/order-project/order-service/app"
+	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"go.mongodb.org/mongo-driver/bson"
@@ -24,18 +24,33 @@ func TestMain(m *testing.M) {
 		path = ""
 	}
 
-	app.Globals.Config, err = configs.LoadConfig(path)
+	config, err := configs.LoadConfig(path)
 	if err != nil {
 		logger.Err("configs.LoadConfig failed, %s", err.Error())
 		os.Exit(1)
 	}
 
-	mongoDriver, err := app.SetupMongoDriver(*app.Globals.Config)
+	// store in mongo
+	mongoConf := &mongoadapter.MongoConfig{
+		Host:     config.Mongo.Host,
+		Port:     config.Mongo.Port,
+		Username: config.Mongo.User,
+		//Password:     App.Cfg.Mongo.Pass,
+		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout),
+		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout),
+		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout),
+		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime),
+		MaxPoolSize:     uint64(config.Mongo.MaxPoolSize),
+		MinPoolSize:     uint64(config.Mongo.MinPoolSize),
+	}
+
+	mongoAdapter, err := mongoadapter.NewMongo(mongoConf)
 	if err != nil {
+		logger.Err("IPkgItemRepository Mongo: %v", err.Error())
 		os.Exit(1)
 	}
 
-	orderRepository = NewOrderRepository(mongoDriver)
+	orderRepository = NewOrderRepository(mongoAdapter)
 
 	// Running Tests
 	code := m.Run()

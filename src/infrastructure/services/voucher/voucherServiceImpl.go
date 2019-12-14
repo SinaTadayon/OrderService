@@ -61,7 +61,7 @@ func (voucherService iVoucherServiceImpl) VoucherSettlement(ctx context.Context,
 	voucherCode string, orderId uint64, buyerId uint64) future.IFuture {
 	if err := voucherService.Connect(); err != nil {
 		logger.Err("VoucherSettlement() => voucherClient.CouponUsed internal error, "+
-			"voucherCode: %s, orderId: %d, buyerId: %d, error: %s", voucherCode, orderId, buyerId)
+			"voucherCode: %s, orderId: %d, buyerId: %d, error: %s", voucherCode, orderId, buyerId, err)
 		return future.Factory().SetCapacity(1).
 			SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "voucherService.Connect() Failed")).
 			BuildAndSend()

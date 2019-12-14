@@ -88,11 +88,11 @@ func TestUpdate(t *testing.T) {
 	require.Nil(t, err)
 	require.Equal(t, "Payment_Pending", updateOrder.Packages[0].Subpackages[0].Status)
 	require.Equal(t, uint64(1), updateOrder.Packages[0].Subpackages[0].Version)
-	require.Equal(t, "New", updateOrder.Packages[0].Subpackages[1].Status)
+	require.Equal(t, "1.New", updateOrder.Packages[0].Subpackages[1].Status)
 	require.Equal(t, uint64(0), updateOrder.Packages[0].Subpackages[1].Version)
-	require.Equal(t, "New", updateOrder.Packages[1].Subpackages[0].Status)
+	require.Equal(t, "1.New", updateOrder.Packages[1].Subpackages[0].Status)
 	require.Equal(t, uint64(0), updateOrder.Packages[1].Subpackages[0].Version)
-	require.Equal(t, "New", updateOrder.Packages[1].Subpackages[1].Status)
+	require.Equal(t, "1.New", updateOrder.Packages[1].Subpackages[1].Status)
 	require.Equal(t, uint64(0), updateOrder.Packages[1].Subpackages[1].Version)
 }
 

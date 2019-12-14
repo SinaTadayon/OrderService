@@ -210,7 +210,7 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	// TODO check acl
 	if uint64(userAcl.User().UserID) != req.Meta.UID {
 		logger.Err("RequestHandler() => request userId %d mismatch with token userId: %d", req.Meta.UID, userAcl.User().UserID)
-		return nil, status.Error(codes.Code(future.InternalError), "User Not Authorized")
+		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
 	}
 
 	reqType := RequestType(req.Type)
@@ -479,8 +479,8 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 
 func (server *Server) sellerOrderListHandler(ctx context.Context, pid uint64, filter FilterValue, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
-	if page < 0 || perPage <= 0 {
-		logger.Err("sellerOrderListHandler() => page or perPage invalid, sellerId: %d, filterValue: %s, page: %d, perPage: %d", pid, filter, page, perPage)
+	if page <= 0 || perPage <= 0 {
+		logger.Err("sellerOrderListHandler() => page or perPage invalid, pid: %d, filterValue: %s, page: %d, perPage: %d", pid, filter, page, perPage)
 		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
 	}
 
@@ -502,12 +502,12 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, pid uint64, fi
 
 	var totalCount, err = app.Globals.PkgItemRepository.CountWithFilter(ctx, countFilter)
 	if err != nil {
-		logger.Err("sellerOrderListHandler() => CountWithFilter failed,  sellerId: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
+		logger.Err("sellerOrderListHandler() => CountWithFilter failed,  pid: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	if totalCount == 0 {
-		logger.Err("sellerOrderListHandler() => total count is zero,  sellerId: %d, filterValue: %s, page: %d, perPage: %d", pid, filter, page, perPage)
+		logger.Err("sellerOrderListHandler() => total count is zero,  pid: %d, filterValue: %s, page: %d, perPage: %d", pid, filter, page, perPage)
 		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
 	}
 
@@ -525,13 +525,13 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, pid uint64, fi
 	}
 
 	if availablePages < int64(page) {
-		logger.Err("sellerOrderListHandler() => availablePages less than page, availablePages: %d, sellerId: %d, filterValue: %s, page: %d, perPage: %d", availablePages, pid, filter, page, perPage)
+		logger.Err("sellerOrderListHandler() => availablePages less than page, availablePages: %d, pid: %d, filterValue: %s, page: %d, perPage: %d", availablePages, pid, filter, page, perPage)
 		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
 	}
 
 	var offset = (page - 1) * perPage
 	if int64(offset) >= totalCount {
-		logger.Err("sellerOrderListHandler() => offset invalid, offset: %d, sellerId: %d, filterValue: %s, page: %d, perPage: %d", offset, pid, filter, page, perPage)
+		logger.Err("sellerOrderListHandler() => offset invalid, offset: %d, pid: %d, filterValue: %s, page: %d, perPage: %d", offset, pid, filter, page, perPage)
 		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
 	}
 
@@ -698,7 +698,7 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId
 // TODO should be refactor and projection pkg
 func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pid uint64, filter FilterValue, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
-	if page < 0 || perPage <= 0 {
+	if page <= 0 || perPage <= 0 {
 		logger.Err("sellerOrderReturnDetailListHandler() => page or perPage invalid, pid: %d, filterValue: %s, page: %d, perPage: %d", pid, filter, page, perPage)
 		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
 	}

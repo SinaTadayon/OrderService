@@ -1,7 +1,6 @@
 package notification_action
 
 import (
-	"github.com/pkg/errors"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 )
 

@@ -99,7 +99,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 					CreatedAt: time.Now().UTC(),
 				}
 			} else {
-				logger.Audit("Invoice paid by voucher order success, orderId: %d, voucherAmount: %d, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Amount, order.Invoice.Voucher.Code)
+				logger.Audit("Invoice paid by voucher order success, orderId: %d, voucherAmount: %f, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Amount, order.Invoice.Voucher.Code)
 				voucherAction = &entities.Action{
 					Name:      voucher_action.Settlement.ActionName(),
 					Type:      actions.Voucher.ActionName(),
@@ -256,7 +256,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 						CreatedAt: time.Now().UTC(),
 					}
 				} else {
-					logger.Audit("Invoice paid by voucher order success, orderId: %d, voucherAmount: %d, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Amount, order.Invoice.Voucher.Code)
+					logger.Audit("Invoice paid by voucher order success, orderId: %d, voucherAmount: %f, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Amount, order.Invoice.Voucher.Code)
 					voucherAction = &entities.Action{
 						Name:      voucher_action.Settlement.ActionName(),
 						Type:      actions.Voucher.ActionName(),
@@ -266,7 +266,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 					}
 				}
 
-				logger.Audit("VoucherSettlement success, orderId: %d, voucherAmount: %d, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Amount, order.Invoice.Voucher.Code)
+				logger.Audit("VoucherSettlement success, orderId: %d, voucherAmount: %f, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Amount, order.Invoice.Voucher.Code)
 			}
 
 			paymentAction := &entities.Action{

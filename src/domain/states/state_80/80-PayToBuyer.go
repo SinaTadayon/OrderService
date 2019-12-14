@@ -118,7 +118,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			state.SetOrderStatus(ctx, order, states.OrderClosedStatus)
 			_, err := app.Globals.OrderRepository.Save(ctx, *order)
 			if err != nil {
-				logger.Err("update order status to closed failed, orderId: %d, error: %s",
+				logger.Err("update order status to closed failed, state: %s, orderId: %d, error: %s",
 					state.Name(), order.OrderId, err.Error())
 			} else {
 				logger.Audit("update order status to closed success, state: %s, orderId: %d", state.Name(), order.OrderId)

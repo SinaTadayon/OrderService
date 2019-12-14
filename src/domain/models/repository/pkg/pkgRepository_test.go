@@ -130,9 +130,15 @@ func TestCountWithFilter(t *testing.T) {
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
 	ctx, _ := context.WithCancel(context.Background())
 	result, err := pkgItemRepo.CountWithFilter(ctx, func() (filter interface{}) {
-		return bson.D{{"packages.pid", order.Packages[1].PId},
-			{"deletedAt", nil}}
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": order.Packages[1].PId, "deletedAt": nil}},
+			{"$unwind": "$packages"},
+			{"$match": bson.M{"packages.pid": order.Packages[1].PId, "deletedAt": nil}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
 	})
+
 	require.Nil(t, err, "pkgItemRepo.CountWithFilter failed")
 	require.Equal(t, int64(1), result)
 }

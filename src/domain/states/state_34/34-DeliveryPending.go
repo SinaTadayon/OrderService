@@ -139,7 +139,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 					var requestAction *entities.Action
 					futureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
 					if futureData.Error() != nil {
-						logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, sellerId: %d, sid: %d, error: %s",
+						logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, pid: %d, error: %s",
 							buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, futureData.Error().Reason())
 						requestAction = &entities.Action{
 							Name:      scheduler_action.Notification.ActionName(),

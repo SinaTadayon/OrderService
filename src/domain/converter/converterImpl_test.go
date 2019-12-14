@@ -10,7 +10,7 @@ import (
 func TestOrderConverter(t *testing.T) {
 	converter := NewConverter()
 	RequestNewOrder := createRequestNewOrder()
-	out, err := converter.Map(*RequestNewOrder, entities.Order{})
+	out, err := converter.Map(RequestNewOrder, entities.Order{})
 	assert.NoError(t, err, "mapping order request to order failed")
 	order, ok := out.(*entities.Order)
 	assert.True(t, ok, "mapping order request to order failed")
