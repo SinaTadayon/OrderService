@@ -48,7 +48,7 @@ func (state orderVerificationFailed) Process(ctx context.Context, iFrame frame.I
 
 		orderVerifyAction := &entities.Action{
 			Name:      system_action.NextToState.ActionName(),
-			Type:      actions.System.ActionName(),
+			UTP:       actions.System.ActionName(),
 			Result:    string(states.ActionSuccess),
 			Reasons:   nil,
 			CreatedAt: time.Now().UTC(),

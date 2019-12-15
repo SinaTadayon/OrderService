@@ -48,7 +48,7 @@ func (state orderVerificationSuccessState) Process(ctx context.Context, iFrame f
 
 		orderVerifyAction := &entities.Action{
 			Name:      system_action.NextToState.ActionName(),
-			Type:      actions.System.ActionName(),
+			UTP:       actions.System.ActionName(),
 			Result:    string(states.ActionSuccess),
 			Reasons:   nil,
 			CreatedAt: time.Now().UTC(),

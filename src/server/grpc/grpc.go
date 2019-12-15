@@ -317,7 +317,7 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 	var sortName string
 	var sortDirection SortDirection
 	if req.Meta.Filters != nil {
-		//filterType = FilterType(req.Meta.Filters[0].Type)
+		//filterType = FilterType(req.Meta.Filters[0].UTP)
 		filterValue = FilterValue(req.Meta.Filters[0].Value)
 	}
 
@@ -1699,7 +1699,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 //
 //	request := pb.MessageRequest{
 //		Name:   "NewOrder",
-//		Type:   string(DataReqType),
+//		UTP:   string(DataReqType),
 //		ADT:    "Single",
 //		Method: "GRPC",
 //		Time: ptypes.TimestampNow(),

@@ -51,7 +51,7 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 		if err := state.releasedStock(ctx, order); err != nil {
 			stockAction = &entities.Action{
 				Name:      stock_action.Release.ActionName(),
-				Type:      actions.Stock.ActionName(),
+				UTP:       actions.Stock.ActionName(),
 				Result:    string(states.ActionFail),
 				Reasons:   nil,
 				CreatedAt: time.Now().UTC(),
@@ -59,7 +59,7 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 		} else {
 			stockAction = &entities.Action{
 				Name:      stock_action.Release.ActionName(),
-				Type:      actions.Stock.ActionName(),
+				UTP:       actions.Stock.ActionName(),
 				Result:    string(states.ActionSuccess),
 				Reasons:   nil,
 				CreatedAt: time.Now().UTC(),

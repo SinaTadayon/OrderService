@@ -515,7 +515,7 @@ func createOrder() *entities.Order {
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
-										Type:      "OrderBuyerCancel",
+										UTP:       "OrderBuyerCancel",
 										Result:    "Success",
 										Reasons:   nil,
 										CreatedAt: time.Now().UTC(),
@@ -525,7 +525,7 @@ func createOrder() *entities.Order {
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
-								Type:      "OrderBuyerCancel",
+								UTP:       "OrderBuyerCancel",
 								Result:    "Success",
 								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
@@ -538,7 +538,7 @@ func createOrder() *entities.Order {
 									Actions: []entities.Action{
 										{
 											Name:      "BuyerCancel",
-											Type:      "OrderBuyerCancel",
+											UTP:       "OrderBuyerCancel",
 											Result:    "Success",
 											Reasons:   nil,
 											CreatedAt: time.Now().UTC(),
@@ -651,7 +651,7 @@ func createOrder() *entities.Order {
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
-										Type:      "OrderBuyerCancel",
+										UTP:       "OrderBuyerCancel",
 										Result:    "Success",
 										Reasons:   nil,
 										CreatedAt: time.Now().UTC(),
@@ -661,7 +661,7 @@ func createOrder() *entities.Order {
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
-								Type:      "OrderBuyerCancel",
+								UTP:       "OrderBuyerCancel",
 								Result:    "Success",
 								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
@@ -674,7 +674,7 @@ func createOrder() *entities.Order {
 									Actions: []entities.Action{
 										{
 											Name:      "BuyerCancel",
-											Type:      "OrderBuyerCancel",
+											UTP:       "OrderBuyerCancel",
 											Result:    "Success",
 											Reasons:   nil,
 											CreatedAt: time.Now().UTC(),
@@ -880,7 +880,7 @@ func createOrder() *entities.Order {
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
-										Type:      "OrderBuyerCancel",
+										UTP:       "OrderBuyerCancel",
 										Result:    "Success",
 										Reasons:   nil,
 										CreatedAt: time.Now().UTC(),
@@ -890,7 +890,7 @@ func createOrder() *entities.Order {
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
-								Type:      "OrderBuyerCancel",
+								UTP:       "OrderBuyerCancel",
 								Result:    "Success",
 								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
@@ -903,7 +903,7 @@ func createOrder() *entities.Order {
 									Actions: []entities.Action{
 										{
 											Name:      "BuyerCancel",
-											Type:      "OrderBuyerCancel",
+											UTP:       "OrderBuyerCancel",
 											Result:    "Success",
 											Reasons:   nil,
 											CreatedAt: time.Now().UTC(),
@@ -1016,7 +1016,7 @@ func createOrder() *entities.Order {
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
-										Type:      "OrderBuyerCancel",
+										UTP:       "OrderBuyerCancel",
 										Result:    "Success",
 										Reasons:   nil,
 										CreatedAt: time.Now().UTC(),
@@ -1026,7 +1026,7 @@ func createOrder() *entities.Order {
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
-								Type:      "OrderBuyerCancel",
+								UTP:       "OrderBuyerCancel",
 								Result:    "Success",
 								Reasons:   nil,
 								CreatedAt: time.Now().UTC(),
@@ -1039,7 +1039,7 @@ func createOrder() *entities.Order {
 									Actions: []entities.Action{
 										{
 											Name:      "BuyerCancel",
-											Type:      "OrderBuyerCancel",
+											UTP:       "OrderBuyerCancel",
 											Result:    "Success",
 											Reasons:   nil,
 											CreatedAt: time.Now().UTC(),

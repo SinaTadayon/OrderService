@@ -46,7 +46,7 @@ func (state newOrderState) Process(ctx context.Context, iFrame frame.IFrame) {
 	order := iFrame.Header().Value(string(frame.HeaderOrder)).(*entities.Order)
 	action := &entities.Action{
 		Name:      state.Actions()[0].ActionEnum().ActionName(),
-		Type:      state.Actions()[0].ActionType().ActionName(),
+		UTP:       state.Actions()[0].ActionType().ActionName(),
 		Result:    string(states.ActionSuccess),
 		Reasons:   nil,
 		CreatedAt: time.Now().UTC(),

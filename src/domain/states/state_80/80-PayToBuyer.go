@@ -49,7 +49,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 		if err := state.releasedStock(ctx, subpackages); err != nil {
 			releaseStockAction = &entities.Action{
 				Name:      stock_action.Release.ActionName(),
-				Type:      actions.Stock.ActionName(),
+				UTP:       actions.Stock.ActionName(),
 				Result:    string(states.ActionFail),
 				Reasons:   nil,
 				CreatedAt: time.Now().UTC(),
@@ -57,7 +57,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 		} else {
 			releaseStockAction = &entities.Action{
 				Name:      stock_action.Release.ActionName(),
-				Type:      actions.Stock.ActionName(),
+				UTP:       actions.Stock.ActionName(),
 				Result:    string(states.ActionSuccess),
 				Reasons:   nil,
 				CreatedAt: time.Now().UTC(),

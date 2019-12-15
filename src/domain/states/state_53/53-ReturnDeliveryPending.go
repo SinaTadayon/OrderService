@@ -146,7 +146,7 @@ func (state returnDeliveryPendingState) Process(ctx context.Context, iFrame fram
 
 											requestAction = &entities.Action{
 												Name:      actionState.ActionEnum().ActionName(),
-												Type:      actionState.ActionType().ActionName(),
+												UTP:       actionState.ActionType().ActionName(),
 												Result:    string(states.ActionSuccess),
 												Reasons:   actionItem.Reasons,
 												CreatedAt: time.Now().UTC(),
@@ -175,7 +175,7 @@ func (state returnDeliveryPendingState) Process(ctx context.Context, iFrame fram
 											fullItems = make([]entities.Item, 0, len(pkgItem.Subpackages[i].Items))
 											requestAction = &entities.Action{
 												Name:      actionState.ActionEnum().ActionName(),
-												Type:      actionState.ActionType().ActionName(),
+												UTP:       actionState.ActionType().ActionName(),
 												Result:    string(states.ActionSuccess),
 												Reasons:   actionItem.Reasons,
 												CreatedAt: time.Now().UTC(),

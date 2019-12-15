@@ -53,7 +53,7 @@ func (state deliveryFailedState) Process(ctx context.Context, iFrame frame.IFram
 
 		nextToAction := &entities.Action{
 			Name:      system_action.NextToState.ActionName(),
-			Type:      actions.System.ActionName(),
+			UTP:       actions.System.ActionName(),
 			Result:    string(states.ActionSuccess),
 			Reasons:   nil,
 			CreatedAt: time.Now().UTC(),

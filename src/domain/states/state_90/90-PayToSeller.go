@@ -49,7 +49,7 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 		if err := state.settlementStock(ctx, subpackages); err != nil {
 			settlementStockAction = &entities.Action{
 				Name:      stock_action.Settlement.ActionName(),
-				Type:      actions.Stock.ActionName(),
+				UTP:       actions.Stock.ActionName(),
 				Result:    string(states.ActionFail),
 				Reasons:   nil,
 				CreatedAt: time.Now().UTC(),
@@ -57,7 +57,7 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 		} else {
 			settlementStockAction = &entities.Action{
 				Name:      stock_action.Settlement.ActionName(),
-				Type:      actions.Stock.ActionName(),
+				UTP:       actions.Stock.ActionName(),
 				Result:    string(states.ActionSuccess),
 				Reasons:   nil,
 				CreatedAt: time.Now().UTC(),

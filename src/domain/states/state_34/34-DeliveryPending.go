@@ -143,7 +143,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 							buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, futureData.Error().Reason())
 						requestAction = &entities.Action{
 							Name:      scheduler_action.Notification.ActionName(),
-							Type:      actions.Scheduler.ActionName(),
+							UTP:       actions.Scheduler.ActionName(),
 							Result:    string(states.ActionFail),
 							Reasons:   nil,
 							CreatedAt: time.Now().UTC(),
@@ -151,7 +151,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 					} else {
 						requestAction = &entities.Action{
 							Name:      scheduler_action.Notification.ActionName(),
-							Type:      actions.Scheduler.ActionName(),
+							UTP:       actions.Scheduler.ActionName(),
 							Result:    string(states.ActionSuccess),
 							Reasons:   nil,
 							CreatedAt: time.Now().UTC(),
@@ -234,7 +234,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 
 											requestAction = &entities.Action{
 												Name:      actionState.ActionEnum().ActionName(),
-												Type:      actionState.ActionType().ActionName(),
+												UTP:       actionState.ActionType().ActionName(),
 												Result:    string(states.ActionSuccess),
 												Reasons:   actionItem.Reasons,
 												CreatedAt: time.Now().UTC(),
@@ -263,7 +263,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 											fullItems = make([]entities.Item, 0, len(pkgItem.Subpackages[i].Items))
 											requestAction = &entities.Action{
 												Name:      actionState.ActionEnum().ActionName(),
-												Type:      actionState.ActionType().ActionName(),
+												UTP:       actionState.ActionType().ActionName(),
 												Result:    string(states.ActionSuccess),
 												Reasons:   actionItem.Reasons,
 												CreatedAt: time.Now().UTC(),
