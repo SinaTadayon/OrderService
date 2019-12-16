@@ -55,6 +55,8 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 		return nil, errors.New("BuyerId of NewOrder invalid")
 	}
 
+	order.Platform = newOrderDto.Platform
+
 	order.BuyerInfo.BuyerId = newOrderDto.Buyer.BuyerId
 	order.BuyerInfo.FirstName = newOrderDto.Buyer.FirstName
 	order.BuyerInfo.LastName = newOrderDto.Buyer.LastName

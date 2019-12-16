@@ -25,6 +25,7 @@ type Order struct {
 	ID             primitive.ObjectID `bson:"-"`
 	OrderId        uint64             `bson:"orderId"`
 	Version        uint64             `bson:"version"`
+	Platform       string             `bson:"platform"`
 	PaymentService []PaymentService   `bson:"paymentService"`
 	SystemPayment  SystemPayment      `bson:"systemPayment"`
 	Status         string             `bson:"status"`

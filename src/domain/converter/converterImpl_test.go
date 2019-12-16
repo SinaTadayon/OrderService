@@ -19,7 +19,8 @@ func TestOrderConverter(t *testing.T) {
 
 func createRequestNewOrder() *pb.RequestNewOrder {
 	order := &pb.RequestNewOrder{
-		Invoice: &pb.Invoice{},
+		Platform: "PWA",
+		Invoice:  &pb.Invoice{},
 		Buyer: &pb.Buyer{
 			Finance:         &pb.FinanceInfo{},
 			ShippingAddress: &pb.Address{},
