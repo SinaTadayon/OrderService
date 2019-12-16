@@ -587,9 +587,15 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 	if oid > 0 {
 		return server.operatorGetOrderByIdHandler(ctx, oid, filter)
 	} else {
-		orderFilter = func() (interface{}, string, int) {
-			return bson.D{{"deletedAt", nil}, {"packages.subpackages.tracking.state.name", server.operatorFilterState[filter].StateName()}},
-				sortName, sortDirect
+		if filter != "" {
+			orderFilter = func() (interface{}, string, int) {
+				return bson.D{{"deletedAt", nil}, {"packages.subpackages.tracking.state.name", server.operatorFilterState[filter].StateName()}},
+					sortName, sortDirect
+			}
+		} else {
+			orderFilter = func() (interface{}, string, int) {
+				return bson.D{{"deletedAt", nil}}, sortName, sortDirect
+			}
 		}
 	}
 
@@ -631,6 +637,8 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 			} else {
 				order.Invoice.PaymentStatus = "fail"
 			}
+		} else {
+			order.Invoice.PaymentStatus = "pending"
 		}
 
 		for j := 0; j < len(orderList[i].Packages); j++ {
@@ -844,8 +852,15 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 
 func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint64, filter FilterValue) (*pb.MessageResponse, error) {
 
-	orderFilter := func() interface{} {
-		return bson.D{{"orderId", oid}, {"deletedAt", nil}, {"packages.subpackages.tracking.state.name", server.operatorFilterState[filter].StateName()}}
+	var orderFilter func() interface{}
+	if filter != "" {
+		orderFilter = func() interface{} {
+			return bson.D{{"orderId", oid}, {"deletedAt", nil}, {"packages.subpackages.tracking.state.name", server.operatorFilterState[filter].StateName()}}
+		}
+	} else {
+		orderFilter = func() interface{} {
+			return bson.D{{"orderId", oid}, {"deletedAt", nil}}
+		}
 	}
 
 	orderList, err := app.Globals.OrderRepository.FindByFilter(ctx, orderFilter)
@@ -886,6 +901,8 @@ func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint6
 			} else {
 				order.Invoice.PaymentStatus = "fail"
 			}
+		} else {
+			order.Invoice.PaymentStatus = "pending"
 		}
 
 		for j := 0; j < len(orderList[i].Packages); j++ {

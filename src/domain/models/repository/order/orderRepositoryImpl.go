@@ -238,7 +238,7 @@ func (repo iOrderRepositoryImpl) FindAllWithSort(ctx context.Context, fieldName 
 }
 
 func (repo iOrderRepositoryImpl) FindAllWithPage(ctx context.Context, page, perPage int64) ([]*entities.Order, int64, error) {
-	if page < 0 || perPage == 0 {
+	if page <= 0 || perPage <= 0 {
 		return nil, 0, errors.New("neither offset nor start can be zero")
 	}
 
@@ -265,12 +265,12 @@ func (repo iOrderRepositoryImpl) FindAllWithPage(ctx context.Context, page, perP
 	}
 
 	if availablePages < page {
-		return nil, availablePages, ErrorPageNotAvailable
+		return nil, totalCount, ErrorPageNotAvailable
 	}
 
 	var offset = (page - 1) * perPage
 	if offset >= totalCount {
-		return nil, availablePages, ErrorTotalCountExceeded
+		return nil, totalCount, ErrorTotalCountExceeded
 	}
 
 	optionFind := options.Find()
@@ -279,9 +279,9 @@ func (repo iOrderRepositoryImpl) FindAllWithPage(ctx context.Context, page, perP
 
 	cursor, err := repo.mongoAdapter.FindMany(databaseName, collectionName, bson.D{{"deletedAt", nil}}, optionFind)
 	if err != nil {
-		return nil, availablePages, errors.Wrap(err, "FindAllWithPage Orders Failed")
+		return nil, totalCount, errors.Wrap(err, "FindAllWithPage Orders Failed")
 	} else if cursor.Err() != nil {
-		return nil, availablePages, errors.Wrap(err, "FindAllWithPage Orders Failed")
+		return nil, totalCount, errors.Wrap(err, "FindAllWithPage Orders Failed")
 	}
 
 	defer closeCursor(ctx, cursor)
@@ -292,16 +292,16 @@ func (repo iOrderRepositoryImpl) FindAllWithPage(ctx context.Context, page, perP
 		var order entities.Order
 		// decode the document
 		if err := cursor.Decode(&order); err != nil {
-			return nil, availablePages, errors.Wrap(err, "FindAllWithPage Orders Failed")
+			return nil, totalCount, errors.Wrap(err, "FindAllWithPage Orders Failed")
 		}
 		orders = append(orders, &order)
 	}
 
-	return orders, availablePages, nil
+	return orders, totalCount, nil
 }
 
 func (repo iOrderRepositoryImpl) FindAllWithPageAndSort(ctx context.Context, page, perPage int64, fieldName string, direction int) ([]*entities.Order, int64, error) {
-	if page < 0 || perPage == 0 {
+	if page <= 0 || perPage <= 0 {
 		return nil, 0, errors.New("neither offset nor start can be zero")
 	}
 
@@ -328,27 +328,29 @@ func (repo iOrderRepositoryImpl) FindAllWithPageAndSort(ctx context.Context, pag
 	}
 
 	if availablePages < page {
-		return nil, availablePages, ErrorPageNotAvailable
+		return nil, totalCount, ErrorPageNotAvailable
 	}
 
 	var offset = (page - 1) * perPage
 	if offset >= totalCount {
-		return nil, availablePages, ErrorTotalCountExceeded
+		return nil, totalCount, ErrorTotalCountExceeded
 	}
 
 	optionFind := options.Find()
 	optionFind.SetLimit(perPage)
 	optionFind.SetSkip(offset)
 
-	sortMap := make(map[string]int)
-	sortMap[fieldName] = direction
-	optionFind.SetSort(sortMap)
+	if fieldName != "" {
+		sortMap := make(map[string]int)
+		sortMap[fieldName] = direction
+		optionFind.SetSort(sortMap)
+	}
 
 	cursor, err := repo.mongoAdapter.FindMany(databaseName, collectionName, bson.D{{"deletedAt", nil}}, optionFind)
 	if err != nil {
-		return nil, availablePages, errors.Wrap(err, "FindAllWithPageAndSort Orders Failed")
+		return nil, totalCount, errors.Wrap(err, "FindAllWithPageAndSort Orders Failed")
 	} else if cursor.Err() != nil {
-		return nil, availablePages, errors.Wrap(err, "FindAllWithPageAndSort Orders Failed")
+		return nil, totalCount, errors.Wrap(err, "FindAllWithPageAndSort Orders Failed")
 	}
 
 	defer closeCursor(ctx, cursor)
@@ -359,12 +361,12 @@ func (repo iOrderRepositoryImpl) FindAllWithPageAndSort(ctx context.Context, pag
 		var order entities.Order
 		// decode the document
 		if err := cursor.Decode(&order); err != nil {
-			return nil, availablePages, errors.Wrap(err, "FindAllWithPageAndSort Orders Failed")
+			return nil, totalCount, errors.Wrap(err, "FindAllWithPageAndSort Orders Failed")
 		}
 		orders = append(orders, &order)
 	}
 
-	return orders, availablePages, nil
+	return orders, totalCount, nil
 }
 
 func (repo iOrderRepositoryImpl) FindAllById(ctx context.Context, ids ...uint64) ([]*entities.Order, error) {
@@ -460,7 +462,7 @@ func (repo iOrderRepositoryImpl) FindByFilterWithSort(ctx context.Context, suppl
 }
 
 func (repo iOrderRepositoryImpl) FindByFilterWithPage(ctx context.Context, supplier func() interface{}, page, perPage int64) ([]*entities.Order, int64, error) {
-	if page < 0 || perPage == 0 {
+	if page <= 0 || perPage == 0 {
 		return nil, 0, errors.New("neither offset nor start can be zero")
 	}
 
@@ -488,12 +490,12 @@ func (repo iOrderRepositoryImpl) FindByFilterWithPage(ctx context.Context, suppl
 	}
 
 	if availablePages < page {
-		return nil, availablePages, ErrorPageNotAvailable
+		return nil, totalCount, ErrorPageNotAvailable
 	}
 
 	var offset = (page - 1) * perPage
 	if offset >= totalCount {
-		return nil, availablePages, ErrorTotalCountExceeded
+		return nil, totalCount, ErrorTotalCountExceeded
 	}
 
 	optionFind := options.Find()
@@ -502,9 +504,9 @@ func (repo iOrderRepositoryImpl) FindByFilterWithPage(ctx context.Context, suppl
 
 	cursor, err := repo.mongoAdapter.FindMany(databaseName, collectionName, filter, optionFind)
 	if err != nil {
-		return nil, availablePages, errors.Wrap(err, "FindByFilterWithPage Orders Failed")
+		return nil, totalCount, errors.Wrap(err, "FindByFilterWithPage Orders Failed")
 	} else if cursor.Err() != nil {
-		return nil, availablePages, errors.Wrap(err, "FindByFilterWithPage Orders Failed")
+		return nil, totalCount, errors.Wrap(err, "FindByFilterWithPage Orders Failed")
 	}
 
 	defer closeCursor(ctx, cursor)
@@ -515,17 +517,17 @@ func (repo iOrderRepositoryImpl) FindByFilterWithPage(ctx context.Context, suppl
 		var order entities.Order
 		// decode the document
 		if err := cursor.Decode(&order); err != nil {
-			return nil, availablePages, errors.Wrap(err, "FindByFilterWithPage Orders Failed")
+			return nil, totalCount, errors.Wrap(err, "FindByFilterWithPage Orders Failed")
 		}
 		orders = append(orders, &order)
 	}
 
-	return orders, availablePages, nil
+	return orders, totalCount, nil
 
 }
 
 func (repo iOrderRepositoryImpl) FindByFilterWithPageAndSort(ctx context.Context, supplier func() (interface{}, string, int), page, perPage int64) ([]*entities.Order, int64, error) {
-	if page < 0 || perPage == 0 {
+	if page <= 0 || perPage == 0 {
 		return nil, 0, errors.New("neither offset nor start can be zero")
 	}
 
@@ -553,27 +555,29 @@ func (repo iOrderRepositoryImpl) FindByFilterWithPageAndSort(ctx context.Context
 	}
 
 	if availablePages < page {
-		return nil, availablePages, ErrorPageNotAvailable
+		return nil, totalCount, ErrorPageNotAvailable
 	}
 
 	var offset = (page - 1) * perPage
 	if offset >= totalCount {
-		return nil, availablePages, ErrorTotalCountExceeded
+		return nil, totalCount, ErrorTotalCountExceeded
 	}
 
 	optionFind := options.Find()
 	optionFind.SetLimit(perPage)
 	optionFind.SetSkip(offset)
 
-	sortMap := make(map[string]int)
-	sortMap[fieldName] = direction
-	optionFind.SetSort(sortMap)
+	if fieldName != "" {
+		sortMap := make(map[string]int)
+		sortMap[fieldName] = direction
+		optionFind.SetSort(sortMap)
+	}
 
 	cursor, err := repo.mongoAdapter.FindMany(databaseName, collectionName, filter, optionFind)
 	if err != nil {
-		return nil, availablePages, errors.Wrap(err, "FindByFilterWithPageAndSort Orders Failed")
+		return nil, totalCount, errors.Wrap(err, "FindByFilterWithPageAndSort Orders Failed")
 	} else if cursor.Err() != nil {
-		return nil, availablePages, errors.Wrap(err, "FindByFilterWithPageAndSort Orders Failed")
+		return nil, totalCount, errors.Wrap(err, "FindByFilterWithPageAndSort Orders Failed")
 	}
 
 	defer closeCursor(ctx, cursor)
@@ -584,12 +588,12 @@ func (repo iOrderRepositoryImpl) FindByFilterWithPageAndSort(ctx context.Context
 		var order entities.Order
 		// decode the document
 		if err := cursor.Decode(&order); err != nil {
-			return nil, availablePages, errors.Wrap(err, "FindByFilterWithPageAndSort Orders Failed")
+			return nil, totalCount, errors.Wrap(err, "FindByFilterWithPageAndSort Orders Failed")
 		}
 		orders = append(orders, &order)
 	}
 
-	return orders, availablePages, nil
+	return orders, totalCount, nil
 }
 
 func (repo iOrderRepositoryImpl) ExistsById(ctx context.Context, orderId uint64) (bool, error) {

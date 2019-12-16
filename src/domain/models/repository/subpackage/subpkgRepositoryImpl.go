@@ -291,12 +291,12 @@ func (repo iSubPkgRepositoryImpl) FindAllWithPage(ctx context.Context, pid uint6
 	}
 
 	if availablePages < page {
-		return nil, availablePages, ErrorPageNotAvailable
+		return nil, totalCount, ErrorPageNotAvailable
 	}
 
 	var offset = (page - 1) * perPage
 	if offset >= totalCount {
-		return nil, availablePages, ErrorTotalCountExceeded
+		return nil, totalCount, ErrorTotalCountExceeded
 	}
 
 	pipeline := []bson.M{
@@ -329,11 +329,11 @@ func (repo iSubPkgRepositoryImpl) FindAllWithPage(ctx context.Context, pid uint6
 		subpackages = append(subpackages, &subpackage)
 	}
 
-	return subpackages, availablePages, nil
+	return subpackages, totalCount, nil
 }
 
 func (repo iSubPkgRepositoryImpl) FindAllWithPageAndSort(ctx context.Context, pid uint64, page, perPage int64, fieldName string, direction int) ([]*entities.Subpackage, int64, error) {
-	if page < 0 || perPage == 0 {
+	if page <= 0 || perPage <= 0 {
 		return nil, 0, errors.New("neither offset nor start can be zero")
 	}
 
@@ -360,12 +360,12 @@ func (repo iSubPkgRepositoryImpl) FindAllWithPageAndSort(ctx context.Context, pi
 	}
 
 	if availablePages < page {
-		return nil, availablePages, ErrorPageNotAvailable
+		return nil, totalCount, ErrorPageNotAvailable
 	}
 
 	var offset = (page - 1) * perPage
 	if offset >= totalCount {
-		return nil, availablePages, ErrorTotalCountExceeded
+		return nil, totalCount, ErrorTotalCountExceeded
 	}
 
 	pipeline := []bson.M{
@@ -399,7 +399,7 @@ func (repo iSubPkgRepositoryImpl) FindAllWithPageAndSort(ctx context.Context, pi
 		subpackages = append(subpackages, &subpackage)
 	}
 
-	return subpackages, availablePages, nil
+	return subpackages, totalCount, nil
 
 }
 
@@ -438,7 +438,7 @@ func (repo iSubPkgRepositoryImpl) FindByFilter(ctx context.Context, totalSupplie
 }
 
 func (repo iSubPkgRepositoryImpl) FindByFilterWithPage(ctx context.Context, totalSupplier, supplier func() (filter interface{}), page, perPage int64) ([]*entities.Subpackage, int64, error) {
-	if page < 0 || perPage == 0 {
+	if page <= 0 || perPage == 0 {
 		return nil, 0, errors.New("neither offset nor start can be zero")
 	}
 
@@ -466,19 +466,19 @@ func (repo iSubPkgRepositoryImpl) FindByFilterWithPage(ctx context.Context, tota
 	}
 
 	if availablePages < page {
-		return nil, availablePages, ErrorPageNotAvailable
+		return nil, totalCount, ErrorPageNotAvailable
 	}
 
 	var offset = (page - 1) * perPage
 	if offset >= totalCount {
-		return nil, availablePages, ErrorTotalCountExceeded
+		return nil, totalCount, ErrorTotalCountExceeded
 	}
 
 	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, filter)
 	if err != nil {
-		return nil, availablePages, errors.Wrap(err, "FindByFilterWithPage Subpackages Failed")
+		return nil, totalCount, errors.Wrap(err, "FindByFilterWithPage Subpackages Failed")
 	} else if cursor.Err() != nil {
-		return nil, availablePages, errors.Wrap(err, "FindByFilterWithPage Subpackages Failed")
+		return nil, totalCount, errors.Wrap(err, "FindByFilterWithPage Subpackages Failed")
 	}
 
 	defer closeCursor(ctx, cursor)
@@ -489,12 +489,12 @@ func (repo iSubPkgRepositoryImpl) FindByFilterWithPage(ctx context.Context, tota
 		var subpackage entities.Subpackage
 		// decode the document
 		if err := cursor.Decode(&subpackage); err != nil {
-			return nil, availablePages, errors.Wrap(err, "FindByFilter Subpackage Failed")
+			return nil, totalCount, errors.Wrap(err, "FindByFilter Subpackage Failed")
 		}
 		subpackages = append(subpackages, &subpackage)
 	}
 
-	return subpackages, availablePages, nil
+	return subpackages, totalCount, nil
 }
 
 func (repo iSubPkgRepositoryImpl) ExistsById(ctx context.Context, sid uint64) (bool, error) {

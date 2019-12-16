@@ -176,12 +176,12 @@ func TestFindAllWithPage(t *testing.T) {
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
 	defer removeCollection()
 	ctx, _ := context.WithCancel(context.Background())
-	subPkgList, totalPage, err := subPkgRepo.FindAllWithPage(ctx, order.Packages[1].PId, 1, 2)
+	subPkgList, total, err := subPkgRepo.FindAllWithPage(ctx, order.Packages[1].PId, 1, 2)
 	require.Nil(t, err)
 	require.Equal(t, order.Packages[1].PId, subPkgList[0].PId)
 	require.Equal(t, order.Packages[1].PId, subPkgList[1].PId)
 	require.Equal(t, 2, len(subPkgList))
-	require.Equal(t, int64(3), totalPage)
+	require.Equal(t, int64(6), total)
 }
 
 func TestFindAllWithPageAndSort(t *testing.T) {
@@ -207,10 +207,10 @@ func TestFindAllWithPageAndSort(t *testing.T) {
 
 	defer removeCollection()
 	ctx, _ := context.WithCancel(context.Background())
-	subPkgList, totalPage, err := subPkgRepo.FindAllWithPageAndSort(ctx, order.Packages[0].PId, 1, 2, "createdAt", -1)
+	subPkgList, total, err := subPkgRepo.FindAllWithPageAndSort(ctx, order.Packages[0].PId, 1, 2, "createdAt", -1)
 	require.Nil(t, err)
 	require.Equal(t, 2, len(subPkgList))
-	require.Equal(t, int64(3), totalPage)
+	require.Equal(t, int64(6), total)
 	require.Equal(t, firstTime.Unix(), subPkgList[0].CreatedAt.Unix())
 	require.Equal(t, secondTime.Unix(), subPkgList[1].CreatedAt.Unix())
 }
@@ -276,12 +276,12 @@ func TestFindByFilterWithPage(t *testing.T) {
 		{"$replaceRoot": bson.M{"newRoot": "$packages"}},
 		{"$replaceRoot": bson.M{"newRoot": "$subpackages"}},
 	}
-	subPkgList, totalPages, err := subPkgRepo.FindByFilterWithPage(ctx, func() (filter interface{}) { return totalPipeline }, func() (filter interface{}) { return pipeline }, 1, 2)
+	subPkgList, total, err := subPkgRepo.FindByFilterWithPage(ctx, func() (filter interface{}) { return totalPipeline }, func() (filter interface{}) { return pipeline }, 1, 2)
 	require.Nil(t, err)
 	require.Equal(t, order.Packages[0].PId, subPkgList[0].PId)
 	require.Equal(t, order.Packages[0].PId, subPkgList[1].PId)
 	require.Equal(t, 2, len(subPkgList))
-	require.Equal(t, int64(2), totalPages)
+	require.Equal(t, int64(4), total)
 }
 
 func TestExitsById_Success(t *testing.T) {

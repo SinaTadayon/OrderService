@@ -429,10 +429,11 @@ message OperatorOrderList {
         message Invoice {
             uint64 GrandTotal = 1;
             uint64 Subtotal = 2;
-            float Voucher = 3;
-            string PaymentStatus = 4;
-            string PaymentMethod = 5;
-            string PaymentGateway = 6;
+            uint64 Shipment = 3;
+            float Voucher = 4;
+            string PaymentStatus = 5;
+            string PaymentMethod = 6;
+            string PaymentGateway = 7;
         }
         Invoice invoice = 10;
     }
