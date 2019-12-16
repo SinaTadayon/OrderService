@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	pg "gitlab.faza.io/protos/payment-gateway"
@@ -12,6 +13,7 @@ type IFlowManager interface {
 	//SellerApprovalPending(ctx context.Context, req *message.RequestSellerOrderAction) future.IFuture
 	//BuyerApprovalPending(ctx context.Context, req *message.RequestBuyerOrderAction) future.IFuture
 	PaymentGatewayResult(ctx context.Context, req *pg.PaygateHookRequest) future.IFuture
+	GetState(state states.IEnumState) states.IState
 	//OperatorActionPending(ctx context.Context, req *message.RequestBackOfficeOrderAction) future.IFuture
 	//
 	//BackOfficeOrdersListView(ctx context.Context, req *message.RequestBackOfficeOrdersList) future.IFuture

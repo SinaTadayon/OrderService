@@ -74,6 +74,10 @@ func NewFlowManager() (IFlowManager, error) {
 	return iFlowManagerImpl, nil
 }
 
+func (flowManager *iFlowManagerImpl) GetState(state states.IEnumState) states.IState {
+	return flowManager.statesMap[state]
+}
+
 func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	var emptyState []states.IState
 	var emptyActionState map[actions.IAction]states.IState

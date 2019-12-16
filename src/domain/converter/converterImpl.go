@@ -55,6 +55,8 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 		return nil, errors.New("BuyerId of NewOrder invalid")
 	}
 
+	order.Platform = newOrderDto.Platform
+
 	order.BuyerInfo.BuyerId = newOrderDto.Buyer.BuyerId
 	order.BuyerInfo.FirstName = newOrderDto.Buyer.FirstName
 	order.BuyerInfo.LastName = newOrderDto.Buyer.LastName
@@ -65,14 +67,13 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	order.BuyerInfo.Gender = newOrderDto.Buyer.Gender
 	order.BuyerInfo.IP = newOrderDto.Buyer.Ip
 
-	if newOrderDto.Buyer.Finance == nil {
-		return nil, errors.New("buyer.finance of RequestNewOrder invalid")
+	if newOrderDto.Buyer.Finance != nil {
+		//return nil, errors.New("buyer.finance of RequestNewOrder invalid")
+		order.BuyerInfo.FinanceInfo.Iban = newOrderDto.Buyer.Finance.Iban
+		order.BuyerInfo.FinanceInfo.CardNumber = newOrderDto.Buyer.Finance.CardNumber
+		order.BuyerInfo.FinanceInfo.AccountNumber = newOrderDto.Buyer.Finance.AccountNumber
+		order.BuyerInfo.FinanceInfo.BankName = newOrderDto.Buyer.Finance.BankName
 	}
-
-	order.BuyerInfo.FinanceInfo.Iban = newOrderDto.Buyer.Finance.Iban
-	order.BuyerInfo.FinanceInfo.CardNumber = newOrderDto.Buyer.Finance.CardNumber
-	order.BuyerInfo.FinanceInfo.AccountNumber = newOrderDto.Buyer.Finance.AccountNumber
-	order.BuyerInfo.FinanceInfo.BankName = newOrderDto.Buyer.Finance.BankName
 
 	if newOrderDto.Buyer.ShippingAddress == nil {
 		return nil, errors.New("buyer.shippingAddress of RequestNewOrder invalid")

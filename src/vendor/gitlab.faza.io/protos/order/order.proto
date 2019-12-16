@@ -135,8 +135,9 @@ message ResponseNewOrder {
 
 message RequestNewOrder {
     Buyer buyer = 1;
-    Invoice invoice = 2;
-    repeated Package packages = 3;
+    string platform = 2;
+    Invoice invoice = 3;
+    repeated Package packages = 4;
 }
 
 message Package {

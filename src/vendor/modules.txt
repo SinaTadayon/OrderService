@@ -49,7 +49,7 @@ gitlab.faza.io/go-framework/mongoadapter
 gitlab.faza.io/protos/cart
 # gitlab.faza.io/protos/notification v0.0.3
 gitlab.faza.io/protos/notification
-# gitlab.faza.io/protos/order v0.0.46
+# gitlab.faza.io/protos/order v0.0.47
 gitlab.faza.io/protos/order
 # gitlab.faza.io/protos/payment-gateway v0.0.7
 gitlab.faza.io/protos/payment-gateway

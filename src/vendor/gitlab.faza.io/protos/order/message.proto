@@ -412,3 +412,128 @@ message BuyerReturnOrderDetailList {
 
     repeated ReturnOrderDetail returnOrderDetail = 2;
 }
+
+
+////////////////////////////////////////
+message OperatorOrderList {
+    message Order {
+        uint64 OrderId = 1;
+        uint64 BuyerId = 2;
+        string PurchasedOn = 3;
+        int32 basketSize = 4;
+        string BillTo = 5;
+        string ShipTo = 6;
+        string Platform = 7;
+        string IP = 8;
+        string Status = 9;
+        message Invoice {
+            uint64 GrandTotal = 1;
+            uint64 Subtotal = 2;
+            float Voucher = 3;
+            string PaymentStatus = 4;
+            string PaymentMethod = 5;
+            string PaymentGateway = 6;
+        }
+        Invoice invoice = 10;
+    }
+    repeated Order orders = 1;
+}
+
+message OperatorOrderDetail {
+    uint64 OrderId = 1;
+    string PurchasedOn = 2;
+    string IP = 3;
+
+    message Invoice {
+        uint64 GrandTotal = 1;
+        uint64 Subtotal = 2;
+        float VoucherAmount = 3;
+        string PaymentStatus = 4;
+        string PaymentMethod = 5;
+        string PaymentGateway = 6;
+        uint64 ShipmentTotal = 7;
+    }
+    Invoice invoice = 4;
+
+    message BillingInfo {
+        uint64 BuyerId = 1;
+        string firstName= 2;
+        string lastName= 3;
+        string phone = 4;
+        string mobile = 5;
+        string nationalId = 6;
+    }
+    BillingInfo billing = 5;
+
+    message ShippingInfo {
+        string firstName = 1;
+        string lastName = 2;
+        string country = 3;
+        string city = 4;
+        string province = 5;
+        string neighborhood = 6;
+        string address = 7;
+        string zipCode = 8;
+    }
+    ShippingInfo shippingInfo = 7;
+
+    message Subpackage {
+        message StateHistory {
+            string Name = 1;
+            int32 Index = 2;
+            string UTP = 3;
+            string CreatedAt = 4;
+        }
+        uint64 SID = 1;
+        uint64 PID = 2;
+        uint64 SellerId = 3;
+        string ShopName = 4;
+        string UpdatedAt = 5;
+        repeated StateHistory states = 6;
+
+        message ShipmentDetail {
+            string CarrierName = 1;
+            string ShippingMethod = 2;
+            string TrackingNumber = 3;
+            string Image = 4;
+            string Description = 5;
+            string ShippedAt = 6;
+            string CreatedAt = 7;
+        }
+        ShipmentDetail shipmentDetail = 7;
+
+        message ReturnShipmentDetail {
+            string CarrierName = 1;
+            string ShippingMethod = 2;
+            string TrackingNumber = 3;
+            string Image = 4;
+            string Description = 5;
+            string RequestedAt = 6;
+            string ShippedAt = 7;
+            string CreatedAt = 8;
+        }
+        ReturnShipmentDetail returnShipmentDetail = 8;
+
+        message Item {
+            string inventoryId = 1;
+            string brand = 2;
+            string title = 3;
+            map<string,string> Attributes = 4;
+            int32  quantity   = 5;
+            message Invoice {
+                uint64 unit = 1;
+                uint64 total = 2;
+                uint64 original = 3;
+                uint64 special = 4;
+                uint64 discount = 5;
+                string currency = 6;
+            }
+            Invoice invoice = 6;
+        }
+        repeated Item items = 9;
+        repeated string actions = 10;
+    }
+
+    repeated Subpackage subpackages = 8;
+}
+
