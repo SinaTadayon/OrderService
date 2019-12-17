@@ -48,19 +48,33 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 		var releaseStockAction *entities.Action
 		if err := state.releasedStock(ctx, subpackages); err != nil {
 			releaseStockAction = &entities.Action{
-				Name:      stock_action.Release.ActionName(),
-				UTP:       actions.Stock.ActionName(),
-				Result:    string(states.ActionFail),
-				Reasons:   nil,
-				CreatedAt: time.Now().UTC(),
+				Name:       stock_action.Release.ActionName(),
+				Type:       "",
+				UId:        0,
+				UTP:        actions.Stock.ActionName(),
+				Permission: "",
+				Privilege:  "",
+				Policy:     "",
+				Result:     string(states.ActionFail),
+				Reasons:    nil,
+				Data:       nil,
+				CreatedAt:  time.Now().UTC(),
+				Extended:   nil,
 			}
 		} else {
 			releaseStockAction = &entities.Action{
-				Name:      stock_action.Release.ActionName(),
-				UTP:       actions.Stock.ActionName(),
-				Result:    string(states.ActionSuccess),
-				Reasons:   nil,
-				CreatedAt: time.Now().UTC(),
+				Name:       stock_action.Release.ActionName(),
+				Type:       "",
+				UId:        0,
+				UTP:        actions.Stock.ActionName(),
+				Permission: "",
+				Privilege:  "",
+				Policy:     "",
+				Result:     string(states.ActionSuccess),
+				Reasons:    nil,
+				Data:       nil,
+				CreatedAt:  time.Now().UTC(),
+				Extended:   nil,
 			}
 		}
 

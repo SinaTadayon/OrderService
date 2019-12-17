@@ -48,19 +48,33 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 		var settlementStockAction *entities.Action
 		if err := state.settlementStock(ctx, subpackages); err != nil {
 			settlementStockAction = &entities.Action{
-				Name:      stock_action.Settlement.ActionName(),
-				UTP:       actions.Stock.ActionName(),
-				Result:    string(states.ActionFail),
-				Reasons:   nil,
-				CreatedAt: time.Now().UTC(),
+				Name:       stock_action.Settlement.ActionName(),
+				Type:       "",
+				UId:        0,
+				UTP:        actions.Stock.ActionName(),
+				Permission: "",
+				Privilege:  "",
+				Policy:     "",
+				Result:     string(states.ActionFail),
+				Reasons:    nil,
+				Data:       nil,
+				CreatedAt:  time.Now().UTC(),
+				Extended:   nil,
 			}
 		} else {
 			settlementStockAction = &entities.Action{
-				Name:      stock_action.Settlement.ActionName(),
-				UTP:       actions.Stock.ActionName(),
-				Result:    string(states.ActionSuccess),
-				Reasons:   nil,
-				CreatedAt: time.Now().UTC(),
+				Name:       stock_action.Settlement.ActionName(),
+				Type:       "",
+				UId:        0,
+				UTP:        actions.Stock.ActionName(),
+				Permission: "",
+				Privilege:  "",
+				Policy:     "",
+				Result:     string(states.ActionSuccess),
+				Reasons:    nil,
+				Data:       nil,
+				CreatedAt:  time.Now().UTC(),
+				Extended:   nil,
 			}
 		}
 

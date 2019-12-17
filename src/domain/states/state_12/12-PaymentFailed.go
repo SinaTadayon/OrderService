@@ -9,6 +9,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
+	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"time"
 )
 
@@ -50,19 +51,33 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 		var stockAction *entities.Action
 		if err := state.releasedStock(ctx, order); err != nil {
 			stockAction = &entities.Action{
-				Name:      stock_action.Release.ActionName(),
-				UTP:       actions.Stock.ActionName(),
-				Result:    string(states.ActionFail),
-				Reasons:   nil,
-				CreatedAt: time.Now().UTC(),
+				Name:       stock_action.Release.ActionName(),
+				Type:       "",
+				UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
+				UTP:        actions.Stock.ActionName(),
+				Permission: "",
+				Privilege:  "",
+				Policy:     "",
+				Result:     string(states.ActionFail),
+				Reasons:    nil,
+				Data:       nil,
+				CreatedAt:  time.Now().UTC(),
+				Extended:   nil,
 			}
 		} else {
 			stockAction = &entities.Action{
-				Name:      stock_action.Release.ActionName(),
-				UTP:       actions.Stock.ActionName(),
-				Result:    string(states.ActionSuccess),
-				Reasons:   nil,
-				CreatedAt: time.Now().UTC(),
+				Name:       stock_action.Release.ActionName(),
+				Type:       "",
+				UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
+				UTP:        actions.Stock.ActionName(),
+				Permission: "",
+				Privilege:  "",
+				Policy:     "",
+				Result:     string(states.ActionSuccess),
+				Reasons:    nil,
+				Data:       nil,
+				CreatedAt:  time.Now().UTC(),
+				Extended:   nil,
 			}
 		}
 

@@ -472,22 +472,6 @@ func (flowManager iFlowManagerImpl) MessageHandler(ctx context.Context, iFrame f
 func (flowManager iFlowManagerImpl) newOrderHandler(ctx context.Context, iFrame frame.IFrame) {
 
 	requestNewOrder := iFrame.Header().Value(string(frame.HeaderNewOrder))
-	//if err := ptypes.UnmarshalAny(request.Data, &requestNewOrder); err != nil {
-	//	logger.Err("Could not unmarshal requestNewOrder from anything field, error: %s, request: %v", err, request)
-	//	returnChannel := make(chan future.IDataFuture, 1)
-	//	returnChannel <- future.IDataFuture{Data: nil, Ex: future.FutureError{Code: future.BadRequest, Reason: "Invalid requestNewOrder"}}
-	//	close(returnChannel)
-	//	return future.NewFuture(returnChannel, 1, 1)
-	//}
-	//
-	//timestamp, err := ptypes.Timestamp(request.Time)
-	//if err != nil {
-	//	logger.Err("timestamp of requestNewOrder invalid, error: %s, requestNewOrder: %v", err, requestNewOrder)
-	//	returnChannel := make(chan future.IDataFuture, 1)
-	//	returnChannel <- future.IDataFuture{Get:nil, Ex:future.FutureError{Code: future.BadRequest, Reason:"Invalid Request Timestamp"}}
-	//	defer close(returnChannel)
-	//	return future.NewFuture(returnChannel, 1, 1)
-	//}
 
 	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
 	if err != nil {

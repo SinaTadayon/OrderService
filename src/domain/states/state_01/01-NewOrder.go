@@ -11,6 +11,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
+	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"time"
 )
 
@@ -41,13 +42,13 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 
 func (state newOrderState) Process(ctx context.Context, iFrame frame.IFrame) {
 	var errStr string
-	logger.Audit("New Order Received . . .")
+	//logger.Audit("New Order Received . . .")
 
 	order := iFrame.Header().Value(string(frame.HeaderOrder)).(*entities.Order)
 	action := &entities.Action{
 		Name:       state.Actions()[0].ActionEnum().ActionName(),
 		Type:       "",
-		UId:        0,
+		UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
 		UTP:        state.Actions()[0].ActionType().ActionName(),
 		Permission: "",
 		Privilege:  "",
@@ -92,10 +93,6 @@ func (state newOrderState) releasedStock(ctx context.Context, order *entities.Or
 	iFuture := app.Globals.StockService.BatchStockActions(ctx, inventories,
 		stock_action.New(stock_action.Release))
 	futureData := iFuture.Get()
-	//if futureData == nil {
-	//	logger.Err("StockService future channel has been closed, state: %s, order: %v", state.Name(), order)
-	//	return
-	//}
 
 	if futureData.Error() != nil {
 		logger.Err("Reserved stock from stockService failed, state: %s, order: %v, error: %s", state.Name(), order, futureData.Error())

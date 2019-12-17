@@ -9,6 +9,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
+	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"time"
 )
 
@@ -47,11 +48,18 @@ func (state paymentSuccessState) Process(ctx context.Context, iFrame frame.IFram
 		}
 
 		paymentAction := &entities.Action{
-			Name:      system_action.NextToState.ActionName(),
-			UTP:       actions.System.ActionName(),
-			Result:    string(states.ActionSuccess),
-			Reasons:   nil,
-			CreatedAt: time.Now().UTC(),
+			Name:       system_action.NextToState.ActionName(),
+			Type:       "",
+			UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
+			UTP:        actions.System.ActionName(),
+			Permission: "",
+			Privilege:  "",
+			Policy:     "",
+			Result:     string(states.ActionSuccess),
+			Reasons:    nil,
+			Data:       nil,
+			CreatedAt:  time.Now().UTC(),
+			Extended:   nil,
 		}
 
 		state.UpdateOrderAllSubPkg(ctx, order, paymentAction)

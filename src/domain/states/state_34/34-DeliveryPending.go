@@ -13,6 +13,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
+	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"time"
 )
 
@@ -76,8 +77,22 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 		for _, subpackage := range subpackages {
 			state.UpdateSubPackage(ctx, subpackage, nil)
 			subpackage.Tracking.State.Data = map[string]interface{}{
-				"notifyAt": notifyAt,
-				"expireAt": deliveredAt,
+				"scheduler": []struct {
+					name   string
+					value  time.Time
+					action string
+				}{
+					{
+						"notifyAt",
+						notifyAt,
+						scheduler_action.Notification.ActionName(),
+					},
+					{
+						"expireAt",
+						deliveredAt,
+						scheduler_action.Deliver.ActionName(),
+					},
+				},
 			}
 			logger.Audit("Process() => set notifyAt: %s expireAt: %s, orderId: %d, pid: %d, sid: %d, %s state ",
 				notifyAt, deliveredAt, subpackage.OrderId, subpackage.PId, subpackage.SId, state.Name())
@@ -130,6 +145,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 				}
 
 				// TODO Notification template must be load from file
+				// TODO scheduler user
 				if order != nil {
 					buyerNotify := notify_service.SMSRequest{
 						Phone: order.BuyerInfo.ShippingAddress.Mobile,
@@ -142,19 +158,33 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 						logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, pid: %d, error: %s",
 							buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, futureData.Error().Reason())
 						requestAction = &entities.Action{
-							Name:      scheduler_action.Notification.ActionName(),
-							UTP:       actions.Scheduler.ActionName(),
-							Result:    string(states.ActionFail),
-							Reasons:   nil,
-							CreatedAt: time.Now().UTC(),
+							Name:       scheduler_action.Notification.ActionName(),
+							Type:       "",
+							UId:        0,
+							UTP:        actions.Scheduler.ActionName(),
+							Permission: "",
+							Privilege:  "",
+							Policy:     "",
+							Result:     string(states.ActionFail),
+							Reasons:    nil,
+							Data:       nil,
+							CreatedAt:  time.Now().UTC(),
+							Extended:   nil,
 						}
 					} else {
 						requestAction = &entities.Action{
-							Name:      scheduler_action.Notification.ActionName(),
-							UTP:       actions.Scheduler.ActionName(),
-							Result:    string(states.ActionSuccess),
-							Reasons:   nil,
-							CreatedAt: time.Now().UTC(),
+							Name:       scheduler_action.Notification.ActionName(),
+							Type:       "",
+							UId:        0,
+							UTP:        actions.Scheduler.ActionName(),
+							Permission: "",
+							Privilege:  "",
+							Policy:     "",
+							Result:     string(states.ActionSuccess),
+							Reasons:    nil,
+							Data:       nil,
+							CreatedAt:  time.Now().UTC(),
+							Extended:   nil,
 						}
 					}
 
@@ -233,11 +263,18 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 											newSubPkg.Items = make([]entities.Item, 0, len(eventSubPkg.Items))
 
 											requestAction = &entities.Action{
-												Name:      actionState.ActionEnum().ActionName(),
-												UTP:       actionState.ActionType().ActionName(),
-												Result:    string(states.ActionSuccess),
-												Reasons:   actionItem.Reasons,
-												CreatedAt: time.Now().UTC(),
+												Name:       actionState.ActionEnum().ActionName(),
+												Type:       "",
+												UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
+												UTP:        actionState.ActionType().ActionName(),
+												Permission: "",
+												Privilege:  "",
+												Policy:     "",
+												Result:     string(states.ActionSuccess),
+												Reasons:    actionItem.Reasons,
+												Data:       nil,
+												CreatedAt:  time.Now().UTC(),
+												Extended:   nil,
 											}
 										}
 
@@ -262,11 +299,18 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 										if fullItems == nil {
 											fullItems = make([]entities.Item, 0, len(pkgItem.Subpackages[i].Items))
 											requestAction = &entities.Action{
-												Name:      actionState.ActionEnum().ActionName(),
-												UTP:       actionState.ActionType().ActionName(),
-												Result:    string(states.ActionSuccess),
-												Reasons:   actionItem.Reasons,
-												CreatedAt: time.Now().UTC(),
+												Name:       actionState.ActionEnum().ActionName(),
+												Type:       "",
+												UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
+												UTP:        actionState.ActionType().ActionName(),
+												Permission: "",
+												Privilege:  "",
+												Policy:     "",
+												Result:     string(states.ActionSuccess),
+												Reasons:    actionItem.Reasons,
+												Data:       nil,
+												CreatedAt:  time.Now().UTC(),
+												Extended:   nil,
 											}
 										}
 										fullItems = append(fullItems, pkgItem.Subpackages[i].Items[j])
@@ -302,49 +346,55 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 				}
 			}
 
-			var sids = make([]uint64, 0, 32)
-			for i := 0; i < len(newSubPackages); i++ {
-				if newSubPackages[i].SId == 0 {
-					// TODO must be optimized performance
-					state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
-					err := app.Globals.SubPkgRepository.Save(ctx, newSubPackages[i])
-					if err != nil {
-						logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
-							newSubPackages[i].OrderId, newSubPackages[i].PId, event, err.Error())
-						// TODO must distinct system error from update version error
-						future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-							SetError(future.InternalError, "Unknown Err", err).Send()
-						return
+			if newSubPackages != nil {
+				var sids = make([]uint64, 0, 32)
+				for i := 0; i < len(newSubPackages); i++ {
+					if newSubPackages[i].SId == 0 {
+						// TODO must be optimized performance
+						state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
+						err := app.Globals.SubPkgRepository.Save(ctx, newSubPackages[i])
+						if err != nil {
+							logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
+								newSubPackages[i].OrderId, newSubPackages[i].PId, event, err.Error())
+							// TODO must distinct system error from update version error
+							future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+								SetError(future.InternalError, "Unknown Err", err).Send()
+							return
+						}
+
+						pkgItem.Subpackages = append(pkgItem.Subpackages, *newSubPackages[i])
+						logger.Audit("Process() => Status of new subpackage update to %v event, orderId: %d, sellerId: %d, sid: %d",
+							event, newSubPackages[i].OrderId, newSubPackages[i].PId, newSubPackages[i].SId)
+					} else {
+						state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
 					}
-
-					pkgItem.Subpackages = append(pkgItem.Subpackages, *newSubPackages[i])
-					logger.Audit("Process() => Status of new subpackage update to %v event, orderId: %d, sellerId: %d, sid: %d",
-						event, newSubPackages[i].OrderId, newSubPackages[i].PId, newSubPackages[i].SId)
-				} else {
-					state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
+					sids = append(sids, newSubPackages[i].SId)
 				}
-				sids = append(sids, newSubPackages[i].SId)
-			}
 
-			pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
-			if err != nil {
-				logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
-					pkgItem.OrderId, pkgItem.PId, event, err.Error())
-				// TODO must distinct system error from update version error
+				pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
+				if err != nil {
+					logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
+						pkgItem.OrderId, pkgItem.PId, event, err.Error())
+					// TODO must distinct system error from update version error
+					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+						SetError(future.InternalError, "Unknown Err", err).Send()
+					return
+				}
+				pkgItem = pkgItemUpdated
+
+				response := events.ActionResponse{
+					OrderId: pkgItem.OrderId,
+					SIds:    sids,
+				}
+
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-					SetError(future.InternalError, "Unknown Err", err).Send()
-				return
+					SetData(response).Send()
+				nextActionState.Process(ctx, frame.Factory().SetSIds(sids).SetSubpackages(newSubPackages).SetBody(pkgItem).Build())
+			} else {
+				logger.Err("Process() => event action data invalid, state: %s, event: %v, frame: %v", state.String(), event, iFrame)
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetError(future.BadRequest, "Event Action Data Invalid", errors.New("event action data invalid")).Send()
 			}
-			pkgItem = pkgItemUpdated
-
-			response := events.ActionResponse{
-				OrderId: pkgItem.OrderId,
-				SIds:    sids,
-			}
-
-			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				SetData(response).Send()
-			nextActionState.Process(ctx, frame.Factory().SetSIds(sids).SetSubpackages(newSubPackages).SetBody(pkgItem).Build())
 		} else {
 			logger.Err("Process() => event type not supported, state: %s, event: %v, frame: %v", state.String(), event, iFrame)
 			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).

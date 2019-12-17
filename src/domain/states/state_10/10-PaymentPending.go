@@ -14,6 +14,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
+	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"strconv"
 	"time"
 )
@@ -92,20 +93,34 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			if futureData.Error() != nil {
 				logger.Err("VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Invoice.Voucher.Code, futureData.Error().Reason())
 				voucherAction = &entities.Action{
-					Name:      voucher_action.Settlement.ActionName(),
-					UTP:       actions.Voucher.ActionName(),
-					Result:    string(states.ActionFail),
-					Reasons:   nil,
-					CreatedAt: time.Now().UTC(),
+					Name:       voucher_action.Settlement.ActionName(),
+					Type:       "",
+					UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
+					UTP:        actions.Voucher.ActionName(),
+					Permission: "",
+					Privilege:  "",
+					Policy:     "",
+					Result:     string(states.ActionFail),
+					Reasons:    nil,
+					Data:       nil,
+					CreatedAt:  time.Now().UTC(),
+					Extended:   nil,
 				}
 			} else {
 				logger.Audit("Invoice paid by voucher order success, orderId: %d, voucherAmount: %f, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Amount, order.Invoice.Voucher.Code)
 				voucherAction = &entities.Action{
-					Name:      voucher_action.Settlement.ActionName(),
-					UTP:       actions.Voucher.ActionName(),
-					Result:    string(states.ActionSuccess),
-					Reasons:   nil,
-					CreatedAt: time.Now().UTC(),
+					Name:       voucher_action.Settlement.ActionName(),
+					Type:       "",
+					UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
+					UTP:        actions.Voucher.ActionName(),
+					Permission: "",
+					Privilege:  "",
+					Policy:     "",
+					Result:     string(states.ActionSuccess),
+					Reasons:    nil,
+					Data:       nil,
+					CreatedAt:  time.Now().UTC(),
+					Extended:   nil,
 				}
 			}
 
@@ -153,11 +168,18 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				}
 
 				paymentAction := &entities.Action{
-					Name:      payment_action.Fail.ActionName(),
-					UTP:       actions.Payment.ActionName(),
-					Result:    string(states.ActionFail),
-					Reasons:   nil,
-					CreatedAt: time.Now().UTC(),
+					Name:       payment_action.Fail.ActionName(),
+					Type:       "",
+					UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
+					UTP:        actions.Payment.ActionName(),
+					Permission: "",
+					Privilege:  "",
+					Policy:     "",
+					Result:     string(states.ActionFail),
+					Reasons:    nil,
+					Data:       nil,
+					CreatedAt:  time.Now().UTC(),
+					Extended:   nil,
 				}
 
 				state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
@@ -218,6 +240,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			return
 		}
 
+		ctx = context.WithValue(ctx, string(utils.CtxUserID), order.BuyerInfo.BuyerId)
 		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 			SetCapacity(1).Send()
 
@@ -226,11 +249,17 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 		if order.PaymentService[0].PaymentResult.Result == false {
 			logger.Audit("PaymentResult failed, orderId: %d", order.OrderId)
 			paymentAction := &entities.Action{
-				Name:      payment_action.Fail.ActionName(),
-				UTP:       actions.Payment.ActionName(),
-				Result:    string(states.ActionFail),
-				Reasons:   nil,
-				CreatedAt: time.Now().UTC(),
+				Name:       payment_action.Fail.ActionName(),
+				Type:       "",
+				UId:        order.BuyerInfo.BuyerId,
+				UTP:        actions.Payment.ActionName(),
+				Permission: "",
+				Privilege:  "",
+				Policy:     "",
+				Result:     string(states.ActionFail),
+				Reasons:    nil,
+				Data:       nil,
+				CreatedAt:  time.Now().UTC(),
 			}
 
 			state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
@@ -249,20 +278,34 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				if futureData.Error() != nil {
 					logger.Err("VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Invoice.Voucher.Code, futureData.Error().Reason())
 					voucherAction = &entities.Action{
-						Name:      voucher_action.Settlement.ActionName(),
-						UTP:       actions.Voucher.ActionName(),
-						Result:    string(states.ActionFail),
-						Reasons:   nil,
-						CreatedAt: time.Now().UTC(),
+						Name:       voucher_action.Settlement.ActionName(),
+						Type:       "",
+						UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
+						UTP:        actions.Voucher.ActionName(),
+						Permission: "",
+						Privilege:  "",
+						Policy:     "",
+						Result:     string(states.ActionFail),
+						Reasons:    nil,
+						Data:       nil,
+						CreatedAt:  time.Now().UTC(),
+						Extended:   nil,
 					}
 				} else {
 					logger.Audit("Invoice paid by voucher order success, orderId: %d, voucherAmount: %f, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Amount, order.Invoice.Voucher.Code)
 					voucherAction = &entities.Action{
-						Name:      voucher_action.Settlement.ActionName(),
-						UTP:       actions.Voucher.ActionName(),
-						Result:    string(states.ActionSuccess),
-						Reasons:   nil,
-						CreatedAt: time.Now().UTC(),
+						Name:       voucher_action.Settlement.ActionName(),
+						Type:       "",
+						UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
+						UTP:        actions.Voucher.ActionName(),
+						Permission: "",
+						Privilege:  "",
+						Policy:     "",
+						Result:     string(states.ActionSuccess),
+						Reasons:    nil,
+						Data:       nil,
+						CreatedAt:  time.Now().UTC(),
+						Extended:   nil,
 					}
 				}
 
@@ -270,11 +313,18 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			}
 
 			paymentAction := &entities.Action{
-				Name:      payment_action.Success.ActionName(),
-				UTP:       actions.Payment.ActionName(),
-				Result:    string(states.ActionSuccess),
-				Reasons:   nil,
-				CreatedAt: time.Now().UTC(),
+				Name:       payment_action.Success.ActionName(),
+				Type:       "",
+				UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
+				UTP:        actions.Payment.ActionName(),
+				Permission: "",
+				Privilege:  "",
+				Policy:     "",
+				Result:     string(states.ActionSuccess),
+				Reasons:    nil,
+				Data:       nil,
+				CreatedAt:  time.Now().UTC(),
+				Extended:   nil,
 			}
 
 			logger.Audit("PaymentResult success, orderId: %d", order.OrderId)

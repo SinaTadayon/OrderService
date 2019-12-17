@@ -11,6 +11,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
+	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"strconv"
 	"time"
 
@@ -276,6 +277,11 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	if uint64(userAcl.User().UserID) != req.Meta.UID {
 		logger.Err("RequestHandler() => request userId %d mismatch with token userId: %d", req.Meta.UID, userAcl.User().UserID)
 		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+	}
+
+	if ctx.Value(string(utils.CtxUserID)) == nil {
+		ctx = context.WithValue(ctx, string(utils.CtxUserID), req.Meta.UID)
+		ctx = context.WithValue(ctx, string(utils.CtxUserACL), userAcl)
 	}
 
 	reqType := RequestType(req.Type)
@@ -1912,6 +1918,23 @@ func (server *Server) PaymentGatewayHook(ctx context.Context, req *pg.PaygateHoo
 func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb.ResponseNewOrder, error) {
 
 	//ctx, _ = context.WithTimeout(context.Background(), 3*time.Second)
+
+	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
+	if err != nil {
+		logger.Err("RequestHandler() => UserService.AuthenticateContextToken failed, error: %s ", err)
+		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+	}
+
+	//// TODO check acl
+	//if uint64(userAcl.User().UserID) != req.Meta.UID {
+	//	logger.Err("RequestHandler() => request userId %d mismatch with token userId: %d", req.Meta.UID, userAcl.User().UserID)
+	//	return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+	//}
+
+	if ctx.Value(string(utils.CtxUserID)) == nil {
+		ctx = context.WithValue(ctx, string(utils.CtxUserID), userAcl.User().UserID)
+		ctx = context.WithValue(ctx, string(utils.CtxUserACL), userAcl)
+	}
 
 	iFuture := future.Factory().SetCapacity(1).Build()
 	iFrame := frame.Factory().SetDefaultHeader(frame.HeaderNewOrder, req).SetFuture(iFuture).Build()
