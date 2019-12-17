@@ -622,6 +622,7 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 				Subtotal:       orderList[i].Invoice.Subtotal,
 				PaymentMethod:  orderList[i].Invoice.PaymentMethod,
 				PaymentGateway: orderList[i].Invoice.PaymentGateway,
+				Shipment:       orderList[i].Invoice.ShipmentTotal,
 			},
 		}
 
