@@ -1126,10 +1126,11 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, oid, pid uint6
 }
 
 // todo refactor to support projection
+// TODO add not found error for FindById
 func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId uint64, filter FilterValue) (*pb.MessageResponse, error) {
 	order, err := app.Globals.OrderRepository.FindById(ctx, orderId)
 	if err != nil {
-		logger.Err("sellerOrderDetailHandler() => PkgItemRepository.FindById failed, orderId: %d, pid: %d, filter:%s , error: %s", orderId, pid, filter, err)
+		logger.Err("sellerOrderDetailHandler() => OrderRepository.FindById failed, orderId: %d, pid: %d, filter:%s , error: %s", orderId, pid, filter, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
