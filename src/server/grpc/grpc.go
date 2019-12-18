@@ -99,6 +99,13 @@ const (
 	ReturnRejectedFilter           FilterValue = "ReturnRejected"
 	PayToBuyerFilter               FilterValue = "PayToBuyer"
 	PayToSellerFilter              FilterValue = "PayToSeller"
+
+	AllOrdersFilter       FilterValue = "AllOrders"
+	AllCanceledFilter     FilterValue = "AllCanceled"
+	ShipmentReportFilter  FilterValue = "ShipmentReport"
+	ReturnReportFilter    FilterValue = "ReturnReport"
+	DeliveredReportFilter FilterValue = "DeliveredReport"
+	CanceledReportFilter  FilterValue = "CanceledReport"
 )
 
 const (
@@ -133,12 +140,19 @@ const (
 )
 
 const (
+	SellerAllOrders             RequestName = "SellerAllOrders"
 	SellerOrderList             RequestName = "SellerOrderList"
 	SellerOrderDetail           RequestName = "SellerOrderDetail"
 	SellerReturnOrderDetailList RequestName = "SellerReturnOrderDetailList"
-	//SellerOrderReturnDetail     RequestName = "SellerOrderReturnDetail"
+	SellerOrderShipmentReports  RequestName = "SellerOrderShipmentReports"
+	SellerOrderDeliveredReports RequestName = "SellerOrderDeliveredReports"
+	SellerOrderReturnReports    RequestName = "SellerOrderReturnReports"
+	SellerOrderCancelReports    RequestName = "SellerOrderCancelReports"
 
+	//SellerOrderReturnDetail     RequestName = "SellerOrderReturnDetail"
 	//BuyerOrderList             RequestName = "BuyerOrderList"
+
+	BuyerAllReturnOrders       RequestName = "BuyerAllReturnOrders"
 	BuyerOrderDetailList       RequestName = "BuyerOrderDetailList"
 	BuyerReturnOrderReports    RequestName = "BuyerReturnOrderReports"
 	BuyerReturnOrderDetailList RequestName = "BuyerReturnOrderDetailList"
@@ -161,27 +175,28 @@ const (
 type Server struct {
 	pb.UnimplementedOrderServiceServer
 	pg.UnimplementedBankResultHookServer
-	flowManager             domain.IFlowManager
-	address                 string
-	port                    uint16
-	requestFilters          map[RequestName][]FilterValue
-	sellerBuyerFilterStates map[FilterValue][]states.IEnumState
-	operatorFilterState     map[FilterValue]states.IEnumState
-	actionStates            map[UserType][]actions.IAction
+	flowManager         domain.IFlowManager
+	address             string
+	port                uint16
+	requestFilters      map[RequestName][]FilterValue
+	buyerFilterStates   map[FilterValue][]states.IEnumState
+	sellerFilterStates  map[FilterValue][]states.IEnumState
+	operatorFilterState map[FilterValue]states.IEnumState
+	actionStates        map[UserType][]actions.IAction
 }
 
 func NewServer(address string, port uint16, flowManager domain.IFlowManager) Server {
-	filterStatesMap := make(map[FilterValue][]states.IEnumState, 8)
-	filterStatesMap[ApprovalPendingFilter] = []states.IEnumState{states.ApprovalPending}
-	filterStatesMap[ShipmentPendingFilter] = []states.IEnumState{states.ShipmentPending, states.ShipmentDelayed}
-	filterStatesMap[ShippedFilter] = []states.IEnumState{states.Shipped}
-	filterStatesMap[DeliveredFilter] = []states.IEnumState{states.DeliveryPending, states.DeliveryDelayed, states.Delivered}
-	filterStatesMap[DeliveryFailedFilter] = []states.IEnumState{states.DeliveryFailed}
-	filterStatesMap[ReturnRequestPendingFilter] = []states.IEnumState{states.ReturnRequestPending, states.ReturnRequestRejected}
-	filterStatesMap[ReturnShipmentPendingFilter] = []states.IEnumState{states.ReturnShipmentPending}
-	filterStatesMap[ReturnShippedFilter] = []states.IEnumState{states.ReturnShipped}
-	filterStatesMap[ReturnDeliveredFilter] = []states.IEnumState{states.ReturnDeliveryPending, states.ReturnDeliveryDelayed, states.ReturnDelivered}
-	filterStatesMap[ReturnDeliveryFailedFilter] = []states.IEnumState{states.ReturnDeliveryFailed}
+	buyerStatesMap := make(map[FilterValue][]states.IEnumState, 8)
+	buyerStatesMap[ApprovalPendingFilter] = []states.IEnumState{states.ApprovalPending}
+	buyerStatesMap[ShipmentPendingFilter] = []states.IEnumState{states.ShipmentPending, states.ShipmentDelayed}
+	buyerStatesMap[ShippedFilter] = []states.IEnumState{states.Shipped}
+	buyerStatesMap[DeliveredFilter] = []states.IEnumState{states.DeliveryPending, states.DeliveryDelayed, states.Delivered}
+	buyerStatesMap[DeliveryFailedFilter] = []states.IEnumState{states.DeliveryFailed}
+	buyerStatesMap[ReturnRequestPendingFilter] = []states.IEnumState{states.ReturnRequestPending, states.ReturnRequestRejected}
+	buyerStatesMap[ReturnShipmentPendingFilter] = []states.IEnumState{states.ReturnShipmentPending}
+	buyerStatesMap[ReturnShippedFilter] = []states.IEnumState{states.ReturnShipped}
+	buyerStatesMap[ReturnDeliveredFilter] = []states.IEnumState{states.ReturnDeliveryPending, states.ReturnDeliveryDelayed, states.ReturnDelivered}
+	buyerStatesMap[ReturnDeliveryFailedFilter] = []states.IEnumState{states.ReturnDeliveryFailed}
 
 	operatorFilterStatesMap := make(map[FilterValue]states.IEnumState, 30)
 	operatorFilterStatesMap[NewOrderFilter] = states.NewOrder
@@ -212,6 +227,27 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	operatorFilterStatesMap[ReturnRejectedFilter] = states.ReturnRejected
 	operatorFilterStatesMap[PayToBuyerFilter] = states.PayToBuyer
 	operatorFilterStatesMap[PayToSellerFilter] = states.PayToSeller
+
+	sellerFilterStatesMap := make(map[FilterValue][]states.IEnumState, 30)
+	sellerFilterStatesMap[ApprovalPendingFilter] = []states.IEnumState{states.ApprovalPending}
+	sellerFilterStatesMap[CanceledBySellerFilter] = []states.IEnumState{states.CanceledBySeller}
+	sellerFilterStatesMap[CanceledByBuyerFilter] = []states.IEnumState{states.CanceledByBuyer}
+	sellerFilterStatesMap[ShipmentPendingFilter] = []states.IEnumState{states.ShipmentPending}
+	sellerFilterStatesMap[ShipmentDelayedFilter] = []states.IEnumState{states.ShipmentDelayed}
+	sellerFilterStatesMap[ShippedFilter] = []states.IEnumState{states.Shipped}
+	sellerFilterStatesMap[DeliveryPendingFilter] = []states.IEnumState{states.DeliveryPending, states.DeliveryDelayed}
+	sellerFilterStatesMap[DeliveredFilter] = []states.IEnumState{states.Delivered}
+	sellerFilterStatesMap[DeliveryFailedFilter] = []states.IEnumState{states.DeliveryFailed}
+	sellerFilterStatesMap[ReturnRequestPendingFilter] = []states.IEnumState{states.ReturnRequestPending}
+	sellerFilterStatesMap[ReturnRequestRejectedFilter] = []states.IEnumState{states.ReturnRequestRejected}
+	sellerFilterStatesMap[ReturnShipmentPendingFilter] = []states.IEnumState{states.ReturnShipmentPending}
+	sellerFilterStatesMap[ReturnShippedFilter] = []states.IEnumState{states.ReturnShipped}
+	sellerFilterStatesMap[ReturnDeliveryPendingFilter] = []states.IEnumState{states.ReturnDeliveryPending}
+	sellerFilterStatesMap[ReturnDeliveryDelayedFilter] = []states.IEnumState{states.ReturnDeliveryDelayed}
+	sellerFilterStatesMap[ReturnDeliveredFilter] = []states.IEnumState{states.ReturnDelivered}
+	sellerFilterStatesMap[ReturnDeliveryFailedFilter] = []states.IEnumState{states.ReturnDeliveryFailed}
+	sellerFilterStatesMap[ReturnRejectedFilter] = []states.IEnumState{states.ReturnRejected}
+	sellerFilterStatesMap[PayToSellerFilter] = []states.IEnumState{states.PayToSeller}
 
 	actionStateMap := make(map[UserType][]actions.IAction, 8)
 	actionStateMap[SellerUser] = []actions.IAction{
@@ -249,20 +285,120 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	}
 
 	reqFilters := make(map[RequestName][]FilterValue, 8)
-	reqFilters[SellerOrderList] = []FilterValue{ApprovalPendingFilter, ShipmentPendingFilter, ShippedFilter,
-		DeliveredFilter, DeliveryFailedFilter}
-	reqFilters[SellerOrderDetail] = []FilterValue{ApprovalPendingFilter, ShipmentPendingFilter, ShippedFilter,
-		DeliveredFilter, DeliveryFailedFilter}
-	reqFilters[BuyerOrderDetailList] = []FilterValue{ApprovalPendingFilter, ShipmentPendingFilter, ShippedFilter,
-		DeliveredFilter, DeliveryFailedFilter}
+	reqFilters[SellerAllOrders] = []FilterValue{
+		ApprovalPendingFilter,
+		CanceledBySellerFilter,
+		CanceledByBuyerFilter,
+		ShipmentPendingFilter,
+		ShipmentDelayedFilter,
+		ShippedFilter,
+		DeliveryPendingFilter,
+		DeliveredFilter,
+		DeliveryFailedFilter,
+		ReturnRequestPendingFilter,
+		ReturnRequestRejectedFilter,
+		ReturnShipmentPendingFilter,
+		ReturnShippedFilter,
+		ReturnDeliveryPendingFilter,
+		ReturnDeliveryDelayedFilter,
+		ReturnDeliveredFilter,
+		ReturnDeliveryFailedFilter,
+		PayToSellerFilter,
+	}
 
-	reqFilters[SellerReturnOrderDetailList] = []FilterValue{ReturnRequestPendingFilter, ReturnShipmentPendingFilter,
-		ReturnShippedFilter, ReturnDeliveredFilter, ReturnDeliveryFailedFilter}
+	reqFilters[SellerOrderList] = []FilterValue{
+		ApprovalPendingFilter,
+		CanceledBySellerFilter,
+		CanceledByBuyerFilter,
+		ShipmentPendingFilter,
+		ShipmentDelayedFilter,
+		ShippedFilter,
+		DeliveryPendingFilter,
+		DeliveredFilter,
+		DeliveryFailedFilter,
+		AllCanceledFilter,
+		AllOrdersFilter,
+	}
+
+	reqFilters[SellerOrderDetail] = []FilterValue{
+		ApprovalPendingFilter,
+		CanceledBySellerFilter,
+		CanceledByBuyerFilter,
+		ShipmentPendingFilter,
+		ShipmentDelayedFilter,
+		ShippedFilter,
+		DeliveryPendingFilter,
+		DeliveredFilter,
+		DeliveryFailedFilter,
+		AllCanceledFilter,
+	}
+
+	reqFilters[SellerReturnOrderDetailList] = []FilterValue{
+		ReturnRequestPendingFilter,
+		ReturnRequestRejectedFilter,
+		ReturnShipmentPendingFilter,
+		ReturnShippedFilter,
+		ReturnDeliveryPendingFilter,
+		ReturnDeliveryDelayedFilter,
+		ReturnDeliveredFilter,
+		ReturnDeliveryFailedFilter,
+		ReturnRejectedFilter,
+	}
+
+	reqFilters[SellerOrderShipmentReports] = []FilterValue{}
+	reqFilters[SellerOrderDeliveredReports] = []FilterValue{}
+	reqFilters[SellerOrderReturnReports] = []FilterValue{}
+	reqFilters[SellerOrderCancelReports] = []FilterValue{}
+
+	reqFilters[BuyerOrderDetailList] = []FilterValue{
+		PaymentSuccessFilter,
+		PaymentFailedFilter,
+		OrderVerificationPendingFilter,
+		OrderVerificationSuccessFilter,
+		OrderVerificationFailedFilter,
+		ApprovalPendingFilter,
+		CanceledBySellerFilter,
+		CanceledByBuyerFilter,
+		ShipmentPendingFilter,
+		ShipmentDelayedFilter,
+		ShippedFilter,
+		DeliveryPendingFilter,
+		DeliveryDelayedFilter,
+		DeliveredFilter,
+		DeliveryFailedFilter,
+		PayToBuyerFilter,
+		PayToSellerFilter,
+	}
+
 	reqFilters[BuyerReturnOrderReports] = []FilterValue{}
-	reqFilters[BuyerReturnOrderDetailList] = []FilterValue{ReturnRequestPendingFilter, ReturnShipmentPendingFilter,
-		ReturnShippedFilter, ReturnDeliveredFilter, ReturnDeliveryFailedFilter}
 
-	return Server{flowManager: flowManager, address: address, port: port, requestFilters: reqFilters, sellerBuyerFilterStates: filterStatesMap, operatorFilterState: operatorFilterStatesMap, actionStates: actionStateMap}
+	reqFilters[BuyerReturnOrderDetailList] = []FilterValue{
+		ReturnRequestPendingFilter,
+		ReturnShipmentPendingFilter,
+		ReturnShippedFilter,
+		ReturnDeliveredFilter,
+		ReturnDeliveryFailedFilter,
+		AllOrdersFilter,
+	}
+
+	reqFilters[BuyerAllReturnOrders] = []FilterValue{
+		ReturnRequestPendingFilter,
+		ReturnRequestRejectedFilter,
+		ReturnShipmentPendingFilter,
+		ReturnShippedFilter,
+		ReturnDeliveryPendingFilter,
+		ReturnDeliveryDelayedFilter,
+		ReturnDeliveredFilter,
+		ReturnDeliveryFailedFilter,
+		ReturnRejectedFilter,
+	}
+
+	return Server{flowManager: flowManager, address: address, port: port,
+		requestFilters:      reqFilters,
+		buyerFilterStates:   buyerStatesMap,
+		sellerFilterStates:  sellerFilterStatesMap,
+		operatorFilterState: operatorFilterStatesMap,
+		actionStates:        actionStateMap}
 }
 
 func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
@@ -280,7 +416,7 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	}
 
 	if ctx.Value(string(utils.CtxUserID)) == nil {
-		ctx = context.WithValue(ctx, string(utils.CtxUserID), req.Meta.UID)
+		ctx = context.WithValue(ctx, string(utils.CtxUserID), uint64(req.Meta.UID))
 		ctx = context.WithValue(ctx, string(utils.CtxUserACL), userAcl)
 	}
 
@@ -292,51 +428,13 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	}
 }
 
-//func (server *Server) generateFilter(ctx context.Context, filter FilterValue) bson.D {
-//
-//	newFilter := make([]interface{}, 2)
-//
-//	if filter == ApprovalPendingFilter {
-//		newFilter[0] = "packages.subpackages.status"
-//		newFilter[1] = server.sellerBuyerFilterStates[filter][0].StateName()
-//	} else if filter == ShipmentPendingFilter {
-//		newFilter[0] = "packages.subpackages.status"
-//		newFilter[1] = bson.M{"$or": bson.A{states.ShipmentPending.StateName(), states.ShipmentDelayedFilter.StateName()}}
-//	} else if filter == ShippedFilter {
-//		newFilter[0] = "packages.subpackages.status"
-//		newFilter[1] = server.sellerBuyerFilterStates[filter][0].StateName()
-//	} else if filter == DeliveredFilter {
-//		newFilter[0] = "packages.subpackages.status"
-//		newFilter[1] = bson.M{"$or": bson.A{states.DeliveryPending.StateName(), states.DeliveryDelayed.StateName(), states.Delivered.StateName()}}
-//	} else if filter == DeliveryFailedFilter {
-//		newFilter[0] = "packages.subpackages.tracking.history.name"
-//		newFilter[1] = server.sellerBuyerFilterStates[filter][0].StateName()
-//	} else if filter == ReturnRequestPendingFilter {
-//		newFilter[0] = "packages.subpackages.status"
-//		newFilter[1] = server.sellerBuyerFilterStates[filter][0].StateName()
-//	} else if filter == ReturnShipmentPendingFilter {
-//		newFilter[0] = "packages.subpackages.status"
-//		newFilter[1] = server.sellerBuyerFilterStates[filter][0].StateName()
-//	} else if filter == ReturnShippedFilter {
-//		newFilter[0] = "packages.subpackages.status"
-//		newFilter[1] = server.sellerBuyerFilterStates[filter][0].StateName()
-//	} else if filter == ReturnDeliveredFilter {
-//		newFilter[0] = "packages.subpackages.status"
-//		newFilter[1] = bson.M{"$or": bson.A{states.ReturnDeliveryPending.StateName(), states.ReturnDeliveryDelayed.StateName(), states.ReturnDelivered.StateName()}}
-//	} else if filter == DeliveryFailedFilter {
-//		newFilter[0] = "packages.subpackages.tracking.history.name"
-//		newFilter[1] = server.sellerBuyerFilterStates[filter][0].StateName()
-//	}
-//	return newFilter
-//}
-
-func (server *Server) generatePipelineFilter(ctx context.Context, filter FilterValue) []interface{} {
+func (server *Server) buyerGeneratePipelineFilter(ctx context.Context, filter FilterValue) []interface{} {
 
 	newFilter := make([]interface{}, 2)
 
 	if filter == ApprovalPendingFilter {
 		newFilter[0] = "packages.subpackages.status"
-		newFilter[1] = server.sellerBuyerFilterStates[filter][0].StateName()
+		newFilter[1] = server.buyerFilterStates[filter][0].StateName()
 	} else if filter == ShipmentPendingFilter {
 		newFilter[0] = "$or"
 		newFilter[1] = bson.A{
@@ -344,7 +442,7 @@ func (server *Server) generatePipelineFilter(ctx context.Context, filter FilterV
 			bson.M{"packages.subpackages.status": states.ShipmentDelayed.StateName()}}
 	} else if filter == ShippedFilter {
 		newFilter[0] = "packages.subpackages.status"
-		newFilter[1] = server.sellerBuyerFilterStates[filter][0].StateName()
+		newFilter[1] = server.buyerFilterStates[filter][0].StateName()
 	} else if filter == DeliveredFilter {
 		newFilter[0] = "$or"
 		newFilter[1] = bson.A{
@@ -353,7 +451,7 @@ func (server *Server) generatePipelineFilter(ctx context.Context, filter FilterV
 			bson.M{"packages.subpackages.status": states.Delivered.StateName()}}
 	} else if filter == DeliveryFailedFilter {
 		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.sellerBuyerFilterStates[filter][0].StateName()
+		newFilter[1] = server.buyerFilterStates[filter][0].StateName()
 	} else if filter == ReturnRequestPendingFilter {
 		newFilter[0] = "$or"
 		newFilter[1] = bson.A{
@@ -361,10 +459,10 @@ func (server *Server) generatePipelineFilter(ctx context.Context, filter FilterV
 			bson.M{"packages.subpackages.status": states.ReturnRequestRejected.StateName()}}
 	} else if filter == ReturnShipmentPendingFilter {
 		newFilter[0] = "packages.subpackages.status"
-		newFilter[1] = server.sellerBuyerFilterStates[filter][0].StateName()
+		newFilter[1] = server.buyerFilterStates[filter][0].StateName()
 	} else if filter == ReturnShippedFilter {
 		newFilter[0] = "packages.subpackages.status"
-		newFilter[1] = server.sellerBuyerFilterStates[filter][0].StateName()
+		newFilter[1] = server.buyerFilterStates[filter][0].StateName()
 	} else if filter == ReturnDeliveredFilter {
 		newFilter[0] = "$or"
 		newFilter[1] = bson.A{
@@ -373,8 +471,48 @@ func (server *Server) generatePipelineFilter(ctx context.Context, filter FilterV
 			bson.M{"packages.subpackages.status": states.ReturnDelivered.StateName()}}
 	} else if filter == DeliveryFailedFilter {
 		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.sellerBuyerFilterStates[filter][0].StateName()
+		newFilter[1] = server.buyerFilterStates[filter][0].StateName()
 	}
+	return newFilter
+}
+
+func (server *Server) sellerGeneratePipelineFilter(ctx context.Context, filter FilterValue) []interface{} {
+
+	newFilter := make([]interface{}, 2)
+	if filter == CanceledBySellerFilter {
+		newFilter[0] = "packages.subpackages.tracking.history.name"
+		newFilter[1] = server.sellerFilterStates[filter][0].StateName()
+
+	} else if filter == CanceledByBuyerFilter {
+		newFilter[0] = "packages.subpackages.tracking.history.name"
+		newFilter[1] = server.sellerFilterStates[filter][0].StateName()
+
+	} else if filter == DeliveryFailedFilter {
+		newFilter[0] = "packages.subpackages.tracking.history.name"
+		newFilter[1] = server.sellerFilterStates[filter][0].StateName()
+
+	} else if filter == ReturnDeliveryFailedFilter {
+		newFilter[0] = "packages.subpackages.tracking.history.name"
+		newFilter[1] = server.sellerFilterStates[filter][0].StateName()
+
+	} else if filter == DeliveryPendingFilter {
+		newFilter[0] = "$or"
+		newFilter[1] = bson.A{
+			bson.M{"packages.subpackages.status": states.DeliveryPending.StateName()},
+			bson.M{"packages.subpackages.status": states.DeliveryDelayed.StateName()}}
+
+	} else if filter == AllCanceledFilter {
+		newFilter[0] = "$or"
+		newFilter[1] = bson.A{
+			bson.M{"packages.subpackages.tracking.history.name": states.CanceledBySeller.StateName()},
+			bson.M{"packages.subpackages.tracking.history.name": states.CanceledByBuyer.StateName()}}
+
+	} else {
+		newFilter[0] = "packages.subpackages.status"
+		newFilter[1] = server.sellerFilterStates[filter][0].StateName()
+
+	}
+
 	return newFilter
 }
 
@@ -410,7 +548,11 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 	if userType == SellerUser &&
 		reqName != SellerOrderList &&
 		reqName != SellerOrderDetail &&
-		reqName != SellerReturnOrderDetailList {
+		reqName != SellerReturnOrderDetailList &&
+		reqName != SellerOrderDeliveredReports &&
+		reqName != SellerOrderReturnReports &&
+		reqName != SellerOrderShipmentReports &&
+		reqName != SellerOrderCancelReports {
 		logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
 		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
 	}
@@ -440,7 +582,39 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 	//	return nil, status.Error(codes.Code(future.BadRequest), "Mismatch OrderId with Request name")
 	//}
 
-	if reqName != BuyerReturnOrderReports && (userType == BuyerUser || userType == SellerUser) {
+	if userType == BuyerUser && reqName != BuyerReturnOrderReports {
+		if reqName == BuyerOrderDetailList {
+			var findFlag = false
+			for _, filter := range server.requestFilters[reqName] {
+				if filter == filterValue {
+					findFlag = true
+					break
+				}
+			}
+
+			if !findFlag && req.Meta.OID <= 0 {
+				logger.Err("requestDataHandler() => %s requestName mismatch with %s Filter, request: %v", reqName, filterValue, req)
+				return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with Filter")
+			}
+		} else {
+			var findFlag = false
+			for _, filter := range server.requestFilters[reqName] {
+				if filter == filterValue {
+					findFlag = true
+					break
+				}
+			}
+
+			if !findFlag {
+				logger.Err("requestDataHandler() => %s requestName mismatch with %s Filter, request: %v", reqName, filterValue, req)
+				return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with Filter")
+			}
+		}
+	} else if userType == SellerUser &&
+		reqName != SellerOrderShipmentReports &&
+		reqName != SellerOrderDeliveredReports &&
+		reqName != SellerOrderReturnReports &&
+		reqName != SellerOrderCancelReports {
 		var findFlag = false
 		for _, filter := range server.requestFilters[reqName] {
 			if filter == filterValue {
@@ -471,12 +645,23 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 		return server.sellerOrderDetailHandler(ctx, req.Meta.PID, req.Meta.OID, filterValue)
 	case SellerReturnOrderDetailList:
 		return server.sellerOrderReturnDetailListHandler(ctx, req.Meta.PID, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+
+	case SellerOrderShipmentReports:
+		return server.sellerOrderShipmentReportsHandler(ctx, req.Meta.UID)
+	case SellerOrderReturnReports:
+		return server.sellerOrderReturnReportsHandler(ctx, req.Meta.UID)
+	case SellerOrderDeliveredReports:
+		return server.sellerOrderDeliveredReportsHandler(ctx, req.Meta.UID)
+	case SellerOrderCancelReports:
+		return server.sellerOrderCancelReportsHandler(ctx, req.Meta.UID)
+
 	case BuyerOrderDetailList:
-		return server.buyerOrderDetailHandler(ctx, req.Meta.UID, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+		return server.buyerOrderDetailListHandler(ctx, req.Meta.OID, req.Meta.UID, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
 	case BuyerReturnOrderReports:
 		return server.buyerReturnOrderReportsHandler(ctx, req.Meta.UID)
 	case BuyerReturnOrderDetailList:
 		return server.buyerReturnOrderDetailListHandler(ctx, req.Meta.UID, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+
 	case OperatorOrderList:
 		return server.operatorOrderListHandler(ctx, req.Meta.OID, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
 	case OperatorOrderDetail:
@@ -579,6 +764,7 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 	return response, nil
 }
 
+// TODO refactor filter for optimization
 func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, filter FilterValue, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
 
@@ -595,7 +781,7 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 	} else {
 		if filter != "" {
 			orderFilter = func() (interface{}, string, int) {
-				return bson.D{{"deletedAt", nil}, {"packages.subpackages.tracking.state.name", server.operatorFilterState[filter].StateName()}},
+				return bson.D{{"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.operatorFilterState[filter].StateName()}},
 					sortName, sortDirect
 			}
 		} else {
@@ -862,7 +1048,7 @@ func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint6
 	var orderFilter func() interface{}
 	if filter != "" {
 		orderFilter = func() interface{} {
-			return bson.D{{"orderId", oid}, {"deletedAt", nil}, {"packages.subpackages.tracking.state.name", server.operatorFilterState[filter].StateName()}}
+			return bson.D{{"orderId", oid}, {"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.operatorFilterState[filter].StateName()}}
 		}
 	} else {
 		orderFilter = func() interface{} {
@@ -946,7 +1132,7 @@ func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint6
 }
 
 func (server *Server) sellerGetOrderByIdHandler(ctx context.Context, oid uint64, pid uint64, filter FilterValue) (*pb.MessageResponse, error) {
-	genFilter := server.generatePipelineFilter(ctx, filter)
+	genFilter := server.sellerGeneratePipelineFilter(ctx, filter)
 	filters := make(bson.M, 3)
 	filters["packages.orderId"] = oid
 	filters["packages.pid"] = pid
@@ -1014,7 +1200,11 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, oid, pid uint6
 		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
 	}
 
-	genFilter := server.generatePipelineFilter(ctx, filter)
+	if filter == AllOrdersFilter {
+		return server.sellerAllOrdersHandler(ctx, pid, page, perPage, sortName, direction)
+	}
+
+	genFilter := server.sellerGeneratePipelineFilter(ctx, filter)
 	filters := make(bson.M, 3)
 	filters["packages.pid"] = pid
 	filters["packages.deletedAt"] = nil
@@ -1114,7 +1304,153 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, oid, pid uint6
 	}
 
 	meta := &pb.ResponseMetadata{
-		Total:   uint32(availablePages),
+		Total:   uint32(totalCount),
+		Page:    page,
+		PerPage: perPage,
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "SellerOrderList",
+		Meta:   meta,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(sellerOrderList),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
+func (server *Server) sellerAllOrdersHandler(ctx context.Context, pid uint64, page, perPage uint32,
+	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
+
+	if page <= 0 || perPage <= 0 {
+		logger.Err("sellerAllOrdersHandler() => page or perPage invalid, pid: %d, page: %d, perPage: %d", pid, page, perPage)
+		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
+	}
+
+	filters := make(bson.M, 3)
+	filters["packages.pid"] = pid
+	filters["packages.deletedAt"] = nil
+
+	var criteria = make([]interface{}, 0, len(server.sellerFilterStates))
+	for filter, _ := range server.sellerFilterStates {
+		if filter == DeliveryPendingFilter {
+			criteria = append(criteria, map[string]string{
+				"packages.subpackages.status": states.DeliveryPending.StateName(),
+			})
+			criteria = append(criteria, map[string]string{
+				"packages.subpackages.status": states.DeliveryDelayed.StateName(),
+			})
+		} else if filter != AllCanceledFilter {
+			if filter == CanceledBySellerFilter || filter == CanceledByBuyerFilter ||
+				filter == DeliveryFailedFilter || filter == ReturnDeliveryFailedFilter {
+				criteria = append(criteria, map[string]string{
+					"packages.subpackages.tracking.history.name": server.sellerFilterStates[filter][0].StateName(),
+				})
+			} else {
+				criteria = append(criteria, map[string]string{
+					"packages.subpackages.status": server.sellerFilterStates[filter][0].StateName(),
+				})
+			}
+		}
+	}
+	filters["$or"] = bson.A(criteria)
+	countFilter := func() interface{} {
+		return []bson.M{
+			{"$match": filters},
+			{"$unwind": "$packages"},
+			{"$match": filters},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	var totalCount, err = app.Globals.PkgItemRepository.CountWithFilter(ctx, countFilter)
+	if err != nil {
+		logger.Err("sellerAllOrdersHandler() => CountWithFilter failed,  pid: %d, page: %d, perPage: %d, error: %s", pid, page, perPage, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	if totalCount == 0 {
+		logger.Err("sellerAllOrdersHandler() => total count is zero,  pid: %d, page: %d, perPage: %d", pid, page, perPage)
+		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	}
+
+	// total 160 page=6 perPage=30
+	var availablePages int64
+
+	if totalCount%int64(perPage) != 0 {
+		availablePages = (totalCount / int64(perPage)) + 1
+	} else {
+		availablePages = totalCount / int64(perPage)
+	}
+
+	if totalCount < int64(perPage) {
+		availablePages = 1
+	}
+
+	if availablePages < int64(page) {
+		logger.Err("sellerAllOrdersHandler() => availablePages less than page, availablePages: %d, pid: %d, page: %d, perPage: %d", availablePages, pid, page, perPage)
+		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	}
+
+	var offset = (page - 1) * perPage
+	if int64(offset) >= totalCount {
+		logger.Err("sellerAllOrdersHandler() => offset invalid, offset: %d, pid: %d, page: %d, perPage: %d", offset, pid, page, perPage)
+		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	}
+
+	var sortDirect int
+	if direction == "ASC" {
+		sortDirect = 1
+	} else {
+		sortDirect = -1
+	}
+
+	pkgFilter := func() interface{} {
+		return []bson.M{
+			{"$match": filters},
+			{"$unwind": "$packages"},
+			{"$match": filters},
+			{"$project": bson.M{"_id": 0, "packages": 1}},
+			{"$sort": bson.M{"packages.subpackages." + sortName: sortDirect}},
+			{"$skip": offset},
+			{"$limit": perPage},
+			{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+		}
+	}
+
+	pkgList, err := app.Globals.PkgItemRepository.FindByFilter(ctx, pkgFilter)
+	if err != nil {
+		logger.Err("sellerAllOrdersHandler() => FindByFilter failed, pid: %d, page: %d, perPage: %d, error: %s", pid, page, perPage, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	itemList := make([]*pb.SellerOrderList_ItemList, 0, perPage)
+
+	for _, pkgItem := range pkgList {
+		sellerOrderItem := &pb.SellerOrderList_ItemList{
+			OID:       pkgItem.OrderId,
+			RequestAt: pkgItem.CreatedAt.Format(ISO8601),
+			Amount:    pkgItem.Invoice.Subtotal,
+		}
+		itemList = append(itemList, sellerOrderItem)
+	}
+
+	sellerOrderList := &pb.SellerOrderList{
+		PID:   pid,
+		Items: itemList,
+	}
+
+	serializedData, err := proto.Marshal(sellerOrderList)
+	if err != nil {
+		logger.Err("sellerAllOrdersHandler() => could not serialize sellerOrderList, sellerOrderList: %v, error:%s", sellerOrderList, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	meta := &pb.ResponseMetadata{
+		Total:   uint32(totalCount),
 		Page:    page,
 		PerPage: perPage,
 	}
@@ -1150,7 +1486,7 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId
 
 	sellerOrderDetailItems := make([]*pb.SellerOrderDetail_ItemDetail, 0, 32)
 	for i := 0; i < len(pkgItem.Subpackages); i++ {
-		for _, state := range server.sellerBuyerFilterStates[filter] {
+		for _, state := range server.sellerFilterStates[filter] {
 			if pkgItem.Subpackages[i].Status == state.StateName() {
 				for j := 0; j < len(pkgItem.Subpackages[i].Items); j++ {
 					itemDetail := &pb.SellerOrderDetail_ItemDetail{
@@ -1300,22 +1636,53 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 	//}
 
 	var returnFilter bson.D
-	if filter == ReturnDeliveredFilter {
-		returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"$or", bson.A{
-			bson.D{{"packages.subpackages.status", states.ReturnDeliveryPending.StateName()}},
-			bson.D{{"packages.subpackages.status", states.ReturnDeliveryDelayed.StateName()}},
-			bson.D{{"packages.subpackages.status", states.ReturnDelivered.StateName()}}}}}
-	} else if filter == DeliveryFailedFilter {
-		returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.sellerBuyerFilterStates[filter][0].StateName()}}
-	} else if filter == ReturnRequestPendingFilter {
-		returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"$or", bson.A{
-			bson.D{{"packages.subpackages.status", states.ReturnRequestPending.StateName()}},
-			bson.D{{"packages.subpackages.status", states.ReturnRequestRejected.StateName()}}}}}
-	} else {
-		returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"packages.subpackages.status", server.sellerBuyerFilterStates[filter][0].StateName()}}
+
+	switch filter {
+	case ReturnRequestPendingFilter:
+		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.status", states.ReturnRequestPending.StateName()}}
+		break
+	case ReturnRequestRejectedFilter:
+		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.status", states.ReturnRequestRejected.StateName()}}
+		break
+	case ReturnShipmentPendingFilter:
+		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.status", states.ReturnShipmentPending.StateName()}}
+		break
+	case ReturnShippedFilter:
+		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.status", states.ReturnShipped.StateName()}}
+		break
+	case ReturnDeliveryPendingFilter:
+		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.status", states.ReturnDeliveryPending.StateName()}}
+		break
+	case ReturnDeliveryDelayedFilter:
+		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.status", states.ReturnDeliveryDelayed.StateName()}}
+		break
+	case ReturnDeliveredFilter:
+		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.status", states.ReturnDelivered.StateName()}}
+		break
+	case ReturnDeliveryFailedFilter:
+		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.tracking.history.name", states.ReturnDeliveryFailed.StateName()}}
+		break
+	case ReturnRejectedFilter:
+		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.status", states.ReturnRejected.StateName()}}
+		break
 	}
 
-	//genFilter := server.generatePipelineFilter(ctx, filter)
+	//if filter == ReturnDeliveredFilter {
+	//	returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"$or", bson.A{
+	//		bson.D{{"packages.subpackages.status", states.ReturnDeliveryPending.StateName()}},
+	//		bson.D{{"packages.subpackages.status", states.ReturnDeliveryDelayed.StateName()}},
+	//		bson.D{{"packages.subpackages.status", states.ReturnDelivered.StateName()}}}}}
+	//} else if filter == DeliveryFailedFilter {
+	//	returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.buyerFilterStates[filter][0].StateName()}}
+	//} else if filter == ReturnRequestPendingFilter {
+	//	returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"$or", bson.A{
+	//		bson.D{{"packages.subpackages.status", states.ReturnRequestPending.StateName()}},
+	//		bson.D{{"packages.subpackages.status", states.ReturnRequestRejected.StateName()}}}}}
+	//} else {
+	//	returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"packages.subpackages.status", server.buyerFilterStates[filter][0].StateName()}}
+	//}
+
+	//genFilter := server.buyerGeneratePipelineFilter(ctx, filter)
 	//filters := make(bson.M, 3)
 	//filters["packages.pid"] = pid
 	//filters["packages.deletedAt"] = nil
@@ -1335,7 +1702,7 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 	}
 
 	filterMap := make(map[string]string, 3)
-	for _, enumState := range server.sellerBuyerFilterStates[filter] {
+	for _, enumState := range server.sellerFilterStates[filter] {
 		filterMap[enumState.StateName()] = enumState.StateName()
 	}
 
@@ -1454,10 +1821,420 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 	return response, nil
 }
 
-func (server *Server) buyerOrderDetailHandler(ctx context.Context, userId uint64, page, perPage uint32,
+func (server *Server) sellerOrderShipmentReportsHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
+
+	shipmentPendingFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "packages.deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ShipmentPending.StateName()}}}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "packages.deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ShipmentPending.StateName()}}}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	shipmentDelayedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ShipmentDelayed.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ShipmentDelayed.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	shippedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.Shipped.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.Shipped.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	shipmentPendingCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, shipmentPendingFilter)
+	if err != nil {
+		logger.Err("sellerOrderShipmentReportsHandler() => CountWithFilter for returnRequestPendingFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	shipmentDelayedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, shipmentDelayedFilter)
+	if err != nil {
+		logger.Err("sellerOrderShipmentReportsHandler() => CountWithFilter for returnShipmentPendingFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	shippedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, shippedFilter)
+	if err != nil {
+		logger.Err("sellerOrderShipmentReportsHandler() => CountWithFilter for returnShippedFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	sellerOrderShipmentReports := &pb.SellerOrderShipmentReports{
+		SellerId:        userId,
+		ShipmentPending: uint32(shipmentPendingCount),
+		ShipmentDelayed: uint32(shipmentDelayedCount),
+		Shipped:         uint32(shippedCount),
+	}
+
+	serializedData, err := proto.Marshal(sellerOrderShipmentReports)
+	if err != nil {
+		logger.Err("sellerOrderShipmentReportsHandler() => could not serialize sellerOrderShipmentReports, userId: %d, error:%s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "SellerOrderShipmentReports",
+		Meta:   nil,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(sellerOrderShipmentReports),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
+func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
+
+	returnRequestPendingFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ReturnRequestPending.StateName()}}}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ReturnRequestPending.StateName()}}}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	returnRequestRejectedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnRequestRejected.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnRequestRejected.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	returnShipmentPendingFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnShipmentPending.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnShipmentPending.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	returnShippedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnShipped.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnShipped.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	returnDeliveredFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ReturnDelivered.StateName()}}}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ReturnDelivered.StateName()}}}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	returnDeliveryPendingFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ReturnDeliveryPending.StateName()}}}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ReturnDeliveryPending.StateName()}}}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	returnDeliveryDelayedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ReturnDeliveryDelayed.StateName()}}}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.status": states.ReturnDeliveryDelayed.StateName()}}}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	returnDeliveryFailedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnDeliveryFailed.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnDeliveryFailed.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	returnRequestPendingCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnRequestPendingFilter)
+	if err != nil {
+		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnRequestPendingFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnShipmentPendingCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnShipmentPendingFilter)
+	if err != nil {
+		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnShipmentPendingFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnShippedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnShippedFilter)
+	if err != nil {
+		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnShippedFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnDeliveredCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnDeliveredFilter)
+	if err != nil {
+		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnDeliveredFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnDeliveryFailedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnDeliveryFailedFilter)
+	if err != nil {
+		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnDeliveryFailedFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnRequestRejectedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnRequestRejectedFilter)
+	if err != nil {
+		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnRequestRejectedFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnDeliveryPendingCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnDeliveryPendingFilter)
+	if err != nil {
+		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnDeliveryPendingFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnDeliveryDelayedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnDeliveryDelayedFilter)
+	if err != nil {
+		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnDeliveryDelayedFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	sellerOrderReturnReports := &pb.SellerOrderReturnReports{
+		SellerId:              userId,
+		ReturnRequestPending:  uint32(returnRequestPendingCount),
+		ReturnShipmentPending: uint32(returnShipmentPendingCount),
+		ReturnShipped:         uint32(returnShippedCount),
+		ReturnDeliveryPending: uint32(returnDeliveryPendingCount),
+		ReturnDeliveryDelayed: uint32(returnDeliveryDelayedCount),
+		ReturnDelivered:       uint32(returnDeliveredCount),
+		ReturnRequestRejected: uint32(returnRequestRejectedCount),
+		ReturnDeliveryFailed:  uint32(returnDeliveryFailedCount),
+	}
+
+	serializedData, err := proto.Marshal(sellerOrderReturnReports)
+	if err != nil {
+		logger.Err("sellerOrderReturnReportsHandler() => could not serialize sellerOrderReturnReports, userId: %d, error:%s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "SellerOrderReturnReports",
+		Meta:   nil,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(sellerOrderReturnReports),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
+func (server *Server) sellerOrderDeliveredReportsHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
+
+	deliveryPendingAndDelayedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.status": states.DeliveryPending.StateName()},
+				bson.M{"packages.subpackages.status": states.DeliveryDelayed.StateName()}}}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.status": states.DeliveryPending.StateName()},
+				bson.M{"packages.subpackages.status": states.DeliveryDelayed.StateName()}}}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	deliveredFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.Delivered.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.Delivered.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	deliveryFailedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.DeliveryFailed.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.DeliveryFailed.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	deliveryPendingAndDelayedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, deliveryPendingAndDelayedFilter)
+	if err != nil {
+		logger.Err("sellerOrderDeliverReportsHandler() => CountWithFilter for deliveryPendingAndDelayedFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	deliveredCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, deliveredFilter)
+	if err != nil {
+		logger.Err("sellerOrderDeliverReportsHandler() => CountWithFilter for deliveredFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	deliveryFailedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, deliveryFailedFilter)
+	if err != nil {
+		logger.Err("sellerOrderDeliverReportsHandler() => CountWithFilter for deliveryFailedFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	sellerOrderDeliveredReports := &pb.SellerOrderDeliveredReports{
+		SellerId:                  userId,
+		DeliveryPendingAndDelayed: uint32(deliveryPendingAndDelayedCount),
+		Delivered:                 uint32(deliveredCount),
+		DeliveryFailed:            uint32(deliveryFailedCount),
+	}
+
+	serializedData, err := proto.Marshal(sellerOrderDeliveredReports)
+	if err != nil {
+		logger.Err("buyerReturnOrderReportsHandler() => could not serialize sellerOrderDeliveredReports, userId: %d, error:%s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "SellerOrderDeliveredReports",
+		Meta:   nil,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(sellerOrderDeliveredReports),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
+func (server *Server) sellerOrderCancelReportsHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
+
+	cancelByBuyerFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.tracking.history.name": states.CanceledByBuyer.StateName()}}}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.tracking.history.name": states.CanceledByBuyer.StateName()}}}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	cancelBySellerFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.tracking.history.name": states.CanceledBySeller.StateName()}}}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{"packages.subpackages.tracking.history.name": states.CanceledBySeller.StateName()}}}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	cancelByBuyerCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, cancelByBuyerFilter)
+	if err != nil {
+		logger.Err("sellerOrderCancelReportsHandler() => CountWithFilter for cancelByBuyerFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	cancelBySellerCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, cancelBySellerFilter)
+	if err != nil {
+		logger.Err("sellerOrderCancelReportsHandler() => CountWithFilter for cancelBySellerFilter failed, userId: %d, error: %s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	sellerOrderCancelReports := &pb.SellerOrderCancelReports{
+		SellerId:       userId,
+		CancelBySeller: uint32(cancelBySellerCount),
+		CancelByBuyer:  uint32(cancelByBuyerCount),
+	}
+
+	serializedData, err := proto.Marshal(sellerOrderCancelReports)
+	if err != nil {
+		logger.Err("sellerOrderCancelReportsHandler() => could not serialize sellerOrderCancelReports, userId: %d, error:%s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "SellerOrderCancelReports",
+		Meta:   nil,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(sellerOrderCancelReports),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
+func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, userId uint64, filter FilterValue, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
+
+	if oid > 0 {
+		return server.buyerGetOrderDetailByIdHandler(ctx, oid)
+	}
+
 	if page <= 0 || perPage <= 0 {
-		logger.Err("buyerOrderDetailHandler() => page or perPage invalid, userId: %d, page: %d, perPage: %d", userId, page, perPage)
+		logger.Err("buyerOrderDetailListHandler() => page or perPage invalid, userId: %d, page: %d, perPage: %d", userId, page, perPage)
 		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
 	}
 
@@ -1469,8 +2246,18 @@ func (server *Server) buyerOrderDetailHandler(ctx context.Context, userId uint64
 	}
 
 	orderFilter := func() (interface{}, string, int) {
-		return bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}},
-			//{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "order.status": bson.M{"$or": bson.A{states.OrderInProgressStatus, states.NewOrder}}}}},
+		return bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
+				bson.D{{"packages.subpackages.status", states.PaymentFailed.StateName()}},
+				bson.D{{"packages.subpackages.status", states.ApprovalPending.StateName()}},
+				bson.D{{"packages.subpackages.status", states.ShipmentPending.StateName()}},
+				bson.D{{"packages.subpackages.status", states.ShipmentDelayed.StateName()}},
+				bson.D{{"packages.subpackages.status", states.Shipped.StateName()}},
+				bson.D{{"packages.subpackages.status", states.DeliveryPending.StateName()}},
+				bson.D{{"packages.subpackages.status", states.DeliveryDelayed.StateName()}},
+				bson.D{{"packages.subpackages.status", states.Delivered.StateName()}},
+				bson.D{{"packages.subpackages.status", states.DeliveryFailed.StateName()}},
+				bson.D{{"packages.subpackages.status", states.PayToBuyer.StateName()}},
+				bson.D{{"packages.subpackages.status", states.PayToSeller.StateName()}}}}},
 			sortName, sortDirect
 	}
 
@@ -1593,7 +2380,7 @@ func (server *Server) buyerOrderDetailHandler(ctx context.Context, userId uint64
 
 	serializedData, err := proto.Marshal(buyerOrderDetailList)
 	if err != nil {
-		logger.Err("buyerOrderDetailHandler() => could not serialize buyerOrderDetailList, userId: %d, error:%s", userId, err)
+		logger.Err("buyerOrderDetailListHandler() => could not serialize buyerOrderDetailList, userId: %d, error:%s", userId, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
@@ -1604,6 +2391,142 @@ func (server *Server) buyerOrderDetailHandler(ctx context.Context, userId uint64
 			Page:    page,
 			PerPage: perPage,
 		},
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(buyerOrderDetailList),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
+func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid uint64) (*pb.MessageResponse, error) {
+
+	order, err := app.Globals.OrderRepository.FindById(ctx, oid)
+	if err != nil {
+		logger.Err("buyerGetOrderDetailByIdHandler() => FindByFilter failed, oid: %d, error: %s", oid, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	orderDetailList := make([]*pb.BuyerOrderDetailList_OrderDetail, 0, 1)
+
+	packageDetailList := make([]*pb.BuyerOrderDetailList_OrderDetail_Package, 0, len(order.Packages))
+	for j := 0; j < len(order.Packages); j++ {
+		for z := 0; z < len(order.Packages[j].Subpackages); z++ {
+			itemPackageDetailList := make([]*pb.BuyerOrderDetailList_OrderDetail_Package_Item, 0, len(order.Packages[j].Subpackages[z].Items))
+			for t := 0; t < len(order.Packages[j].Subpackages[z].Items); t++ {
+				itemPackageDetail := &pb.BuyerOrderDetailList_OrderDetail_Package_Item{
+					SID:                order.Packages[j].Subpackages[z].SId,
+					Status:             order.Packages[j].Subpackages[z].Status,
+					SIdx:               int32(states.FromString(order.Packages[j].Subpackages[z].Status).StateIndex()),
+					IsCancelable:       false,
+					IsReturnable:       false,
+					IsReturnCancelable: false,
+					InventoryId:        order.Packages[j].Subpackages[z].Items[t].InventoryId,
+					Title:              order.Packages[j].Subpackages[z].Items[t].Title,
+					Brand:              order.Packages[j].Subpackages[z].Items[t].Brand,
+					Image:              order.Packages[j].Subpackages[z].Items[t].Image,
+					Returnable:         order.Packages[j].Subpackages[z].Items[t].Returnable,
+					Quantity:           order.Packages[j].Subpackages[z].Items[t].Quantity,
+					Attributes:         order.Packages[j].Subpackages[z].Items[t].Attributes,
+					Invoice: &pb.BuyerOrderDetailList_OrderDetail_Package_Item_Invoice{
+						Unit:     order.Packages[j].Subpackages[z].Items[t].Invoice.Unit,
+						Total:    order.Packages[j].Subpackages[z].Items[t].Invoice.Total,
+						Original: order.Packages[j].Subpackages[z].Items[t].Invoice.Original,
+						Special:  order.Packages[j].Subpackages[z].Items[t].Invoice.Special,
+						Discount: order.Packages[j].Subpackages[z].Items[t].Invoice.Discount,
+						Currency: order.Packages[j].Subpackages[z].Items[t].Invoice.Currency,
+					},
+				}
+				if itemPackageDetail.Status == states.ApprovalPending.StateName() ||
+					itemPackageDetail.Status == states.ShipmentPending.StateName() ||
+					itemPackageDetail.Status == states.ShipmentDelayed.StateName() {
+					itemPackageDetail.IsCancelable = true
+
+				} else if itemPackageDetail.Status == states.Delivered.StateName() {
+					itemPackageDetail.IsReturnable = true
+
+				} else if itemPackageDetail.Status == states.ReturnRequestPending.StateName() {
+					itemPackageDetail.IsReturnCancelable = true
+				}
+
+				itemPackageDetailList = append(itemPackageDetailList, itemPackageDetail)
+			}
+
+			packageDetail := &pb.BuyerOrderDetailList_OrderDetail_Package{
+				PID:          order.Packages[j].PId,
+				ShopName:     order.Packages[j].ShopName,
+				Items:        itemPackageDetailList,
+				ShipmentInfo: nil,
+			}
+
+			if order.Packages[j].Subpackages[z].Shipments != nil &&
+				order.Packages[j].Subpackages[z].Shipments.ShipmentDetail != nil {
+				packageDetail.ShipmentInfo = &pb.BuyerOrderDetailList_OrderDetail_Package_Shipment{
+					DeliveryAt:     "",
+					ShippedAt:      order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601),
+					ShipmentAmount: order.Packages[j].ShipmentSpec.ShippingCost,
+					CarrierName:    order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.CarrierName,
+					TrackingNumber: order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.TrackingNumber,
+				}
+
+				packageDetail.ShipmentInfo.DeliveryAt = order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.
+					Add(time.Duration(order.Packages[j].ShipmentSpec.ShippingTime) * time.Hour).Format(ISO8601)
+			}
+
+			packageDetailList = append(packageDetailList, packageDetail)
+		}
+	}
+
+	orderDetail := &pb.BuyerOrderDetailList_OrderDetail{
+		Address: &pb.BuyerOrderDetailList_OrderDetail_BuyerAddress{
+			FirstName:     order.BuyerInfo.ShippingAddress.FirstName,
+			LastName:      order.BuyerInfo.ShippingAddress.LastName,
+			Address:       order.BuyerInfo.ShippingAddress.Address,
+			Phone:         order.BuyerInfo.ShippingAddress.Phone,
+			Mobile:        order.BuyerInfo.ShippingAddress.Mobile,
+			Country:       order.BuyerInfo.ShippingAddress.Country,
+			City:          order.BuyerInfo.ShippingAddress.City,
+			Province:      order.BuyerInfo.ShippingAddress.Province,
+			Neighbourhood: order.BuyerInfo.ShippingAddress.Neighbourhood,
+			Lat:           "",
+			Long:          "",
+			ZipCode:       order.BuyerInfo.ShippingAddress.ZipCode,
+		},
+		PackageCount:     int32(len(order.Packages)),
+		TotalAmount:      order.Invoice.Subtotal,
+		PayableAmount:    order.Invoice.GrandTotal,
+		Discounts:        order.Invoice.Discount,
+		ShipmentAmount:   order.Invoice.ShipmentTotal,
+		IsPaymentSuccess: false,
+		RequestAt:        order.CreatedAt.Format(ISO8601),
+		Packages:         packageDetailList,
+	}
+	if order.BuyerInfo.ShippingAddress.Location != nil {
+		orderDetail.Address.Lat = strconv.Itoa(int(order.BuyerInfo.ShippingAddress.Location.Coordinates[0]))
+		orderDetail.Address.Long = strconv.Itoa(int(order.BuyerInfo.ShippingAddress.Location.Coordinates[1]))
+	}
+
+	if order.PaymentService != nil && order.PaymentService[0].PaymentResult != nil {
+		orderDetail.IsPaymentSuccess = order.PaymentService[0].PaymentResult.Result
+	}
+
+	orderDetailList = append(orderDetailList, orderDetail)
+
+	buyerOrderDetailList := &pb.BuyerOrderDetailList{
+		BuyerId:      order.BuyerInfo.BuyerId,
+		OrderDetails: orderDetailList,
+	}
+
+	serializedData, err := proto.Marshal(buyerOrderDetailList)
+	if err != nil {
+		logger.Err("buyerGetOrderDetailByIdHandler() => could not serialize buyerOrderDetailList, orderId: %d, error:%s", oid, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "BuyerOrderDetailList",
+		Meta:   nil,
 		Data: &any.Any{
 			TypeUrl: "baman.io/" + proto.MessageName(buyerOrderDetailList),
 			Value:   serializedData,
@@ -1742,11 +2665,173 @@ func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId
 	return response, nil
 }
 
+func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId uint64, page, perPage uint32,
+	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
+	if page <= 0 || perPage <= 0 {
+		logger.Err("buyerAllReturnOrdersHandler() => page or perPage invalid, userId: %d, page: %d, perPage: %d", userId, page, perPage)
+		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
+	}
+
+	var sortDirect int
+	if direction == "ASC" {
+		sortDirect = 1
+	} else {
+		sortDirect = -1
+	}
+
+	var returnFilter bson.D
+	returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
+		bson.D{{"packages.subpackages.status", states.ReturnRequestPending.StateName()}},
+		bson.D{{"packages.subpackages.status", states.ReturnRequestRejected.StateName()}},
+		bson.D{{"packages.subpackages.status", states.ReturnShipmentPending.StateName()}},
+		bson.D{{"packages.subpackages.status", states.ReturnShipped.StateName()}},
+		bson.D{{"packages.subpackages.status", states.ReturnDeliveryPending.StateName()}},
+		bson.D{{"packages.subpackages.status", states.ReturnDeliveryDelayed.StateName()}},
+		bson.D{{"packages.subpackages.status", states.ReturnDeliveryFailed.StateName()}},
+		bson.D{{"packages.subpackages.status", states.ReturnDelivered.StateName()}}}}}
+
+	//genFilter := server.buyerGeneratePipelineFilter(ctx, filter)
+	//filters := make(bson.M, 3)
+	//filters["buyerInfo.buyerId"] = userId
+	//filters["deletedAt"] = nil
+	//filters[genFilter[0].(string)] = genFilter[1]
+	orderFilter := func() (interface{}, string, int) {
+		return returnFilter, sortName, sortDirect
+	}
+
+	orderList, total, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+	if err != nil {
+		logger.Err("buyerAllReturnOrdersHandler() => FindByFilter failed, userId: %d, page: %d, perPage: %d, error: %s", userId, page, perPage, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	returnOrderDetailList := make([]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail, 0, len(orderList))
+	for i := 0; i < len(orderList); i++ {
+		returnPackageDetailList := make([]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail, 0, len(orderList[i].Packages))
+		for j := 0; j < len(orderList[i].Packages); j++ {
+			for z := 0; z < len(orderList[i].Packages[j].Subpackages); z++ {
+				returnItemPackageDetailList := make([]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item, 0, len(orderList[i].Packages[j].Subpackages[z].Items))
+				for t := 0; t < len(orderList[i].Packages[j].Subpackages[z].Items); t++ {
+					returnItemPackageDetail := &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item{
+						SID:             orderList[i].Packages[j].Subpackages[z].SId,
+						Status:          orderList[i].Packages[j].Subpackages[z].Status,
+						SIdx:            int32(states.FromString(orderList[i].Packages[j].Subpackages[z].Status).StateIndex()),
+						IsCancelable:    false,
+						IsAccepted:      false,
+						InventoryId:     orderList[i].Packages[j].Subpackages[z].Items[t].InventoryId,
+						Title:           orderList[i].Packages[j].Subpackages[z].Items[t].Title,
+						Brand:           orderList[i].Packages[j].Subpackages[z].Items[t].Brand,
+						Image:           orderList[i].Packages[j].Subpackages[z].Items[t].Image,
+						Returnable:      orderList[i].Packages[j].Subpackages[z].Items[t].Returnable,
+						Quantity:        orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
+						Attributes:      orderList[i].Packages[j].Subpackages[z].Items[t].Attributes,
+						Reason:          "",
+						ReturnRequestAt: "",
+						Invoice: &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Invoice{
+							Unit:     orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit,
+							Total:    orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total,
+							Original: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original,
+							Special:  orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special,
+							Discount: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount,
+							Currency: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Currency,
+						},
+					}
+
+					if orderList[i].Packages[j].Subpackages[z].Items[t].Reasons != nil {
+						returnItemPackageDetail.Reason = orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0]
+					}
+
+					if orderList[i].Packages[j].Subpackages[z].Shipments != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt != nil {
+						returnItemPackageDetail.ReturnRequestAt = orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt.Format(ISO8601)
+					}
+
+					if returnItemPackageDetail.Status == states.ReturnRequestPending.StateName() {
+						returnItemPackageDetail.IsCancelable = true
+
+					} else if returnItemPackageDetail.Status == states.ReturnShipmentPending.StateName() {
+						returnItemPackageDetail.IsAccepted = true
+
+					}
+
+					returnItemPackageDetailList = append(returnItemPackageDetailList, returnItemPackageDetail)
+				}
+
+				returnPackageDetail := &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail{
+					PID:      orderList[i].Packages[j].PId,
+					ShopName: orderList[i].Packages[j].ShopName,
+					Mobile:   "",
+					Phone:    "",
+					Shipment: nil,
+					Items:    returnItemPackageDetailList,
+				}
+
+				if orderList[i].Packages[j].SellerInfo != nil {
+					if orderList[i].Packages[j].SellerInfo.ReturnInfo != nil {
+						returnPackageDetail.Shipment = &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_SellerReturnShipment{
+							Country:      orderList[i].Packages[j].SellerInfo.ReturnInfo.Country,
+							Province:     orderList[i].Packages[j].SellerInfo.ReturnInfo.Province,
+							City:         orderList[i].Packages[j].SellerInfo.ReturnInfo.City,
+							Neighborhood: orderList[i].Packages[j].SellerInfo.ReturnInfo.Neighborhood,
+							Address:      orderList[i].Packages[j].SellerInfo.ReturnInfo.PostalAddress,
+							ZipCode:      orderList[i].Packages[j].SellerInfo.ReturnInfo.PostalCode}
+					}
+					if orderList[i].Packages[j].SellerInfo.GeneralInfo != nil {
+						returnPackageDetail.Mobile = orderList[i].Packages[j].SellerInfo.GeneralInfo.MobilePhone
+						returnPackageDetail.Phone = orderList[i].Packages[j].SellerInfo.GeneralInfo.LandPhone
+					}
+				}
+
+				returnPackageDetailList = append(returnPackageDetailList, returnPackageDetail)
+			}
+		}
+
+		returnOrderDetail := &pb.BuyerReturnOrderDetailList_ReturnOrderDetail{
+			OID:                 orderList[i].OrderId,
+			CreatedAt:           orderList[i].CreatedAt.Format(ISO8601),
+			TotalAmount:         orderList[i].Invoice.Subtotal,
+			ReturnPackageDetail: returnPackageDetailList,
+		}
+
+		returnOrderDetailList = append(returnOrderDetailList, returnOrderDetail)
+	}
+
+	buyerReturnOrderDetailList := &pb.BuyerReturnOrderDetailList{
+		BuyerId:           userId,
+		ReturnOrderDetail: returnOrderDetailList,
+	}
+
+	serializedData, err := proto.Marshal(buyerReturnOrderDetailList)
+	if err != nil {
+		logger.Err("buyerAllReturnOrdersHandler() => could not serialize buyerReturnOrderDetailList, userId: %d, error:%s", userId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "BuyerReturnOrderDetailList",
+		Meta: &pb.ResponseMetadata{
+			Total:   uint32(total),
+			Page:    page,
+			PerPage: perPage,
+		},
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(buyerReturnOrderDetailList),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+
+}
+
 func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, userId uint64, filter FilterValue, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
 	if page <= 0 || perPage <= 0 {
 		logger.Err("buyerReturnOrderDetailListHandler() => page or perPage invalid, userId: %d, filter: %s, page: %d, perPage: %d", userId, filter, page, perPage)
 		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
+	}
+
+	if filter == AllOrdersFilter {
+		return server.buyerAllReturnOrdersHandler(ctx, userId, page, perPage, sortName, direction)
 	}
 
 	var sortDirect int
@@ -1763,16 +2848,16 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 			bson.D{{"packages.subpackages.status", states.ReturnDeliveryDelayed.StateName()}},
 			bson.D{{"packages.subpackages.status", states.ReturnDelivered.StateName()}}}}}
 	} else if filter == DeliveryFailedFilter {
-		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.sellerBuyerFilterStates[filter][0].StateName()}}
+		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.buyerFilterStates[filter][0].StateName()}}
 	} else if filter == ReturnRequestPendingFilter {
 		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
 			bson.D{{"packages.subpackages.status", states.ReturnRequestPending.StateName()}},
 			bson.D{{"packages.subpackages.status", states.ReturnRequestRejected.StateName()}}}}}
 	} else {
-		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"packages.subpackages.status", server.sellerBuyerFilterStates[filter][0].StateName()}}
+		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"packages.subpackages.status", server.buyerFilterStates[filter][0].StateName()}}
 	}
 
-	//genFilter := server.generatePipelineFilter(ctx, filter)
+	//genFilter := server.buyerGeneratePipelineFilter(ctx, filter)
 	//filters := make(bson.M, 3)
 	//filters["buyerInfo.buyerId"] = userId
 	//filters["deletedAt"] = nil
@@ -1932,7 +3017,10 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 	//}
 
 	if ctx.Value(string(utils.CtxUserID)) == nil {
-		ctx = context.WithValue(ctx, string(utils.CtxUserID), userAcl.User().UserID)
+		ctx = context.WithValue(ctx, string(utils.CtxUserID), uint64(userAcl.User().UserID))
+	}
+
+	if ctx.Value(string(utils.CtxUserACL)) == nil {
 		ctx = context.WithValue(ctx, string(utils.CtxUserACL), userAcl)
 	}
 

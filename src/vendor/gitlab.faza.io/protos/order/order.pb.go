@@ -26,10 +26,10 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type RequestBackOfficeOrderAction struct {
-	ItemId               uint64   `protobuf:"varint,1,opt,name=itemId,proto3" json:"itemId,omitempty"`
-	ActionType           string   `protobuf:"bytes,2,opt,name=actionType,proto3" json:"actionType,omitempty"`
-	Action               string   `protobuf:"bytes,3,opt,name=action,proto3" json:"action,omitempty"`
-	Description          string   `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	ItemId               uint64   `protobuf:"varint,1,opt,name=itemId,proto3" json:"itemId"`
+	ActionType           string   `protobuf:"bytes,2,opt,name=actionType,proto3" json:"actionType"`
+	Action               string   `protobuf:"bytes,3,opt,name=action,proto3" json:"action"`
+	Description          string   `protobuf:"bytes,4,opt,name=description,proto3" json:"description"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -89,7 +89,7 @@ func (m *RequestBackOfficeOrderAction) GetDescription() string {
 }
 
 type ResponseBackOfficeOrderAction struct {
-	Result               bool     `protobuf:"varint,1,opt,name=result,proto3" json:"result,omitempty"`
+	Result               bool     `protobuf:"varint,1,opt,name=result,proto3" json:"result"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -128,9 +128,9 @@ func (m *ResponseBackOfficeOrderAction) GetResult() bool {
 }
 
 type RequestSellerReportOrders struct {
-	SellerId             uint64   `protobuf:"varint,1,opt,name=sellerId,proto3" json:"sellerId,omitempty"`
-	StartDateTime        int64    `protobuf:"varint,2,opt,name=startDateTime,proto3" json:"startDateTime,omitempty"`
-	Status               string   `protobuf:"bytes,3,opt,name=Status,proto3" json:"Status,omitempty"`
+	SellerId             uint64   `protobuf:"varint,1,opt,name=sellerId,proto3" json:"sellerId"`
+	StartDateTime        int64    `protobuf:"varint,2,opt,name=startDateTime,proto3" json:"startDateTime"`
+	Status               string   `protobuf:"bytes,3,opt,name=Status,proto3" json:"Status"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -183,7 +183,7 @@ func (m *RequestSellerReportOrders) GetStatus() string {
 }
 
 type ResponseDownloadFile struct {
-	Data                 []byte   `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
+	Data                 []byte   `protobuf:"bytes,1,opt,name=data,proto3" json:"data"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -222,8 +222,8 @@ func (m *ResponseDownloadFile) GetData() []byte {
 }
 
 type ResponseDownloadFileSpec struct {
-	Filename             string   `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename,omitempty"`
-	Size                 uint64   `protobuf:"varint,2,opt,name=size,proto3" json:"size,omitempty"`
+	Filename             string   `protobuf:"bytes,1,opt,name=filename,proto3" json:"filename"`
+	Size                 uint64   `protobuf:"varint,2,opt,name=size,proto3" json:"size"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -269,8 +269,8 @@ func (m *ResponseDownloadFileSpec) GetSize() uint64 {
 }
 
 type RequestBackOfficeReportOrderItems struct {
-	StartDateTime        uint64   `protobuf:"varint,1,opt,name=startDateTime,proto3" json:"startDateTime,omitempty"`
-	EndDataTime          uint64   `protobuf:"varint,2,opt,name=endDataTime,proto3" json:"endDataTime,omitempty"`
+	StartDateTime        uint64   `protobuf:"varint,1,opt,name=startDateTime,proto3" json:"startDateTime"`
+	EndDataTime          uint64   `protobuf:"varint,2,opt,name=endDataTime,proto3" json:"endDataTime"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -316,14 +316,14 @@ func (m *RequestBackOfficeReportOrderItems) GetEndDataTime() uint64 {
 }
 
 type ResponseOrderDetailView struct {
-	OrderId              uint64        `protobuf:"varint,1,opt,name=orderId,proto3" json:"orderId,omitempty"`
-	CreatedAt            int64         `protobuf:"varint,2,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
-	Ip                   string        `protobuf:"bytes,3,opt,name=ip,proto3" json:"ip,omitempty"`
-	Status               string        `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
-	Payment              *PaymentInfo  `protobuf:"bytes,5,opt,name=payment,proto3" json:"payment,omitempty"`
-	Billing              *BillingInfo  `protobuf:"bytes,6,opt,name=billing,proto3" json:"billing,omitempty"`
-	ShippingInfo         *ShippingInfo `protobuf:"bytes,7,opt,name=shippingInfo,proto3" json:"shippingInfo,omitempty"`
-	Items                []*ItemInfo   `protobuf:"bytes,8,rep,name=items,proto3" json:"items,omitempty"`
+	OrderId              uint64        `protobuf:"varint,1,opt,name=orderId,proto3" json:"orderId"`
+	CreatedAt            int64         `protobuf:"varint,2,opt,name=createdAt,proto3" json:"createdAt"`
+	Ip                   string        `protobuf:"bytes,3,opt,name=ip,proto3" json:"ip"`
+	Status               string        `protobuf:"bytes,4,opt,name=status,proto3" json:"status"`
+	Payment              *PaymentInfo  `protobuf:"bytes,5,opt,name=payment,proto3" json:"payment"`
+	Billing              *BillingInfo  `protobuf:"bytes,6,opt,name=billing,proto3" json:"billing"`
+	ShippingInfo         *ShippingInfo `protobuf:"bytes,7,opt,name=shippingInfo,proto3" json:"shippingInfo"`
+	Items                []*ItemInfo   `protobuf:"bytes,8,rep,name=items,proto3" json:"items"`
 	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
 	XXX_unrecognized     []byte        `json:"-"`
 	XXX_sizecache        int32         `json:"-"`
@@ -411,15 +411,15 @@ func (m *ResponseOrderDetailView) GetItems() []*ItemInfo {
 }
 
 type ItemInfo struct {
-	ItemId               uint64       `protobuf:"varint,1,opt,name=itemId,proto3" json:"itemId,omitempty"`
-	SellerId             uint64       `protobuf:"varint,2,opt,name=sellerId,proto3" json:"sellerId,omitempty"`
-	InventoryId          string       `protobuf:"bytes,3,opt,name=inventoryId,proto3" json:"inventoryId,omitempty"`
-	Quantity             int32        `protobuf:"varint,4,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	ItemStatus           string       `protobuf:"bytes,5,opt,name=itemStatus,proto3" json:"itemStatus,omitempty"`
-	StepStatus           string       `protobuf:"bytes,6,opt,name=stepStatus,proto3" json:"stepStatus,omitempty"`
-	UpdatedAt            int64        `protobuf:"varint,7,opt,name=updatedAt,proto3" json:"updatedAt,omitempty"`
-	Price                *ItemInvoice `protobuf:"bytes,8,opt,name=price,proto3" json:"price,omitempty"`
-	Actions              []string     `protobuf:"bytes,9,rep,name=actions,proto3" json:"actions,omitempty"`
+	ItemId               uint64       `protobuf:"varint,1,opt,name=itemId,proto3" json:"itemId"`
+	SellerId             uint64       `protobuf:"varint,2,opt,name=sellerId,proto3" json:"sellerId"`
+	InventoryId          string       `protobuf:"bytes,3,opt,name=inventoryId,proto3" json:"inventoryId"`
+	Quantity             int32        `protobuf:"varint,4,opt,name=quantity,proto3" json:"quantity"`
+	ItemStatus           string       `protobuf:"bytes,5,opt,name=itemStatus,proto3" json:"itemStatus"`
+	StepStatus           string       `protobuf:"bytes,6,opt,name=stepStatus,proto3" json:"stepStatus"`
+	UpdatedAt            int64        `protobuf:"varint,7,opt,name=updatedAt,proto3" json:"updatedAt"`
+	Price                *ItemInvoice `protobuf:"bytes,8,opt,name=price,proto3" json:"price"`
+	Actions              []string     `protobuf:"bytes,9,rep,name=actions,proto3" json:"actions"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -514,13 +514,13 @@ func (m *ItemInfo) GetActions() []string {
 }
 
 type ShippingInfo struct {
-	FullName             string   `protobuf:"bytes,1,opt,name=fullName,proto3" json:"fullName,omitempty"`
-	Country              string   `protobuf:"bytes,2,opt,name=country,proto3" json:"country,omitempty"`
-	City                 string   `protobuf:"bytes,3,opt,name=city,proto3" json:"city,omitempty"`
-	Province             string   `protobuf:"bytes,4,opt,name=province,proto3" json:"province,omitempty"`
-	Neighborhood         string   `protobuf:"bytes,5,opt,name=neighborhood,proto3" json:"neighborhood,omitempty"`
-	Address              string   `protobuf:"bytes,6,opt,name=address,proto3" json:"address,omitempty"`
-	ZipCode              string   `protobuf:"bytes,7,opt,name=zipCode,proto3" json:"zipCode,omitempty"`
+	FullName             string   `protobuf:"bytes,1,opt,name=fullName,proto3" json:"fullName"`
+	Country              string   `protobuf:"bytes,2,opt,name=country,proto3" json:"country"`
+	City                 string   `protobuf:"bytes,3,opt,name=city,proto3" json:"city"`
+	Province             string   `protobuf:"bytes,4,opt,name=province,proto3" json:"province"`
+	Neighborhood         string   `protobuf:"bytes,5,opt,name=neighborhood,proto3" json:"neighborhood"`
+	Address              string   `protobuf:"bytes,6,opt,name=address,proto3" json:"address"`
+	ZipCode              string   `protobuf:"bytes,7,opt,name=zipCode,proto3" json:"zipCode"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -601,11 +601,11 @@ func (m *ShippingInfo) GetZipCode() string {
 }
 
 type BillingInfo struct {
-	BuyerId              uint64   `protobuf:"varint,1,opt,name=buyerId,proto3" json:"buyerId,omitempty"`
-	FullName             string   `protobuf:"bytes,2,opt,name=fullName,proto3" json:"fullName,omitempty"`
-	Phone                string   `protobuf:"bytes,3,opt,name=phone,proto3" json:"phone,omitempty"`
-	Mobile               string   `protobuf:"bytes,4,opt,name=mobile,proto3" json:"mobile,omitempty"`
-	NationalId           string   `protobuf:"bytes,5,opt,name=nationalId,proto3" json:"nationalId,omitempty"`
+	BuyerId              uint64   `protobuf:"varint,1,opt,name=buyerId,proto3" json:"buyerId"`
+	FullName             string   `protobuf:"bytes,2,opt,name=fullName,proto3" json:"fullName"`
+	Phone                string   `protobuf:"bytes,3,opt,name=phone,proto3" json:"phone"`
+	Mobile               string   `protobuf:"bytes,4,opt,name=mobile,proto3" json:"mobile"`
+	NationalId           string   `protobuf:"bytes,5,opt,name=nationalId,proto3" json:"nationalId"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -672,9 +672,9 @@ func (m *BillingInfo) GetNationalId() string {
 }
 
 type PaymentInfo struct {
-	PaymentMethod        string   `protobuf:"bytes,1,opt,name=paymentMethod,proto3" json:"paymentMethod,omitempty"`
-	PaymentOption        string   `protobuf:"bytes,2,opt,name=paymentOption,proto3" json:"paymentOption,omitempty"`
-	Result               bool     `protobuf:"varint,3,opt,name=result,proto3" json:"result,omitempty"`
+	PaymentMethod        string   `protobuf:"bytes,1,opt,name=paymentMethod,proto3" json:"paymentMethod"`
+	PaymentOption        string   `protobuf:"bytes,2,opt,name=paymentOption,proto3" json:"paymentOption"`
+	Result               bool     `protobuf:"varint,3,opt,name=result,proto3" json:"result"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -727,10 +727,10 @@ func (m *PaymentInfo) GetResult() bool {
 }
 
 type RequestBackOfficeOrdersList struct {
-	Page                 uint32   `protobuf:"varint,1,opt,name=page,proto3" json:"page,omitempty"`
-	PerPage              uint32   `protobuf:"varint,2,opt,name=perPage,proto3" json:"perPage,omitempty"`
-	Sort                 string   `protobuf:"bytes,3,opt,name=sort,proto3" json:"sort,omitempty"`
-	Direction            int32    `protobuf:"varint,4,opt,name=direction,proto3" json:"direction,omitempty"`
+	Page                 uint32   `protobuf:"varint,1,opt,name=page,proto3" json:"page"`
+	PerPage              uint32   `protobuf:"varint,2,opt,name=perPage,proto3" json:"perPage"`
+	Sort                 string   `protobuf:"bytes,3,opt,name=sort,proto3" json:"sort"`
+	Direction            int32    `protobuf:"varint,4,opt,name=direction,proto3" json:"direction"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -790,8 +790,8 @@ func (m *RequestBackOfficeOrdersList) GetDirection() int32 {
 }
 
 type ResponseBackOfficeOrdersList struct {
-	Total                int64                   `protobuf:"varint,1,opt,name=total,proto3" json:"total,omitempty"`
-	Orders               []*BackOfficeOrdersList `protobuf:"bytes,2,rep,name=orders,proto3" json:"orders,omitempty"`
+	Total                int64                   `protobuf:"varint,1,opt,name=total,proto3" json:"total"`
+	Orders               []*BackOfficeOrdersList `protobuf:"bytes,2,rep,name=orders,proto3" json:"orders"`
 	XXX_NoUnkeyedLiteral struct{}                `json:"-"`
 	XXX_unrecognized     []byte                  `json:"-"`
 	XXX_sizecache        int32                   `json:"-"`
@@ -837,17 +837,17 @@ func (m *ResponseBackOfficeOrdersList) GetOrders() []*BackOfficeOrdersList {
 }
 
 type BackOfficeOrdersList struct {
-	OrderId              uint64   `protobuf:"varint,1,opt,name=orderId,proto3" json:"orderId,omitempty"`
-	PurchasedOn          int64    `protobuf:"varint,2,opt,name=purchasedOn,proto3" json:"purchasedOn,omitempty"`
-	BasketSize           int32    `protobuf:"varint,3,opt,name=basketSize,proto3" json:"basketSize,omitempty"`
-	BillTo               string   `protobuf:"bytes,4,opt,name=billTo,proto3" json:"billTo,omitempty"`
-	ShipTo               string   `protobuf:"bytes,5,opt,name=shipTo,proto3" json:"shipTo,omitempty"`
-	TotalAmount          int64    `protobuf:"varint,6,opt,name=totalAmount,proto3" json:"totalAmount,omitempty"`
-	PaidAmount           int64    `protobuf:"varint,7,opt,name=paidAmount,proto3" json:"paidAmount,omitempty"`
-	Voucher              bool     `protobuf:"varint,8,opt,name=voucher,proto3" json:"voucher,omitempty"`
-	Status               string   `protobuf:"bytes,9,opt,name=status,proto3" json:"status,omitempty"`
-	LastUpdated          int64    `protobuf:"varint,10,opt,name=lastUpdated,proto3" json:"lastUpdated,omitempty"`
-	Actions              []string `protobuf:"bytes,11,rep,name=actions,proto3" json:"actions,omitempty"`
+	OrderId              uint64   `protobuf:"varint,1,opt,name=orderId,proto3" json:"orderId"`
+	PurchasedOn          int64    `protobuf:"varint,2,opt,name=purchasedOn,proto3" json:"purchasedOn"`
+	BasketSize           int32    `protobuf:"varint,3,opt,name=basketSize,proto3" json:"basketSize"`
+	BillTo               string   `protobuf:"bytes,4,opt,name=billTo,proto3" json:"billTo"`
+	ShipTo               string   `protobuf:"bytes,5,opt,name=shipTo,proto3" json:"shipTo"`
+	TotalAmount          int64    `protobuf:"varint,6,opt,name=totalAmount,proto3" json:"totalAmount"`
+	PaidAmount           int64    `protobuf:"varint,7,opt,name=paidAmount,proto3" json:"paidAmount"`
+	Voucher              bool     `protobuf:"varint,8,opt,name=voucher,proto3" json:"voucher"`
+	Status               string   `protobuf:"bytes,9,opt,name=status,proto3" json:"status"`
+	LastUpdated          int64    `protobuf:"varint,10,opt,name=lastUpdated,proto3" json:"lastUpdated"`
+	Actions              []string `protobuf:"bytes,11,rep,name=actions,proto3" json:"actions"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -956,7 +956,7 @@ func (m *BackOfficeOrdersList) GetActions() []string {
 }
 
 type ResponseNewOrder struct {
-	CallbackUrl          string   `protobuf:"bytes,1,opt,name=callbackUrl,proto3" json:"callbackUrl,omitempty"`
+	CallbackUrl          string   `protobuf:"bytes,1,opt,name=callbackUrl,proto3" json:"callbackUrl"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -995,10 +995,10 @@ func (m *ResponseNewOrder) GetCallbackUrl() string {
 }
 
 type RequestNewOrder struct {
-	Buyer                *Buyer     `protobuf:"bytes,1,opt,name=buyer,proto3" json:"buyer,omitempty"`
-	Platform             string     `protobuf:"bytes,2,opt,name=platform,proto3" json:"platform,omitempty"`
-	Invoice              *Invoice   `protobuf:"bytes,3,opt,name=invoice,proto3" json:"invoice,omitempty"`
-	Packages             []*Package `protobuf:"bytes,4,rep,name=packages,proto3" json:"packages,omitempty"`
+	Buyer                *Buyer     `protobuf:"bytes,1,opt,name=buyer,proto3" json:"buyer"`
+	Platform             string     `protobuf:"bytes,2,opt,name=platform,proto3" json:"platform"`
+	Invoice              *Invoice   `protobuf:"bytes,3,opt,name=invoice,proto3" json:"invoice"`
+	Packages             []*Package `protobuf:"bytes,4,rep,name=packages,proto3" json:"packages"`
 	XXX_NoUnkeyedLiteral struct{}   `json:"-"`
 	XXX_unrecognized     []byte     `json:"-"`
 	XXX_sizecache        int32      `json:"-"`
@@ -1058,11 +1058,11 @@ func (m *RequestNewOrder) GetPackages() []*Package {
 }
 
 type Package struct {
-	SellerId             uint64          `protobuf:"varint,1,opt,name=sellerId,proto3" json:"sellerId,omitempty"`
-	ShopName             string          `protobuf:"bytes,2,opt,name=shopName,proto3" json:"shopName,omitempty"`
-	Shipment             *ShippingSpec   `protobuf:"bytes,3,opt,name=shipment,proto3" json:"shipment,omitempty"`
-	Invoice              *PackageInvoice `protobuf:"bytes,4,opt,name=invoice,proto3" json:"invoice,omitempty"`
-	Items                []*Item         `protobuf:"bytes,5,rep,name=items,proto3" json:"items,omitempty"`
+	SellerId             uint64          `protobuf:"varint,1,opt,name=sellerId,proto3" json:"sellerId"`
+	ShopName             string          `protobuf:"bytes,2,opt,name=shopName,proto3" json:"shopName"`
+	Shipment             *ShippingSpec   `protobuf:"bytes,3,opt,name=shipment,proto3" json:"shipment"`
+	Invoice              *PackageInvoice `protobuf:"bytes,4,opt,name=invoice,proto3" json:"invoice"`
+	Items                []*Item         `protobuf:"bytes,5,rep,name=items,proto3" json:"items"`
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
 	XXX_unrecognized     []byte          `json:"-"`
 	XXX_sizecache        int32           `json:"-"`
@@ -1129,9 +1129,9 @@ func (m *Package) GetItems() []*Item {
 }
 
 type PackageInvoice struct {
-	Subtotal             uint64   `protobuf:"varint,1,opt,name=subtotal,proto3" json:"subtotal,omitempty"`
-	Discount             uint64   `protobuf:"varint,2,opt,name=discount,proto3" json:"discount,omitempty"`
-	ShipmentAmount       uint64   `protobuf:"varint,3,opt,name=shipmentAmount,proto3" json:"shipmentAmount,omitempty"`
+	Subtotal             uint64   `protobuf:"varint,1,opt,name=subtotal,proto3" json:"subtotal"`
+	Discount             uint64   `protobuf:"varint,2,opt,name=discount,proto3" json:"discount"`
+	ShipmentAmount       uint64   `protobuf:"varint,3,opt,name=shipmentAmount,proto3" json:"shipmentAmount"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1184,15 +1184,15 @@ func (m *PackageInvoice) GetShipmentAmount() uint64 {
 }
 
 type Invoice struct {
-	GrandTotal           uint64         `protobuf:"varint,1,opt,name=grandTotal,proto3" json:"grandTotal,omitempty"`
-	Subtotal             uint64         `protobuf:"varint,2,opt,name=subtotal,proto3" json:"subtotal,omitempty"`
-	Discount             uint64         `protobuf:"varint,3,opt,name=discount,proto3" json:"discount,omitempty"`
-	ShipmentTotal        uint64         `protobuf:"varint,6,opt,name=shipmentTotal,proto3" json:"shipmentTotal,omitempty"`
-	Currency             string         `protobuf:"bytes,7,opt,name=currency,proto3" json:"currency,omitempty"`
-	PaymentMethod        string         `protobuf:"bytes,8,opt,name=paymentMethod,proto3" json:"paymentMethod,omitempty"`
-	PaymentGateway       string         `protobuf:"bytes,9,opt,name=paymentGateway,proto3" json:"paymentGateway,omitempty"`
-	PaymentOption        *PaymentOption `protobuf:"bytes,10,opt,name=paymentOption,proto3" json:"paymentOption,omitempty"`
-	Voucher              *Voucher       `protobuf:"bytes,11,opt,name=voucher,proto3" json:"voucher,omitempty"`
+	GrandTotal           uint64         `protobuf:"varint,1,opt,name=grandTotal,proto3" json:"grandTotal"`
+	Subtotal             uint64         `protobuf:"varint,2,opt,name=subtotal,proto3" json:"subtotal"`
+	Discount             uint64         `protobuf:"varint,3,opt,name=discount,proto3" json:"discount"`
+	ShipmentTotal        uint64         `protobuf:"varint,6,opt,name=shipmentTotal,proto3" json:"shipmentTotal"`
+	Currency             string         `protobuf:"bytes,7,opt,name=currency,proto3" json:"currency"`
+	PaymentMethod        string         `protobuf:"bytes,8,opt,name=paymentMethod,proto3" json:"paymentMethod"`
+	PaymentGateway       string         `protobuf:"bytes,9,opt,name=paymentGateway,proto3" json:"paymentGateway"`
+	PaymentOption        *PaymentOption `protobuf:"bytes,10,opt,name=paymentOption,proto3" json:"paymentOption"`
+	Voucher              *Voucher       `protobuf:"bytes,11,opt,name=voucher,proto3" json:"voucher"`
 	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
 	XXX_unrecognized     []byte         `json:"-"`
 	XXX_sizecache        int32          `json:"-"`
@@ -1318,9 +1318,9 @@ func (m *PaymentOption) XXX_DiscardUnknown() {
 var xxx_messageInfo_PaymentOption proto.InternalMessageInfo
 
 type Voucher struct {
-	Amount               float32         `protobuf:"fixed32,1,opt,name=amount,proto3" json:"amount,omitempty"`
-	Code                 string          `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
-	Details              *VoucherDetails `protobuf:"bytes,3,opt,name=details,proto3" json:"details,omitempty"`
+	Amount               float32         `protobuf:"fixed32,1,opt,name=amount,proto3" json:"amount"`
+	Code                 string          `protobuf:"bytes,2,opt,name=code,proto3" json:"code"`
+	Details              *VoucherDetails `protobuf:"bytes,3,opt,name=details,proto3" json:"details"`
 	XXX_NoUnkeyedLiteral struct{}        `json:"-"`
 	XXX_unrecognized     []byte          `json:"-"`
 	XXX_sizecache        int32           `json:"-"`
@@ -1373,11 +1373,11 @@ func (m *Voucher) GetDetails() *VoucherDetails {
 }
 
 type VoucherDetails struct {
-	StartDate            string   `protobuf:"bytes,1,opt,name=startDate,proto3" json:"startDate,omitempty"`
-	EndDate              string   `protobuf:"bytes,2,opt,name=endDate,proto3" json:"endDate,omitempty"`
-	Type                 string   `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
-	MaxDiscountValue     uint64   `protobuf:"varint,4,opt,name=maxDiscountValue,proto3" json:"maxDiscountValue,omitempty"`
-	MinBasketValue       uint64   `protobuf:"varint,5,opt,name=minBasketValue,proto3" json:"minBasketValue,omitempty"`
+	StartDate            string   `protobuf:"bytes,1,opt,name=startDate,proto3" json:"startDate"`
+	EndDate              string   `protobuf:"bytes,2,opt,name=endDate,proto3" json:"endDate"`
+	Type                 string   `protobuf:"bytes,3,opt,name=type,proto3" json:"type"`
+	MaxDiscountValue     uint64   `protobuf:"varint,4,opt,name=maxDiscountValue,proto3" json:"maxDiscountValue"`
+	MinBasketValue       uint64   `protobuf:"varint,5,opt,name=minBasketValue,proto3" json:"minBasketValue"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1444,17 +1444,17 @@ func (m *VoucherDetails) GetMinBasketValue() uint64 {
 }
 
 type Item struct {
-	Sku                  string            `protobuf:"bytes,1,opt,name=sku,proto3" json:"sku,omitempty"`
-	InventoryId          string            `protobuf:"bytes,2,opt,name=inventoryId,proto3" json:"inventoryId,omitempty"`
-	Title                string            `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
-	Brand                string            `protobuf:"bytes,4,opt,name=brand,proto3" json:"brand,omitempty"`
-	Category             string            `protobuf:"bytes,5,opt,name=category,proto3" json:"category,omitempty"`
-	Guaranty             string            `protobuf:"bytes,6,opt,name=guaranty,proto3" json:"guaranty,omitempty"`
-	Image                string            `protobuf:"bytes,7,opt,name=image,proto3" json:"image,omitempty"`
-	Returnable           bool              `protobuf:"varint,8,opt,name=returnable,proto3" json:"returnable,omitempty"`
-	Quantity             int32             `protobuf:"varint,9,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	Attributes           map[string]string `protobuf:"bytes,10,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	Invoice              *ItemInvoice      `protobuf:"bytes,11,opt,name=invoice,proto3" json:"invoice,omitempty"`
+	Sku                  string            `protobuf:"bytes,1,opt,name=sku,proto3" json:"sku"`
+	InventoryId          string            `protobuf:"bytes,2,opt,name=inventoryId,proto3" json:"inventoryId"`
+	Title                string            `protobuf:"bytes,3,opt,name=title,proto3" json:"title"`
+	Brand                string            `protobuf:"bytes,4,opt,name=brand,proto3" json:"brand"`
+	Category             string            `protobuf:"bytes,5,opt,name=category,proto3" json:"category"`
+	Guaranty             string            `protobuf:"bytes,6,opt,name=guaranty,proto3" json:"guaranty"`
+	Image                string            `protobuf:"bytes,7,opt,name=image,proto3" json:"image"`
+	Returnable           bool              `protobuf:"varint,8,opt,name=returnable,proto3" json:"returnable"`
+	Quantity             int32             `protobuf:"varint,9,opt,name=quantity,proto3" json:"quantity"`
+	Attributes           map[string]string `protobuf:"bytes,10,rep,name=attributes,proto3" json:"attributes" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Invoice              *ItemInvoice      `protobuf:"bytes,11,opt,name=invoice,proto3" json:"invoice"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
 	XXX_sizecache        int32             `json:"-"`
@@ -1563,17 +1563,17 @@ func (m *Item) GetInvoice() *ItemInvoice {
 }
 
 type Buyer struct {
-	BuyerId              uint64       `protobuf:"varint,1,opt,name=buyerId,proto3" json:"buyerId,omitempty"`
-	FirstName            string       `protobuf:"bytes,2,opt,name=firstName,proto3" json:"firstName,omitempty"`
-	LastName             string       `protobuf:"bytes,3,opt,name=lastName,proto3" json:"lastName,omitempty"`
-	Phone                string       `protobuf:"bytes,4,opt,name=phone,proto3" json:"phone,omitempty"`
-	Mobile               string       `protobuf:"bytes,5,opt,name=mobile,proto3" json:"mobile,omitempty"`
-	Email                string       `protobuf:"bytes,6,opt,name=email,proto3" json:"email,omitempty"`
-	NationalId           string       `protobuf:"bytes,7,opt,name=nationalId,proto3" json:"nationalId,omitempty"`
-	Ip                   string       `protobuf:"bytes,8,opt,name=ip,proto3" json:"ip,omitempty"`
-	Gender               string       `protobuf:"bytes,9,opt,name=gender,proto3" json:"gender,omitempty"`
-	Finance              *FinanceInfo `protobuf:"bytes,10,opt,name=finance,proto3" json:"finance,omitempty"`
-	ShippingAddress      *Address     `protobuf:"bytes,11,opt,name=shippingAddress,proto3" json:"shippingAddress,omitempty"`
+	BuyerId              uint64       `protobuf:"varint,1,opt,name=buyerId,proto3" json:"buyerId"`
+	FirstName            string       `protobuf:"bytes,2,opt,name=firstName,proto3" json:"firstName"`
+	LastName             string       `protobuf:"bytes,3,opt,name=lastName,proto3" json:"lastName"`
+	Phone                string       `protobuf:"bytes,4,opt,name=phone,proto3" json:"phone"`
+	Mobile               string       `protobuf:"bytes,5,opt,name=mobile,proto3" json:"mobile"`
+	Email                string       `protobuf:"bytes,6,opt,name=email,proto3" json:"email"`
+	NationalId           string       `protobuf:"bytes,7,opt,name=nationalId,proto3" json:"nationalId"`
+	Ip                   string       `protobuf:"bytes,8,opt,name=ip,proto3" json:"ip"`
+	Gender               string       `protobuf:"bytes,9,opt,name=gender,proto3" json:"gender"`
+	Finance              *FinanceInfo `protobuf:"bytes,10,opt,name=finance,proto3" json:"finance"`
+	ShippingAddress      *Address     `protobuf:"bytes,11,opt,name=shippingAddress,proto3" json:"shippingAddress"`
 	XXX_NoUnkeyedLiteral struct{}     `json:"-"`
 	XXX_unrecognized     []byte       `json:"-"`
 	XXX_sizecache        int32        `json:"-"`
@@ -1682,10 +1682,10 @@ func (m *Buyer) GetShippingAddress() *Address {
 }
 
 type FinanceInfo struct {
-	Iban                 string   `protobuf:"bytes,1,opt,name=iban,proto3" json:"iban,omitempty"`
-	CardNumber           string   `protobuf:"bytes,2,opt,name=cardNumber,proto3" json:"cardNumber,omitempty"`
-	AccountNumber        string   `protobuf:"bytes,3,opt,name=accountNumber,proto3" json:"accountNumber,omitempty"`
-	BankName             string   `protobuf:"bytes,4,opt,name=bankName,proto3" json:"bankName,omitempty"`
+	Iban                 string   `protobuf:"bytes,1,opt,name=iban,proto3" json:"iban"`
+	CardNumber           string   `protobuf:"bytes,2,opt,name=cardNumber,proto3" json:"cardNumber"`
+	AccountNumber        string   `protobuf:"bytes,3,opt,name=accountNumber,proto3" json:"accountNumber"`
+	BankName             string   `protobuf:"bytes,4,opt,name=bankName,proto3" json:"bankName"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1745,18 +1745,18 @@ func (m *FinanceInfo) GetBankName() string {
 }
 
 type Address struct {
-	FirstName            string   `protobuf:"bytes,1,opt,name=firstName,proto3" json:"firstName,omitempty"`
-	LastName             string   `protobuf:"bytes,2,opt,name=lastName,proto3" json:"lastName,omitempty"`
-	Address              string   `protobuf:"bytes,3,opt,name=address,proto3" json:"address,omitempty"`
-	Phone                string   `protobuf:"bytes,4,opt,name=phone,proto3" json:"phone,omitempty"`
-	Mobile               string   `protobuf:"bytes,5,opt,name=mobile,proto3" json:"mobile,omitempty"`
-	Country              string   `protobuf:"bytes,6,opt,name=country,proto3" json:"country,omitempty"`
-	City                 string   `protobuf:"bytes,7,opt,name=city,proto3" json:"city,omitempty"`
-	Province             string   `protobuf:"bytes,8,opt,name=province,proto3" json:"province,omitempty"`
-	Neighbourhood        string   `protobuf:"bytes,9,opt,name=neighbourhood,proto3" json:"neighbourhood,omitempty"`
-	Lat                  string   `protobuf:"bytes,10,opt,name=lat,proto3" json:"lat,omitempty"`
-	Long                 string   `protobuf:"bytes,11,opt,name=long,proto3" json:"long,omitempty"`
-	ZipCode              string   `protobuf:"bytes,12,opt,name=zipCode,proto3" json:"zipCode,omitempty"`
+	FirstName            string   `protobuf:"bytes,1,opt,name=firstName,proto3" json:"firstName"`
+	LastName             string   `protobuf:"bytes,2,opt,name=lastName,proto3" json:"lastName"`
+	Address              string   `protobuf:"bytes,3,opt,name=address,proto3" json:"address"`
+	Phone                string   `protobuf:"bytes,4,opt,name=phone,proto3" json:"phone"`
+	Mobile               string   `protobuf:"bytes,5,opt,name=mobile,proto3" json:"mobile"`
+	Country              string   `protobuf:"bytes,6,opt,name=country,proto3" json:"country"`
+	City                 string   `protobuf:"bytes,7,opt,name=city,proto3" json:"city"`
+	Province             string   `protobuf:"bytes,8,opt,name=province,proto3" json:"province"`
+	Neighbourhood        string   `protobuf:"bytes,9,opt,name=neighbourhood,proto3" json:"neighbourhood"`
+	Lat                  string   `protobuf:"bytes,10,opt,name=lat,proto3" json:"lat"`
+	Long                 string   `protobuf:"bytes,11,opt,name=long,proto3" json:"long"`
+	ZipCode              string   `protobuf:"bytes,12,opt,name=zipCode,proto3" json:"zipCode"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1872,13 +1872,13 @@ func (m *Address) GetZipCode() string {
 }
 
 type ItemInvoice struct {
-	Unit                 uint64   `protobuf:"varint,1,opt,name=unit,proto3" json:"unit,omitempty"`
-	Total                uint64   `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
-	Original             uint64   `protobuf:"varint,3,opt,name=original,proto3" json:"original,omitempty"`
-	Special              uint64   `protobuf:"varint,4,opt,name=special,proto3" json:"special,omitempty"`
-	Discount             uint64   `protobuf:"varint,5,opt,name=discount,proto3" json:"discount,omitempty"`
-	SellerCommission     float32  `protobuf:"fixed32,6,opt,name=sellerCommission,proto3" json:"sellerCommission,omitempty"`
-	Currency             string   `protobuf:"bytes,7,opt,name=currency,proto3" json:"currency,omitempty"`
+	Unit                 uint64   `protobuf:"varint,1,opt,name=unit,proto3" json:"unit"`
+	Total                uint64   `protobuf:"varint,2,opt,name=total,proto3" json:"total"`
+	Original             uint64   `protobuf:"varint,3,opt,name=original,proto3" json:"original"`
+	Special              uint64   `protobuf:"varint,4,opt,name=special,proto3" json:"special"`
+	Discount             uint64   `protobuf:"varint,5,opt,name=discount,proto3" json:"discount"`
+	SellerCommission     float32  `protobuf:"fixed32,6,opt,name=sellerCommission,proto3" json:"sellerCommission"`
+	Currency             string   `protobuf:"bytes,7,opt,name=currency,proto3" json:"currency"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1959,16 +1959,16 @@ func (m *ItemInvoice) GetCurrency() string {
 }
 
 type ShippingSpec struct {
-	CarrierNames         []string `protobuf:"bytes,1,rep,name=carrierNames,proto3" json:"carrierNames,omitempty"`
-	CarrierProduct       string   `protobuf:"bytes,2,opt,name=carrierProduct,proto3" json:"carrierProduct,omitempty"`
-	CarrierType          string   `protobuf:"bytes,3,opt,name=carrierType,proto3" json:"carrierType,omitempty"`
-	ShippingCost         uint64   `protobuf:"varint,4,opt,name=shippingCost,proto3" json:"shippingCost,omitempty"`
-	VoucherAmount        uint64   `protobuf:"varint,5,opt,name=voucherAmount,proto3" json:"voucherAmount,omitempty"`
-	Currency             string   `protobuf:"bytes,6,opt,name=currency,proto3" json:"currency,omitempty"`
-	ReactionTime         int32    `protobuf:"varint,7,opt,name=reactionTime,proto3" json:"reactionTime,omitempty"`
-	ShippingTime         int32    `protobuf:"varint,8,opt,name=shippingTime,proto3" json:"shippingTime,omitempty"`
-	ReturnTime           int32    `protobuf:"varint,9,opt,name=returnTime,proto3" json:"returnTime,omitempty"`
-	Details              string   `protobuf:"bytes,10,opt,name=details,proto3" json:"details,omitempty"`
+	CarrierNames         []string `protobuf:"bytes,1,rep,name=carrierNames,proto3" json:"carrierNames"`
+	CarrierProduct       string   `protobuf:"bytes,2,opt,name=carrierProduct,proto3" json:"carrierProduct"`
+	CarrierType          string   `protobuf:"bytes,3,opt,name=carrierType,proto3" json:"carrierType"`
+	ShippingCost         uint64   `protobuf:"varint,4,opt,name=shippingCost,proto3" json:"shippingCost"`
+	VoucherAmount        uint64   `protobuf:"varint,5,opt,name=voucherAmount,proto3" json:"voucherAmount"`
+	Currency             string   `protobuf:"bytes,6,opt,name=currency,proto3" json:"currency"`
+	ReactionTime         int32    `protobuf:"varint,7,opt,name=reactionTime,proto3" json:"reactionTime"`
+	ShippingTime         int32    `protobuf:"varint,8,opt,name=shippingTime,proto3" json:"shippingTime"`
+	ReturnTime           int32    `protobuf:"varint,9,opt,name=returnTime,proto3" json:"returnTime"`
+	Details              string   `protobuf:"bytes,10,opt,name=details,proto3" json:"details"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2070,10 +2070,10 @@ func (m *ShippingSpec) GetDetails() string {
 }
 
 type Event struct {
-	Actor                string   `protobuf:"bytes,1,opt,name=actor,proto3" json:"actor,omitempty"`
-	Action               string   `protobuf:"bytes,2,opt,name=action,proto3" json:"action,omitempty"`
-	ItemsId              []uint64 `protobuf:"varint,3,rep,packed,name=itemsId,proto3" json:"itemsId,omitempty"`
-	Data                 *any.Any `protobuf:"bytes,4,opt,name=data,proto3" json:"data,omitempty"`
+	Actor                string   `protobuf:"bytes,1,opt,name=actor,proto3" json:"actor"`
+	Action               string   `protobuf:"bytes,2,opt,name=action,proto3" json:"action"`
+	ItemsId              []uint64 `protobuf:"varint,3,rep,packed,name=itemsId,proto3" json:"itemsId"`
+	Data                 *any.Any `protobuf:"bytes,4,opt,name=data,proto3" json:"data"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2133,7 +2133,7 @@ func (m *Event) GetData() *any.Any {
 }
 
 type RequestIdentifier struct {
-	Id                   string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Id                   string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2172,7 +2172,7 @@ func (m *RequestIdentifier) GetId() string {
 }
 
 type ResponseBuyerFindAllOrders struct {
-	Orders               []*BuyerAllOrders `protobuf:"bytes,1,rep,name=orders,proto3" json:"orders,omitempty"`
+	Orders               []*BuyerAllOrders `protobuf:"bytes,1,rep,name=orders,proto3" json:"orders"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
 	XXX_sizecache        int32             `json:"-"`
@@ -2211,14 +2211,14 @@ func (m *ResponseBuyerFindAllOrders) GetOrders() []*BuyerAllOrders {
 }
 
 type BuyerAllOrders struct {
-	BuyerId              uint64             `protobuf:"varint,1,opt,name=buyerId,proto3" json:"buyerId,omitempty"`
-	OrderId              uint64             `protobuf:"varint,2,opt,name=orderId,proto3" json:"orderId,omitempty"`
-	CreatedAt            string             `protobuf:"bytes,3,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
-	UpdatedAt            string             `protobuf:"bytes,4,opt,name=updatedAt,proto3" json:"updatedAt,omitempty"`
-	OrderStatus          string             `protobuf:"bytes,5,opt,name=orderStatus,proto3" json:"orderStatus,omitempty"`
-	Amount               *Invoice           `protobuf:"bytes,6,opt,name=amount,proto3" json:"amount,omitempty"`
-	ShippingAddress      *Address           `protobuf:"bytes,7,opt,name=shippingAddress,proto3" json:"shippingAddress,omitempty"`
-	Items                []*BuyerOrderItems `protobuf:"bytes,8,rep,name=items,proto3" json:"items,omitempty"`
+	BuyerId              uint64             `protobuf:"varint,1,opt,name=buyerId,proto3" json:"buyerId"`
+	OrderId              uint64             `protobuf:"varint,2,opt,name=orderId,proto3" json:"orderId"`
+	CreatedAt            string             `protobuf:"bytes,3,opt,name=createdAt,proto3" json:"createdAt"`
+	UpdatedAt            string             `protobuf:"bytes,4,opt,name=updatedAt,proto3" json:"updatedAt"`
+	OrderStatus          string             `protobuf:"bytes,5,opt,name=orderStatus,proto3" json:"orderStatus"`
+	Amount               *Invoice           `protobuf:"bytes,6,opt,name=amount,proto3" json:"amount"`
+	ShippingAddress      *Address           `protobuf:"bytes,7,opt,name=shippingAddress,proto3" json:"shippingAddress"`
+	Items                []*BuyerOrderItems `protobuf:"bytes,8,rep,name=items,proto3" json:"items"`
 	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
 	XXX_unrecognized     []byte             `json:"-"`
 	XXX_sizecache        int32              `json:"-"`
@@ -2306,20 +2306,20 @@ func (m *BuyerAllOrders) GetItems() []*BuyerOrderItems {
 }
 
 type BuyerOrderItems struct {
-	InventoryId          string                        `protobuf:"bytes,1,opt,name=inventoryId,proto3" json:"inventoryId,omitempty"`
-	Title                string                        `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Brand                string                        `protobuf:"bytes,3,opt,name=brand,proto3" json:"brand,omitempty"`
-	Category             string                        `protobuf:"bytes,4,opt,name=category,proto3" json:"category,omitempty"`
-	Guaranty             string                        `protobuf:"bytes,5,opt,name=guaranty,proto3" json:"guaranty,omitempty"`
-	Image                string                        `protobuf:"bytes,6,opt,name=image,proto3" json:"image,omitempty"`
-	Returnable           bool                          `protobuf:"varint,7,opt,name=returnable,proto3" json:"returnable,omitempty"`
-	SellerId             uint64                        `protobuf:"varint,8,opt,name=sellerId,proto3" json:"sellerId,omitempty"`
-	Quantity             int32                         `protobuf:"varint,9,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	ItemStatus           string                        `protobuf:"bytes,10,opt,name=itemStatus,proto3" json:"itemStatus,omitempty"`
-	StepStatus           string                        `protobuf:"bytes,11,opt,name=stepStatus,proto3" json:"stepStatus,omitempty"`
-	Attributes           map[string]string             `protobuf:"bytes,12,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	Price                *BuyerOrderItems_Price        `protobuf:"bytes,13,opt,name=price,proto3" json:"price,omitempty"`
-	Shipment             *BuyerOrderItems_ShipmentSpec `protobuf:"bytes,14,opt,name=shipment,proto3" json:"shipment,omitempty"`
+	InventoryId          string                        `protobuf:"bytes,1,opt,name=inventoryId,proto3" json:"inventoryId"`
+	Title                string                        `protobuf:"bytes,2,opt,name=title,proto3" json:"title"`
+	Brand                string                        `protobuf:"bytes,3,opt,name=brand,proto3" json:"brand"`
+	Category             string                        `protobuf:"bytes,4,opt,name=category,proto3" json:"category"`
+	Guaranty             string                        `protobuf:"bytes,5,opt,name=guaranty,proto3" json:"guaranty"`
+	Image                string                        `protobuf:"bytes,6,opt,name=image,proto3" json:"image"`
+	Returnable           bool                          `protobuf:"varint,7,opt,name=returnable,proto3" json:"returnable"`
+	SellerId             uint64                        `protobuf:"varint,8,opt,name=sellerId,proto3" json:"sellerId"`
+	Quantity             int32                         `protobuf:"varint,9,opt,name=quantity,proto3" json:"quantity"`
+	ItemStatus           string                        `protobuf:"bytes,10,opt,name=itemStatus,proto3" json:"itemStatus"`
+	StepStatus           string                        `protobuf:"bytes,11,opt,name=stepStatus,proto3" json:"stepStatus"`
+	Attributes           map[string]string             `protobuf:"bytes,12,rep,name=attributes,proto3" json:"attributes" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Price                *BuyerOrderItems_Price        `protobuf:"bytes,13,opt,name=price,proto3" json:"price"`
+	Shipment             *BuyerOrderItems_ShipmentSpec `protobuf:"bytes,14,opt,name=shipment,proto3" json:"shipment"`
 	XXX_NoUnkeyedLiteral struct{}                      `json:"-"`
 	XXX_unrecognized     []byte                        `json:"-"`
 	XXX_sizecache        int32                         `json:"-"`
@@ -2449,11 +2449,11 @@ func (m *BuyerOrderItems) GetShipment() *BuyerOrderItems_ShipmentSpec {
 }
 
 type BuyerOrderItems_Price struct {
-	Unit                 uint64   `protobuf:"varint,1,opt,name=unit,proto3" json:"unit,omitempty"`
-	Total                uint64   `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
-	Original             uint64   `protobuf:"varint,3,opt,name=original,proto3" json:"original,omitempty"`
-	Special              uint64   `protobuf:"varint,4,opt,name=special,proto3" json:"special,omitempty"`
-	Currency             string   `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency,omitempty"`
+	Unit                 uint64   `protobuf:"varint,1,opt,name=unit,proto3" json:"unit"`
+	Total                uint64   `protobuf:"varint,2,opt,name=total,proto3" json:"total"`
+	Original             uint64   `protobuf:"varint,3,opt,name=original,proto3" json:"original"`
+	Special              uint64   `protobuf:"varint,4,opt,name=special,proto3" json:"special"`
+	Currency             string   `protobuf:"bytes,5,opt,name=currency,proto3" json:"currency"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2520,8 +2520,8 @@ func (m *BuyerOrderItems_Price) GetCurrency() string {
 }
 
 type BuyerOrderItems_ShipmentSpec struct {
-	CarrierName          string   `protobuf:"bytes,1,opt,name=carrierName,proto3" json:"carrierName,omitempty"`
-	ShippingCost         uint64   `protobuf:"varint,2,opt,name=shippingCost,proto3" json:"shippingCost,omitempty"`
+	CarrierName          string   `protobuf:"bytes,1,opt,name=carrierName,proto3" json:"carrierName"`
+	ShippingCost         uint64   `protobuf:"varint,2,opt,name=shippingCost,proto3" json:"shippingCost"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2567,7 +2567,7 @@ func (m *BuyerOrderItems_ShipmentSpec) GetShippingCost() uint64 {
 }
 
 type ResponseSellerOrderAction struct {
-	Result               bool     `protobuf:"varint,1,opt,name=result,proto3" json:"result,omitempty"`
+	Result               bool     `protobuf:"varint,1,opt,name=result,proto3" json:"result"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2606,12 +2606,12 @@ func (m *ResponseSellerOrderAction) GetResult() bool {
 }
 
 type RequestBuyerOrderAction struct {
-	BuyerId              uint64   `protobuf:"varint,1,opt,name=buyerId,proto3" json:"buyerId,omitempty"`
-	OrderId              uint64   `protobuf:"varint,2,opt,name=orderId,proto3" json:"orderId,omitempty"`
-	ItemsId              []uint64 `protobuf:"varint,3,rep,packed,name=itemsId,proto3" json:"itemsId,omitempty"`
-	ActionType           string   `protobuf:"bytes,4,opt,name=actionType,proto3" json:"actionType,omitempty"`
-	Action               string   `protobuf:"bytes,5,opt,name=action,proto3" json:"action,omitempty"`
-	Reason               string   `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
+	BuyerId              uint64   `protobuf:"varint,1,opt,name=buyerId,proto3" json:"buyerId"`
+	OrderId              uint64   `protobuf:"varint,2,opt,name=orderId,proto3" json:"orderId"`
+	ItemsId              []uint64 `protobuf:"varint,3,rep,packed,name=itemsId,proto3" json:"itemsId"`
+	ActionType           string   `protobuf:"bytes,4,opt,name=actionType,proto3" json:"actionType"`
+	Action               string   `protobuf:"bytes,5,opt,name=action,proto3" json:"action"`
+	Reason               string   `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2685,7 +2685,7 @@ func (m *RequestBuyerOrderAction) GetReason() string {
 }
 
 type ResponseBuyerOrderAction struct {
-	Result               bool     `protobuf:"varint,1,opt,name=result,proto3" json:"result,omitempty"`
+	Result               bool     `protobuf:"varint,1,opt,name=result,proto3" json:"result"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2724,10 +2724,10 @@ func (m *ResponseBuyerOrderAction) GetResult() bool {
 }
 
 type RequestSellerOrderAction struct {
-	OrderId    uint64 `protobuf:"varint,1,opt,name=orderId,proto3" json:"orderId,omitempty"`
-	SellerId   uint64 `protobuf:"varint,2,opt,name=sellerId,proto3" json:"sellerId,omitempty"`
-	ActionType string `protobuf:"bytes,3,opt,name=actionType,proto3" json:"actionType,omitempty"`
-	Action     string `protobuf:"bytes,4,opt,name=action,proto3" json:"action,omitempty"`
+	OrderId    uint64 `protobuf:"varint,1,opt,name=orderId,proto3" json:"orderId"`
+	SellerId   uint64 `protobuf:"varint,2,opt,name=sellerId,proto3" json:"sellerId"`
+	ActionType string `protobuf:"bytes,3,opt,name=actionType,proto3" json:"actionType"`
+	Action     string `protobuf:"bytes,4,opt,name=action,proto3" json:"action"`
 	// Types that are valid to be assigned to Data:
 	//	*RequestSellerOrderAction_Success
 	//	*RequestSellerOrderAction_Failed
@@ -2836,8 +2836,8 @@ func (*RequestSellerOrderAction) XXX_OneofWrappers() []interface{} {
 }
 
 type RequestSellerOrderActionSuccess struct {
-	TrackingId           string   `protobuf:"bytes,1,opt,name=trackingId,proto3" json:"trackingId,omitempty"`
-	ShipmentMethod       string   `protobuf:"bytes,2,opt,name=shipmentMethod,proto3" json:"shipmentMethod,omitempty"`
+	TrackingId           string   `protobuf:"bytes,1,opt,name=trackingId,proto3" json:"trackingId"`
+	ShipmentMethod       string   `protobuf:"bytes,2,opt,name=shipmentMethod,proto3" json:"shipmentMethod"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2883,7 +2883,7 @@ func (m *RequestSellerOrderActionSuccess) GetShipmentMethod() string {
 }
 
 type RequestSellerOrderActionFailed struct {
-	Reason               string   `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason,omitempty"`
+	Reason               string   `protobuf:"bytes,1,opt,name=reason,proto3" json:"reason"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -2922,7 +2922,7 @@ func (m *RequestSellerOrderActionFailed) GetReason() string {
 }
 
 type ResponseSellerFindAllItems struct {
-	Items                []*SellerFindAllItems `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Items                []*SellerFindAllItems `protobuf:"bytes,1,rep,name=items,proto3" json:"items"`
 	XXX_NoUnkeyedLiteral struct{}              `json:"-"`
 	XXX_unrecognized     []byte                `json:"-"`
 	XXX_sizecache        int32                 `json:"-"`
@@ -2961,19 +2961,19 @@ func (m *ResponseSellerFindAllItems) GetItems() []*SellerFindAllItems {
 }
 
 type SellerFindAllItems struct {
-	OrderId              uint64                    `protobuf:"varint,1,opt,name=orderId,proto3" json:"orderId,omitempty"`
-	ItemId               uint64                    `protobuf:"varint,2,opt,name=itemId,proto3" json:"itemId,omitempty"`
-	InventoryId          string                    `protobuf:"bytes,3,opt,name=inventoryId,proto3" json:"inventoryId,omitempty"`
-	Title                string                    `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
-	Image                string                    `protobuf:"bytes,5,opt,name=image,proto3" json:"image,omitempty"`
-	Returnable           bool                      `protobuf:"varint,6,opt,name=returnable,proto3" json:"returnable,omitempty"`
-	Quantity             int32                     `protobuf:"varint,7,opt,name=quantity,proto3" json:"quantity,omitempty"`
-	CreatedAt            string                    `protobuf:"bytes,8,opt,name=createdAt,proto3" json:"createdAt,omitempty"`
-	UpdatedAt            string                    `protobuf:"bytes,9,opt,name=updatedAt,proto3" json:"updatedAt,omitempty"`
-	Attributes           map[string]string         `protobuf:"bytes,10,rep,name=attributes,proto3" json:"attributes,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	Status               *Status                   `protobuf:"bytes,11,opt,name=status,proto3" json:"status,omitempty"`
-	Price                *SellerFindAllItems_Price `protobuf:"bytes,12,opt,name=price,proto3" json:"price,omitempty"`
-	DeliveryAddress      *Address                  `protobuf:"bytes,13,opt,name=DeliveryAddress,proto3" json:"DeliveryAddress,omitempty"`
+	OrderId              uint64                    `protobuf:"varint,1,opt,name=orderId,proto3" json:"orderId"`
+	ItemId               uint64                    `protobuf:"varint,2,opt,name=itemId,proto3" json:"itemId"`
+	InventoryId          string                    `protobuf:"bytes,3,opt,name=inventoryId,proto3" json:"inventoryId"`
+	Title                string                    `protobuf:"bytes,4,opt,name=title,proto3" json:"title"`
+	Image                string                    `protobuf:"bytes,5,opt,name=image,proto3" json:"image"`
+	Returnable           bool                      `protobuf:"varint,6,opt,name=returnable,proto3" json:"returnable"`
+	Quantity             int32                     `protobuf:"varint,7,opt,name=quantity,proto3" json:"quantity"`
+	CreatedAt            string                    `protobuf:"bytes,8,opt,name=createdAt,proto3" json:"createdAt"`
+	UpdatedAt            string                    `protobuf:"bytes,9,opt,name=updatedAt,proto3" json:"updatedAt"`
+	Attributes           map[string]string         `protobuf:"bytes,10,rep,name=attributes,proto3" json:"attributes" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Status               *Status                   `protobuf:"bytes,11,opt,name=status,proto3" json:"status"`
+	Price                *SellerFindAllItems_Price `protobuf:"bytes,12,opt,name=price,proto3" json:"price"`
+	DeliveryAddress      *Address                  `protobuf:"bytes,13,opt,name=DeliveryAddress,proto3" json:"DeliveryAddress"`
 	XXX_NoUnkeyedLiteral struct{}                  `json:"-"`
 	XXX_unrecognized     []byte                    `json:"-"`
 	XXX_sizecache        int32                     `json:"-"`
@@ -3096,10 +3096,10 @@ func (m *SellerFindAllItems) GetDeliveryAddress() *Address {
 }
 
 type SellerFindAllItems_Price struct {
-	Unit                 uint64   `protobuf:"varint,1,opt,name=unit,proto3" json:"unit,omitempty"`
-	Total                uint64   `protobuf:"varint,2,opt,name=Total,proto3" json:"Total,omitempty"`
-	SellerCommission     float32  `protobuf:"fixed32,3,opt,name=sellerCommission,proto3" json:"sellerCommission,omitempty"`
-	Currency             string   `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency,omitempty"`
+	Unit                 uint64   `protobuf:"varint,1,opt,name=unit,proto3" json:"unit"`
+	Total                uint64   `protobuf:"varint,2,opt,name=Total,proto3" json:"Total"`
+	SellerCommission     float32  `protobuf:"fixed32,3,opt,name=sellerCommission,proto3" json:"sellerCommission"`
+	Currency             string   `protobuf:"bytes,4,opt,name=currency,proto3" json:"currency"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -3159,9 +3159,9 @@ func (m *SellerFindAllItems_Price) GetCurrency() string {
 }
 
 type Status struct {
-	OrderStatus          string   `protobuf:"bytes,1,opt,name=orderStatus,proto3" json:"orderStatus,omitempty"`
-	ItemStatus           string   `protobuf:"bytes,2,opt,name=itemStatus,proto3" json:"itemStatus,omitempty"`
-	StepStatus           string   `protobuf:"bytes,3,opt,name=stepStatus,proto3" json:"stepStatus,omitempty"`
+	OrderStatus          string   `protobuf:"bytes,1,opt,name=orderStatus,proto3" json:"orderStatus"`
+	ItemStatus           string   `protobuf:"bytes,2,opt,name=itemStatus,proto3" json:"itemStatus"`
+	StepStatus           string   `protobuf:"bytes,3,opt,name=stepStatus,proto3" json:"stepStatus"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`

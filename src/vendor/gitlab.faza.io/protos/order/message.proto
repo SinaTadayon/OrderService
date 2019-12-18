@@ -164,6 +164,38 @@ message SellerOrderDetail {
     repeated ItemDetail items = 8;
 }
 
+message SellerOrderShipmentReports {
+    uint64 SellerId = 1;
+    uint32 ShipmentPending = 2;
+    uint32 ShipmentDelayed = 3;
+    uint32 Shipped = 4;
+}
+
+message SellerOrderDeliveredReports {
+    uint64 SellerId = 1;
+    uint32 DeliveryPendingAndDelayed = 2;
+    uint32 Delivered = 3;
+    uint32 DeliveryFailed = 4;
+}
+
+message SellerOrderReturnReports {
+    uint64 SellerId = 1;
+    uint32 ReturnRequestPending = 2;
+    uint32 ReturnShipmentPending = 3;
+    uint32 ReturnShipped = 4;
+    uint32 ReturnDeliveryPending = 5;
+    uint32 ReturnDeliveryDelayed = 6;
+    uint32 ReturnDelivered = 7;
+    uint32 ReturnRequestRejected = 8;
+    uint32 ReturnDeliveryFailed = 9;
+}
+
+message SellerOrderCancelReports {
+    uint64 SellerId = 1;
+    uint32 CancelBySeller = 2;
+    uint32 CancelByBuyer = 3;
+}
+
 //message SellerOrderReturnList {
 //    message ItemOrderList {
 //        uint64 OID = 1;

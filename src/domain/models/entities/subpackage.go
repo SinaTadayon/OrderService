@@ -77,7 +77,7 @@ type ItemInvoice struct {
 type Progress struct {
 	State    *State                 `bson:"state"`
 	Action   *Action                `bson:"action"`
-	History  []State                `bson:"states"`
+	History  []State                `bson:"history"`
 	Extended map[string]interface{} `bson:"extended"`
 }
 

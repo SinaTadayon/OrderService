@@ -122,7 +122,10 @@ func createAuthenticatedContext() (context.Context, error) {
 		return nil, errors.New("data does not LoginTokens type")
 	}
 
-	var authorization = map[string]string{"authorization": fmt.Sprintf("Bearer %v", loginTokens.AccessToken)}
+	var authorization = map[string]string{
+		"authorization": fmt.Sprintf("Bearer %v", loginTokens.AccessToken),
+		"userId":        "1000002",
+	}
 	md := metadata.New(authorization)
 	ctxToken := metadata.NewOutgoingContext(ctx, md)
 
@@ -725,6 +728,150 @@ func TestSellerOrderList(t *testing.T) {
 	require.Equal(t, uint64(1000002), sellerOrderList.PID)
 }
 
+func TestSellerOrderListWithAllCancelFilter(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.CanceledByBuyer)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PayToBuyer)
+	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   string(SellerOrderList),
+		Type:   string(DataReqType),
+		ADT:    string(ListType),
+		Method: string(GetMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       1000002,
+			UTP:       string(SellerUser),
+			OID:       0,
+			PID:       1000002,
+			SIDs:      nil,
+			Page:      1,
+			PerPage:   2,
+			IpAddress: "",
+			Action:    nil,
+			Sorts: []*pb.MetaSorts{
+				{
+					Name:      "createdAt",
+					Direction: "ASC",
+				},
+			},
+			Filters: []*pb.MetaFilter{
+				{
+					Type:  string(OrderStateFilterType),
+					Opt:   "eq",
+					Value: string(AllCanceledFilter),
+				},
+			},
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+
+	var sellerOrderList pb.SellerOrderList
+	err = ptypes.UnmarshalAny(response.Data, &sellerOrderList)
+	require.Nil(t, err)
+
+	require.NotNil(t, sellerOrderList)
+	require.Equal(t, 1, len(sellerOrderList.Items))
+	require.Equal(t, uint64(1000002), sellerOrderList.PID)
+}
+
+func TestSellerAllOrderList(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   string(SellerOrderList),
+		Type:   string(DataReqType),
+		ADT:    string(ListType),
+		Method: string(GetMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       1000002,
+			UTP:       string(SellerUser),
+			OID:       0,
+			PID:       1000002,
+			SIDs:      nil,
+			Page:      1,
+			PerPage:   2,
+			IpAddress: "",
+			Action:    nil,
+			Sorts: []*pb.MetaSorts{
+				{
+					Name:      "createdAt",
+					Direction: "ASC",
+				},
+			},
+			Filters: []*pb.MetaFilter{
+				{
+					Type:  string(OrderStateFilterType),
+					Opt:   "eq",
+					Value: string(AllOrdersFilter),
+				},
+			},
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+
+	var sellerOrderList pb.SellerOrderList
+	err = ptypes.UnmarshalAny(response.Data, &sellerOrderList)
+	require.Nil(t, err)
+
+	require.NotNil(t, sellerOrderList)
+	require.Equal(t, 1, len(sellerOrderList.Items))
+	require.Equal(t, uint64(1000002), sellerOrderList.PID)
+}
+
 func TestOperatorOrderDetail(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
@@ -1041,7 +1188,7 @@ func TestSellerOrderList_ShipmentDelayedFilter(t *testing.T) {
 				{
 					Type:  string(OrderStateFilterType),
 					Opt:   "eq",
-					Value: string(ShipmentPendingFilter),
+					Value: string(ShipmentDelayedFilter),
 				},
 			},
 		},
@@ -1139,6 +1286,270 @@ func TestSellerReturnOrderDetailList(t *testing.T) {
 	require.Equal(t, uint64(1000002), sellerReturnOrderDetailList.PID)
 }
 
+func TestSellerOrderReturnReports(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipped)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDelivered)
+
+	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   string(SellerOrderReturnReports),
+		Type:   string(DataReqType),
+		ADT:    string(SingleType),
+		Method: string(GetMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       1000002,
+			UTP:       string(SellerUser),
+			OID:       0,
+			PID:       1000002,
+			SIDs:      nil,
+			Page:      1,
+			PerPage:   2,
+			IpAddress: "",
+			Action:    nil,
+			Sorts:     nil,
+			Filters:   nil,
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+
+	var sellerOrderReturnReports pb.SellerOrderReturnReports
+	err = ptypes.UnmarshalAny(response.Data, &sellerOrderReturnReports)
+	require.Nil(t, err)
+
+	require.NotNil(t, sellerOrderReturnReports)
+	require.Equal(t, uint32(1), sellerOrderReturnReports.ReturnDelivered)
+	require.Equal(t, uint64(1000002), sellerOrderReturnReports.SellerId)
+}
+
+func TestSellerOrderShipmentReports(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
+
+	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   string(SellerOrderShipmentReports),
+		Type:   string(DataReqType),
+		ADT:    string(SingleType),
+		Method: string(GetMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       1000002,
+			UTP:       string(SellerUser),
+			OID:       0,
+			PID:       1000002,
+			SIDs:      nil,
+			Page:      1,
+			PerPage:   2,
+			IpAddress: "",
+			Action:    nil,
+			Sorts:     nil,
+			Filters:   nil,
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+
+	var sellerOrderShipmentReports pb.SellerOrderShipmentReports
+	err = ptypes.UnmarshalAny(response.Data, &sellerOrderShipmentReports)
+	require.Nil(t, err)
+
+	require.NotNil(t, sellerOrderShipmentReports)
+	require.Equal(t, uint32(1), sellerOrderShipmentReports.ShipmentDelayed)
+	require.Equal(t, uint64(1000002), sellerOrderShipmentReports.SellerId)
+}
+
+func TestSellerOrderDeliveredReports(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
+
+	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   string(SellerOrderDeliveredReports),
+		Type:   string(DataReqType),
+		ADT:    string(SingleType),
+		Method: string(GetMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       1000002,
+			UTP:       string(SellerUser),
+			OID:       0,
+			PID:       1000002,
+			SIDs:      nil,
+			Page:      1,
+			PerPage:   2,
+			IpAddress: "",
+			Action:    nil,
+			Sorts:     nil,
+			Filters:   nil,
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+
+	var sellerOrderDeliveredReports pb.SellerOrderDeliveredReports
+	err = ptypes.UnmarshalAny(response.Data, &sellerOrderDeliveredReports)
+	require.Nil(t, err)
+
+	require.NotNil(t, sellerOrderDeliveredReports)
+	require.Equal(t, uint32(1), sellerOrderDeliveredReports.DeliveryPendingAndDelayed)
+	require.Equal(t, uint64(1000002), sellerOrderDeliveredReports.SellerId)
+}
+
+func TestSellerOrderCancelReports(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.CanceledBySeller)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PayToBuyer)
+
+	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   string(SellerOrderCancelReports),
+		Type:   string(DataReqType),
+		ADT:    string(SingleType),
+		Method: string(GetMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       1000002,
+			UTP:       string(SellerUser),
+			OID:       0,
+			PID:       1000002,
+			SIDs:      nil,
+			Page:      1,
+			PerPage:   2,
+			IpAddress: "",
+			Action:    nil,
+			Sorts:     nil,
+			Filters:   nil,
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+
+	var sellerOrderCancelReports pb.SellerOrderCancelReports
+	err = ptypes.UnmarshalAny(response.Data, &sellerOrderCancelReports)
+	require.Nil(t, err)
+
+	require.NotNil(t, sellerOrderCancelReports)
+	require.Equal(t, uint32(1), sellerOrderCancelReports.CancelBySeller)
+	require.Equal(t, uint64(1000002), sellerOrderCancelReports.SellerId)
+}
+
 func TestBuyerOrderDetailList(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
@@ -1193,6 +1604,70 @@ func TestBuyerOrderDetailList(t *testing.T) {
 					Value: string(ApprovalPendingFilter),
 				},
 			},
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+
+	var buyerOrderDetailList pb.BuyerOrderDetailList
+	err = ptypes.UnmarshalAny(response.Data, &buyerOrderDetailList)
+	require.Nil(t, err)
+
+	require.NotNil(t, buyerOrderDetailList)
+	require.Equal(t, 1, len(buyerOrderDetailList.OrderDetails))
+	require.Equal(t, uint64(1000002), buyerOrderDetailList.BuyerId)
+}
+
+func TestBuyerGetOrderByIdDetailList(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentFailed)
+	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   string(BuyerOrderDetailList),
+		Type:   string(DataReqType),
+		ADT:    string(ListType),
+		Method: string(GetMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       1000002,
+			UTP:       string(BuyerUser),
+			OID:       order.OrderId,
+			PID:       1000002,
+			SIDs:      nil,
+			Page:      1,
+			PerPage:   2,
+			IpAddress: "",
+			Action:    nil,
+			Sorts: []*pb.MetaSorts{
+				{
+					Name:      "createdAt",
+					Direction: "ASC",
+				},
+			},
+			Filters: nil,
 		},
 		Data: nil,
 	}
@@ -1292,6 +1767,88 @@ func TestBuyerReturnOrderDetailList(t *testing.T) {
 	require.Equal(t, uint64(1000002), buyerReturnOrderDetailList.BuyerId)
 }
 
+func TestBuyerReturnAllOrderDetailList(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipped)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDelivered)
+
+	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   string(BuyerReturnOrderDetailList),
+		Type:   string(DataReqType),
+		ADT:    string(ListType),
+		Method: string(GetMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       1000002,
+			UTP:       string(BuyerUser),
+			OID:       0,
+			PID:       1000002,
+			SIDs:      nil,
+			Page:      1,
+			PerPage:   2,
+			IpAddress: "",
+			Action:    nil,
+			Sorts: []*pb.MetaSorts{
+				{
+					Name:      "createdAt",
+					Direction: "ASC",
+				},
+			},
+			Filters: []*pb.MetaFilter{
+				{
+					Type:  string(OrderStateFilterType),
+					Opt:   "eq",
+					Value: string(AllOrdersFilter),
+				},
+			},
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+
+	var buyerReturnOrderDetailList pb.BuyerReturnOrderDetailList
+	err = ptypes.UnmarshalAny(response.Data, &buyerReturnOrderDetailList)
+	require.Nil(t, err)
+
+	require.NotNil(t, buyerReturnOrderDetailList)
+	require.Equal(t, 1, len(buyerReturnOrderDetailList.ReturnOrderDetail))
+	require.Equal(t, uint64(1000002), buyerReturnOrderDetailList.BuyerId)
+}
+
 func TestBuyerReturnOrderReports(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
@@ -1372,6 +1929,9 @@ func TestNewOrderRequest(t *testing.T) {
 	defer grpcConn.Close()
 	defer removeCollection()
 
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -1395,6 +1955,9 @@ func TestNewOrderRequestWithZeroAmountAndVoucher(t *testing.T) {
 	require.Nil(t, err)
 	defer grpcConn.Close()
 	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
 
 	requestNewOrder := createRequestNewOrder()
 	requestNewOrder.Invoice.GrandTotal = 0
