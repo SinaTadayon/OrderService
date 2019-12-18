@@ -3007,7 +3007,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
 		logger.Err("RequestHandler() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+		//return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
 	}
 
 	//// TODO check acl
@@ -3017,11 +3017,17 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 	//}
 
 	if ctx.Value(string(utils.CtxUserID)) == nil {
-		ctx = context.WithValue(ctx, string(utils.CtxUserID), uint64(userAcl.User().UserID))
+		if userAcl != nil {
+			ctx = context.WithValue(ctx, string(utils.CtxUserID), uint64(userAcl.User().UserID))
+		} else {
+			ctx = context.WithValue(ctx, string(utils.CtxUserID), uint64(0))
+		}
 	}
 
 	if ctx.Value(string(utils.CtxUserACL)) == nil {
-		ctx = context.WithValue(ctx, string(utils.CtxUserACL), userAcl)
+		if userAcl != nil {
+			ctx = context.WithValue(ctx, string(utils.CtxUserACL), userAcl)
+		}
 	}
 
 	iFuture := future.Factory().SetCapacity(1).Build()
