@@ -1121,7 +1121,11 @@ func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint6
 
 	response := &pb.MessageResponse{
 		Entity: "OperatorOrderList",
-		Meta:   nil,
+		Meta: &pb.ResponseMetadata{
+			Total:   uint32(1),
+			Page:    1,
+			PerPage: 1,
+		},
 		Data: &any.Any{
 			TypeUrl: "baman.io/" + proto.MessageName(operatorOrderList),
 			Value:   serializedData,
