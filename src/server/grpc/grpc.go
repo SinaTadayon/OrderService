@@ -2995,6 +2995,9 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 }
 
 func (server *Server) PaymentGatewayHook(ctx context.Context, req *pg.PaygateHookRequest) (*pg.PaygateHookResponse, error) {
+
+	logger.Audit("PaymentGatewayHook() => received payment response: orderId: %d, PaymentId: %s, InvoiceId: %d, result: %v",
+		req.OrderID, req.PaymentId, req.InvoiceId, req.Result)
 	futureData := server.flowManager.PaymentGatewayResult(ctx, req).Get()
 
 	if futureData.Error() != nil {
