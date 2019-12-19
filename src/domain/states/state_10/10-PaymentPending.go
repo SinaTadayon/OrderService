@@ -56,7 +56,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			return
 		}
 
-		if order.Invoice.GrandTotal == 0 && order.Invoice.Voucher.Amount > 0 {
+		if order.Invoice.GrandTotal == 0 && order.Invoice.Voucher != nil && order.Invoice.Voucher.Amount > 0 {
 			order.PaymentService = []entities.PaymentService{
 				{
 					PaymentRequest: &entities.PaymentRequest{
@@ -272,7 +272,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			return
 		} else {
 			var voucherAction *entities.Action
-			if order.Invoice.Voucher.Amount > 0 {
+			if order.Invoice.Voucher != nil && order.Invoice.Voucher.Amount > 0 {
 				iFuture := app.Globals.VoucherService.VoucherSettlement(ctx, order.Invoice.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
 				futureData := iFuture.Get()
 				if futureData.Error() != nil {
