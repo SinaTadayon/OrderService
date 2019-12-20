@@ -136,8 +136,8 @@ func main() {
 		//	},
 		//}
 
-		//if err := MainApp.schedulerService.Scheduler(ctx, scheduleDataList); err != nil {
-		//	logger.Err("SchedulerService.Scheduler failed, error: %s", err)
+		//if err := MainApp.schedulerService.StateScheduler(ctx, scheduleDataList); err != nil {
+		//	logger.Err("SchedulerService.StateScheduler failed, error: %s", err)
 		//	return
 		//}
 		MainApp.grpcServer.Start()

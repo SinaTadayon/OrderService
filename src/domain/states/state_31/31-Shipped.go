@@ -68,14 +68,10 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 			time.Minute*time.Duration(0) +
 			time.Second*time.Duration(0))
 
-		for _, subpackage := range subpackages {
-			state.UpdateSubPackage(ctx, subpackage, nil)
-			subpackage.Tracking.State.Data = map[string]interface{}{
-				"scheduler": []struct {
-					name   string
-					value  time.Time
-					action string
-				}{
+		for i := 0; i < len(subpackages); i++ {
+			state.UpdateSubPackage(ctx, subpackages[i], nil)
+			subpackages[i].Tracking.State.Data = map[string]interface{}{
+				"scheduler": []entities.SchedulerData{
 					{
 						"expireAt",
 						expireTime,
@@ -84,16 +80,16 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 				},
 			}
 			logger.Audit("Process() => set expireTime: %s , orderId: %d, pid: %d, sid: %d, %s state ",
-				expireTime, subpackage.OrderId, subpackage.PId, subpackage.SId, state.Name())
+				expireTime, subpackages[i].OrderId, subpackages[i].PId, subpackages[i].SId, state.Name())
 			// must again call to update history state
-			state.UpdateSubPackage(ctx, subpackage, nil)
-			_, err := app.Globals.SubPkgRepository.Update(ctx, *subpackage)
+			state.UpdateSubPackage(ctx, subpackages[i], nil)
+			_, err := app.Globals.SubPkgRepository.Update(ctx, *subpackages[i])
 			if err != nil {
 				logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, pid: %d, sid: %d, error: %s",
-					state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId, err.Error())
+					state.Name(), subpackages[i].OrderId, subpackages[i].PId, subpackages[i].SId, err.Error())
 			} else {
 				logger.Audit("Process() => Status of subpackages update to %s state, orderId: %d, pid: %d, sid: %d",
-					state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId)
+					state.Name(), subpackages[i].OrderId, subpackages[i].PId, subpackages[i].SId)
 			}
 		}
 

@@ -3,131 +3,132 @@ syntax = "proto3";
 package ordersrv;
 
 import "message.proto";
-import "google/protobuf/any.proto";
+//import "google/protobuf/any.proto";
 
 service OrderService {
     rpc RequestHandler (MessageRequest) returns (MessageResponse);
-
+    rpc SchedulerMessageHandler(MessageRequest) returns (MessageResponse);
     rpc NewOrder (RequestNewOrder) returns (ResponseNewOrder);
-    rpc SellerFindAllItems (RequestIdentifier) returns (ResponseSellerFindAllItems);
-    rpc SellerOrderAction (RequestSellerOrderAction) returns (ResponseSellerOrderAction);
-    rpc SellerReportOrders(RequestSellerReportOrders) returns (stream ResponseDownloadFile);
 
-    rpc BuyerOrderAction (RequestBuyerOrderAction) returns (ResponseBuyerOrderAction);
-    rpc BuyerFindAllOrders (RequestIdentifier) returns (ResponseBuyerFindAllOrders);
-
-    // back office
-    rpc BackOfficeOrdersListView(RequestBackOfficeOrdersList) returns(ResponseBackOfficeOrdersList);
-    rpc BackOfficeOrderDetailView(RequestIdentifier) returns(ResponseOrderDetailView);
-    rpc BackOfficeReportOrderItems(RequestBackOfficeReportOrderItems) returns (stream ResponseDownloadFile);
-    rpc BackOfficeOrderAction(RequestBackOfficeOrderAction) returns (ResponseBackOfficeOrderAction);
+//    rpc SellerFindAllItems (RequestIdentifier) returns (ResponseSellerFindAllItems);
+//    rpc SellerOrderAction (RequestSellerOrderAction) returns (ResponseSellerOrderAction);
+//    rpc SellerReportOrders(RequestSellerReportOrders) returns (stream ResponseDownloadFile);
+//
+//    rpc BuyerOrderAction (RequestBuyerOrderAction) returns (ResponseBuyerOrderAction);
+//    rpc BuyerFindAllOrders (RequestIdentifier) returns (ResponseBuyerFindAllOrders);
+//
+//    // back office
+//    rpc BackOfficeOrdersListView(RequestBackOfficeOrdersList) returns(ResponseBackOfficeOrdersList);
+//    rpc BackOfficeOrderDetailView(RequestIdentifier) returns(ResponseOrderDetailView);
+//    rpc BackOfficeReportOrderItems(RequestBackOfficeReportOrderItems) returns (stream ResponseDownloadFile);
+//    rpc BackOfficeOrderAction(RequestBackOfficeOrderAction) returns (ResponseBackOfficeOrderAction);
 
 }
 
-message RequestBackOfficeOrderAction {
-    uint64 itemId = 1;
-    string actionType = 2;
-    string action = 3;
-    string description = 4;
-}
-
-message ResponseBackOfficeOrderAction {
-    bool result  = 1;
-}
-
-message RequestSellerReportOrders {
-    uint64 sellerId = 1;
-    int64 startDateTime = 2;
-    string Status = 3;
-}
-
-message ResponseDownloadFile {
-    bytes data = 1;
-}
-
-message ResponseDownloadFileSpec {
-    string filename = 1;
-    uint64 size = 2;
-}
-
-
-message RequestBackOfficeReportOrderItems {
-    uint64 startDateTime = 1;
-    uint64 endDataTime = 2;
-}
-
-message ResponseOrderDetailView {
-    uint64 orderId = 1;
-    int64 createdAt = 2;
-    string ip = 3;
-    string status = 4;
-    PaymentInfo payment = 5;
-    BillingInfo billing = 6;
-    ShippingInfo shippingInfo = 7;
-    repeated ItemInfo items = 8;
-}
-
-message ItemInfo {
-    uint64 itemId = 1;
-    uint64 sellerId = 2;
-    string inventoryId = 3;
-    int32  quantity   = 4;
-    string itemStatus = 5;
-    string stepStatus = 6;
-    int64 updatedAt = 7;
-    ItemInvoice price = 8;
-    repeated string actions = 9;
-}
-
-message ShippingInfo {
-    string fullName = 1;
-    string country = 2;
-    string city = 3;
-    string province = 4;
-    string neighborhood = 5;
-    string address = 6;
-    string zipCode = 7;
-}
-
-message BillingInfo {
-    uint64 buyerId = 1;
-    string fullName = 2;
-    string phone = 3;
-    string mobile = 4;
-    string nationalId = 5;
-}
-
-message PaymentInfo {
-    string paymentMethod = 1;
-    string paymentOption = 2;
-    bool   result        = 3;
-}
-
-message RequestBackOfficeOrdersList {
-    uint32 page = 1;
-    uint32 perPage = 2;
-    string sort = 3;
-    int32  direction = 4;
-}
-
-message ResponseBackOfficeOrdersList {
-    int64   total = 1;
-    repeated BackOfficeOrdersList orders = 2;
-}
-
-message BackOfficeOrdersList {
-    uint64 orderId = 1;
-    int64  purchasedOn = 2;
-    int32  basketSize = 3;
-    string billTo = 4;
-    string shipTo = 5;
-    int64  totalAmount = 6;
-    int64  paidAmount = 7;
-    bool   voucher = 8;
-    string status = 9;
-    int64  lastUpdated = 10;
-    repeated string actions = 11;
-}
+//message RequestBackOfficeOrderAction {
+//    uint64 itemId = 1;
+//    string actionType = 2;
+//    string action = 3;
+//    string description = 4;
+//}
+//
+//message ResponseBackOfficeOrderAction {
+//    bool result  = 1;
+//}
+//
+//message RequestSellerReportOrders {
+//    uint64 sellerId = 1;
+//    int64 startDateTime = 2;
+//    string Status = 3;
+//}
+//
+//message ResponseDownloadFile {
+//    bytes data = 1;
+//}
+//
+//message ResponseDownloadFileSpec {
+//    string filename = 1;
+//    uint64 size = 2;
+//}
+//
+//
+//message RequestBackOfficeReportOrderItems {
+//    uint64 startDateTime = 1;
+//    uint64 endDataTime = 2;
+//}
+//
+//message ResponseOrderDetailView {
+//    uint64 orderId = 1;
+//    int64 createdAt = 2;
+//    string ip = 3;
+//    string status = 4;
+//    PaymentInfo payment = 5;
+//    BillingInfo billing = 6;
+//    ShippingInfo shippingInfo = 7;
+//    repeated ItemInfo items = 8;
+//}
+//
+//message ItemInfo {
+//    uint64 itemId = 1;
+//    uint64 sellerId = 2;
+//    string inventoryId = 3;
+//    int32  quantity   = 4;
+//    string itemStatus = 5;
+//    string stepStatus = 6;
+//    int64 updatedAt = 7;
+//    ItemInvoice price = 8;
+//    repeated string actions = 9;
+//}
+//
+//message ShippingInfo {
+//    string fullName = 1;
+//    string country = 2;
+//    string city = 3;
+//    string province = 4;
+//    string neighborhood = 5;
+//    string address = 6;
+//    string zipCode = 7;
+//}
+//
+//message BillingInfo {
+//    uint64 buyerId = 1;
+//    string fullName = 2;
+//    string phone = 3;
+//    string mobile = 4;
+//    string nationalId = 5;
+//}
+//
+//message PaymentInfo {
+//    string paymentMethod = 1;
+//    string paymentOption = 2;
+//    bool   result        = 3;
+//}
+//
+//message RequestBackOfficeOrdersList {
+//    uint32 page = 1;
+//    uint32 perPage = 2;
+//    string sort = 3;
+//    int32  direction = 4;
+//}
+//
+//message ResponseBackOfficeOrdersList {
+//    int64   total = 1;
+//    repeated BackOfficeOrdersList orders = 2;
+//}
+//
+//message BackOfficeOrdersList {
+//    uint64 orderId = 1;
+//    int64  purchasedOn = 2;
+//    int32  basketSize = 3;
+//    string billTo = 4;
+//    string shipTo = 5;
+//    int64  totalAmount = 6;
+//    int64  paidAmount = 7;
+//    bool   voucher = 8;
+//    string status = 9;
+//    int64  lastUpdated = 10;
+//    repeated string actions = 11;
+//}
 
 message ResponseNewOrder {
     string callbackUrl  = 1;
@@ -166,9 +167,7 @@ message Invoice {
     Voucher voucher         = 11;
 }
 
-message PaymentOption {
-
-}
+message PaymentOption {}
 
 message Voucher {
     float   amount  = 1;
@@ -257,123 +256,123 @@ message ShippingSpec {
     string details = 10;
 }
 
-message Event {
-    string actor = 1;
-    string action = 2;
-    repeated uint64 itemsId = 3;
-    google.protobuf.Any data = 4;
-}
-
-message RequestIdentifier {
-    string id  = 1;
-}
-
-message ResponseBuyerFindAllOrders {
-    repeated BuyerAllOrders orders = 1;
-}
-
-message BuyerAllOrders {
-    uint64  buyerId     = 1;
-    uint64  orderId     = 2;
-    string  createdAt   = 3;
-    string  updatedAt   = 4;
-    string  orderStatus = 5;
-    Invoice amount = 6;
-    Address shippingAddress = 7;
-    repeated BuyerOrderItems items = 8;
-}
-
-message BuyerOrderItems {
-    string inventoryId = 1;
-    string title = 2;
-    string brand = 3;
-    string category = 4;
-    string guaranty = 5;
-    string image = 6;
-    bool returnable = 7;
-    uint64 sellerId = 8;
-    int32 quantity = 9;
-    string itemStatus = 10;
-    string stepStatus = 11;
-    map<string, string> attributes = 12;
-    message Price {
-        uint64 unit = 1;
-        uint64 total = 2;
-        uint64 original = 3;
-        uint64 special = 4;
-        string currency = 5;
-    } Price price = 13;
-
-    message ShipmentSpec {
-        string carrierName = 1;
-        uint64 shippingCost = 2;
-    } ShipmentSpec shipment = 14;
-}
-
-message ResponseSellerOrderAction {
-    bool result = 1;
-}
-
-message RequestBuyerOrderAction {
-    uint64 buyerId      = 1;
-    uint64 orderId      = 2;
-    repeated uint64 itemsId       = 3;
-    string actionType   = 4;
-    string action       = 5;
-    string reason       = 6;
-}
-
-message ResponseBuyerOrderAction {
-    bool result = 1;
-}
-
-message RequestSellerOrderAction {
-    uint64 orderId      = 1;
-    uint64 sellerId     = 2;
-    string actionType   = 3;
-    string action       = 4;
-    oneof data {
-        RequestSellerOrderActionSuccess success = 5;
-        RequestSellerOrderActionFailed failed = 6;
-    }
-}
-
-message RequestSellerOrderActionSuccess {
-    string trackingId   = 1;
-    string shipmentMethod = 2;
-}
-
-message RequestSellerOrderActionFailed {
-    string reason   = 1;
-}
-
-message ResponseSellerFindAllItems {
-    repeated SellerFindAllItems items = 1;
-}
-
-message SellerFindAllItems {
-    uint64 orderId = 1;
-    uint64 itemId = 2;
-    string inventoryId = 3;
-    string title = 4;
-    string image = 5;
-    bool returnable = 6;
-    int32 quantity = 7;
-    string createdAt = 8;
-    string updatedAt = 9;
-    map<string, string> attributes = 10;
-    Status status = 11;
-    message Price {
-        uint64 unit = 1;
-        uint64 Total = 2;
-        float sellerCommission = 3;
-        string currency = 4;
-    } Price price = 12;
-    Address DeliveryAddress = 13;
-}
-
-message Status {
-    string orderStatus = 1;
-    string itemStatus  = 2;
-    string stepStatus  = 3;
-}
+//message Event {
+//    string actor = 1;
+//    string action = 2;
+//    repeated uint64 itemsId = 3;
+//    google.protobuf.Any data = 4;
+//}
+//
+//message RequestIdentifier {
+//    string id  = 1;
+//}
+//
+//message ResponseBuyerFindAllOrders {
+//    repeated BuyerAllOrders orders = 1;
+//}
+//
+//message BuyerAllOrders {
+//    uint64  buyerId     = 1;
+//    uint64  orderId     = 2;
+//    string  createdAt   = 3;
+//    string  updatedAt   = 4;
+//    string  orderStatus = 5;
+//    Invoice amount = 6;
+//    Address shippingAddress = 7;
+//    repeated BuyerOrderItems items = 8;
+//}
+//
+//message BuyerOrderItems {
+//    string inventoryId = 1;
+//    string title = 2;
+//    string brand = 3;
+//    string category = 4;
+//    string guaranty = 5;
+//    string image = 6;
+//    bool returnable = 7;
+//    uint64 sellerId = 8;
+//    int32 quantity = 9;
+//    string itemStatus = 10;
+//    string stepStatus = 11;
+//    map<string, string> attributes = 12;
+//    message Price {
+//        uint64 unit = 1;
+//        uint64 total = 2;
+//        uint64 original = 3;
+//        uint64 special = 4;
+//        string currency = 5;
+//    } Price price = 13;
+//
+//    message ShipmentSpec {
+//        string carrierName = 1;
+//        uint64 shippingCost = 2;
+//    } ShipmentSpec shipment = 14;
+//}
+//
+//message ResponseSellerOrderAction {
+//    bool result = 1;
+//}
+//
+//message RequestBuyerOrderAction {
+//    uint64 buyerId      = 1;
+//    uint64 orderId      = 2;
+//    repeated uint64 itemsId       = 3;
+//    string actionType   = 4;
+//    string action       = 5;
+//    string reason       = 6;
+//}
+//
+//message ResponseBuyerOrderAction {
+//    bool result = 1;
+//}
+//
+//message RequestSellerOrderAction {
+//    uint64 orderId      = 1;
+//    uint64 sellerId     = 2;
+//    string actionType   = 3;
+//    string action       = 4;
+//    oneof data {
+//        RequestSellerOrderActionSuccess success = 5;
+//        RequestSellerOrderActionFailed failed = 6;
+//    }
+//}
+//
+//message RequestSellerOrderActionSuccess {
+//    string trackingId   = 1;
+//    string shipmentMethod = 2;
+//}
+//
+//message RequestSellerOrderActionFailed {
+//    string reason   = 1;
+//}
+//
+//message ResponseSellerFindAllItems {
+//    repeated SellerFindAllItems items = 1;
+//}
+//
+//message SellerFindAllItems {
+//    uint64 orderId = 1;
+//    uint64 itemId = 2;
+//    string inventoryId = 3;
+//    string title = 4;
+//    string image = 5;
+//    bool returnable = 6;
+//    int32 quantity = 7;
+//    string createdAt = 8;
+//    string updatedAt = 9;
+//    map<string, string> attributes = 10;
+//    Status status = 11;
+//    message Price {
+//        uint64 unit = 1;
+//        uint64 Total = 2;
+//        float sellerCommission = 3;
+//        string currency = 4;
+//    } Price price = 12;
+//    Address DeliveryAddress = 13;
+//}
+//
+//message Status {
+//    string orderStatus = 1;
+//    string itemStatus  = 2;
+//    string stepStatus  = 3;
+//}

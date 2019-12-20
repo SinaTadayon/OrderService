@@ -69,11 +69,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 		for i := 0; i < len(order.Packages); i++ {
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
 				order.Packages[i].Subpackages[j].Tracking.State.Data = map[string]interface{}{
-					"scheduler": []struct {
-						name   string
-						value  time.Time
-						action string
-					}{
+					"scheduler": []entities.SchedulerData{
 						{
 							"expireAt",
 							expireTime,

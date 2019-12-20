@@ -8,7 +8,7 @@ type Subpackage struct {
 	PId       uint64                 `bson:"pid"`
 	OrderId   uint64                 `bson:"orderId"`
 	Version   uint64                 `bson:"version"`
-	Items     []Item                 `bson:"item"`
+	Items     []Item                 `bson:"items"`
 	Shipments *Shipment              `bson:"shipments"`
 	Tracking  Progress               `bson:"tracking"`
 	Status    string                 `bson:"status"`
@@ -88,6 +88,12 @@ type State struct {
 	Actions   []Action               `bson:"actions"`
 	CreatedAt time.Time              `bson:"createdAt"`
 	Extended  map[string]interface{} `bson:"extended"`
+}
+
+type SchedulerData struct {
+	Name   string    `bson:"name"`
+	Value  time.Time `bson:"value"`
+	Action string    `bson:"action"`
 }
 
 /*

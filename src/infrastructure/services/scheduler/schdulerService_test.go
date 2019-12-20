@@ -21,7 +21,7 @@ package scheduler_service
 //)
 //
 //var config *configs.Config
-//var schedulerService iSchedulerServiceImpl
+//var schedulerService SchedulerService
 //
 //func init() {
 //	var err error
@@ -74,7 +74,7 @@ package scheduler_service
 //		panic("flowManager creation failed, " + err.Error())
 //	}
 //
-//	schedulerService = iSchedulerServiceImpl{
+//	schedulerService = SchedulerService{
 //		mongoAdapter: mongoDriver,
 //		flowManager:  flowManager,
 //	}
@@ -129,7 +129,7 @@ package scheduler_service
 //		Price:      &pb.PriceInfo{},
 //		Shipment:   &pb.ShippingSpec{},
 //		Attributes: make(map[string]string, 10),
-//		PId:   123456,
+//		PId:        123456,
 //	}
 //
 //	item.InventoryId = "11111-22222"
@@ -174,7 +174,7 @@ package scheduler_service
 //		Price:      &pb.PriceInfo{},
 //		Shipment:   &pb.ShippingSpec{},
 //		Attributes: make(map[string]string, 10),
-//		PId:   678912,
+//		PId:        678912,
 //	}
 //
 //	item1.InventoryId = "1111-33333"
@@ -421,7 +421,7 @@ package scheduler_service
 ////		},
 ////	}
 ////
-////	err := schedulerService.Scheduler(ctx, data)
+////	err := schedulerService.StateScheduler(ctx, data)
 ////	assert.Nil(t, err)
 ////	time.Sleep(1 * time.Minute)
 ////}
