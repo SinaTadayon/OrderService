@@ -584,17 +584,19 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 
 	if userType == BuyerUser && reqName != BuyerReturnOrderReports {
 		if reqName == BuyerOrderDetailList {
-			var findFlag = false
-			for _, filter := range server.requestFilters[reqName] {
-				if filter == filterValue {
-					findFlag = true
-					break
+			if filterValue != "" {
+				var findFlag = false
+				for _, filter := range server.requestFilters[reqName] {
+					if filter == filterValue {
+						findFlag = true
+						break
+					}
 				}
-			}
 
-			if !findFlag && req.Meta.OID <= 0 {
-				logger.Err("requestDataHandler() => %s requestName mismatch with %s Filter, request: %v", reqName, filterValue, req)
-				return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with Filter")
+				if !findFlag && req.Meta.OID <= 0 {
+					logger.Err("requestDataHandler() => %s requestName mismatch with %s Filter, request: %v", reqName, filterValue, req)
+					return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with Filter")
+				}
 			}
 		} else {
 			var findFlag = false
@@ -2995,6 +2997,9 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 }
 
 func (server *Server) PaymentGatewayHook(ctx context.Context, req *pg.PaygateHookRequest) (*pg.PaygateHookResponse, error) {
+
+	logger.Audit("PaymentGatewayHook() => received payment response: orderId: %d, PaymentId: %s, InvoiceId: %d, result: %v",
+		req.OrderID, req.PaymentId, req.InvoiceId, req.Result)
 	futureData := server.flowManager.PaymentGatewayResult(ctx, req).Get()
 
 	if futureData.Error() != nil {
