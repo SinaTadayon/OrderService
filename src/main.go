@@ -242,6 +242,7 @@ func main() {
 	app.Globals.UserService = user_service.NewUserService(app.Globals.Config.UserService.Address, app.Globals.Config.UserService.Port)
 
 	if app.Globals.Config.App.ServiceMode == "server" {
+		logger.Audit("Order Service Run in Server Mode . . . ")
 		MainApp.grpcServer.Start()
 	} else if app.Globals.Config.App.ServiceMode == "scheduler" {
 		if app.Globals.Config.App.SchedulerStates == "" {
@@ -313,6 +314,8 @@ func main() {
 			}
 		}
 
+		logger.Audit("Order Service Run in Scheduler Mode . . . ")
+
 		schedulerService := scheduler_service.NewScheduler(mongoDriver,
 			app.Globals.Config.GRPCServer.Address,
 			app.Globals.Config.GRPCServer.Port,
@@ -320,6 +323,8 @@ func main() {
 			schedulerStewardTimeout,
 			schedulerWorkerTimeout,
 			stateList...)
+
 		schedulerService.Scheduler(context.Background())
+
 	}
 }

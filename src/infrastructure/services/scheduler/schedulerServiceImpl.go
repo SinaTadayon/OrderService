@@ -16,6 +16,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
+	"sync"
 	"time"
 )
 
@@ -68,6 +69,7 @@ type SchedulerService struct {
 	schedulerInterval       time.Duration
 	schedulerStewardTimeout time.Duration
 	schedulerWorkerTimeout  time.Duration
+	waitGroup               sync.WaitGroup
 }
 
 func NewScheduler(mongoAdapter *mongoadapter.Mongo, address string, port int,
@@ -94,9 +96,12 @@ func (scheduler *SchedulerService) ConnectToOrderService() error {
 }
 
 func (scheduler *SchedulerService) Scheduler(ctx context.Context) {
+
 	for _, state := range scheduler.states {
+		scheduler.waitGroup.Add(1)
 		go scheduler.scheduleProcess(ctx, state)
 	}
+	scheduler.waitGroup.Wait()
 }
 
 func (scheduler *SchedulerService) scheduleProcess(ctx context.Context, state states.IEnumState) {
@@ -111,6 +116,7 @@ func (scheduler *SchedulerService) scheduleProcess(ctx context.Context, state st
 		case <-ctx.Done():
 			logger.Audit("scheduleProcess() => stewardWorkerFn goroutine context down!, state: %s", state.StateName())
 			stewardTimer.Stop()
+			scheduler.waitGroup.Done()
 			return
 		case _, ok := <-heartbeat:
 			if ok == false {
