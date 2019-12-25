@@ -308,9 +308,9 @@ func main() {
 			os.Exit(1)
 		} else {
 			if app.Globals.Config.App.SchedulerTimeUint == "hour" {
-				schedulerStewardTimeout = time.Duration(temp) * time.Hour
+				schedulerWorkerTimeout = time.Duration(temp) * time.Hour
 			} else {
-				schedulerStewardTimeout = time.Duration(temp) * time.Minute
+				schedulerWorkerTimeout = time.Duration(temp) * time.Minute
 			}
 		}
 
