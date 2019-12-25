@@ -91,9 +91,11 @@ type State struct {
 }
 
 type SchedulerData struct {
-	Name   string    `bson:"name"`
-	Value  time.Time `bson:"value"`
-	Action string    `bson:"action"`
+	Name    string    `bson:"name"`
+	Value   time.Time `bson:"value"`
+	Action  string    `bson:"action"`
+	Index   int32     `bson:"index"`
+	Enabled bool      `bson:"enabled"`
 }
 
 /*

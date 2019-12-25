@@ -58,11 +58,24 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 			return
 		}
 
-		// TODO must be read from reids config
-		expireTime := time.Now().UTC().Add(time.Hour*
-			time.Duration(72) +
-			time.Minute*time.Duration(0) +
-			time.Second*time.Duration(0))
+		var expireTime time.Time
+		value, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerApprovalPendingStateConfig].(time.Duration)
+		if ok {
+			expireTime = time.Now().UTC().Add(value)
+		} else {
+			timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
+			if timeUnit == string(app.HourTimeUnit) {
+				expireTime = time.Now().UTC().Add(
+					time.Hour*time.Duration(value) +
+						time.Minute*time.Duration(0) +
+						time.Second*time.Duration(0))
+			} else {
+				expireTime = time.Now().UTC().Add(
+					time.Hour*time.Duration(0) +
+						time.Minute*time.Duration(value) +
+						time.Second*time.Duration(0))
+			}
+		}
 
 		// TODO refactor it
 		state.UpdateOrderAllSubPkg(ctx, order)
@@ -74,6 +87,8 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 							"expireAt",
 							expireTime,
 							scheduler_action.Cancel.ActionName(),
+							0,
+							true,
 						},
 					},
 				}

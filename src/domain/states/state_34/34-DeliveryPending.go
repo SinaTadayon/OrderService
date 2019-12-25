@@ -14,6 +14,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 )
 
@@ -56,23 +57,74 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 			return
 		}
 
-		//pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
-		//if !ok {
-		//	logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, sellerId: %d, sid: %d, %s state ",
-		//		subpackages[0].OrderId, subpackages[0].PId, subpackages[0].SId, state.Name())
-		//	return
-		//}
+		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
+		if !ok {
+			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, sellerId: %d, sid: %d, %s state ",
+				subpackages[0].OrderId, subpackages[0].PId, subpackages[0].SId, state.Name())
+			return
+		}
 
-		// TODO must be read from reids config
-		notifyAt := time.Now().UTC().Add(time.Hour*
-			time.Duration(24) +
-			time.Minute*time.Duration(0) +
-			time.Second*time.Duration(0))
+		var deliveredAt time.Time
+		value, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerDeliveryPendingStateConfig].(time.Duration)
+		if ok {
+			deliveredAt = time.Now().UTC().Add(value)
+		} else {
+			shippedTime := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShippedStateConfig].(int)
+			if sellerReactionTime, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig]; ok {
+				timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
+				if timeUnit == string(app.HourTimeUnit) {
+					deliveredAt = time.Now().UTC().Add(
+						time.Hour*time.Duration(sellerReactionTime.(int)+int(shippedTime)+int(value)) +
+							time.Minute*time.Duration(0) +
+							time.Second*time.Duration(0))
+				} else {
+					deliveredAt = time.Now().UTC().Add(
+						time.Hour*time.Duration(0) +
+							time.Minute*time.Duration(sellerReactionTime.(int)+int(shippedTime)+int(value)) +
+							time.Second*time.Duration(0))
+				}
+			} else {
+				timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
+				if timeUnit == string(app.HourTimeUnit) {
+					deliveredAt = time.Now().UTC().Add(
+						time.Hour*time.Duration(pkgItem.ShipmentSpec.ReactionTime+int32(shippedTime)+int32(value)) +
+							time.Minute*time.Duration(0) +
+							time.Second*time.Duration(0))
+				} else {
+					deliveredAt = time.Now().UTC().Add(
+						time.Hour*time.Duration(0) +
+							time.Minute*time.Duration((pkgItem.ShipmentSpec.ReactionTime*60)+int32(shippedTime)+int32(value)) +
+							time.Second*time.Duration(0))
+				}
+			}
+		}
 
-		deliveredAt := time.Now().UTC().Add(time.Hour*
-			time.Duration(72) +
-			time.Minute*time.Duration(0) +
-			time.Second*time.Duration(0))
+		var notifyAt time.Time
+		notifyValue, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerNotifyDeliveryPendingStateConfig].(time.Duration)
+		if ok {
+			notifyAt = time.Now().UTC().Add(notifyValue)
+		} else {
+			shippedTime := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShippedStateConfig].(int)
+			if sellerReactionTime, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig]; ok {
+				timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
+				if timeUnit == string(app.HourTimeUnit) {
+					notifyAt = time.Now().UTC().Add(
+						time.Hour*time.Duration(sellerReactionTime.(int)+int(shippedTime)+int(notifyValue)) +
+							time.Minute*time.Duration(0) +
+							time.Second*time.Duration(0))
+				} else {
+					notifyAt = time.Now().UTC().Add(
+						time.Hour*time.Duration(0) +
+							time.Minute*time.Duration(sellerReactionTime.(int)+int(shippedTime)+int(notifyValue)) +
+							time.Second*time.Duration(0))
+				}
+			} else {
+				notifyAt = time.Now().UTC().Add(
+					time.Hour*time.Duration(pkgItem.ShipmentSpec.ReactionTime+int32(shippedTime)+int32(notifyValue)) +
+						time.Minute*time.Duration(0) +
+						time.Second*time.Duration(0))
+			}
+		}
 
 		for i := 0; i < len(subpackages); i++ {
 			state.UpdateSubPackage(ctx, subpackages[i], nil)
@@ -82,11 +134,15 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 						"notifyAt",
 						notifyAt,
 						scheduler_action.Notification.ActionName(),
+						0,
+						true,
 					},
 					{
 						"expireAt",
 						deliveredAt,
 						scheduler_action.Deliver.ActionName(),
+						1,
+						true,
 					},
 				},
 			}
@@ -185,16 +241,27 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 					}
 
 					var sids = make([]uint64, 0, 32)
-					for i := 0; i < len(pkgItem.Subpackages); i++ {
-						sids = append(sids, pkgItem.Subpackages[i].SId)
-						state.UpdateSubPackage(ctx, &pkgItem.Subpackages[i], requestAction)
-						_, err := app.Globals.SubPkgRepository.Update(ctx, pkgItem.Subpackages[i])
-						if err != nil {
-							logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
-								pkgItem.Subpackages[i].OrderId, pkgItem.Subpackages[i].PId, event, err.Error())
-							future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-								SetError(future.InternalError, "Unknown Err", err).Send()
-							return
+					for _, eventSubPkg := range actionData.SubPackages {
+						for i := 0; i < len(pkgItem.Subpackages); i++ {
+							if eventSubPkg.SId == pkgItem.Subpackages[i].SId && pkgItem.Subpackages[i].Status == state.Name() {
+								schedulerDataList := pkgItem.Subpackages[i].Tracking.State.Data["scheduler"].(primitive.A)
+								for _, data := range schedulerDataList {
+									schedulerData := data.(map[string]interface{})
+									if schedulerData["name"] == "notifyAt" {
+										schedulerData["enabled"] = false
+										sids = append(sids, pkgItem.Subpackages[i].SId)
+										state.UpdateSubPackage(ctx, &pkgItem.Subpackages[i], requestAction)
+										_, err := app.Globals.SubPkgRepository.Update(ctx, pkgItem.Subpackages[i])
+										if err != nil {
+											logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
+												pkgItem.Subpackages[i].OrderId, pkgItem.Subpackages[i].PId, event, err.Error())
+											future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+												SetError(future.InternalError, "Unknown Err", err).Send()
+											return
+										}
+									}
+								}
+							}
 						}
 					}
 

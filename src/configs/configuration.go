@@ -13,6 +13,25 @@ type Config struct {
 		ServiceMode                          string `env:"ORDER_SERVICE_MODE"`
 		SmsTemplateDir                       string `env:"NOTIFICATION_SMS_TEMPLATES"`
 		EmailTemplateNotifySellerForNewOrder string `env:"EMAIL_TMP_NOTIFY_SELLER_FOR_NEW_ORDER"`
+
+		SchedulerTimeUint            string `env:"ORDER_SCHEDULER_TIME_UNIT"`
+		SchedulerStates              string `env:"ORDER_SCHEDULER_STATES"`
+		SchedulerInterval            string `env:"ORDER_SCHEDULER_INTERVAL"`
+		SchedulerParentWorkerTimeout string `env:"ORDER_SCHEDULER_PARENT_WORKER_TIMEOUT"`
+		SchedulerWorkerTimeout       string `env:"ORDER_SCHEDULER_WORKER_TIMEOUT"`
+
+		SchedulerStateTimeUint              string `env:"ORDER_SCHEDULER_STATE_TIME_UINT"`
+		SchedulerSellerReactionTime         string `env:"ORDER_SCHEDULER_SELLER_REACTION_TIME"`
+		SchedulerApprovalPendingState       string `env:"ORDER_SCHEDULER_APPROVAL_PENDING_STATE"`
+		SchedulerShipmentPendingState       string `env:"ORDER_SCHEDULER_SHIPMENT_PENDING_STATE"`
+		SchedulerShippedState               string `env:"ORDER_SCHEDULER_SHIPPED_STATE"`
+		SchedulerDeliveryPendingState       string `env:"ORDER_SCHEDULER_DELIVERY_PENDING_STATE"`
+		SchedulerNotifyDeliveryPendingState string `env:"ORDER_SCHEDULER_NOTIFY_DELIVERY_PENDING_STATE"`
+		SchedulerDeliveredState             string `env:"ORDER_SCHEDULER_DELIVERED_STATE"`
+		SchedulerReturnShippedState         string `env:"ORDER_SCHEDULER_RETURN_SHIPPED_STATE"`
+		SchedulerReturnRequestPendingState  string `env:"ORDER_SCHEDULER_RETURN_REQUEST_PENDING_STATE"`
+		SchedulerReturnShipmentPendingState string `env:"ORDER_SCHEDULER_RETURN_SHIPMENT_PENDING_STATE"`
+		SchedulerReturnDeliveredState       string `env:"ORDER_SCHEDULER_RETURN_DELIVERED_STATE"`
 	}
 
 	GRPCServer struct {
@@ -114,35 +133,3 @@ func LoadConfig(path string) (*Config, error) {
 
 	return config, nil
 }
-
-//func LoadConfigWithPath(path string) (*Config, error) {
-//	var config = &Config{}
-//
-//	if os.Getenv("APP_ENV") == "dev" {
-//		if flag.Lookup("test.v") != nil {
-//			// test mode
-//			err := godotenv.Load("../testdata/.env")
-//			if err != nil {
-//				logger.Err("Error loading testdata .env file")
-//			}
-//		} else {
-//			err := godotenv.Load("../.env")
-//			if err != nil {
-//				logger.Err("Error loading .env file")
-//			}
-//		}
-//	} else if len(path) != 0 {
-//		err := godotenv.Load(path)
-//		if err != nil {
-//			logger.Err("Error loading .env file, path: %s", path)
-//		}
-//	}
-//
-//	// Get environment variables for Config
-//	_, err1 := env.UnmarshalFromEnviron(config)
-//	if err1 != nil {
-//		return nil, err1
-//	}
-//
-//	return config, nil
-//}

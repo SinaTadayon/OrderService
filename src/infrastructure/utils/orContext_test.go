@@ -19,7 +19,7 @@ func TestORContext(t *testing.T) {
 		sig(1*time.Second),
 		sig(1*time.Hour),
 		sig(1*time.Minute),
-	)
+	).Done()
 
 	assert.Condition(t, func() (success bool) {
 		return time.Since(start).Seconds() >= time.Duration(1*time.Second).Seconds() &&

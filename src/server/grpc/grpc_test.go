@@ -13,6 +13,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain"
+	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
 	"gitlab.faza.io/order-project/order-service/domain/converter"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	order_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/order"
@@ -79,6 +80,160 @@ func TestMain(m *testing.M) {
 	app.Globals.VoucherService = voucher_service.NewVoucherService(app.Globals.Config.VoucherService.Address, app.Globals.Config.VoucherService.Port)
 	app.Globals.NotifyService = notify_service.NewNotificationService(app.Globals.Config.NotifyService.Address, app.Globals.Config.NotifyService.Port)
 	app.Globals.UserService = user_service.NewUserService(app.Globals.Config.UserService.Address, app.Globals.Config.UserService.Port)
+
+	app.Globals.FlowManagerConfig = make(map[string]interface{}, 32)
+
+	if app.Globals.Config.App.SchedulerStateTimeUint == "" {
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig] = app.HourTimeUnit
+	} else {
+		if app.Globals.Config.App.SchedulerStateTimeUint != "hour" &&
+			app.Globals.Config.App.SchedulerStateTimeUint != "minute" {
+			logger.Err("SchedulerStateTimeUint invalid, SchedulerStateTimeUint: %s", app.Globals.Config.App.SchedulerApprovalPendingState)
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig] = app.Globals.Config.App.SchedulerStateTimeUint
+	}
+
+	if app.Globals.Config.App.SchedulerSellerReactionTime != "" {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerSellerReactionTime)
+		if err != nil {
+			logger.Err("SchedulerSellerReactionTime invalid, SchedulerSellerReactionTime: %s, error: %s ", app.Globals.Config.App.SchedulerSellerReactionTime, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerApprovalPendingState == "" {
+		logger.Err("SchedulerApprovalPendingState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerApprovalPendingState)
+		if err != nil {
+			logger.Err("SchedulerApprovalPendingState invalid, SchedulerApprovalPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerApprovalPendingState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerApprovalPendingStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerApprovalPendingState == "" {
+		logger.Err("SchedulerApprovalPendingState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerApprovalPendingState)
+		if err != nil {
+			logger.Err("SchedulerApprovalPendingState invalid, SchedulerApprovalPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerApprovalPendingState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerApprovalPendingStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerShipmentPendingState == "" {
+		logger.Err("SchedulerShipmentPendingState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerShipmentPendingState)
+		if err != nil {
+			logger.Err("SchedulerShipmentPendingState invalid, SchedulerShipmentPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerShipmentPendingState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShipmentPendingStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerShippedState == "" {
+		logger.Err("SchedulerShippedState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerShippedState)
+		if err != nil {
+			logger.Err("SchedulerShippedState invalid, SchedulerShippedState: %s, error: %s ", app.Globals.Config.App.SchedulerShippedState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShippedStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerDeliveryPendingState == "" {
+		logger.Err("SchedulerDeliveryPendingState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerDeliveryPendingState)
+		if err != nil {
+			logger.Err("SchedulerDeliveryPendingState invalid, SchedulerDeliveryPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerDeliveryPendingState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerDeliveryPendingStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerNotifyDeliveryPendingState == "" {
+		logger.Err("SchedulerNotifyDeliveryPendingState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerNotifyDeliveryPendingState)
+		if err != nil {
+			logger.Err("SchedulerNotifyDeliveryPendingState invalid, SchedulerNotifyDeliveryPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerNotifyDeliveryPendingState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerNotifyDeliveryPendingStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerDeliveredState == "" {
+		logger.Err("SchedulerDeliveredState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerDeliveredState)
+		if err != nil {
+			logger.Err("SchedulerDeliveredState invalid, SchedulerDeliveredState: %s, error: %s ", app.Globals.Config.App.SchedulerDeliveredState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerDeliveredStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerReturnShippedState == "" {
+		logger.Err("SchedulerReturnShippedState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerReturnShippedState)
+		if err != nil {
+			logger.Err("SchedulerReturnShippedState invalid, SchedulerReturnShippedState: %s, error: %s ", app.Globals.Config.App.SchedulerDeliveredState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnShippedStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerReturnRequestPendingState == "" {
+		logger.Err("SchedulerReturnRequestPendingState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerReturnRequestPendingState)
+		if err != nil {
+			logger.Err("SchedulerReturnRequestPendingState invalid, SchedulerReturnRequestPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerReturnRequestPendingState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnRequestPendingStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerReturnShipmentPendingState == "" {
+		logger.Err("SchedulerReturnShipmentPendingState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerReturnShipmentPendingState)
+		if err != nil {
+			logger.Err("SchedulerReturnShipmentPendingState invalid, SchedulerReturnShipmentPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerReturnShipmentPendingState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnShipmentPendingStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerReturnDeliveredState == "" {
+		logger.Err("SchedulerReturnDeliveredState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerReturnDeliveredState)
+		if err != nil {
+			logger.Err("SchedulerReturnDeliveredState invalid, SchedulerReturnDeliveredState: %s, error: %s ", app.Globals.Config.App.SchedulerReturnDeliveredState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnDeliveredStateConfig] = temp
+	}
 
 	if !checkTcpPort(app.Globals.Config.GRPCServer.Address, strconv.Itoa(app.Globals.Config.GRPCServer.Port)) {
 		logger.Audit("Start GRPC Server for testing . . . ")
@@ -2015,8 +2170,6 @@ func TestPaymentGateway_Success(t *testing.T) {
 		PaymentId: "534545345",
 		InvoiceId: 3434234234,
 		Amount:    int64(order.Invoice.GrandTotal),
-		ReqBody:   "request test url",
-		ResBody:   "response test url",
 		CardMask:  "293488374****7234",
 		Result:    true,
 	}
@@ -2069,8 +2222,6 @@ func TestPaymentGateway_Fail(t *testing.T) {
 		PaymentId: "534545345",
 		InvoiceId: 3434234234,
 		Amount:    int64(order.Invoice.GrandTotal),
-		ReqBody:   "request test url",
-		ResBody:   "response test url",
 		CardMask:  "293488374****7234",
 		Result:    false,
 	}
@@ -3701,6 +3852,24 @@ func TestDeliveryPending_SchedulerNotification_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
+	newOrder.Packages[0].Subpackages[0].Tracking.State.Data = map[string]interface{}{
+		"scheduler": []entities.SchedulerData{
+			{
+				"notifyAt",
+				time.Now().UTC(),
+				scheduler_action.Notification.ActionName(),
+				0,
+				true,
+			},
+			{
+				"expireAt",
+				time.Now().UTC().Add(1 * time.Minute),
+				scheduler_action.Deliver.ActionName(),
+				1,
+				true,
+			},
+		},
+	}
 	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
 

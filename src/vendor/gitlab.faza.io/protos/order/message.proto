@@ -101,6 +101,30 @@ message ActionData {
     string trackingNumber = 3;
 }
 
+message SchedulerActionRequest {
+    message Order {
+        uint64 OID = 1;
+        string actionType = 3;
+        string actionState = 4;
+        int32 stateIndex = 5;
+        message Package {
+            uint64 PID = 2;
+            message Subpackage {
+                uint64 SID = 1;
+                message Item {
+                    string inventoryId = 1;
+                    int32 quantity = 2;
+                }
+                repeated Item items = 2;
+            }
+            repeated Subpackage subpackages = 6;
+        }
+        repeated Package packages = 2;
+    }
+
+    repeated Order orders = 1;
+}
+
 
 /////////////////////////////////////////////////////////////
 // seller messages
