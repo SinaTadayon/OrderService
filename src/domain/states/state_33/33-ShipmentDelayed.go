@@ -109,20 +109,22 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 				Body:  "Shipment Delay",
 			}
 
-			futureData = app.Globals.NotifyService.NotifyBySMS(ctx, sellerNotify).Get()
-			if futureData.Error() != nil {
+			sellerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, sellerNotify).Get()
+			if sellerFutureData.Error() != nil {
 				logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, sellerId: %d, sids: %v, error: %s",
-					sellerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, sids, futureData.Error().Reason())
+					sellerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, sids, sellerFutureData.Error().Reason())
 			}
 
-			futureData = app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
-			if futureData.Error() != nil {
+			buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
+			if buyerFutureData.Error() != nil {
 				logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, sellerId: %d, sids: %v, error: %s",
-					buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, sids, futureData.Error().Reason())
+					buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, sids, buyerFutureData.Error().Reason())
 			}
 
-			logger.Audit("Process() => NotifyService.NotifyBySMS success, sellerNotify: %v, buyerNotify: %v, state: %s, orderId: %d, sellerId: %d, sids: %v, error: %s",
-				sellerNotify, buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, sids, futureData.Error().Reason())
+			if buyerFutureData.Error() == nil && sellerFutureData.Error() == nil {
+				logger.Audit("Process() => NotifyService.NotifyBySMS success, sellerNotify: %v, buyerNotify: %v, state: %s, orderId: %d, sellerId: %d, sids: %v, error: %s",
+					sellerNotify, buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, sids, futureData.Error().Reason())
+			}
 		}
 
 	} else if iFrame.Header().KeyExists(string(frame.HeaderEvent)) {

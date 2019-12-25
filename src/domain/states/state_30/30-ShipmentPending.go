@@ -64,11 +64,34 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 			return
 		}
 
-		// TODO must be read from reids config
-		expireTime := time.Now().UTC().Add(time.Hour*
-			time.Duration(pkgItem.ShipmentSpec.ReactionTime) +
-			time.Minute*time.Duration(0) +
-			time.Second*time.Duration(0))
+		var expireTime time.Time
+		value, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShipmentPendingStateConfig].(time.Duration)
+		if ok {
+			expireTime = time.Now().UTC().Add(value)
+		} else {
+			if sellerReactionTime, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig]; ok {
+				timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
+				if timeUnit == string(app.HourTimeUnit) {
+					reactionTime := (sellerReactionTime.(int) * 60 * int(value)) / 100
+					expireTime = time.Now().UTC().Add(
+						time.Hour*time.Duration(reactionTime/60) +
+							time.Minute*time.Duration(reactionTime%60) +
+							time.Second*time.Duration(0))
+				} else {
+					reactionTime := (sellerReactionTime.(int) * int(value)) / 100
+					expireTime = time.Now().UTC().Add(
+						time.Hour*time.Duration(reactionTime/60) +
+							time.Minute*time.Duration(reactionTime%60) +
+							time.Second*time.Duration(0))
+				}
+			} else {
+				reactionTime := (pkgItem.ShipmentSpec.ReactionTime * 60 * int32(value)) / 100
+				expireTime = time.Now().UTC().Add(
+					time.Hour*time.Duration(reactionTime/60) +
+						time.Minute*time.Duration(reactionTime%60) +
+						time.Second*time.Duration(0))
+			}
+		}
 
 		for i := 0; i < len(subpackages); i++ {
 			state.UpdateSubPackage(ctx, subpackages[i], nil)
@@ -78,6 +101,8 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 						"expireAt",
 						expireTime,
 						scheduler_action.Cancel.ActionName(),
+						0,
+						true,
 					},
 				},
 			}

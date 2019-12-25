@@ -34,7 +34,8 @@ func init() {
 func TestNotifySMS(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	request := SMSRequest{
-		Phone: "09373969041",
+		//Phone: "09373969041",
+		Phone: "09128085965",
 		Body:  "سلام، این اس ام اس تستی هست",
 	}
 	iFuture := notify.NotifyBySMS(ctx, request)

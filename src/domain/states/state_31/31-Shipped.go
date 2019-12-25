@@ -62,11 +62,44 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 			return
 		}
 
-		// TODO must be read from reids config
-		expireTime := time.Now().UTC().Add(time.Hour*
-			time.Duration(pkgItem.ShipmentSpec.ShippingTime) +
-			time.Minute*time.Duration(0) +
-			time.Second*time.Duration(0))
+		var expireTime time.Time
+		value, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShippedStateConfig].(time.Duration)
+		if ok {
+			expireTime = time.Now().UTC().Add(value)
+		} else {
+			if sellerReactionTime, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig]; ok {
+				timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
+				if timeUnit == string(app.HourTimeUnit) {
+					expireTime = time.Now().UTC().Add(
+						time.Hour*time.Duration(sellerReactionTime.(int)+int(value)) +
+							time.Minute*time.Duration(0) +
+							time.Second*time.Duration(0))
+				} else {
+					expireTime = time.Now().UTC().Add(
+						time.Hour*time.Duration(0) +
+							time.Minute*time.Duration(sellerReactionTime.(int)+int(value)) +
+							time.Second*time.Duration(0))
+				}
+			} else {
+				timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
+				if timeUnit == string(app.HourTimeUnit) {
+					expireTime = time.Now().UTC().Add(
+						time.Hour*time.Duration(pkgItem.ShipmentSpec.ReactionTime+int32(value)) +
+							time.Minute*time.Duration(0) +
+							time.Second*time.Duration(0))
+				} else {
+					expireTime = time.Now().UTC().Add(
+						time.Hour*time.Duration(0) +
+							time.Minute*time.Duration((pkgItem.ShipmentSpec.ReactionTime*60)+int32(value)) +
+							time.Second*time.Duration(0))
+				}
+			}
+
+			//expireTime = time.Now().UTC().Add(
+			//	time.Hour*time.Duration(pkgItem.ShipmentSpec.ShippingTime+int32(value)) +
+			//		time.Minute*time.Duration(0) +
+			//		time.Second*time.Duration(0))
+		}
 
 		for i := 0; i < len(subpackages); i++ {
 			state.UpdateSubPackage(ctx, subpackages[i], nil)
@@ -76,6 +109,8 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 						"expireAt",
 						expireTime,
 						scheduler_action.DeliveryPending.ActionName(),
+						0,
+						true,
 					},
 				},
 			}

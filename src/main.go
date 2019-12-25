@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	_ "github.com/devfeel/mapper"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
@@ -10,6 +11,7 @@ import (
 	order_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/order"
 	pkg_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/pkg"
 	"gitlab.faza.io/order-project/order-service/domain/models/repository/subpackage"
+	"gitlab.faza.io/order-project/order-service/domain/states"
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	scheduler_service "gitlab.faza.io/order-project/order-service/infrastructure/services/scheduler"
@@ -18,6 +20,9 @@ import (
 	voucher_service "gitlab.faza.io/order-project/order-service/infrastructure/services/voucher"
 	grpc_server "gitlab.faza.io/order-project/order-service/server/grpc"
 	"os"
+	"strconv"
+	"strings"
+	"time"
 )
 
 var MainApp struct {
@@ -26,7 +31,6 @@ var MainApp struct {
 	schedulerService scheduler_service.ISchedulerService
 }
 
-// TODO Add worker scheduler and start from main
 func main() {
 	var err error
 	if os.Getenv("APP_ENV") == "dev" {
@@ -34,9 +38,164 @@ func main() {
 	} else {
 		app.Globals.Config, err = configs.LoadConfig("")
 	}
+
 	if err != nil {
 		logger.Err("LoadConfig of main init failed, error: %s ", err.Error())
 		os.Exit(1)
+	}
+
+	app.Globals.FlowManagerConfig = make(map[string]interface{}, 32)
+
+	if app.Globals.Config.App.SchedulerStateTimeUint == "" {
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig] = app.HourTimeUnit
+	} else {
+		if app.Globals.Config.App.SchedulerStateTimeUint != "hour" &&
+			app.Globals.Config.App.SchedulerStateTimeUint != "minute" {
+			logger.Err("SchedulerStateTimeUint invalid, SchedulerStateTimeUint: %s", app.Globals.Config.App.SchedulerApprovalPendingState)
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig] = app.Globals.Config.App.SchedulerStateTimeUint
+	}
+
+	if app.Globals.Config.App.SchedulerSellerReactionTime != "" {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerSellerReactionTime)
+		if err != nil {
+			logger.Err("SchedulerSellerReactionTime invalid, SchedulerSellerReactionTime: %s, error: %s ", app.Globals.Config.App.SchedulerSellerReactionTime, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerApprovalPendingState == "" {
+		logger.Err("SchedulerApprovalPendingState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerApprovalPendingState)
+		if err != nil {
+			logger.Err("SchedulerApprovalPendingState invalid, SchedulerApprovalPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerApprovalPendingState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerApprovalPendingStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerApprovalPendingState == "" {
+		logger.Err("SchedulerApprovalPendingState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerApprovalPendingState)
+		if err != nil {
+			logger.Err("SchedulerApprovalPendingState invalid, SchedulerApprovalPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerApprovalPendingState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerApprovalPendingStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerShipmentPendingState == "" {
+		logger.Err("SchedulerShipmentPendingState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerShipmentPendingState)
+		if err != nil {
+			logger.Err("SchedulerShipmentPendingState invalid, SchedulerShipmentPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerShipmentPendingState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShipmentPendingStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerShippedState == "" {
+		logger.Err("SchedulerShippedState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerShippedState)
+		if err != nil {
+			logger.Err("SchedulerShippedState invalid, SchedulerShippedState: %s, error: %s ", app.Globals.Config.App.SchedulerShippedState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShippedStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerDeliveryPendingState == "" {
+		logger.Err("SchedulerDeliveryPendingState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerDeliveryPendingState)
+		if err != nil {
+			logger.Err("SchedulerDeliveryPendingState invalid, SchedulerDeliveryPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerDeliveryPendingState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerDeliveryPendingStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerNotifyDeliveryPendingState == "" {
+		logger.Err("SchedulerNotifyDeliveryPendingState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerNotifyDeliveryPendingState)
+		if err != nil {
+			logger.Err("SchedulerNotifyDeliveryPendingState invalid, SchedulerNotifyDeliveryPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerNotifyDeliveryPendingState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerNotifyDeliveryPendingStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerDeliveredState == "" {
+		logger.Err("SchedulerDeliveredState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerDeliveredState)
+		if err != nil {
+			logger.Err("SchedulerDeliveredState invalid, SchedulerDeliveredState: %s, error: %s ", app.Globals.Config.App.SchedulerDeliveredState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerDeliveredStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerReturnShippedState == "" {
+		logger.Err("SchedulerReturnShippedState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerReturnShippedState)
+		if err != nil {
+			logger.Err("SchedulerReturnShippedState invalid, SchedulerReturnShippedState: %s, error: %s ", app.Globals.Config.App.SchedulerDeliveredState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnShippedStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerReturnRequestPendingState == "" {
+		logger.Err("SchedulerReturnRequestPendingState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerReturnRequestPendingState)
+		if err != nil {
+			logger.Err("SchedulerReturnRequestPendingState invalid, SchedulerReturnRequestPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerReturnRequestPendingState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnRequestPendingStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerReturnShipmentPendingState == "" {
+		logger.Err("SchedulerReturnShipmentPendingState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerReturnShipmentPendingState)
+		if err != nil {
+			logger.Err("SchedulerReturnShipmentPendingState invalid, SchedulerReturnShipmentPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerReturnShipmentPendingState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnShipmentPendingStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerReturnDeliveredState == "" {
+		logger.Err("SchedulerReturnDeliveredState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerReturnDeliveredState)
+		if err != nil {
+			logger.Err("SchedulerReturnDeliveredState invalid, SchedulerReturnDeliveredState: %s, error: %s ", app.Globals.Config.App.SchedulerReturnDeliveredState, err.Error())
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnDeliveredStateConfig] = temp
 	}
 
 	mongoDriver, err := app.SetupMongoDriver(*app.Globals.Config)
@@ -48,7 +207,6 @@ func main() {
 	app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver)
 	app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver)
 
-	// TODO create item repository
 	MainApp.flowManager, err = domain.NewFlowManager()
 	if err != nil {
 		logger.Err("flowManager creation failed, %s ", err.Error())
@@ -56,7 +214,6 @@ func main() {
 	}
 
 	MainApp.grpcServer = grpc_server.NewServer(app.Globals.Config.GRPCServer.Address, uint16(app.Globals.Config.GRPCServer.Port), MainApp.flowManager)
-
 	app.Globals.Converter = converter.NewConverter()
 
 	//app.Globals.StockService = stock_service.NewStockService(app.Globals.Config.StockService.Address, app.Globals.Config.StockService.Port)
@@ -83,77 +240,86 @@ func main() {
 
 	app.Globals.NotifyService = notify_service.NewNotificationService(app.Globals.Config.NotifyService.Address, app.Globals.Config.NotifyService.Port)
 	app.Globals.UserService = user_service.NewUserService(app.Globals.Config.UserService.Address, app.Globals.Config.UserService.Port)
-	//MainApp.schedulerService = scheduler_service.NewScheduler(mongoDriver, MainApp.flowManager)
-
-	//brokers = strings.Split(app.Globals.Config.Kafka.Brokers, ",")
-	//if app.Globals.Config.MainApp.Port == "" {
-	//	logger.Err("grpc PORT env not defined")
-	//	//return errors.New("grpc PORT env not defined")
-	//}
-
-	//// store in mongo
-	//mongoConf := &mongoadapter.MongoConfig{
-	//	Host:     app.Globals.Config.Mongo.Host,
-	//	Port:     app.Globals.Config.Mongo.Port,
-	//	Username: app.Globals.Config.Mongo.User,
-	//	//Password:     MainApp.Config.Mongo.Pass,
-	//	ConnTimeout:  time.Duration(app.Globals.Config.Mongo.ConnectionTimeout),
-	//	ReadTimeout:  time.Duration(app.Globals.Config.Mongo.ReadTimeout),
-	//	WriteTimeout: time.Duration(app.Globals.Config.Mongo.WriteTimeout),
-	//}
-	//
-	//MainApp.mongo, err = mongoadapter.NewMongo(mongoConf)
-	//if err != nil {
-	//	logger.Err("New Mongo: %v", err.Error())
-	//}
-	//_, err = MainApp.mongo.AddUniqueIndex(MongoDB, Orders, "orderId")
-	//if err != nil {
-	//	logger.Err(err.Error())
-	//}
-
-	//err = initTopics()
-	//if err != nil {
-	//	logger.Err(err.Error())
-	//	os.Exit(1)
-	//}
 
 	if app.Globals.Config.App.ServiceMode == "server" {
-		//ctx, cancel := context.WithCancel(context.Background())
-		//defer cancel()
-
-		//scheduleDataList := []scheduler_service.ScheduleModel{
-		//	{
-		//		Step:   "20.Seller_Approval_Pending",
-		//		Action: "ApprovalPending",
-		//	},
-		//	{
-		//		Step:   "30.Shipment_Pending",
-		//		Action: "SellerShipmentPending",
-		//	},
-		//	{
-		//		Step:   "32.Shipment_Delivered",
-		//		Action: "ShipmentDeliveredPending",
-		//	},
-		//}
-
-		//if err := MainApp.schedulerService.StateScheduler(ctx, scheduleDataList); err != nil {
-		//	logger.Err("SchedulerService.StateScheduler failed, error: %s", err)
-		//	return
-		//}
 		MainApp.grpcServer.Start()
-	}
+	} else if app.Globals.Config.App.ServiceMode == "scheduler" {
+		if app.Globals.Config.App.SchedulerStates == "" {
+			logger.Err("main() => SchedulerState env is empty ")
+			os.Exit(1)
+		}
 
-	//switch MainApp.Config.Kafka.ConsumerTopic {
-	//case "payment-pending":
-	//	logger.Audit("starting grpc ...")
-	//	server.startGrpc()
-	//case "payment-success":
-	//	logger.Audit("starting " + MainApp.Config.Kafka.ConsumerTopic)
-	//	startPaymentSuccess(MainApp.Config.Kafka.Version, MainApp.Config.Kafka.ConsumerTopic)
-	//case "seller-approval-pending":
-	//	logger.Audit("starting " + MainApp.Config.Kafka.ConsumerTopic)
-	//	server.startGrpc()
-	//default:
-	//	logger.Err("consumer topic env is wrong:" + MainApp.Config.Kafka.ConsumerTopic)
-	//}
+		if app.Globals.Config.App.SchedulerInterval == "" ||
+			app.Globals.Config.App.SchedulerParentWorkerTimeout == "" ||
+			app.Globals.Config.App.SchedulerWorkerTimeout == "" ||
+			app.Globals.Config.App.SchedulerTimeUint == "" {
+			logger.Err("main() => SchedulerTimeUint or SchedulerInterval or SchedulerParentWorkerTimeout or SchedulerWorkerTimeout env is empty ")
+			os.Exit(1)
+		}
+
+		var stateList = make([]states.IEnumState, 0, 16)
+		for _, strState := range strings.Split(app.Globals.Config.App.SchedulerStates, ";") {
+			state := states.FromString(strState)
+			if state != nil {
+				stateList = append(stateList, state)
+			} else {
+				logger.Err("main() => state string SchedulerStates env is invalid, state: %s", strState)
+				os.Exit(1)
+			}
+		}
+
+		if app.Globals.Config.App.SchedulerTimeUint != "hour" &&
+			app.Globals.Config.App.SchedulerTimeUint != "minute" {
+			logger.Err("main() => SchedulerTimeUint env is invalid, %s ", app.Globals.Config.App.SchedulerTimeUint)
+			os.Exit(1)
+		}
+
+		var schedulerInterval time.Duration
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerInterval)
+		if err != nil {
+			logger.Err("main() => SchedulerInterval env is invalid, %s ", app.Globals.Config.App.SchedulerInterval)
+			os.Exit(1)
+		} else {
+			if app.Globals.Config.App.SchedulerTimeUint == "hour" {
+				schedulerInterval = time.Duration(temp) * time.Hour
+			} else {
+				schedulerInterval = time.Duration(temp) * time.Minute
+			}
+		}
+
+		var schedulerStewardTimeout time.Duration
+		temp, err = strconv.Atoi(app.Globals.Config.App.SchedulerParentWorkerTimeout)
+		if err != nil {
+			logger.Err("main() => SchedulerParentWorkerTimeout env is invalid, %s ", app.Globals.Config.App.SchedulerParentWorkerTimeout)
+			os.Exit(1)
+		} else {
+			if app.Globals.Config.App.SchedulerTimeUint == "hour" {
+				schedulerStewardTimeout = time.Duration(temp) * time.Hour
+			} else {
+				schedulerStewardTimeout = time.Duration(temp) * time.Minute
+			}
+		}
+
+		var schedulerWorkerTimeout time.Duration
+		temp, err = strconv.Atoi(app.Globals.Config.App.SchedulerWorkerTimeout)
+		if err != nil {
+			logger.Err("main() => SchedulerWorkerTimeout env is invalid, %s ", app.Globals.Config.App.SchedulerWorkerTimeout)
+			os.Exit(1)
+		} else {
+			if app.Globals.Config.App.SchedulerTimeUint == "hour" {
+				schedulerStewardTimeout = time.Duration(temp) * time.Hour
+			} else {
+				schedulerStewardTimeout = time.Duration(temp) * time.Minute
+			}
+		}
+
+		schedulerService := scheduler_service.NewScheduler(mongoDriver,
+			app.Globals.Config.GRPCServer.Address,
+			app.Globals.Config.GRPCServer.Port,
+			schedulerInterval,
+			schedulerStewardTimeout,
+			schedulerWorkerTimeout,
+			stateList...)
+		schedulerService.Scheduler(context.Background())
+	}
 }

@@ -136,7 +136,7 @@ const (
 	OperatorUser  UserType = "Operator"
 	SellerUser    UserType = "Seller"
 	BuyerUser     UserType = "Buyer"
-	SchedulerUser UserType = "StateScheduler"
+	SchedulerUser UserType = "Scheduler"
 )
 
 const (
@@ -426,6 +426,87 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	} else {
 		return server.requestActionHandler(ctx, req)
 	}
+}
+
+func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
+
+	if ctx.Value(string(utils.CtxUserID)) == nil {
+		ctx = context.WithValue(ctx, string(utils.CtxUserID), uint64(0))
+	}
+
+	userType := SchedulerUser
+	var userAction actions.IAction
+
+	var schedulerActionRequest pb.SchedulerActionRequest
+	if err := ptypes.UnmarshalAny(req.Data, &schedulerActionRequest); err != nil {
+		logger.Err("Could not unmarshal schedulerActionRequest from request anything field, request: %v, error %s", req, err)
+		return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
+	}
+
+	for _, orderReq := range schedulerActionRequest.Orders {
+		userActions, ok := server.actionStates[userType]
+		if !ok {
+			logger.Err("SchedulerMessageHandler() => action %s user not supported, request: %v", userType, req)
+			return nil, status.Error(codes.Code(future.BadRequest), "User Action Invalid")
+		}
+
+		for _, action := range userActions {
+			if action.ActionEnum().ActionName() == orderReq.ActionState {
+				userAction = action
+				break
+			}
+		}
+
+		if userAction == nil {
+			logger.Err("SchedulerMessageHandler() => %s action invalid, request: %v", req.Meta.Action.ActionState, req)
+			return nil, status.Error(codes.Code(future.BadRequest), "Action Invalid")
+		}
+
+		for _, pkgReq := range orderReq.Packages {
+			subpackages := make([]events.ActionSubpackage, 0, len(pkgReq.Subpackages))
+			for _, subPkgReq := range pkgReq.Subpackages {
+
+				subpackage := events.ActionSubpackage{
+					SId:   subPkgReq.SID,
+					Items: nil,
+				}
+				subpackage.Items = make([]events.ActionItem, 0, len(subPkgReq.Items))
+				for _, item := range subPkgReq.Items {
+					actionItem := events.ActionItem{
+						InventoryId: item.InventoryId,
+						Quantity:    item.Quantity,
+					}
+					subpackage.Items = append(subpackage.Items, actionItem)
+				}
+				subpackages = append(subpackages, subpackage)
+			}
+
+			actionData := events.ActionData{
+				SubPackages:    subpackages,
+				Carrier:        "",
+				TrackingNumber: "",
+			}
+
+			event := events.New(events.Action, orderReq.OID, pkgReq.PID, 0,
+				orderReq.StateIndex, userAction,
+				time.Unix(req.Time.GetSeconds(), int64(req.Time.GetNanos())), actionData)
+
+			iFuture := future.Factory().SetCapacity(1).Build()
+			iFrame := frame.Factory().SetFuture(iFuture).SetEvent(event).Build()
+			server.flowManager.MessageHandler(ctx, iFrame)
+			futureData := iFuture.Get()
+			if futureData.Error() != nil {
+				logger.Err("SchedulerMessageHandler() => flowManager.MessageHandler failed, event: %v, error: %s", event, futureData.Error().Reason())
+			}
+		}
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "ActionResponse",
+		Meta:   nil,
+		Data:   nil,
+	}
+	return response, nil
 }
 
 func (server *Server) buyerGeneratePipelineFilter(ctx context.Context, filter FilterValue) []interface{} {
@@ -2998,7 +3079,7 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 
 func (server *Server) PaymentGatewayHook(ctx context.Context, req *pg.PaygateHookRequest) (*pg.PaygateHookResponse, error) {
 
-	logger.Audit("PaymentGatewayHook() => received payment response: orderId: %d, PaymentId: %s, InvoiceId: %d, result: %v",
+	logger.Audit("PaymentGatewayHook() => received payment response: orderId: %s, PaymentId: %s, InvoiceId: %d, result: %v",
 		req.OrderID, req.PaymentId, req.InvoiceId, req.Result)
 	futureData := server.flowManager.PaymentGatewayResult(ctx, req).Get()
 

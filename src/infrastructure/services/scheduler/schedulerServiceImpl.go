@@ -2,18 +2,20 @@ package scheduler_service
 
 import (
 	"context"
+	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/go-framework/mongoadapter"
-	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
-	order "gitlab.faza.io/protos/order"
+	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
+	protoOrder "gitlab.faza.io/protos/order"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/connectivity"
 	"time"
 )
 
@@ -22,19 +24,29 @@ const (
 	collectionName string = "orders"
 )
 
-type StateScheduler struct {
-	OrderId uint64
-	PId     uint64
-	SId     uint64
-	SIdx    int
-	Items   []Item
-	Data    Data
+type Order struct {
+	Packages []Package
 }
 
-type Data struct {
-	Name   string
-	Value  time.Time
-	Action string
+type Package struct {
+	Subpackages []Subpackage
+}
+
+type Subpackage struct {
+	SId       uint64
+	Pid       uint64
+	OrderId   uint64
+	Sidx      int32
+	Items     []Item
+	Scheduler []Scheduler
+}
+
+type Scheduler struct {
+	Name    string
+	Value   time.Time
+	Action  string
+	Index   int32
+	Enabled bool
 }
 
 type Item struct {
@@ -42,73 +54,146 @@ type Item struct {
 	Quantity    int32
 }
 
+type startWardFn func(ctx context.Context, pulseInterval time.Duration, scheduleInterval time.Duration, state states.IEnumState) (heartbeat <-chan interface{})
+
+type startStewardFn func(ctx context.Context, pulseInterval time.Duration) (heartbeat <-chan interface{})
+
 type SchedulerService struct {
-	mongoAdapter   *mongoadapter.Mongo
-	orderClient    order.OrderServiceClient
-	grpcConnection *grpc.ClientConn
-	serverAddress  string
-	serverPort     int
-	state          states.IEnumState
+	mongoAdapter            *mongoadapter.Mongo
+	orderClient             protoOrder.OrderServiceClient
+	grpcConnection          *grpc.ClientConn
+	serverAddress           string
+	serverPort              int
+	states                  []states.IEnumState
+	schedulerInterval       time.Duration
+	schedulerStewardTimeout time.Duration
+	schedulerWorkerTimeout  time.Duration
 }
 
-func NewScheduler(mongoAdapter *mongoadapter.Mongo, address string, port int, state states.IEnumState) *SchedulerService {
-	return &SchedulerService{mongoAdapter: mongoAdapter, serverAddress: address, serverPort: port, state: state}
+func NewScheduler(mongoAdapter *mongoadapter.Mongo, address string, port int,
+	schedulerInterval time.Duration, schedulerStewardTimeout time.Duration, schedulerWorkerTimeout time.Duration,
+	states ...states.IEnumState) *SchedulerService {
+	return &SchedulerService{mongoAdapter: mongoAdapter, serverAddress: address, serverPort: port,
+		schedulerInterval: schedulerInterval, schedulerStewardTimeout: schedulerStewardTimeout, schedulerWorkerTimeout: schedulerWorkerTimeout,
+		states: states}
+}
+
+func (scheduler *SchedulerService) ConnectToOrderService() error {
+	if scheduler.grpcConnection == nil || scheduler.grpcConnection.GetState() != connectivity.Ready {
+		var err error
+		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+		scheduler.grpcConnection, err = grpc.DialContext(ctx, scheduler.serverAddress+":"+fmt.Sprint(scheduler.serverPort),
+			grpc.WithBlock(), grpc.WithInsecure())
+		if err != nil {
+			logger.Err("GRPC connect dial to order service failed, err: %s", err.Error())
+			return err
+		}
+		scheduler.orderClient = protoOrder.NewOrderServiceClient(scheduler.grpcConnection)
+	}
+	return nil
 }
 
 func (scheduler *SchedulerService) Scheduler(ctx context.Context) {
-	go scheduler.doSchedule(ctx)
-}
-
-func (scheduler *SchedulerService) doSchedule(ctx context.Context) {
-
-	schCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	//for _, data := range schedulerData {
-	go scheduler.scheduleProcess(schCtx)
-	//}
-	//for {
-	select {
-	case <-ctx.Done():
-		return
-		//default:
+	for _, state := range scheduler.states {
+		go scheduler.scheduleProcess(ctx, state)
 	}
-	//}
 }
 
-func (scheduler *SchedulerService) scheduleProcess(ctx context.Context) {
+func (scheduler *SchedulerService) scheduleProcess(ctx context.Context, state states.IEnumState) {
 
-	heartbeat := scheduler.worker(ctx, time.Duration(1*time.Minute), time.Duration(1*time.Hour))
-	const timeout = 5 * time.Minute
+	stewardCtx, stewardCtxCancel := context.WithCancel(context.Background())
+	stewardWorkerFn := scheduler.stewardFn(utils.ORContext(ctx, stewardCtx), scheduler.schedulerWorkerTimeout, scheduler.schedulerInterval, state, scheduler.worker)
+	heartbeat := stewardWorkerFn(ctx, scheduler.schedulerStewardTimeout)
+	stewardTimer := time.NewTimer(scheduler.schedulerStewardTimeout * 2)
 
 	for {
 		select {
 		case <-ctx.Done():
+			logger.Audit("scheduleProcess() => stewardWorkerFn goroutine context down!, state: %s", state.StateName())
+			stewardTimer.Stop()
 			return
 		case _, ok := <-heartbeat:
 			if ok == false {
-				logger.Audit("heartbeat of worker scheduler closed, state: %s", scheduler.state.StateName())
-				//heartbeat = scheduler.worker(ctx, time.Duration(1 * time.Second), time.Duration(10 * time.Second), model)
-				return
+				logger.Audit("scheduleProcess() => heartbeat of stewardWorkerFn closed, state: %s", state.StateName())
+				stewardCtxCancel()
+				stewardCtx, stewardCtxCancel = context.WithCancel(context.Background())
+				stewardWorkerFn := scheduler.stewardFn(utils.ORContext(ctx, stewardCtx), scheduler.schedulerWorkerTimeout, scheduler.schedulerInterval, state, scheduler.worker)
+				heartbeat = stewardWorkerFn(ctx, scheduler.schedulerStewardTimeout)
+				stewardTimer.Reset(scheduler.schedulerStewardTimeout * 2)
+			} else {
+				//logger.Audit("scheduleProcess() => heartbeat stewardWorkerFn , state: %s", state.StateName())
+				stewardTimer.Stop()
+				stewardTimer.Reset(scheduler.schedulerStewardTimeout * 2)
 			}
 
-			//logger.Audit("heartbeat pulse")
-
-		case <-time.After(timeout):
-			logger.Audit("worker goroutine is not healthy!, state: %s", scheduler.state.StateName())
-			return
+		case <-stewardTimer.C:
+			logger.Audit("scheduleProcess() => stewardWorkerFn goroutine is not healthy!, state: %s", state.StateName())
+			stewardCtxCancel()
+			stewardCtx, stewardCtxCancel = context.WithCancel(context.Background())
+			stewardWorkerFn := scheduler.stewardFn(utils.ORContext(ctx, stewardCtx), scheduler.schedulerWorkerTimeout, scheduler.schedulerInterval, state, scheduler.worker)
+			heartbeat = stewardWorkerFn(ctx, scheduler.schedulerStewardTimeout)
+			stewardTimer.Reset(scheduler.schedulerStewardTimeout * 2)
 		}
 	}
 }
 
-func (scheduler *SchedulerService) worker(ctx context.Context, pulseInterval time.Duration,
-	scheduleInterval time.Duration) <-chan interface{} {
+func (scheduler *SchedulerService) stewardFn(ctx context.Context, wardPulseInterval time.Duration, wardScheduleInterval time.Duration, state states.IEnumState, startWorker startWardFn) startStewardFn {
+	return func(ctx context.Context, stewardPulse time.Duration) <-chan interface{} {
+		heartbeat := make(chan interface{}, 1)
+		go func() {
+			defer close(heartbeat)
 
+			var wardCtx context.Context
+			var wardCtxCancel context.CancelFunc
+			var wardHeartbeat <-chan interface{}
+			startWard := func() {
+				wardCtx, wardCtxCancel = context.WithCancel(context.Background())
+				wardHeartbeat = startWorker(utils.ORContext(ctx, wardCtx), wardPulseInterval, wardScheduleInterval, state)
+			}
+			startWard()
+			pulseTimer := time.NewTimer(stewardPulse)
+			wardTimer := time.NewTimer(wardPulseInterval * 2)
+
+			for {
+				select {
+				case <-pulseTimer.C:
+					select {
+					case heartbeat <- struct{}{}:
+					default:
+					}
+					pulseTimer.Reset(stewardPulse)
+
+				case <-wardHeartbeat:
+					//logger.Audit("wardHeartbeat , state: %s", state.StateName())
+					wardTimer.Stop()
+					wardTimer.Reset(wardPulseInterval * 2)
+
+				case <-wardTimer.C:
+					logger.Err("stewardFn() => ward unhealthy; restarting ward, state: %s", state.StateName())
+					wardCtxCancel()
+					startWard()
+					wardTimer.Reset(wardPulseInterval * 2)
+
+				case <-ctx.Done():
+					wardTimer.Stop()
+					logger.Audit("stewardFn() => context done . . ., state: %s, cause: %s", state.StateName(), ctx.Err())
+					return
+				}
+			}
+		}()
+		return heartbeat
+	}
+}
+
+func (scheduler *SchedulerService) worker(ctx context.Context, pulseInterval time.Duration,
+	scheduleInterval time.Duration, state states.IEnumState) <-chan interface{} {
+
+	logger.Audit("worker() => pulse: %d, schedule: %d , state: %s,", pulseInterval, scheduleInterval, state.StateName())
 	var heartbeat = make(chan interface{}, 1)
 	go func() {
 		defer close(heartbeat)
-		pulse := time.Tick(pulseInterval)
-		schedule := time.Tick(scheduleInterval)
+		pulseTimer := time.NewTimer(pulseInterval)
+		scheduleTimer := time.NewTimer(scheduleInterval)
 		sendPulse := func() {
 			select {
 			case heartbeat <- struct{}{}:
@@ -119,198 +204,225 @@ func (scheduler *SchedulerService) worker(ctx context.Context, pulseInterval tim
 		for {
 			select {
 			case <-ctx.Done():
+				pulseTimer.Stop()
+				scheduleTimer.Stop()
+				logger.Audit("worker() => context down, state: %s, cause: %s", state.StateName(), ctx.Err())
 				return
-			case <-pulse:
+			case <-pulseTimer.C:
+				//logger.Audit("worker() => send pulse, state: %s", state.StateName())
 				sendPulse()
-			case <-schedule:
-				scheduler.doProcess(ctx)
+				pulseTimer.Reset(pulseInterval)
+			case <-scheduleTimer.C:
+				//logger.Audit("worker() => schedule, state: %s", state.StateName())
+				scheduler.doProcess(ctx, state)
+				scheduleTimer.Reset(scheduleInterval)
 			}
 		}
 	}()
 	return heartbeat
 }
 
-// TODO Refactor
-func (scheduler *SchedulerService) doProcess(ctx context.Context) {
-	logger.Audit("doProcess called . . .")
-	time.Sleep(5 * time.Second)
+func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.IEnumState) {
+	logger.Audit("doProcess() => state: %s", state.StateName())
+	var perPage = int64(25)
 
-	var perPage = int64(16)
-	//var page = 1
-
-	totalCount, err := scheduler.getTotalCount(ctx)
+	totalCount, err := scheduler.getTotalCount(ctx, state)
 	if err != nil {
-		logger.Err("scheduler worker doProcess() => getTotalCount failed, state: %s", scheduler.state.StateName())
+		logger.Err("scheduler worker doProcess() => getTotalCount failed, states: %s", state.StateName())
 		return
 	}
 
-	for page := int64(1); page < totalCount/perPage; page++ {
-		statesList, total, err := scheduler.findAllWithPage(ctx, page, perPage)
+	for page := int64(1); page <= (totalCount/perPage)+1; page++ {
+		orderList, _, err := scheduler.findAllWithPage(ctx, state, page, perPage)
 		if err != nil {
-			logger.Err("scheduler worker doProcess() => findAllWithPage failed, state: %s", scheduler.state.StateName())
+			logger.Err("scheduler worker doProcess() => findAllWithPage failed, states: %s", state.StateName())
 			return
 		}
 
-		for _, stateSchedule := range statesList {
-			subpackages := make([]*order.ActionData_Subpackage, 0, len(actionRequest.Data.Subpackages))
-			for _, subPkgRequest := range actionRequest.Data.Subpackages {
-				subpackageItems := make([]*order.ActionData_Subpackage_Item, 0, len(subPkgRequest.Items))
-				for _, subPkgItem := range subPkgRequest.Items {
-					subpackageItem := &order.ActionData_Subpackage_Item{
-						InventoryId: subPkgItem.InventoryId,
-						Quantity:    int32(subPkgItem.Quantity),
-						Reasons:     subPkgItem.Reasons,
+		if len(orderList) == 0 {
+			return
+		}
+
+		var orderRequestList []*protoOrder.SchedulerActionRequest_Order = nil
+		for i := 0; i < len(orderList); i++ {
+			var packageList []*protoOrder.SchedulerActionRequest_Order_Package = nil
+			var orderReq *protoOrder.SchedulerActionRequest_Order = nil
+			for j := 0; j < len(orderList[i].Packages); j++ {
+				var subpackageList []*protoOrder.SchedulerActionRequest_Order_Package_Subpackage = nil
+				var pkg *protoOrder.SchedulerActionRequest_Order_Package = nil
+				for k := 0; k < len(orderList[i].Packages[j].Subpackages); k++ {
+					scheduler := scheduler.checkExpiredTime(orderList[i].Packages[j].Subpackages[k])
+					if scheduler == nil {
+						continue
 					}
-					subpackageItems = append(subpackageItems, subpackageItem)
+
+					if packageList == nil {
+						packageList = make([]*protoOrder.SchedulerActionRequest_Order_Package, 0, len(orderList[i].Packages))
+					}
+
+					if orderReq == nil {
+						orderReq = &protoOrder.SchedulerActionRequest_Order{
+							OID:         orderList[i].Packages[j].Subpackages[k].OrderId,
+							ActionType:  "",
+							ActionState: scheduler.Action,
+							StateIndex:  orderList[i].Packages[j].Subpackages[k].Sidx,
+							Packages:    packageList,
+						}
+					}
+
+					if subpackageList == nil {
+						subpackageList = make([]*protoOrder.SchedulerActionRequest_Order_Package_Subpackage, 0, len(orderList[i].Packages[j].Subpackages))
+					}
+
+					if pkg == nil {
+						pkg = &protoOrder.SchedulerActionRequest_Order_Package{
+							PID:         orderList[i].Packages[j].Subpackages[k].Pid,
+							Subpackages: subpackageList,
+						}
+					}
+
+					subpkg := &protoOrder.SchedulerActionRequest_Order_Package_Subpackage{
+						SID:   orderList[i].Packages[j].Subpackages[k].SId,
+						Items: nil,
+					}
+
+					itemList := make([]*protoOrder.SchedulerActionRequest_Order_Package_Subpackage_Item, 0, len(orderList[i].Packages[j].Subpackages[k].Items))
+					for z := 0; z < len(orderList[i].Packages[j].Subpackages[k].Items); z++ {
+						subpackageItem := &protoOrder.SchedulerActionRequest_Order_Package_Subpackage_Item{
+							InventoryId: orderList[i].Packages[j].Subpackages[k].Items[z].InventoryId,
+							Quantity:    orderList[i].Packages[j].Subpackages[k].Items[z].Quantity,
+						}
+
+						itemList = append(itemList, subpackageItem)
+					}
+
+					subpkg.Items = itemList
+					subpackageList = append(subpackageList, subpkg)
+					pkg.Subpackages = subpackageList
+				}
+				if packageList != nil {
+					packageList = append(packageList, pkg)
+					if orderReq != nil {
+						orderReq.Packages = packageList
+					}
+				}
+			}
+
+			if orderReq != nil {
+				if orderRequestList == nil {
+					orderRequestList = make([]*protoOrder.SchedulerActionRequest_Order, 0, len(orderList))
 				}
 
-				subpackage := &order.ActionData_Subpackage{
-					SID:   subPkgRequest.SID,
-					Items: subpackageItems,
-				}
-
-				subpackages = append(subpackages, subpackage)
-			}
-
-			actionData := &order.ActionData{
-				Subpackages:    subpackages,
-				Carrier:        actionRequest.Data.Carrier,
-				TrackingNumber: actionRequest.Data.TrackingNumber,
-			}
-
-			serializedData, err := proto.Marshal(actionData)
-			if err != nil {
-				logger.Err("OrderAction() => could not serialize pbOrder.ActionData, request: %v, error:%s", actionRequest, err)
-				return
-			}
-
-			msgReq := &order.MessageRequest{
-				Name:   "",
-				Type:   string(ActionReqType),
-				ADT:    string(SingleType),
-				Method: string(PostMethod),
-				Time:   ptypes.TimestampNow(),
-				Meta: &order.RequestMetadata{
-					UID:     actionRequest.UID,
-					UTP:     string(utp),
-					OID:     actionRequest.OID,
-					PID:     actionRequest.PID,
-					SIDs:    nil,
-					Page:    0,
-					PerPage: 0,
-					//IpAddress: ipAddress,
-					Action: &order.MetaAction{
-						ActionType:  actionRequest.Type,
-						ActionState: string(action),
-						StateIndex:  int32(actionRequest.SIdx),
-					},
-					Sorts:   nil,
-					Filters: nil,
-				},
-				Data: &any.Any{
-					TypeUrl: "baman.io/" + proto.MessageName(actionData),
-					Value:   serializedData,
-				},
-			}
-
-			response, err := scheduler.orderClient.SchedulerMessageHandler(ctx, msgReq)
-			if err != nil {
-				logger.Err(err.Error())
-				return
-			}
-
-			var actionResponse order.ActionResponse
-			if err := ptypes.UnmarshalAny(response.Data, &actionResponse); err != nil {
-				logger.Err("Could not unmarshal actionResponse from response anything field, request: %v, error %s", msgReq, err)
-				return
+				orderRequestList = append(orderRequestList, orderReq)
 			}
 		}
 
-		if total != totalCount {
-			page = 1
-			totalCount = total
+		if orderRequestList == nil {
+			continue
+		}
+
+		request := &protoOrder.SchedulerActionRequest{
+			Orders: orderRequestList,
+		}
+
+		serializedData, err := proto.Marshal(request)
+		if err != nil {
+			logger.Err("scheduler worker doProcess() => could not serialize protoOrder.SchedulerActionRequest, state: %s error:%s", state.StateName(), err)
+			return
+		}
+
+		msgReq := &protoOrder.MessageRequest{
+			Name:   "",
+			Type:   "Action",
+			ADT:    "List",
+			Method: "",
+			Time:   ptypes.TimestampNow(),
+			Meta: &protoOrder.RequestMetadata{
+				UID:     0,
+				UTP:     "Scheduler",
+				OID:     0,
+				PID:     0,
+				SIDs:    nil,
+				Page:    0,
+				PerPage: 0,
+				//IpAddress: ipAddress,
+				Action:  nil,
+				Sorts:   nil,
+				Filters: nil,
+			},
+			Data: &any.Any{
+				TypeUrl: "baman.io/" + proto.MessageName(request),
+				Value:   serializedData,
+			},
+		}
+
+		err = scheduler.ConnectToOrderService()
+		if err != nil {
+			logger.Err("scheduler worker doProcess() => scheduler.ConnectToOrderService failed, error: %s", err)
+			return
+		}
+
+		_, err = scheduler.orderClient.SchedulerMessageHandler(ctx, msgReq)
+		if err != nil {
+			logger.Err("scheduler worker doProcess() => scheduler.orderClient.SchedulerMessageHandler failed, error: %s", err)
+			return
+		}
+
+		select {
+		case <-ctx.Done():
+			logger.Audit("scheduler worker doProcess() => context down, state: %s, cause: %s", state.StateName(), ctx.Err())
+			return
+		default:
 		}
 	}
 
-	select {
-	case <-ctx.Done():
-		return
-	default:
-	}
-
-	//var expiredOrderMap = make(map[uint64]map[uint64]*events.ISchedulerEvent, 64)
-
-	// iterate through all documents
-	//for cursor.Next(ctx) {
-	//	var fetchData fetchItemData
-	//	// decode the document
-	//	if err := cursor.Decode(&fetchData); err != nil {
-	//		logger.Err("scheduler.mongoAdapter.Aggregate failed, step: %s, action: %s,  error: %s",
-	//			data.Step, data.Action, err)
-	//		return
-	//	}
-
-	if scheduler.checkExpiredTime(&fetchData) {
-		if sellerMap, isFindOrder := expiredOrderMap[fetchData.OrderId]; isFindOrder {
-			if schedulerEvent, isFindSeller := sellerMap[fetchData.PId]; isFindSeller {
-				schedulerEvent.ItemsId = append(schedulerEvent.ItemsId, fetchData.ItemId)
-			} else {
-				newEvent := &events.ISchedulerEvent{
-					OrderId:    fetchData.OrderId,
-					PId:        fetchData.PId,
-					ItemsId:    nil,
-					StateIndex: fetchData.StepIndex,
-					Action:     fetchData.ActionHistory[0].ActionName,
-				}
-
-				newEvent.ItemsId = make([]uint64, 0, 16)
-				newEvent.ItemsId = append(newEvent.ItemsId, fetchData.ItemId)
-				expiredOrderMap[fetchData.OrderId][fetchData.PId] = newEvent
-			}
-		} else {
-			newEvent := &events.ISchedulerEvent{
-				OrderId:    fetchData.OrderId,
-				PId:        fetchData.PId,
-				ItemsId:    nil,
-				StateIndex: fetchData.StepIndex,
-				Action:     fetchData.ActionHistory[0].ActionName,
-			}
-
-			newEvent.ItemsId = make([]uint64, 0, 16)
-			newEvent.ItemsId = append(newEvent.ItemsId, fetchData.ItemId)
-
-			expiredOrderMap[fetchData.OrderId] = make(map[uint64]*events.ISchedulerEvent, 16)
-			expiredOrderMap[fetchData.OrderId][fetchData.PId] = newEvent
-		}
-	}
+	//if total != totalCount {
+	//	page = 1
+	//	totalCount = total
 	//}
+	//
+}
 
-	for _, sellerMap := range expiredOrderMap {
-		for _, schedulerEvent := range sellerMap {
-			scheduler.flowManager.SchedulerEvents(*schedulerEvent)
+func (scheduler *SchedulerService) checkExpiredTime(subpackage Subpackage) *Scheduler {
+	if len(subpackage.Scheduler) == 1 {
+		if subpackage.Scheduler[0].Value.Before(time.Now().UTC()) && subpackage.Scheduler[0].Enabled {
+			logger.Audit("action expired, "+
+				"orderId: %d, sid: %d, stateName: %s, stateIndex: %d, actionName: %s, expiredTime: %s ",
+				subpackage.OrderId, subpackage.SId, states.FromIndex(int32(subpackage.Sidx)).StateName(),
+				subpackage.Sidx, subpackage.Scheduler[0].Action, subpackage.Scheduler[0].Value)
+			return &subpackage.Scheduler[0]
 		}
+	} else {
+		sortedScheduler := make([]*Scheduler, 0, len(subpackage.Scheduler))
+		for i := 0; i < len(subpackage.Scheduler); i++ {
+			sortedScheduler[i] = &subpackage.Scheduler[i]
+			for j := i + 1; j < len(subpackage.Scheduler); j++ {
+				if sortedScheduler[i].Index > subpackage.Scheduler[j].Index {
+					sortedScheduler[i] = &subpackage.Scheduler[j]
+				}
+			}
+		}
+
+		var sche *Scheduler = nil
+		for i := 0; i < len(sortedScheduler); i++ {
+			if sortedScheduler[i].Value.Before(time.Now().UTC()) && sortedScheduler[i].Enabled {
+				sche = sortedScheduler[i]
+			}
+		}
+
+		return sche
 	}
+
+	return nil
 }
 
-func (scheduler *SchedulerService) checkExpiredTime(fetchData *fetchItemData) bool {
-	if fetchData.ActionHistory[0].ExpiredTime.Before(time.Now().UTC()) {
-		logger.Audit("action expired, "+
-			"orderId: %d, sid: %d, stepName: %s, stepIndex: %d, actionName: %s, expiredTime: %s ",
-			fetchData.OrderId, fetchData.ItemId, fetchData.StepName, fetchData.StepIndex,
-			fetchData.ActionHistory[0].ActionName, fetchData.ActionHistory[0].ExpiredTime)
-		return true
-	}
+func (scheduler *SchedulerService) findAllWithPage(ctx context.Context, state states.IEnumState, page, perPage int64) ([]*Order, int64, error) {
 
-	return false
-}
-
-func (scheduler *SchedulerService) findAllWithPage(ctx context.Context, page, perPage int64) ([]*StateScheduler, int64, error) {
-
-	if page < 0 || perPage == 0 {
+	if page <= 0 || perPage <= 0 {
 		return nil, 0, errors.New("neither offset nor start can be zero")
 	}
 
-	var totalCount, err = scheduler.getTotalCount(ctx)
+	var totalCount, err = scheduler.getTotalCount(ctx, state)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "FindAllWithPage Subpackage Failed")
 	}
@@ -342,18 +454,28 @@ func (scheduler *SchedulerService) findAllWithPage(ctx context.Context, page, pe
 	}
 
 	pipeline := []bson.M{
-		{"$match": bson.M{"deletedAt": nil, "packages.subpackages.tracking.state.name": scheduler.state.StateName()}},
+		{"$match": bson.M{"deletedAt": nil, "packages.subpackages.status": state.StateName()}},
+		{"$skip": offset},
+		{"$limit": perPage},
 		{"$unwind": "$packages"},
 		{"$unwind": "$packages.subpackages"},
-		{"$match": bson.M{"packages.subpackages.tracking.state.name": scheduler.state.StateName()}},
+		{"$match": bson.M{"packages.subpackages.status": state.StateName()}},
 		{"$project": bson.M{
-			"_id":     0,
-			"orderId": "$packages.subpackages.orderId",
-			"pid":     "$packages.subpackages.pid",
-			"sid":     "$packages.subpackages.sid",
-			"sidx":    "$packages.subpackages.tracking.state.index",
-			"data":    "$packages.subpackages.tracking.state.data.scheduler",
-			"items":   "$packages.subpackages.items",
+			"packages.subpackages.pid":                           1,
+			"packages.subpackages.orderId":                       1,
+			"packages.subpackages.sid":                           1,
+			"packages.subpackages.items":                         1,
+			"packages.subpackages.tracking.state.index":          1,
+			"packages.subpackages.tracking.state.data.scheduler": 1,
+		}},
+		{"$replaceRoot": bson.M{"newRoot": "$packages.subpackages"}},
+		{"$project": bson.M{
+			"sidx":      "$tracking.state.index",
+			"scheduler": "$tracking.state.data.scheduler",
+			"items":     1,
+			"sid":       1,
+			"pid":       1,
+			"orderId":   1,
 		}},
 		{"$project": bson.M{
 			"items.extended":   0,
@@ -368,6 +490,12 @@ func (scheduler *SchedulerService) findAllWithPage(ctx context.Context, page, pe
 			"items.title":      0,
 			"items.sku":        0,
 		}},
+		{"$group": bson.M{"_id": bson.M{"oid": "$orderId", "pid": "$pid"},
+			"subpackages": bson.M{"$push": "$$ROOT"}},
+		},
+		{"$project": bson.M{"oid": "$_id.oid", "subpackages": 1, "_id": 0}},
+		{"$group": bson.M{"_id": "$oid", "packages": bson.M{"$push": "$$ROOT"}}},
+		{"$project": bson.M{"_id": 0, "packages.oid": 0}},
 	}
 
 	cursor, err := scheduler.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
@@ -377,30 +505,30 @@ func (scheduler *SchedulerService) findAllWithPage(ctx context.Context, page, pe
 
 	defer closeCursor(ctx, cursor)
 
-	stateSchedulers := make([]*StateScheduler, 0, perPage)
+	orders := make([]*Order, 0, perPage)
 
 	for cursor.Next(ctx) {
-		var stateScheduler StateScheduler
-		if err := cursor.Decode(&stateScheduler); err != nil {
+		var oneOrder Order
+		if err := cursor.Decode(&oneOrder); err != nil {
 			return nil, 0, errors.Wrap(err, "cursor.Decode failed")
 		}
 
-		stateSchedulers = append(stateSchedulers, &stateScheduler)
+		orders = append(orders, &oneOrder)
 	}
 
-	return stateSchedulers, totalCount, nil
+	return orders, totalCount, nil
 }
 
-func (scheduler *SchedulerService) getTotalCount(ctx context.Context) (int64, error) {
+func (scheduler *SchedulerService) getTotalCount(ctx context.Context, state states.IEnumState) (int64, error) {
 	var total struct {
 		Count int
 	}
 
 	totalCountPipeline := []bson.M{
-		{"$match": bson.M{"deletedAt": nil, "packages.subpackages.tracking.state.name": scheduler.state.StateName()}},
+		{"$match": bson.M{"deletedAt": nil, "packages.subpackages.status": state.StateName()}},
 		{"$unwind": "$packages"},
 		{"$unwind": "$packages.subpackages"},
-		{"$match": bson.M{"packages.subpackages.tracking.state.name": scheduler.state.StateName()}},
+		{"$match": bson.M{"packages.subpackages.status": state.StateName()}},
 		{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 		{"$project": bson.M{"_id": 0, "count": 1}},
 	}

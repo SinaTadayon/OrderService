@@ -524,12 +524,13 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 			logger.Err("EventHandler => stateIndex invalid, event: %v, error: %s ", event, err)
 			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 				SetError(future.InternalError, "Unknown Err", err).Send()
+			return
 		}
 
 		if state, ok := flowManager.statesMap[state]; ok {
 			state.Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItem).Build())
 		} else {
-			logger.Err("EventHandler => state in flowManager.statesMap no found, state: %s, event: %v, error: %s ", state, event, err)
+			logger.Err("EventHandler => state in flowManager.statesMap no found, state: %s, event: %v, error: %s ", state.Name(), event, err)
 			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 				SetError(future.InternalError, "Unknown Err", err).Send()
 		}

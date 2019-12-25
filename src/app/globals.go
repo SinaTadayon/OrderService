@@ -25,8 +25,28 @@ const (
 )
 
 const (
+	HourTimeUnit     string = "hour"
+	MinuteTimeUnit   string = "minute"
+	SecondTimeUnit   string = "second"
+	DurationTimeUnit string = "duration"
+)
+
+const (
 	DatabaseName   string = "orderService"
 	CollectionName string = "orders"
+
+	FlowManagerSchedulerStateTimeUintConfig              string = "SchedulerStateTimeUint"
+	FlowManagerSchedulerSellerReactionTimeConfig         string = "SchedulerSellerReactionTime"
+	FlowManagerSchedulerApprovalPendingStateConfig       string = "SchedulerApprovalPendingState"
+	FlowManagerSchedulerShipmentPendingStateConfig       string = "SchedulerShipmentPendingState"
+	FlowManagerSchedulerShippedStateConfig               string = "SchedulerShippedState"
+	FlowManagerSchedulerDeliveryPendingStateConfig       string = "SchedulerDeliveryPendingState"
+	FlowManagerSchedulerNotifyDeliveryPendingStateConfig string = "SchedulerNotifyDeliveryPendingState"
+	FlowManagerSchedulerDeliveredStateConfig             string = "SchedulerDeliveredState"
+	FlowManagerSchedulerReturnShippedStateConfig         string = "SchedulerReturnShippedState"
+	FlowManagerSchedulerReturnRequestPendingStateConfig  string = "SchedulerReturnRequestPendingState"
+	FlowManagerSchedulerReturnShipmentPendingStateConfig string = "SchedulerReturnShipmentPendingState"
+	FlowManagerSchedulerReturnDeliveredStateConfig       string = "SchedulerReturnDeliveredState"
 )
 
 var Globals struct {
@@ -41,6 +61,7 @@ var Globals struct {
 	NotifyService     notify_service.INotificationService
 	UserService       user_service.IUserService
 	VoucherService    voucher_service.IVoucherService
+	FlowManagerConfig map[string]interface{}
 }
 
 func SetupMongoDriver(config configs.Config) (*mongoadapter.Mongo, error) {

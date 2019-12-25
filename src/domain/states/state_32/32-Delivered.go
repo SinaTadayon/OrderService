@@ -55,18 +55,41 @@ func (state shipmentDeliveredState) Process(ctx context.Context, iFrame frame.IF
 			return
 		}
 
-		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
-		if !ok {
-			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, pid: %d, sid: %d, %s state ",
-				subpackages[0].OrderId, subpackages[0].PId, subpackages[0].SId, state.Name())
-			return
+		//pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
+		//if !ok {
+		//	logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, pid: %d, sid: %d, %s state ",
+		//		subpackages[0].OrderId, subpackages[0].PId, subpackages[0].SId, state.Name())
+		//	return
+		//}
+
+		var expireTime time.Time
+		value, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerDeliveredStateConfig].(time.Duration)
+		if ok {
+			expireTime = time.Now().UTC().Add(value)
+		} else {
+			timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
+			if timeUnit == string(app.HourTimeUnit) {
+				expireTime = time.Now().UTC().Add(
+					time.Hour*time.Duration(value) +
+						time.Minute*time.Duration(0) +
+						time.Second*time.Duration(0))
+			} else {
+				expireTime = time.Now().UTC().Add(
+					time.Hour*time.Duration(0) +
+						time.Minute*time.Duration(value) +
+						time.Second*time.Duration(0))
+			}
+
+			//expireTime = time.Now().UTC().Add(
+			//	time.Hour*time.Duration(value) +
+			//		time.Minute*time.Duration(0) +
+			//		time.Second*time.Duration(0))
 		}
 
-		// TODO must be read from reids config
-		expireTime := time.Now().UTC().Add(time.Hour*
-			time.Duration(pkgItem.ShipmentSpec.ReturnTime) +
-			time.Minute*time.Duration(0) +
-			time.Second*time.Duration(0))
+		//expireTime := time.Now().UTC().Add(time.Hour*
+		//	time.Duration(pkgItem.ShipmentSpec.ReturnTime) +
+		//	time.Minute*time.Duration(0) +
+		//	time.Second*time.Duration(0))
 
 		for i := 0; i < len(subpackages); i++ {
 			state.UpdateSubPackage(ctx, subpackages[i], nil)
@@ -76,6 +99,8 @@ func (state shipmentDeliveredState) Process(ctx context.Context, iFrame frame.IF
 						"expireAt",
 						expireTime,
 						scheduler_action.Close.ActionName(),
+						0,
+						true,
 					},
 				},
 			}
