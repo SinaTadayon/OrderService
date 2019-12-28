@@ -92,8 +92,8 @@ services:
       - MONGO_PORT=27017
       - RPC_HOST_PORT=3010
       - HTTP_HOST_PORT=3011
-      - REDIRECT_URL_ADDRESS="https://bamanshop.com/payment/redirect"
-      - ASAN_PARDAKHT_URL="https://rest.asanpardakht.net"
+      - REDIRECT_URL_ADDRESS=https://bamanshop.com/payment/redirect
+      - ASAN_PARDAKHT_URL=https://rest.asanpardakht.net
       - ASAN_PARDAKHT_CONF_ID=0
       - ASAN_PARDAKHT_USER_NAME=
       - ASAN_PARDAKHT_PASS=
