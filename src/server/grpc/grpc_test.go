@@ -5318,7 +5318,7 @@ func TestReturnShipmentPending_SchedulerClose_All(t *testing.T) {
 			IpAddress: "",
 			Action: &pb.MetaAction{
 				ActionType:  "",
-				ActionState: string(CloseAction),
+				ActionState: string(CancelAction),
 				StateIndex:  50,
 			},
 			Sorts:   nil,
@@ -5355,7 +5355,7 @@ func TestReturnShipmentPending_SchedulerClose_All(t *testing.T) {
 	require.Equal(t, lastOrder.Packages[0].Subpackages[0].SId, actionResponse.SIDs[0])
 }
 
-func TestReturnRejectRequest_OperatorAccept_All(t *testing.T) {
+func TestReturnRequestReject_OperatorAccept_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
 		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
@@ -5483,7 +5483,7 @@ func TestReturnRejectRequest_OperatorAccept_All(t *testing.T) {
 	require.Equal(t, lastOrder.Packages[0].Subpackages[0].SId, actionResponse.SIDs[0])
 }
 
-func TestReturnRejectRequest_OperatorReject_All(t *testing.T) {
+func TestReturnRequestReject_OperatorReject_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
 		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
@@ -5965,7 +5965,7 @@ func TestReturnDelivered_SchedulerClose_All(t *testing.T) {
 			IpAddress: "",
 			Action: &pb.MetaAction{
 				ActionType:  "",
-				ActionState: string(CloseAction),
+				ActionState: string(AcceptAction),
 				StateIndex:  52,
 			},
 			Sorts:   nil,

@@ -34,6 +34,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states/state_36"
 	"gitlab.faza.io/order-project/order-service/domain/states/state_40"
 	"gitlab.faza.io/order-project/order-service/domain/states/state_41"
+	"gitlab.faza.io/order-project/order-service/domain/states/state_42"
 	"gitlab.faza.io/order-project/order-service/domain/states/state_50"
 	"gitlab.faza.io/order-project/order-service/domain/states/state_51"
 	"gitlab.faza.io/order-project/order-service/domain/states/state_52"
@@ -122,9 +123,9 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
-		seller_action.New(seller_action.Reject):      flowManager.statesMap[states.ReturnRejected],
-		seller_action.New(seller_action.Accept):      flowManager.statesMap[states.PayToBuyer],
-		scheduler_action.New(scheduler_action.Close): flowManager.statesMap[states.PayToBuyer],
+		seller_action.New(seller_action.Reject):       flowManager.statesMap[states.ReturnRejected],
+		seller_action.New(seller_action.Accept):       flowManager.statesMap[states.PayToBuyer],
+		scheduler_action.New(scheduler_action.Accept): flowManager.statesMap[states.PayToBuyer],
 	}
 	childStates = []states.IState{
 		flowManager.statesMap[states.PayToBuyer],
@@ -176,7 +177,7 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
 		buyer_action.New(buyer_action.Cancel):              flowManager.statesMap[states.PayToSeller],
-		scheduler_action.New(scheduler_action.Close):       flowManager.statesMap[states.PayToSeller],
+		scheduler_action.New(scheduler_action.Cancel):      flowManager.statesMap[states.PayToSeller],
 		buyer_action.New(buyer_action.EnterShipmentDetail): flowManager.statesMap[states.ReturnShipped],
 	}
 	childStates = []states.IState{
@@ -186,6 +187,17 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	state = state_50.New(childStates, emptyState, actionStateMap)
 	// add to flowManager maps
 	flowManager.statesMap[states.ReturnShipmentPending] = state
+
+	////////////////////////////////////////////////////////////////////
+	actionStateMap = map[actions.IAction]states.IState{
+		system_action.New(system_action.Close): flowManager.statesMap[states.PayToSeller],
+	}
+	childStates = []states.IState{
+		flowManager.statesMap[states.PayToSeller],
+	}
+	state = state_42.New(childStates, emptyState, actionStateMap)
+	// add to flowManager maps
+	flowManager.statesMap[states.ReturnCanceled] = state
 
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
@@ -202,12 +214,13 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
-		buyer_action.New(buyer_action.Cancel):         flowManager.statesMap[states.PayToSeller],
+		buyer_action.New(buyer_action.Cancel):         flowManager.statesMap[states.ReturnCanceled],
 		seller_action.New(seller_action.Reject):       flowManager.statesMap[states.ReturnRequestRejected],
 		seller_action.New(seller_action.Accept):       flowManager.statesMap[states.ReturnShipmentPending],
 		scheduler_action.New(scheduler_action.Accept): flowManager.statesMap[states.ReturnShipmentPending],
 	}
 	childStates = []states.IState{
+		flowManager.statesMap[states.ReturnCanceled],
 		flowManager.statesMap[states.PayToSeller],
 		flowManager.statesMap[states.ReturnShipmentPending],
 	}
@@ -230,7 +243,7 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
-		system_action.New(system_action.NextToState): flowManager.statesMap[states.PayToBuyer],
+		system_action.New(system_action.Close): flowManager.statesMap[states.PayToBuyer],
 	}
 	childStates = []states.IState{
 		flowManager.statesMap[states.PayToBuyer],

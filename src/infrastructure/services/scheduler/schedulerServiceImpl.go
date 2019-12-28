@@ -401,7 +401,7 @@ func (scheduler *SchedulerService) checkExpiredTime(subpackage Subpackage) *Sche
 	} else {
 		sortedScheduler := make([]*Scheduler, 0, len(subpackage.Scheduler))
 		for i := 0; i < len(subpackage.Scheduler); i++ {
-			sortedScheduler[i] = &subpackage.Scheduler[i]
+			sortedScheduler = append(sortedScheduler, &subpackage.Scheduler[i])
 			for j := i + 1; j < len(subpackage.Scheduler); j++ {
 				if sortedScheduler[i].Index > subpackage.Scheduler[j].Index {
 					sortedScheduler[i] = &subpackage.Scheduler[j]

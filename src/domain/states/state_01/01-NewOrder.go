@@ -46,18 +46,18 @@ func (state newOrderState) Process(ctx context.Context, iFrame frame.IFrame) {
 
 	order := iFrame.Header().Value(string(frame.HeaderOrder)).(*entities.Order)
 	action := &entities.Action{
-		Name:       state.Actions()[0].ActionEnum().ActionName(),
-		Type:       "",
-		UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
-		UTP:        state.Actions()[0].ActionType().ActionName(),
-		Permission: "",
-		Privilege:  "",
-		Policy:     "",
-		Result:     string(states.ActionSuccess),
-		Reasons:    nil,
-		Data:       nil,
-		CreatedAt:  time.Now().UTC(),
-		Extended:   nil,
+		Name:      state.Actions()[0].ActionEnum().ActionName(),
+		Type:      "",
+		UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+		UTP:       state.Actions()[0].ActionType().ActionName(),
+		Perm:      "",
+		Priv:      "",
+		Policy:    "",
+		Result:    string(states.ActionSuccess),
+		Reasons:   nil,
+		Data:      nil,
+		CreatedAt: time.Now().UTC(),
+		Extended:  nil,
 	}
 	state.UpdateOrderAllStatus(ctx, order, states.OrderNewStatus, states.PackageNewStatus, action)
 	newOrder, err := app.Globals.OrderRepository.Save(ctx, *order)

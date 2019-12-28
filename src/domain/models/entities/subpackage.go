@@ -105,18 +105,18 @@ type SchedulerData struct {
 	Get: "sample data"
 */
 type Action struct {
-	Name       string                 `bson:"name"`
-	Type       string                 `bson:"type"`
-	UId        uint64                 `bson:"uid"`
-	UTP        string                 `bson:"utp"`
-	Permission string                 `bson:"permission"`
-	Privilege  string                 `bson:"privilege"`
-	Policy     string                 `bson:"policy"`
-	Result     string                 `bson:"result"`
-	Reasons    []string               `bson:"reasons"`
-	Data       map[string]interface{} `bson:"data"`
-	CreatedAt  time.Time              `bson:"createdAt"`
-	Extended   map[string]interface{} `bson:"extended"`
+	Name      string                 `bson:"name"`
+	Type      string                 `bson:"type"`
+	UId       uint64                 `bson:"uid"`
+	UTP       string                 `bson:"utp"`
+	Perm      string                 `bson:"perm"`
+	Priv      string                 `bson:"priv"`
+	Policy    string                 `bson:"policy"`
+	Result    string                 `bson:"result"`
+	Reasons   []string               `bson:"reasons"`
+	Data      map[string]interface{} `bson:"data"`
+	CreatedAt time.Time              `bson:"createdAt"`
+	Extended  map[string]interface{} `bson:"extended"`
 }
 
 func (item Item) DeepCopy() *Item {
@@ -248,18 +248,18 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 
 	if subPkg.Tracking.Action != nil {
 		subPkg.Tracking.Action = &Action{
-			Name:       subpackage.Tracking.Action.Name,
-			Type:       subpackage.Tracking.Action.Type,
-			UId:        subpackage.Tracking.Action.UId,
-			UTP:        subpackage.Tracking.Action.UTP,
-			Permission: subpackage.Tracking.Action.Permission,
-			Privilege:  subpackage.Tracking.Action.Privilege,
-			Policy:     subpackage.Tracking.Action.Policy,
-			Result:     subpackage.Tracking.Action.Result,
-			Reasons:    subpackage.Tracking.Action.Reasons,
-			Data:       subpackage.Tracking.Action.Data,
-			CreatedAt:  subpackage.Tracking.Action.CreatedAt,
-			Extended:   subpackage.Tracking.Action.Extended,
+			Name:      subpackage.Tracking.Action.Name,
+			Type:      subpackage.Tracking.Action.Type,
+			UId:       subpackage.Tracking.Action.UId,
+			UTP:       subpackage.Tracking.Action.UTP,
+			Perm:      subpackage.Tracking.Action.Perm,
+			Priv:      subpackage.Tracking.Action.Priv,
+			Policy:    subpackage.Tracking.Action.Policy,
+			Result:    subpackage.Tracking.Action.Result,
+			Reasons:   subpackage.Tracking.Action.Reasons,
+			Data:      subpackage.Tracking.Action.Data,
+			CreatedAt: subpackage.Tracking.Action.CreatedAt,
+			Extended:  subpackage.Tracking.Action.Extended,
 		}
 		if subpackage.Tracking.Action.Reasons != nil {
 			subPkg.Tracking.Action.Reasons = make([]string, 0, len(subpackage.Tracking.Action.Reasons))
@@ -273,18 +273,18 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 		subPkg.Tracking.State.Actions = make([]Action, 0, len(subpackage.Tracking.State.Actions))
 		for _, action := range subpackage.Tracking.State.Actions {
 			newAction := Action{
-				Name:       action.Name,
-				Type:       action.Type,
-				UId:        action.UId,
-				UTP:        action.UTP,
-				Permission: action.Permission,
-				Privilege:  action.Privilege,
-				Policy:     action.Policy,
-				Result:     action.Result,
-				Reasons:    action.Reasons,
-				Data:       action.Data,
-				CreatedAt:  action.CreatedAt,
-				Extended:   action.Extended,
+				Name:      action.Name,
+				Type:      action.Type,
+				UId:       action.UId,
+				UTP:       action.UTP,
+				Perm:      action.Perm,
+				Priv:      action.Priv,
+				Policy:    action.Policy,
+				Result:    action.Result,
+				Reasons:   action.Reasons,
+				Data:      action.Data,
+				CreatedAt: action.CreatedAt,
+				Extended:  action.Extended,
 			}
 			if action.Reasons != nil {
 				newAction.Reasons = make([]string, 0, len(action.Reasons))

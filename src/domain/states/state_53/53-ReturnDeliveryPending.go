@@ -146,18 +146,18 @@ func (state returnDeliveryPendingState) Process(ctx context.Context, iFrame fram
 											newSubPkg.Items = make([]entities.Item, 0, len(eventSubPkg.Items))
 
 											requestAction = &entities.Action{
-												Name:       actionState.ActionEnum().ActionName(),
-												Type:       "",
-												UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
-												UTP:        actionState.ActionType().ActionName(),
-												Permission: "",
-												Privilege:  "",
-												Policy:     "",
-												Result:     string(states.ActionSuccess),
-												Reasons:    actionItem.Reasons,
-												Data:       nil,
-												CreatedAt:  time.Now().UTC(),
-												Extended:   nil,
+												Name:      actionState.ActionEnum().ActionName(),
+												Type:      "",
+												UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+												UTP:       actionState.ActionType().ActionName(),
+												Perm:      "",
+												Priv:      "",
+												Policy:    "",
+												Result:    string(states.ActionSuccess),
+												Reasons:   actionItem.Reasons,
+												Data:      nil,
+												CreatedAt: time.Now().UTC(),
+												Extended:  nil,
 											}
 										}
 
@@ -182,18 +182,18 @@ func (state returnDeliveryPendingState) Process(ctx context.Context, iFrame fram
 										if fullItems == nil {
 											fullItems = make([]entities.Item, 0, len(pkgItem.Subpackages[i].Items))
 											requestAction = &entities.Action{
-												Name:       actionState.ActionEnum().ActionName(),
-												Type:       "",
-												UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
-												UTP:        actionState.ActionType().ActionName(),
-												Permission: "",
-												Privilege:  "",
-												Policy:     "",
-												Result:     string(states.ActionSuccess),
-												Reasons:    actionItem.Reasons,
-												Data:       nil,
-												CreatedAt:  time.Now().UTC(),
-												Extended:   nil,
+												Name:      actionState.ActionEnum().ActionName(),
+												Type:      "",
+												UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+												UTP:       actionState.ActionType().ActionName(),
+												Perm:      "",
+												Priv:      "",
+												Policy:    "",
+												Result:    string(states.ActionSuccess),
+												Reasons:   actionItem.Reasons,
+												Data:      nil,
+												CreatedAt: time.Now().UTC(),
+												Extended:  nil,
 											}
 										}
 										fullItems = append(fullItems, pkgItem.Subpackages[i].Items[j])
@@ -237,7 +237,7 @@ func (state returnDeliveryPendingState) Process(ctx context.Context, iFrame fram
 						state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
 						err := app.Globals.SubPkgRepository.Save(ctx, newSubPackages[i])
 						if err != nil {
-							logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
+							logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, pid: %d, event: %v, error: %s", state.Name(),
 								newSubPackages[i].OrderId, newSubPackages[i].PId, event, err.Error())
 							// TODO must distinct system error from update version error
 							future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
@@ -246,7 +246,7 @@ func (state returnDeliveryPendingState) Process(ctx context.Context, iFrame fram
 						}
 
 						pkgItem.Subpackages = append(pkgItem.Subpackages, *newSubPackages[i])
-						logger.Audit("Process() => Status of new subpackage update to %v event, orderId: %d, sellerId: %d, sid: %d",
+						logger.Audit("Process() => Status of new subpackage update to %v event, orderId: %d, pid: %d, sid: %d",
 							event, newSubPackages[i].OrderId, newSubPackages[i].PId, newSubPackages[i].SId)
 					} else {
 						state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
@@ -256,7 +256,7 @@ func (state returnDeliveryPendingState) Process(ctx context.Context, iFrame fram
 
 				pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 				if err != nil {
-					logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
+					logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, pid: %d, event: %v, error: %s", state.Name(),
 						pkgItem.OrderId, pkgItem.PId, event, err.Error())
 					// TODO must distinct system error from update version error
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).

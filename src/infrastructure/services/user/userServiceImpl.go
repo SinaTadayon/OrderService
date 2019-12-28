@@ -107,7 +107,7 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 
 	userProfile, err := userService.client.InternalUserGetOne("userId", sellerId, "", ctx)
 	if err != nil {
-		logger.Err("userService.client.InternalUserGetOne failed, sellerId: %s, error: %s", sellerId, err)
+		logger.Err("userService.client.InternalUserGetOne failed, pid: %s, error: %s", sellerId, err)
 		return future.Factory().SetCapacity(1).
 			SetError(future.NotFound, "sellerId Not Found", errors.Wrap(err, "sellerId Not Found")).
 			BuildAndSend()
@@ -225,14 +225,14 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 
 	timestamp, err := time.Parse(layout, userProfile.Data.CreatedAt)
 	if err != nil {
-		logger.Err("GetSellerProfile() => createdAt time parse failed, sellerId: %s, error: %s", sellerId, err)
+		logger.Err("GetSellerProfile() => createdAt time parse failed, pid: %s, error: %s", sellerId, err)
 		timestamp = time.Now()
 	}
 
 	sellerProfile.CreatedAt = timestamp
 	timestamp, err = time.Parse(layout, userProfile.Data.UpdatedAt)
 	if err != nil {
-		logger.Err("GetSellerProfile() => updatedAt time parse failed, sellerId: %s, error: %s", sellerId, err)
+		logger.Err("GetSellerProfile() => updatedAt time parse failed, pid: %s, error: %s", sellerId, err)
 		timestamp = time.Now()
 	}
 	sellerProfile.UpdatedAt = timestamp

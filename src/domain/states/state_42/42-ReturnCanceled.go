@@ -1,4 +1,4 @@
-package state_56
+package state_42
 
 import (
 	"context"
@@ -14,31 +14,31 @@ import (
 )
 
 const (
-	stepName  string = "Return_Delivery_Failed"
-	stepIndex int    = 56
+	stepName  string = "Return_Canceled"
+	stepIndex int    = 42
 )
 
-type returnDeliveryFailedState struct {
+type returnCanceledState struct {
 	*states.BaseStateImpl
 }
 
 func New(childes, parents []states.IState, actionStateMap map[actions.IAction]states.IState) states.IState {
-	return &returnDeliveryFailedState{states.NewBaseStep(stepName, stepIndex, childes, parents, actionStateMap)}
+	return &returnCanceledState{states.NewBaseStep(stepName, stepIndex, childes, parents, actionStateMap)}
 }
 
 func NewOf(name string, index int, childes, parents []states.IState, actionStateMap map[actions.IAction]states.IState) states.IState {
-	return &returnDeliveryFailedState{states.NewBaseStep(name, index, childes, parents, actionStateMap)}
+	return &returnCanceledState{states.NewBaseStep(name, index, childes, parents, actionStateMap)}
 }
 
 func NewFrom(base *states.BaseStateImpl) states.IState {
-	return &returnDeliveryFailedState{base}
+	return &returnCanceledState{base}
 }
 
 func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState {
 	panic("implementation required")
 }
 
-func (state returnDeliveryFailedState) Process(ctx context.Context, iFrame frame.IFrame) {
+func (state returnCanceledState) Process(ctx context.Context, iFrame frame.IFrame) {
 	if iFrame.Header().KeyExists(string(frame.HeaderSubpackages)) {
 		subpackages, ok := iFrame.Header().Value(string(frame.HeaderSubpackages)).([]*entities.Subpackage)
 		if !ok {

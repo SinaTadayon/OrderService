@@ -52,14 +52,14 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 		}
 
 		if iFrame.Body().Content() == nil {
-			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, sellerId: %d, sid: %d, %s state ",
+			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, pid: %d, sid: %d, %s state ",
 				subpackages[0].OrderId, subpackages[0].PId, subpackages[0].SId, state.Name())
 			return
 		}
 
 		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
 		if !ok {
-			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, sellerId: %d, sid: %d, %s state ",
+			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, pid: %d, sid: %d, %s state ",
 				subpackages[0].OrderId, subpackages[0].PId, subpackages[0].SId, state.Name())
 			return
 		}
@@ -186,7 +186,9 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 				return
 			}
 
-			if event.Action().ActionType() == actions.Scheduler && event.Action().ActionEnum() == scheduler_action.Notification {
+			if event.Action().ActionType() == actions.Scheduler &&
+				(event.Action().ActionEnum() == scheduler_action.Notification ||
+					event.Action().ActionEnum() == scheduler_action.Deliver) {
 				order, err := app.Globals.OrderRepository.FindById(ctx, pkgItem.OrderId)
 				if err != nil {
 					logger.Err("Process() => OrderRepository.FindById failed, state: %s, orderId: %d, pid: %d, error: %s",
@@ -210,33 +212,33 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 						logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, pid: %d, error: %s",
 							buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, futureData.Error().Reason())
 						requestAction = &entities.Action{
-							Name:       scheduler_action.Notification.ActionName(),
-							Type:       "",
-							UId:        0,
-							UTP:        actions.Scheduler.ActionName(),
-							Permission: "",
-							Privilege:  "",
-							Policy:     "",
-							Result:     string(states.ActionFail),
-							Reasons:    nil,
-							Data:       nil,
-							CreatedAt:  time.Now().UTC(),
-							Extended:   nil,
+							Name:      scheduler_action.Notification.ActionName(),
+							Type:      "",
+							UId:       0,
+							UTP:       actions.Scheduler.ActionName(),
+							Perm:      "",
+							Priv:      "",
+							Policy:    "",
+							Result:    string(states.ActionFail),
+							Reasons:   nil,
+							Data:      nil,
+							CreatedAt: time.Now().UTC(),
+							Extended:  nil,
 						}
 					} else {
 						requestAction = &entities.Action{
-							Name:       scheduler_action.Notification.ActionName(),
-							Type:       "",
-							UId:        0,
-							UTP:        actions.Scheduler.ActionName(),
-							Permission: "",
-							Privilege:  "",
-							Policy:     "",
-							Result:     string(states.ActionSuccess),
-							Reasons:    nil,
-							Data:       nil,
-							CreatedAt:  time.Now().UTC(),
-							Extended:   nil,
+							Name:      scheduler_action.Notification.ActionName(),
+							Type:      "",
+							UId:       0,
+							UTP:       actions.Scheduler.ActionName(),
+							Perm:      "",
+							Priv:      "",
+							Policy:    "",
+							Result:    string(states.ActionSuccess),
+							Reasons:   nil,
+							Data:      nil,
+							CreatedAt: time.Now().UTC(),
+							Extended:  nil,
 						}
 					}
 
@@ -244,22 +246,27 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 					for _, eventSubPkg := range actionData.SubPackages {
 						for i := 0; i < len(pkgItem.Subpackages); i++ {
 							if eventSubPkg.SId == pkgItem.Subpackages[i].SId && pkgItem.Subpackages[i].Status == state.Name() {
-								schedulerDataList := pkgItem.Subpackages[i].Tracking.State.Data["scheduler"].(primitive.A)
-								for _, data := range schedulerDataList {
-									schedulerData := data.(map[string]interface{})
-									if schedulerData["name"] == "notifyAt" {
-										schedulerData["enabled"] = false
-										sids = append(sids, pkgItem.Subpackages[i].SId)
-										state.UpdateSubPackage(ctx, &pkgItem.Subpackages[i], requestAction)
-										_, err := app.Globals.SubPkgRepository.Update(ctx, pkgItem.Subpackages[i])
-										if err != nil {
-											logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
-												pkgItem.Subpackages[i].OrderId, pkgItem.Subpackages[i].PId, event, err.Error())
-											future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-												SetError(future.InternalError, "Unknown Err", err).Send()
-											return
+								if pkgItem.Subpackages[i].Tracking.State.Data != nil && pkgItem.Subpackages[i].Tracking.State.Data["scheduler"] != nil {
+									schedulerDataList := pkgItem.Subpackages[i].Tracking.State.Data["scheduler"].(primitive.A)
+									for _, data := range schedulerDataList {
+										schedulerData := data.(map[string]interface{})
+										if schedulerData["name"] == "notifyAt" {
+											schedulerData["enabled"] = false
+											sids = append(sids, pkgItem.Subpackages[i].SId)
+											state.UpdateSubPackage(ctx, &pkgItem.Subpackages[i], requestAction)
+											_, err := app.Globals.SubPkgRepository.Update(ctx, pkgItem.Subpackages[i])
+											if err != nil {
+												logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, pid: %d, sid: %d, event: %v, error: %s", state.Name(),
+													pkgItem.Subpackages[i].OrderId, pkgItem.Subpackages[i].PId, pkgItem.Subpackages[i].SId, event, err.Error())
+												future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+													SetError(future.InternalError, "Unknown Err", err).Send()
+												return
+											}
 										}
 									}
+								} else {
+									logger.Err("Process() => Tracking.State.Data is nil, state: %s, orderId: %d, pid: %d, sid: %d, event: %v",
+										state.Name(), pkgItem.Subpackages[i].OrderId, pkgItem.Subpackages[i].PId, pkgItem.Subpackages[i].SId, event)
 								}
 							}
 						}
@@ -270,13 +277,18 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 						SIds:    sids,
 					}
 
-					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-						SetData(response).Send()
+					if event.Action().ActionEnum() == scheduler_action.Notification {
+						future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+							SetData(response).Send()
+					}
 
-					logger.Audit("Process() => NotifyService.NotifyBySMS success, buyerNotify: %v, state: %s, orderId: %d, sellerId: %d, error: %s",
+					logger.Audit("Process() => NotifyService.NotifyBySMS success, buyerNotify: %v, state: %s, orderId: %d, pid: %d, error: %s",
 						buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, futureData.Error().Reason())
 				}
-				return
+
+				if event.Action().ActionEnum() == scheduler_action.Notification {
+					return
+				}
 			}
 
 			var newSubPackages []*entities.Subpackage
@@ -326,18 +338,18 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 											newSubPkg.Items = make([]entities.Item, 0, len(eventSubPkg.Items))
 
 											requestAction = &entities.Action{
-												Name:       actionState.ActionEnum().ActionName(),
-												Type:       "",
-												UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
-												UTP:        actionState.ActionType().ActionName(),
-												Permission: "",
-												Privilege:  "",
-												Policy:     "",
-												Result:     string(states.ActionSuccess),
-												Reasons:    actionItem.Reasons,
-												Data:       nil,
-												CreatedAt:  time.Now().UTC(),
-												Extended:   nil,
+												Name:      actionState.ActionEnum().ActionName(),
+												Type:      "",
+												UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+												UTP:       actionState.ActionType().ActionName(),
+												Perm:      "",
+												Priv:      "",
+												Policy:    "",
+												Result:    string(states.ActionSuccess),
+												Reasons:   actionItem.Reasons,
+												Data:      nil,
+												CreatedAt: time.Now().UTC(),
+												Extended:  nil,
 											}
 										}
 
@@ -362,18 +374,18 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 										if fullItems == nil {
 											fullItems = make([]entities.Item, 0, len(pkgItem.Subpackages[i].Items))
 											requestAction = &entities.Action{
-												Name:       actionState.ActionEnum().ActionName(),
-												Type:       "",
-												UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
-												UTP:        actionState.ActionType().ActionName(),
-												Permission: "",
-												Privilege:  "",
-												Policy:     "",
-												Result:     string(states.ActionSuccess),
-												Reasons:    actionItem.Reasons,
-												Data:       nil,
-												CreatedAt:  time.Now().UTC(),
-												Extended:   nil,
+												Name:      actionState.ActionEnum().ActionName(),
+												Type:      "",
+												UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+												UTP:       actionState.ActionType().ActionName(),
+												Perm:      "",
+												Priv:      "",
+												Policy:    "",
+												Result:    string(states.ActionSuccess),
+												Reasons:   actionItem.Reasons,
+												Data:      nil,
+												CreatedAt: time.Now().UTC(),
+												Extended:  nil,
 											}
 										}
 										fullItems = append(fullItems, pkgItem.Subpackages[i].Items[j])
@@ -417,7 +429,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 						state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
 						err := app.Globals.SubPkgRepository.Save(ctx, newSubPackages[i])
 						if err != nil {
-							logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
+							logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, pid: %d, event: %v, error: %s", state.Name(),
 								newSubPackages[i].OrderId, newSubPackages[i].PId, event, err.Error())
 							// TODO must distinct system error from update version error
 							future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
@@ -426,7 +438,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 						}
 
 						pkgItem.Subpackages = append(pkgItem.Subpackages, *newSubPackages[i])
-						logger.Audit("Process() => Status of new subpackage update to %v event, orderId: %d, sellerId: %d, sid: %d",
+						logger.Audit("Process() => Status of new subpackage update to %v event, orderId: %d, pid: %d, sid: %d",
 							event, newSubPackages[i].OrderId, newSubPackages[i].PId, newSubPackages[i].SId)
 					} else {
 						state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
@@ -436,7 +448,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 
 				pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 				if err != nil {
-					logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, sellerId: %d, event: %v, error: %s", state.Name(),
+					logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, pid: %d, event: %v, error: %s", state.Name(),
 						pkgItem.OrderId, pkgItem.PId, event, err.Error())
 					// TODO must distinct system error from update version error
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).

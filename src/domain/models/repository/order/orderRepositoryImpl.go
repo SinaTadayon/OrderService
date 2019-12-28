@@ -108,7 +108,7 @@ func (repo iOrderRepositoryImpl) Save(ctx context.Context, order entities.Order)
 				}
 			} else {
 				logger.Err("Update order failed, package version obsolete, "+
-					"orderId: %d, sellerId: %d, last version: %d, update version: %d",
+					"orderId: %d, pid: %d, last version: %d, update version: %d",
 					order.OrderId, order.Packages[i].PId,
 					order.Packages[i].Version,
 					currentOrder.Packages[i].Version)

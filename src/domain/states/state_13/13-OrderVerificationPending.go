@@ -48,18 +48,18 @@ func (state orderPaymentVerificationState) Process(ctx context.Context, iFrame f
 		}
 
 		orderVerifyAction := &entities.Action{
-			Name:       system_action.Success.ActionName(),
-			Type:       "",
-			UId:        ctx.Value(string(utils.CtxUserID)).(uint64),
-			UTP:        actions.System.ActionName(),
-			Permission: "",
-			Privilege:  "",
-			Policy:     "",
-			Result:     string(states.ActionSuccess),
-			Reasons:    nil,
-			Data:       nil,
-			CreatedAt:  time.Now().UTC(),
-			Extended:   nil,
+			Name:      system_action.Success.ActionName(),
+			Type:      "",
+			UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+			UTP:       actions.System.ActionName(),
+			Perm:      "",
+			Priv:      "",
+			Policy:    "",
+			Result:    string(states.ActionSuccess),
+			Reasons:   nil,
+			Data:      nil,
+			CreatedAt: time.Now().UTC(),
+			Extended:  nil,
 		}
 
 		state.UpdateOrderAllStatus(ctx, order, states.OrderInProgressStatus, states.PackageInProgressStatus, orderVerifyAction)

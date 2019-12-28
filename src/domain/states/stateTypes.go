@@ -31,17 +31,18 @@ var stateTypeMap = map[int]stateEnum{
 
 	17: {"Return_Request_Pending", 40},
 	18: {"Return_Request_Rejected", 41},
+	19: {"Return_Canceled", 42},
 
-	19: {"Return_Shipment_Pending", 50},
-	20: {"Return_Shipped", 51},
-	21: {"Return_Delivered", 52},
-	22: {"Return_Delivery_Pending", 53},
-	23: {"Return_Delivery_Delayed", 54},
-	24: {"Return_Rejected", 55},
-	25: {"Return_Delivery_Failed", 56},
+	20: {"Return_Shipment_Pending", 50},
+	21: {"Return_Shipped", 51},
+	22: {"Return_Delivered", 52},
+	23: {"Return_Delivery_Pending", 53},
+	24: {"Return_Delivery_Delayed", 54},
+	25: {"Return_Rejected", 55},
+	26: {"Return_Delivery_Failed", 56},
 
-	26: {"Pay_To_Buyer", 80},
-	27: {"Pay_To_Seller", 90},
+	27: {"Pay_To_Buyer", 80},
+	28: {"Pay_To_Seller", 90},
 }
 
 const (
@@ -68,6 +69,7 @@ const (
 
 	ReturnRequestPending
 	ReturnRequestRejected
+	ReturnCanceled
 
 	ReturnShipmentPending
 	ReturnShipped
@@ -153,6 +155,8 @@ func FromIndex(index int32) IEnumState {
 		return ReturnRequestPending
 	case 41:
 		return ReturnRequestRejected
+	case 42:
+		return ReturnCanceled
 	case 50:
 		return ReturnShipmentPending
 	case 51:
@@ -217,6 +221,8 @@ func FromString(stateType string) IEnumState {
 		return ReturnRequestPending
 	case "Return_Request_Rejected":
 		return ReturnRequestRejected
+	case "Return_Canceled":
+		return ReturnCanceled
 	case "Return_Shipment_Pending":
 		return ReturnShipmentPending
 	case "Return_Shipped":
