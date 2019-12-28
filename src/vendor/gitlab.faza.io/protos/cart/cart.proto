@@ -16,10 +16,18 @@ service CouponService {
     rpc CreateCouponTemplate(CouponTemplate) returns (Result);
     rpc GetCouponTemplateByName(CouponTemplateName) returns (CouponTemplate);
     rpc CouponUsed(CouponUseRequest) returns (Result);
-    rpc VerifyVoucher(Voucher) returns (Coupon);
+    rpc VerifyVoucher(VoucherCode) returns (Coupon);
     rpc GetAllVoucherTemplates(GetAllVoucherTemplatesRequest) returns (GetAllVoucherTemplatesResponse);
     rpc GetVoucherByTemplateName(GetVoucherByTemplateNameRequest) returns (GetVoucherByTemplateNameResponse);
+    rpc DisableVouchersByCode(DisableVouchersByCodeRequest) returns (DisableVouchersByCodeResponse);
 
+}
+
+message DisableVouchersByCodeResponse{
+}
+
+message DisableVouchersByCodeRequest{
+    repeated VoucherCode vouchers = 1;
 }
 
 message GetAllVoucherTemplatesRequest {
@@ -27,8 +35,15 @@ message GetAllVoucherTemplatesRequest {
     int32 perpage = 2;
  }
 
+ message ListMeta {
+    int32 page      = 1;
+    int32 perPage   = 2;
+    int32 total     = 3;
+ }
+
 message GetAllVoucherTemplatesResponse {
     repeated CouponTemplate templates = 1;
+    ListMeta meta = 2;
  }
  
  message GetVoucherByTemplateNameRequest{
@@ -37,10 +52,11 @@ message GetAllVoucherTemplatesResponse {
     string   voucherName  = 3;
  }
  message GetVoucherByTemplateNameResponse{
-     repeated Voucher vouchers = 1;
+    repeated Coupon vouchers = 1;
+    ListMeta meta = 2;
  }
 
-message Voucher {
+message VoucherCode {
     string code = 1;
 }
 
@@ -48,7 +64,8 @@ message Coupon {
     string code = 1;
     string startDate = 2;
     string endDate = 3;
-    CouponDiscount couponDiscount = 4;
+    string status = 4;
+    CouponDiscount couponDiscount = 5;
 }
 message CouponUseRequest {
     string code = 1;

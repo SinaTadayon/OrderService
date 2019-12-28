@@ -5,7 +5,6 @@ import (
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/stock"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
@@ -67,7 +66,7 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 			}
 		} else {
 			stockAction = &entities.Action{
-				Name:      stock_action.Release.ActionName(),
+				Name:      system_action.StockRelease.ActionName(),
 				Type:      "",
 				UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
 				UTP:       actions.System.ActionName(),
@@ -106,7 +105,7 @@ func (state paymentFailedState) releasedStock(ctx context.Context, order *entiti
 	}
 
 	iFuture := app.Globals.StockService.BatchStockActions(ctx, inventories,
-		stock_action.New(stock_action.Release))
+		system_action.New(system_action.StockRelease))
 	futureData := iFuture.Get()
 	if futureData.Error() != nil {
 		logger.Err("Reserved stock from stockService failed, state: %s, orderId: %d, error: %s", state.Name(), order.OrderId, futureData.Error())

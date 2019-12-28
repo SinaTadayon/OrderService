@@ -194,7 +194,7 @@ func createAuthenticatedContext() (context.Context, error) {
 
 	var authorization = map[string]string{
 		"authorization": fmt.Sprintf("Bearer %v", loginTokens.AccessToken),
-		"userId":        "1000002",
+		"userId":        "1000001",
 	}
 	md := metadata.New(authorization)
 	ctxToken := metadata.NewOutgoingContext(ctx, md)
@@ -223,7 +223,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Code:   "348",
 	}
 
-	order.Buyer.BuyerId = 1000002
+	order.Buyer.BuyerId = 1000001
 	order.Buyer.LastName = "Tadayon"
 	order.Buyer.FirstName = "Sina"
 	order.Buyer.Email = "Sina.Tadayon@baman.io"
@@ -250,7 +250,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order.Packages = make([]*pb.Package, 0, 2)
 
 	var pkg = &pb.Package{
-		SellerId: 1000002,
+		SellerId: 1000001,
 		ShopName: "sazgar",
 		Shipment: &pb.ShippingSpec{
 			CarrierNames:   []string{"Post"},
@@ -735,7 +735,7 @@ func TestSchedulerSellerShipmentPending(t *testing.T) {
 		Method: "Post",
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
-			UID:       1000002,
+			UID:       1000001,
 			UTP:       "Seller",
 			OID:       order.OrderId,
 			PID:       order.Packages[0].PId,
@@ -848,7 +848,7 @@ func TestSchedulerDeliveryPending_Notification(t *testing.T) {
 		Method: "Post",
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
-			UID:       1000002,
+			UID:       1000001,
 			UTP:       "Scheduler",
 			OID:       order.OrderId,
 			PID:       order.Packages[0].PId,
@@ -961,7 +961,7 @@ func TestSchedulerDeliveryPending_Delivered(t *testing.T) {
 		Method: "Post",
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
-			UID:       1000002,
+			UID:       1000001,
 			UTP:       "Scheduler",
 			OID:       order.OrderId,
 			PID:       order.Packages[0].PId,

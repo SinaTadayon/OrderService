@@ -40,7 +40,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Code:   "348",
 	}
 
-	order.Buyer.BuyerId = 1000002
+	order.Buyer.BuyerId = 1000001
 	order.Buyer.LastName = "Tadayon"
 	order.Buyer.FirstName = "Sina"
 	order.Buyer.Email = "Sina.Tadayon@baman.io"

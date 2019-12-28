@@ -125,6 +125,23 @@ func (c *Client) Login(username, password string, ctx context.Context, grpcCallO
 	return res, nil
 }
 
+func (c *Client) LoginAsanPardakht(token string, ctx context.Context, grpcCallOptions ...grpc.CallOption) (*pb1.LoginAsanPardakhtResponse, error) {
+	ctxConn := c.createContext(nil)
+	conn, err := c.Connect(ctxConn)
+	if err != nil {
+		return nil, errors.New("failed to connect to GRPC server, got error " + err.Error())
+	}
+	ctx = c.createContext(ctx)
+	var req = &pb1.LoginAsanPardakhtRequest{
+		Token: token,
+	}
+	res, err := conn.LoginAsanPardakht(ctx, req, grpcCallOptions...)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
+}
+
 // UserAddAddress allows user to add address
 func (c *Client) UserAddAddress(ctx context.Context, req *pb1.UserAddAddressRequest, grpcCallOptions ...grpc.CallOption) (*pb1.UserAddAddressResponse, error) {
 	ctxConn := c.createContext(nil)
@@ -657,6 +674,10 @@ func (c *Client) UserEdit(id string, userObject *UserFields, jwtAccessToken stri
 	regData.Email = userObject.Email
 	regData.Gender = userObject.Gender
 	regData.Roles = userObject.Roles
+	regData.Finance = []*pb1.UserFinanceData{&pb1.UserFinanceData{
+		CardNumber: userObject.CardNumber,
+		Iban:       userObject.Iban,
+	}}
 	res, err := conn.UserEdit(ctx, &regData, grpcCallOptions...)
 	if err != nil {
 		return nil, err

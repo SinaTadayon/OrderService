@@ -18,6 +18,8 @@ var actionStrings = []string{
 	"StockRelease",
 	"StockSettlement",
 	"VoucherSettlement",
+	"SellerNotification",
+	"BuyerNotification",
 	"CombineActorsAction",
 }
 
@@ -33,6 +35,8 @@ const (
 	StockRelease
 	StockSettlement
 	VoucherSettlement
+	SellerNotification
+	BuyerNotification
 	CombineActorsAction
 )
 
@@ -84,6 +88,10 @@ func (actionEnum ActionEnums) FromString(action string) actions.IEnumAction {
 		return StockSettlement
 	case "VoucherSettlement":
 		return VoucherSettlement
+	case "SellerNotification":
+		return SellerNotification
+	case "BuyerNotification":
+		return BuyerNotification
 	case "CombineActorsAction":
 		return CombineActorsAction
 	default:

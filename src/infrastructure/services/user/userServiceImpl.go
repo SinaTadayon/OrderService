@@ -14,7 +14,7 @@ import (
 
 const (
 	// ISO8601 standard time format
-	layout = "2006-01-02 15:04:05 +0000 MST"
+	ISO8601 = "2006-01-02T15:04:05-0700"
 )
 
 type iUserServiceImpl struct {
@@ -223,14 +223,14 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 		}
 	}
 
-	timestamp, err := time.Parse(layout, userProfile.Data.CreatedAt)
+	timestamp, err := time.Parse(ISO8601, userProfile.Data.CreatedAt)
 	if err != nil {
 		logger.Err("GetSellerProfile() => createdAt time parse failed, pid: %s, error: %s", sellerId, err)
 		timestamp = time.Now()
 	}
 
 	sellerProfile.CreatedAt = timestamp
-	timestamp, err = time.Parse(layout, userProfile.Data.UpdatedAt)
+	timestamp, err = time.Parse(ISO8601, userProfile.Data.UpdatedAt)
 	if err != nil {
 		logger.Err("GetSellerProfile() => updatedAt time parse failed, pid: %s, error: %s", sellerId, err)
 		timestamp = time.Now()

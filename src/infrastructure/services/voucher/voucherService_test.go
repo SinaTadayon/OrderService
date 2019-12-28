@@ -2,7 +2,7 @@ package voucher_service
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/configs"
 	voucherProto "gitlab.faza.io/protos/cart"
@@ -53,7 +53,7 @@ func TestVoucherSettlement(t *testing.T) {
 		EndDate:         time.Date(2019, 07, 25, 0, 0, 0, 0, time.UTC).Format(time.RFC3339),
 		Categories:      nil,
 		Products:        nil,
-		Users:           []string{"1000002"},
+		Users:           []string{"1000001"},
 		Sellers:         nil,
 		IsFirstPurchase: true,
 		CouponDiscount: &voucherProto.CouponDiscount{
@@ -65,15 +65,15 @@ func TestVoucherSettlement(t *testing.T) {
 	}
 
 	err := voucherSrv.Connect()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	defer voucherSrv.Disconnect()
 
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 	result, err := voucherSrv.voucherClient.CreateCouponTemplate(ctx, cT)
-	assert.Nil(t, err)
-	assert.NotNil(t, result)
-	assert.Equal(t, 200, int(result.Code))
+	require.Nil(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, 200, int(result.Code))
 
 	ctx, _ = context.WithTimeout(context.Background(), 10*time.Second)
 	voucherRequest := &voucherProto.GetVoucherByTemplateNameRequest{
@@ -82,13 +82,13 @@ func TestVoucherSettlement(t *testing.T) {
 		VoucherName: testName1,
 	}
 	allVouchers, err := voucherSrv.voucherClient.GetVoucherByTemplateName(ctx, voucherRequest)
-	assert.Nil(t, err)
-	assert.NotNil(t, allVouchers.Vouchers[0])
-	assert.NotEmpty(t, allVouchers.Vouchers[0].Code)
+	require.Nil(t, err)
+	require.NotNil(t, allVouchers.Vouchers[0])
+	require.NotEmpty(t, allVouchers.Vouchers[0].Code)
 
 	ctx, _ = context.WithCancel(context.Background())
-	iFuture := voucherSrv.VoucherSettlement(ctx, allVouchers.Vouchers[0].Code, 123456789776, 1000002)
+	iFuture := voucherSrv.VoucherSettlement(ctx, allVouchers.Vouchers[0].Code, 123456789776, 1000001)
 	futureData := iFuture.Get()
-	assert.Nil(t, futureData.Data())
-	assert.Nil(t, futureData.Error())
+	require.Nil(t, futureData.Data())
+	require.Nil(t, futureData.Error())
 }

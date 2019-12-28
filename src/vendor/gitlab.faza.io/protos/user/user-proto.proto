@@ -6,6 +6,7 @@ package protoUserServiceV1;
 service User {
     rpc HelloWorld (HelloWorldRequest) returns (HelloWorldResponse) {}
     rpc Login (LoginRequest) returns (LoginResponse) {}
+    rpc LoginAsanPardakht (LoginAsanPardakhtRequest) returns (LoginAsanPardakhtResponse) {}
     rpc Logout (EmptyRequest) returns (Result) {}
     rpc Register (RegisterRequest) returns (Result) {}
     rpc RegisterVerify (RegisterVerifyRequest) returns (LoginResponse) {}
@@ -56,7 +57,7 @@ message UserAddressIn {
     string      countryId       = 5 ;
     string      cityId          = 6 ;
     string      neighborhoodId  = 7 ;
-    string      proviceId       = 8 ;
+    string      provinceId       = 8 ;
     Location    location        = 9 ;
     string      address         = 10;
     string      addressType     = 11;
@@ -239,7 +240,6 @@ message GeneralSellerInfo {
     // @inject_tag: validate:"required"
     string	postalCode = 13;
 
-    // @inject_tag: validate:"required"
     bool	isVATObliged = 14;
     string	VATCertificationImageURL = 15;
 }
@@ -425,6 +425,17 @@ message LoginResponse {
     map<string, string> errors = 5;
 }
 
+message LoginAsanPardakhtRequest {
+    string token = 1;
+}
+
+message LoginAsanPardakhtResponse {
+    string message = 1;
+    uint32 code = 2;
+    LoginResponseData data = 3;
+    map<string, string> errors = 4;
+}
+
 message LoginResponseData {
     string accessToken = 1;
     string refreshToken = 2;
@@ -451,10 +462,8 @@ message CheckVerificationCodeRequest {
 
 
 message RegisterRequest {
-    // @inject_tag: validate:"required,max=64"
     string firstName = 1;
 
-    // @inject_tag: validate:"required,max=32"
     string lastName = 2;
 
     // @inject_tag: validate:"omitempty,email,max=128"
@@ -494,10 +503,10 @@ message RegisterRequest {
 message UserEditRequest {
     string userId = 15;
 
-    // @inject_tag: validate:"required,max=64"
+    // @inject_tag: validate:"max=64"
     string firstName = 1;
 
-    // @inject_tag: validate:"required,max=32"
+    // @inject_tag: validate:"max=32"
     string lastName = 2;
 
     // @inject_tag: validate:"omitempty,email,max=128"
@@ -513,6 +522,8 @@ message UserEditRequest {
 
     // @inject_tag: validate:"omitempty"
     string birthDate = 12;
+
+    repeated UserFinanceData finance = 16;
 }
 
 message RegisterVerifyRequest {

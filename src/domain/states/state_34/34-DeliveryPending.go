@@ -7,6 +7,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
+	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
@@ -198,6 +199,21 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 					return
 				}
 
+				schedulerAction := &entities.Action{
+					Name:      scheduler_action.Notification.ActionName(),
+					Type:      "",
+					UId:       0,
+					UTP:       actions.Scheduler.ActionName(),
+					Perm:      "",
+					Priv:      "",
+					Policy:    "",
+					Result:    string(states.ActionSuccess),
+					Reasons:   nil,
+					Data:      nil,
+					CreatedAt: time.Now().UTC(),
+					Extended:  nil,
+				}
+
 				// TODO Notification template must be load from file
 				// TODO scheduler user
 				if order != nil {
@@ -206,16 +222,16 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 						Body:  "Order Satisfaction",
 					}
 
-					var requestAction *entities.Action
+					var notificationAction *entities.Action
 					futureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
 					if futureData.Error() != nil {
 						logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, pid: %d, error: %s",
 							buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, futureData.Error().Reason())
-						requestAction = &entities.Action{
-							Name:      scheduler_action.Notification.ActionName(),
+						notificationAction = &entities.Action{
+							Name:      system_action.BuyerNotification.ActionName(),
 							Type:      "",
 							UId:       0,
-							UTP:       actions.Scheduler.ActionName(),
+							UTP:       actions.System.ActionName(),
 							Perm:      "",
 							Priv:      "",
 							Policy:    "",
@@ -226,11 +242,11 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 							Extended:  nil,
 						}
 					} else {
-						requestAction = &entities.Action{
-							Name:      scheduler_action.Notification.ActionName(),
+						notificationAction = &entities.Action{
+							Name:      system_action.BuyerNotification.ActionName(),
 							Type:      "",
 							UId:       0,
-							UTP:       actions.Scheduler.ActionName(),
+							UTP:       actions.System.ActionName(),
 							Perm:      "",
 							Priv:      "",
 							Policy:    "",
@@ -253,7 +269,8 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 										if schedulerData["name"] == "notifyAt" {
 											schedulerData["enabled"] = false
 											sids = append(sids, pkgItem.Subpackages[i].SId)
-											state.UpdateSubPackage(ctx, &pkgItem.Subpackages[i], requestAction)
+											state.UpdateSubPackage(ctx, &pkgItem.Subpackages[i], schedulerAction)
+											state.UpdateSubPackage(ctx, &pkgItem.Subpackages[i], notificationAction)
 											_, err := app.Globals.SubPkgRepository.Update(ctx, pkgItem.Subpackages[i])
 											if err != nil {
 												logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, pid: %d, sid: %d, event: %v, error: %s", state.Name(),

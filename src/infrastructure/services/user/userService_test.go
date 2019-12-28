@@ -46,11 +46,11 @@ func TestGetSellerInfo(t *testing.T) {
 
 	ctx, _ = context.WithCancel(context.Background())
 
-	// user service create dummy user with id 1000002
-	iFuture := userService.GetSellerProfile(ctx, "1000002")
+	// user service create dummy user with id 1000001
+	iFuture := userService.GetSellerProfile(ctx, "1000001")
 	futureData := iFuture.Get()
 	assert.Nil(t, futureData.Error())
-	assert.Equal(t, futureData.Data().(*entities.SellerProfile).SellerId, int64(1000002))
+	assert.Equal(t, futureData.Data().(*entities.SellerProfile).SellerId, int64(1000001))
 }
 
 func TestAuthenticationToken(t *testing.T) {
@@ -69,7 +69,7 @@ func TestAuthenticationToken(t *testing.T) {
 
 	acl, err := userService.AuthenticateContextToken(ctxToken)
 	assert.Nil(t, err)
-	assert.Equal(t, acl.User().UserID, int64(1000002))
+	assert.Equal(t, acl.User().UserID, int64(1000001))
 }
 
 //func CreateRandomMobileNumber(prefix string) string {

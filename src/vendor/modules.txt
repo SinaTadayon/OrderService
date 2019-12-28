@@ -1,3 +1,5 @@
+# github.com/DataDog/zstd v1.4.4
+github.com/DataDog/zstd
 # github.com/Netflix/go-env v0.0.0-20180529183433-1e80ef5003ef
 github.com/Netflix/go-env
 # github.com/davecgh/go-spew v1.1.1
@@ -45,7 +47,7 @@ gitlab.faza.io/go-framework/acl
 gitlab.faza.io/go-framework/logger
 # gitlab.faza.io/go-framework/mongoadapter v0.0.8
 gitlab.faza.io/go-framework/mongoadapter
-# gitlab.faza.io/protos/cart v0.0.9
+# gitlab.faza.io/protos/cart v0.0.12
 gitlab.faza.io/protos/cart
 # gitlab.faza.io/protos/notification v0.0.3
 gitlab.faza.io/protos/notification
@@ -55,13 +57,14 @@ gitlab.faza.io/protos/order
 gitlab.faza.io/protos/payment-gateway
 # gitlab.faza.io/protos/stock-proto.git v0.0.8
 gitlab.faza.io/protos/stock-proto.git
-# gitlab.faza.io/protos/user v0.0.31
+# gitlab.faza.io/protos/user v0.0.38
 gitlab.faza.io/protos/user
-# gitlab.faza.io/services/user-app-client v0.0.17
+# gitlab.faza.io/services/user-app-client v0.0.20
 gitlab.faza.io/services/user-app-client
-# go.mongodb.org/mongo-driver v1.1.2
+# go.mongodb.org/mongo-driver v1.2.0
 go.mongodb.org/mongo-driver/bson
 go.mongodb.org/mongo-driver/bson/bsoncodec
+go.mongodb.org/mongo-driver/bson/bsonoptions
 go.mongodb.org/mongo-driver/bson/bsonrw
 go.mongodb.org/mongo-driver/bson/bsontype
 go.mongodb.org/mongo-driver/bson/primitive
@@ -83,14 +86,16 @@ go.mongodb.org/mongo-driver/x/mongo/driver/auth/internal/gssapi
 go.mongodb.org/mongo-driver/x/mongo/driver/connstring
 go.mongodb.org/mongo-driver/x/mongo/driver/description
 go.mongodb.org/mongo-driver/x/mongo/driver/dns
+go.mongodb.org/mongo-driver/x/mongo/driver/mongocrypt
+go.mongodb.org/mongo-driver/x/mongo/driver/mongocrypt/options
 go.mongodb.org/mongo-driver/x/mongo/driver/operation
 go.mongodb.org/mongo-driver/x/mongo/driver/session
 go.mongodb.org/mongo-driver/x/mongo/driver/topology
 go.mongodb.org/mongo-driver/x/mongo/driver/uuid
 go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage
-# golang.org/x/crypto v0.0.0-20191029031824-8986dd9e96cf
+# golang.org/x/crypto v0.0.0-20191219195013-becbf705a915
 golang.org/x/crypto/pbkdf2
-# golang.org/x/net v0.0.0-20191101175033-0deb6923b6d9
+# golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553
 golang.org/x/net/http/httpguts
 golang.org/x/net/http2
 golang.org/x/net/http2/hpack
@@ -99,17 +104,19 @@ golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
 # golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20191029155521-f43be2a4598c
+# golang.org/x/sys v0.0.0-20191220142924-d4481acd189f
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.2
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# google.golang.org/genproto v0.0.0-20191028173616-919d9bdd9fe6
+# google.golang.org/genproto v0.0.0-20191216205247-b31c10ee225f
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.24.0
+# google.golang.org/grpc v1.26.0
 google.golang.org/grpc
+google.golang.org/grpc/attributes
+google.golang.org/grpc/backoff
 google.golang.org/grpc/balancer
 google.golang.org/grpc/balancer/base
 google.golang.org/grpc/balancer/roundrobin
@@ -125,10 +132,13 @@ google.golang.org/grpc/internal
 google.golang.org/grpc/internal/backoff
 google.golang.org/grpc/internal/balancerload
 google.golang.org/grpc/internal/binarylog
+google.golang.org/grpc/internal/buffer
 google.golang.org/grpc/internal/channelz
 google.golang.org/grpc/internal/envconfig
 google.golang.org/grpc/internal/grpcrand
 google.golang.org/grpc/internal/grpcsync
+google.golang.org/grpc/internal/resolver/dns
+google.golang.org/grpc/internal/resolver/passthrough
 google.golang.org/grpc/internal/syscall
 google.golang.org/grpc/internal/transport
 google.golang.org/grpc/keepalive
@@ -136,8 +146,6 @@ google.golang.org/grpc/metadata
 google.golang.org/grpc/naming
 google.golang.org/grpc/peer
 google.golang.org/grpc/resolver
-google.golang.org/grpc/resolver/dns
-google.golang.org/grpc/resolver/passthrough
 google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status

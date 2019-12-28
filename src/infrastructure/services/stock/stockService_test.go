@@ -5,7 +5,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/configs"
-	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/stock"
+	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	stockProto "gitlab.faza.io/protos/stock-proto.git"
 	"os"
@@ -906,7 +906,7 @@ func TestStockService_ReservedSuccess(t *testing.T) {
 	assert.Nil(t, err)
 
 	inventories := map[string]int{request.InventoryId: int(request.Quantity)}
-	iFuture := stock.BatchStockActions(ctx, inventories, stock_action.New(stock_action.Reserve))
+	iFuture := stock.BatchStockActions(ctx, inventories, system_action.New(system_action.StockReserve))
 	futureData := iFuture.Get()
 	assert.Nil(t, futureData.Error())
 
@@ -942,11 +942,11 @@ func TestStockService_SettlementSuccess(t *testing.T) {
 	assert.Nil(t, err)
 
 	inventories := map[string]int{request.InventoryId: int(request.Quantity)}
-	iFuture := stock.BatchStockActions(ctx, inventories, stock_action.New(stock_action.Reserve))
+	iFuture := stock.BatchStockActions(ctx, inventories, system_action.New(system_action.StockReserve))
 	futureData := iFuture.Get()
 	assert.Nil(t, futureData.Error())
 
-	iFuture = stock.BatchStockActions(ctx, inventories, stock_action.New(stock_action.Settlement))
+	iFuture = stock.BatchStockActions(ctx, inventories, system_action.New(system_action.StockSettlement))
 	futureData = iFuture.Get()
 	assert.Nil(t, futureData.Error())
 
@@ -980,11 +980,11 @@ func TestStockService_ReleaseSuccess(t *testing.T) {
 	assert.Nil(t, err)
 
 	inventories := map[string]int{request.InventoryId: int(request.Quantity)}
-	iFuture := stock.BatchStockActions(ctx, inventories, stock_action.New(stock_action.Reserve))
+	iFuture := stock.BatchStockActions(ctx, inventories, system_action.New(system_action.StockReserve))
 	futureData := iFuture.Get()
 	assert.Nil(t, futureData.Error())
 
-	iFuture = stock.BatchStockActions(ctx, inventories, stock_action.New(stock_action.Release))
+	iFuture = stock.BatchStockActions(ctx, inventories, system_action.New(system_action.StockRelease))
 	futureData = iFuture.Get()
 	assert.Nil(t, futureData.Error())
 
