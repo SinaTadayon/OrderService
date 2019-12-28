@@ -7,10 +7,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/app"
 	buyer_action "gitlab.faza.io/order-project/order-service/domain/actions/buyer"
 	operator_action "gitlab.faza.io/order-project/order-service/domain/actions/operator"
-	payment_action "gitlab.faza.io/order-project/order-service/domain/actions/payment"
 	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
 	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
-	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/stock"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
@@ -414,8 +412,8 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
-		payment_action.New(payment_action.Success): flowManager.statesMap[states.PaymentSuccess],
-		payment_action.New(payment_action.Fail):    flowManager.statesMap[states.PaymentFailed],
+		system_action.New(system_action.PaymentSuccess): flowManager.statesMap[states.PaymentSuccess],
+		system_action.New(system_action.PaymentFail):    flowManager.statesMap[states.PaymentFailed],
 	}
 	childStates = []states.IState{
 		flowManager.statesMap[states.PaymentSuccess],
@@ -508,7 +506,7 @@ func (flowManager iFlowManagerImpl) newOrderHandler(ctx context.Context, iFrame 
 	}
 
 	iFuture := app.Globals.StockService.BatchStockActions(ctx, inventories,
-		stock_action.New(stock_action.Reserve))
+		system_action.New(system_action.StockReserve))
 	futureData := iFuture.Get()
 	if futureData.Error() != nil {
 		logger.Err("Reserved stock from stockService failed, newOrder: %v, error: %s",

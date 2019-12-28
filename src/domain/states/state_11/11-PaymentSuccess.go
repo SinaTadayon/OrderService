@@ -67,7 +67,7 @@ func (state paymentSuccessState) Process(ctx context.Context, iFrame frame.IFram
 		if err != nil {
 			logger.Err("OrderRepository.Save in %s state failed, orderId: %d, error: %s", state.Name(), order.OrderId, err.Error())
 		} else {
-			logger.Audit("Order Payment success, orderId: %d", order.OrderId)
+			logger.Audit("Order System success, orderId: %d", order.OrderId)
 			state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(orderUpdated).Build())
 		}
 	} else {

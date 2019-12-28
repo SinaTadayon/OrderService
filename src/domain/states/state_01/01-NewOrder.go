@@ -6,7 +6,7 @@ import (
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/stock"
+	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
@@ -91,7 +91,7 @@ func (state newOrderState) releasedStock(ctx context.Context, order *entities.Or
 	}
 
 	iFuture := app.Globals.StockService.BatchStockActions(ctx, inventories,
-		stock_action.New(stock_action.Release))
+		system_action.New(system_action.StockRelease))
 	futureData := iFuture.Get()
 
 	if futureData.Error() != nil {

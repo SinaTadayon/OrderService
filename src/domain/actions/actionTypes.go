@@ -7,26 +7,18 @@ import (
 type ActionType int
 
 var actionTypeStrings = []string{
-	"Payment",
 	"Operator",
 	"Seller",
 	"Buyer",
 	"Scheduler",
-	"Stock",
-	"Notification",
-	"Voucher",
 	"System",
 }
 
 const (
-	Payment ActionType = iota
-	Operator
+	Operator ActionType = iota
 	Seller
 	Buyer
 	Scheduler
-	Stock
-	Notification
-	Voucher
 	System
 )
 
@@ -35,7 +27,7 @@ func (actorType ActionType) ActionName() string {
 }
 
 func (actorType ActionType) ActionOrdinal() int {
-	if actorType < Payment || actorType > System {
+	if actorType < Operator || actorType > System {
 		return -1
 	}
 	return int(actorType)
@@ -46,7 +38,7 @@ func (actorType ActionType) Values() []string {
 }
 
 func (actorType ActionType) String() string {
-	if actorType < Payment || actorType > System {
+	if actorType < Operator || actorType > System {
 		return ""
 	}
 
@@ -55,8 +47,6 @@ func (actorType ActionType) String() string {
 
 func FromString(actionType string) (ActionType, error) {
 	switch actionType {
-	case "Payment":
-		return Payment, nil
 	case "Operator":
 		return Operator, nil
 	case "Seller":
@@ -65,12 +55,6 @@ func FromString(actionType string) (ActionType, error) {
 		return Buyer, nil
 	case "Scheduler":
 		return Scheduler, nil
-	case "Stock":
-		return Stock, nil
-	case "Notification":
-		return Notification, nil
-	case "Voucher":
-		return Voucher, nil
 	case "System":
 		return System, nil
 	default:

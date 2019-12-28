@@ -5,7 +5,7 @@ import (
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/stock"
+	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
@@ -48,10 +48,10 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 		var settlementStockAction *entities.Action
 		if err := state.settlementStock(ctx, subpackages); err != nil {
 			settlementStockAction = &entities.Action{
-				Name:      stock_action.Settlement.ActionName(),
+				Name:      system_action.StockSettlement.ActionName(),
 				Type:      "",
 				UId:       0,
-				UTP:       actions.Stock.ActionName(),
+				UTP:       actions.System.ActionName(),
 				Perm:      "",
 				Priv:      "",
 				Policy:    "",
@@ -63,10 +63,10 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 			}
 		} else {
 			settlementStockAction = &entities.Action{
-				Name:      stock_action.Settlement.ActionName(),
+				Name:      system_action.StockSettlement.ActionName(),
 				Type:      "",
 				UId:       0,
-				UTP:       actions.Stock.ActionName(),
+				UTP:       actions.System.ActionName(),
 				Perm:      "",
 				Priv:      "",
 				Policy:    "",
@@ -157,7 +157,7 @@ func (state payToSellerState) settlementStock(ctx context.Context, subpackages [
 	}
 
 	iFuture := app.Globals.StockService.BatchStockActions(ctx, inventories,
-		stock_action.New(stock_action.Settlement))
+		system_action.New(system_action.StockSettlement))
 	futureData := iFuture.Get()
 	if futureData.Error() != nil {
 		logger.Err("Settlement stock from stockService failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",

@@ -6,6 +6,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/stock"
+	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
@@ -51,10 +52,10 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 		var stockAction *entities.Action
 		if err := state.releasedStock(ctx, order); err != nil {
 			stockAction = &entities.Action{
-				Name:      stock_action.Release.ActionName(),
+				Name:      system_action.StockRelease.ActionName(),
 				Type:      "",
 				UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
-				UTP:       actions.Stock.ActionName(),
+				UTP:       actions.System.ActionName(),
 				Perm:      "",
 				Priv:      "",
 				Policy:    "",
@@ -69,7 +70,7 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 				Name:      stock_action.Release.ActionName(),
 				Type:      "",
 				UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
-				UTP:       actions.Stock.ActionName(),
+				UTP:       actions.System.ActionName(),
 				Perm:      "",
 				Priv:      "",
 				Policy:    "",
@@ -86,7 +87,7 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 		if err != nil {
 			logger.Err("OrderRepository.Save in %s state failed, orderId: %d, error: %s", state.Name(), order.OrderId, err.Error())
 		}
-		logger.Audit("Order Payment Failed, orderId: %d", order.OrderId)
+		logger.Audit("Order System Failed, orderId: %d", order.OrderId)
 	} else {
 		logger.Err("HeaderOrderId of iFrame.Header not found and content of iFrame.Body() not set, state: %s iframe: %v", state.Name(), iFrame)
 	}

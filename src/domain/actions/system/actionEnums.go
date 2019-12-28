@@ -12,6 +12,12 @@ var actionStrings = []string{
 	"Fail",
 	"NextToState",
 	"Close",
+	"PaymentSuccess",
+	"PaymentFail",
+	"StockReserve",
+	"StockRelease",
+	"StockSettlement",
+	"VoucherSettlement",
 	"CombineActorsAction",
 }
 
@@ -21,6 +27,12 @@ const (
 	Fail
 	NextToState
 	Close
+	PaymentSuccess
+	PaymentFail
+	StockReserve
+	StockRelease
+	StockSettlement
+	VoucherSettlement
 	CombineActorsAction
 )
 
@@ -60,6 +72,18 @@ func (actionEnum ActionEnums) FromString(action string) actions.IEnumAction {
 		return NextToState
 	case "Close":
 		return Close
+	case "PaymentSuccess":
+		return PaymentSuccess
+	case "PaymentFail":
+		return PaymentFail
+	case "StockReserve":
+		return StockReserve
+	case "StockRelease":
+		return StockRelease
+	case "StockSettlement":
+		return StockSettlement
+	case "VoucherSettlement":
+		return VoucherSettlement
 	case "CombineActorsAction":
 		return CombineActorsAction
 	default:

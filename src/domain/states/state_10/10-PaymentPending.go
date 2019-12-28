@@ -7,8 +7,7 @@ import (
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	payment_action "gitlab.faza.io/order-project/order-service/domain/actions/payment"
-	voucher_action "gitlab.faza.io/order-project/order-service/domain/actions/voucher"
+	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
@@ -93,10 +92,10 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			if futureData.Error() != nil {
 				logger.Err("VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Invoice.Voucher.Code, futureData.Error().Reason())
 				voucherAction = &entities.Action{
-					Name:      voucher_action.Settlement.ActionName(),
+					Name:      system_action.VoucherSettlement.ActionName(),
 					Type:      "",
 					UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
-					UTP:       actions.Voucher.ActionName(),
+					UTP:       actions.System.ActionName(),
 					Perm:      "",
 					Priv:      "",
 					Policy:    "",
@@ -109,10 +108,10 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			} else {
 				logger.Audit("Invoice paid by voucher order success, orderId: %d, voucherAmount: %f, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Amount, order.Invoice.Voucher.Code)
 				voucherAction = &entities.Action{
-					Name:      voucher_action.Settlement.ActionName(),
+					Name:      system_action.VoucherSettlement.ActionName(),
 					Type:      "",
 					UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
-					UTP:       actions.Voucher.ActionName(),
+					UTP:       actions.System.ActionName(),
 					Perm:      "",
 					Priv:      "",
 					Policy:    "",
@@ -136,7 +135,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 					SetData(order.PaymentService[0].PaymentResponse.CallBackUrl).
 					Send()
-				successAction := state.GetAction(payment_action.Success.ActionName())
+				successAction := state.GetAction(system_action.PaymentSuccess.ActionName())
 				state.StatesMap()[successAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(orderUpdated).Build())
 			}
 		} else {
@@ -168,10 +167,10 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				}
 
 				paymentAction := &entities.Action{
-					Name:      payment_action.Fail.ActionName(),
+					Name:      system_action.PaymentFail.ActionName(),
 					Type:      "",
 					UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
-					UTP:       actions.Payment.ActionName(),
+					UTP:       actions.System.ActionName(),
 					Perm:      "",
 					Priv:      "",
 					Policy:    "",
@@ -198,7 +197,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 					SetErrorOf(futureData.Error()).Send()
 
-				failAction := state.GetAction(payment_action.Fail.ActionName())
+				failAction := state.GetAction(system_action.PaymentFail.ActionName())
 				state.StatesMap()[failAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(orderUpdated).Build())
 				return
 			} else {
@@ -249,10 +248,10 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 		if order.PaymentService[0].PaymentResult.Result == false {
 			logger.Audit("PaymentResult failed, orderId: %d", order.OrderId)
 			paymentAction := &entities.Action{
-				Name:      payment_action.Fail.ActionName(),
+				Name:      system_action.PaymentFail.ActionName(),
 				Type:      "",
 				UId:       order.BuyerInfo.BuyerId,
-				UTP:       actions.Payment.ActionName(),
+				UTP:       actions.System.ActionName(),
 				Perm:      "",
 				Priv:      "",
 				Policy:    "",
@@ -267,7 +266,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			if err != nil {
 				logger.Err("Singletons.OrderRepository.Save failed, orderId: %d, error: %s", order.OrderId, err)
 			}
-			failAction := state.GetAction(payment_action.Fail.ActionName())
+			failAction := state.GetAction(system_action.PaymentFail.ActionName())
 			state.StatesMap()[failAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(updatedOrder).Build())
 			return
 		} else {
@@ -278,10 +277,10 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				if futureData.Error() != nil {
 					logger.Err("VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Invoice.Voucher.Code, futureData.Error().Reason())
 					voucherAction = &entities.Action{
-						Name:      voucher_action.Settlement.ActionName(),
+						Name:      system_action.VoucherSettlement.ActionName(),
 						Type:      "",
 						UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
-						UTP:       actions.Voucher.ActionName(),
+						UTP:       actions.System.ActionName(),
 						Perm:      "",
 						Priv:      "",
 						Policy:    "",
@@ -294,10 +293,10 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				} else {
 					logger.Audit("Invoice paid by voucher order success, orderId: %d, voucherAmount: %f, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Amount, order.Invoice.Voucher.Code)
 					voucherAction = &entities.Action{
-						Name:      voucher_action.Settlement.ActionName(),
+						Name:      system_action.VoucherSettlement.ActionName(),
 						Type:      "",
 						UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
-						UTP:       actions.Voucher.ActionName(),
+						UTP:       actions.System.ActionName(),
 						Perm:      "",
 						Priv:      "",
 						Policy:    "",
@@ -313,10 +312,10 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			}
 
 			paymentAction := &entities.Action{
-				Name:      payment_action.Success.ActionName(),
+				Name:      system_action.PaymentSuccess.ActionName(),
 				Type:      "",
 				UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
-				UTP:       actions.Payment.ActionName(),
+				UTP:       actions.System.ActionName(),
 				Perm:      "",
 				Priv:      "",
 				Policy:    "",
@@ -334,7 +333,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				errStr := fmt.Sprintf("OrderRepository.Save in %s state failed, orderId: %d, error: %s", state.Name(), order.OrderId, err.Error())
 				logger.Err(errStr)
 			}
-			successAction := state.GetAction(payment_action.Success.ActionName())
+			successAction := state.GetAction(system_action.PaymentSuccess.ActionName())
 			state.StatesMap()[successAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
 		}
 	}

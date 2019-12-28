@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	stock_action "gitlab.faza.io/order-project/order-service/domain/actions/stock"
+	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	stockProto "gitlab.faza.io/protos/stock-proto.git"
 	"google.golang.org/grpc"
@@ -61,7 +61,7 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, inventori
 			BuildAndSend()
 	}
 
-	if action.ActionEnum() == stock_action.Reserve {
+	if action.ActionEnum() == system_action.StockReserve {
 		//var err error
 		reservedStock := make(map[string]int, len(inventories))
 		for inventoryId, quantity := range inventories {
@@ -71,7 +71,7 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, inventori
 				InventoryId: inventoryId,
 			}
 			if response, err := stock.stockService.StockReserve(ctx, request); err != nil {
-				logger.Err("Stock reserved failed, inventoryId %s with quantity %d, error: %s", inventoryId, quantity, err)
+				logger.Err("System reserved failed, inventoryId %s with quantity %d, error: %s", inventoryId, quantity, err)
 				return stock.rollbackReservedStocks(ctx, reservedStock, err)
 			} else {
 				logger.Audit("StockReserved success, inventoryId: %s,  available: %d, reserved: %d",
@@ -79,7 +79,7 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, inventori
 				reservedStock[inventoryId] = int(quantity)
 			}
 		}
-	} else if action.ActionEnum() == stock_action.Release {
+	} else if action.ActionEnum() == system_action.StockRelease {
 		var err error
 		for inventoryId, quantity := range inventories {
 			ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
@@ -88,17 +88,17 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, inventori
 				InventoryId: inventoryId,
 			}
 			if _, err = stock.stockService.StockRelease(ctx, request); err != nil {
-				logger.Err("Stock release failed, inventoryId %s with quantity %d, error: %s", inventoryId, quantity, err)
+				logger.Err("System release failed, inventoryId %s with quantity %d, error: %s", inventoryId, quantity, err)
 			}
 		}
 
 		if err != nil {
 			return future.Factory().SetCapacity(1).
-				SetError(future.NotAccepted, "Stock Release Failed", errors.Wrap(err, "")).
+				SetError(future.NotAccepted, "System Release Failed", errors.Wrap(err, "")).
 				BuildAndSend()
 		}
 
-	} else if action.ActionEnum() == stock_action.Settlement {
+	} else if action.ActionEnum() == system_action.StockSettlement {
 		var err error
 		for inventoryId, quantity := range inventories {
 			ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
@@ -114,7 +114,7 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, inventori
 
 		if err != nil {
 			return future.Factory().SetCapacity(1).
-				SetError(future.NotAccepted, "Stock Settlement Failed", errors.Wrap(err, "")).
+				SetError(future.NotAccepted, "System Settlement Failed", errors.Wrap(err, "")).
 				BuildAndSend()
 		}
 	}
@@ -139,6 +139,6 @@ func (stock *iStockServiceImpl) rollbackReservedStocks(ctx context.Context, rese
 	}
 
 	return future.Factory().SetCapacity(1).
-		SetError(future.NotAccepted, "Stock Reserved Failed", errors.Wrap(err, "")).
+		SetError(future.NotAccepted, "System Reserved Failed", errors.Wrap(err, "")).
 		BuildAndSend()
 }

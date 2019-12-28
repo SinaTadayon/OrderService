@@ -3346,9 +3346,9 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 //				ShipmentTotal: order.Invoice.ShipmentTotal,
 //				PaymentMethod: order.Invoice.PaymentMethod,
 //				PaymentOption: order.Invoice.PaymentGateway,
-//				Voucher: &pb.Voucher{
-//					Amount: order.Invoice.Voucher.Amount,
-//					Code:   order.Invoice.Voucher.Code,
+//				System: &pb.System{
+//					Amount: order.Invoice.System.Amount,
+//					Code:   order.Invoice.System.Code,
 //				},
 //			},
 //			ShippingAddress: &pb.Address{
@@ -3616,7 +3616,7 @@ func (server Server) Start() {
 // TODO Check ACL and Security with Mostafa SDK
 // TODO Check Order Owner
 // TODO: add grpc context validation for all
-// TODO: Request / Response Payment Service
+// TODO: Request / Response System Service
 // TODO: Add notifications - SMS -farzan SDK
 // TODO: Add Product id to Add RPC Order Request / Response
 // TODO: API Server GRPC impl
