@@ -220,7 +220,7 @@ func main() {
 		app.Globals.Converter = converter.NewConverter()
 
 		//app.Globals.StockService = stock_service.NewStockService(app.Globals.Config.StockService.Address, app.Globals.Config.StockService.Port)
-		//app.Globals.PaymentService = payment_service.NewPaymentService(app.Globals.Config.PaymentGatewayService.Address,
+		//app.Globals.OrderPayment = payment_service.NewPaymentService(app.Globals.Config.PaymentGatewayService.Address,
 		//	app.Globals.Config.PaymentGatewayService.Port)
 
 		//if app.Globals.Config.StockService.MockEnabled {

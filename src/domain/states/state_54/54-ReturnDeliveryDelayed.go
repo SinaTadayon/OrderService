@@ -3,16 +3,17 @@ package state_54
 import (
 	"context"
 	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	operator_action "gitlab.faza.io/order-project/order-service/domain/actions/operator"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
+	"strconv"
 	"time"
 )
 
@@ -162,15 +163,23 @@ func (state returnDeliveryDelayedState) Process(ctx context.Context, iFrame fram
 											}
 										}
 
+										unit, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Unit.Amount)
+										if err != nil {
+											logger.Err("Process() => decimal.NewFromString failed, Unit.Amount invalid, unit: %s, orderId: %d, pid: %d, sid: %d, state: %s, event: %v",
+												pkgItem.Subpackages[i].Items[j].Invoice.Unit.Amount, pkgItem.Subpackages[i].OrderId, pkgItem.Subpackages[i].PId, pkgItem.Subpackages[i].SId, state.Name(), event)
+											future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+												SetError(future.InternalError, "Unknown Err", errors.New("Subpackage Unit invalid")).Send()
+											return
+										}
+
 										pkgItem.Subpackages[i].Items[j].Quantity -= actionItem.Quantity
-										pkgItem.Subpackages[i].Items[j].Invoice.Total = pkgItem.Subpackages[i].Items[j].Invoice.Unit *
-											uint64(pkgItem.Subpackages[i].Items[j].Quantity)
+										pkgItem.Subpackages[i].Items[j].Invoice.Total.Amount = strconv.Itoa(int(unit.IntPart() * int64(pkgItem.Subpackages[i].Items[j].Quantity)))
 
 										// create new item from requested action item
 										newItem := pkgItem.Subpackages[i].Items[j].DeepCopy()
 										newItem.Quantity = actionItem.Quantity
 										newItem.Reasons = actionItem.Reasons
-										newItem.Invoice.Total = newItem.Invoice.Unit * uint64(newItem.Quantity)
+										newItem.Invoice.Total.Amount = strconv.Itoa(int(unit.IntPart() * int64(newItem.Quantity)))
 										newSubPkg.Items = append(newSubPkg.Items, *newItem)
 
 									} else if actionItem.Quantity > pkgItem.Subpackages[i].Items[j].Quantity {
@@ -255,31 +264,31 @@ func (state returnDeliveryDelayedState) Process(ctx context.Context, iFrame fram
 					sids = append(sids, newSubPackages[i].SId)
 				}
 
-				if event.Action().ActionEnum() == operator_action.DeliveryFail {
-					var rejectedSubtotal uint64 = 0
-					var rejectedDiscount uint64 = 0
-
-					for _, subpackage := range newSubPackages {
-						for j := 0; j < len(subpackage.Items); j++ {
-							rejectedSubtotal += subpackage.Items[j].Invoice.Total
-							rejectedDiscount += subpackage.Items[j].Invoice.Discount
-						}
-					}
-
-					if rejectedSubtotal < pkgItem.Invoice.Subtotal && rejectedDiscount < pkgItem.Invoice.Discount {
-						pkgItem.Invoice.Subtotal -= rejectedSubtotal
-						pkgItem.Invoice.Discount -= rejectedDiscount
-						logger.Audit("Process() => calculate package invoice success, orderId: %d, pid:%d, action: %s, subtotal: %d, discount: %d",
-							pkgItem.OrderId, pkgItem.PId, event.Action().ActionEnum().ActionName(), pkgItem.Invoice.Subtotal, pkgItem.Invoice.Discount)
-
-					} else if rejectedSubtotal > pkgItem.Invoice.Subtotal || rejectedDiscount > pkgItem.Invoice.Discount {
-						logger.Err("Process() => calculate package invoice failed, orderId: %d, pid:%d, action: %s, subtotal: %d, discount: %d",
-							pkgItem.OrderId, pkgItem.PId, event.Action().ActionEnum().ActionName(), pkgItem.Invoice.Subtotal, pkgItem.Invoice.Discount)
-						future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-							SetError(future.InternalError, "Unknown Error", errors.New("Package Invoice Invalid")).Send()
-						return
-					}
-				}
+				//if event.Action().ActionEnum() == operator_action.DeliveryFail {
+				//	var rejectedSubtotal uint64 = 0
+				//	var rejectedDiscount uint64 = 0
+				//
+				//	for _, subpackage := range newSubPackages {
+				//		for j := 0; j < len(subpackage.Items); j++ {
+				//			rejectedSubtotal += subpackage.Items[j].Invoice.Total
+				//			rejectedDiscount += subpackage.Items[j].Invoice.Discount
+				//		}
+				//	}
+				//
+				//	if rejectedSubtotal < pkgItem.Invoice.Subtotal && rejectedDiscount < pkgItem.Invoice.Discount {
+				//		pkgItem.Invoice.Subtotal -= rejectedSubtotal
+				//		pkgItem.Invoice.Discount -= rejectedDiscount
+				//		logger.Audit("Process() => calculate package invoice success, orderId: %d, pid:%d, action: %s, subtotal: %d, discount: %d",
+				//			pkgItem.OrderId, pkgItem.PId, event.Action().ActionEnum().ActionName(), pkgItem.Invoice.Subtotal, pkgItem.Invoice.Discount)
+				//
+				//	} else if rejectedSubtotal > pkgItem.Invoice.Subtotal || rejectedDiscount > pkgItem.Invoice.Discount {
+				//		logger.Err("Process() => calculate package invoice failed, orderId: %d, pid:%d, action: %s, subtotal: %d, discount: %d",
+				//			pkgItem.OrderId, pkgItem.PId, event.Action().ActionEnum().ActionName(), pkgItem.Invoice.Subtotal, pkgItem.Invoice.Discount)
+				//		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+				//			SetError(future.InternalError, "Unknown Error", errors.New("Package Invoice Invalid")).Send()
+				//		return
+				//	}
+				//}
 
 				pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 				if err != nil {

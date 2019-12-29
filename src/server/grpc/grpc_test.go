@@ -289,23 +289,41 @@ func createAuthenticatedContext() (context.Context, error) {
 
 func createRequestNewOrder() *pb.RequestNewOrder {
 	order := &pb.RequestNewOrder{
-		Invoice: &pb.Invoice{},
+		Platform: "PWA",
+		Invoice:  &pb.Invoice{},
 		Buyer: &pb.Buyer{
 			Finance:         &pb.FinanceInfo{},
 			ShippingAddress: &pb.Address{},
 		},
 	}
 
-	order.Invoice.GrandTotal = 600000
-	order.Invoice.Subtotal = 550000
-	order.Invoice.Discount = 50000
-	order.Invoice.Currency = "IRR"
+	order.Invoice.GrandTotal = &pb.Money{
+		Amount:   "600000",
+		Currency: "IRR",
+	}
+	order.Invoice.Subtotal = &pb.Money{
+		Amount:   "550000",
+		Currency: "IRR",
+	}
+	order.Invoice.Discount = &pb.Money{
+		Amount:   "50000",
+		Currency: "IRR",
+	}
+
 	order.Invoice.PaymentMethod = "IPG"
 	order.Invoice.PaymentGateway = "AAP"
-	order.Invoice.ShipmentTotal = 700000
+	order.Invoice.PaymentOption = nil
+	order.Invoice.ShipmentTotal = &pb.Money{
+		Amount:   "700000",
+		Currency: "IRR",
+	}
 	order.Invoice.Voucher = &pb.Voucher{
-		Amount: 40000,
-		Code:   "348",
+		Percent: 0,
+		Price: &pb.Money{
+			Amount:   "40000",
+			Currency: "IRR",
+		},
+		Code: "348",
 	}
 
 	order.Buyer.BuyerId = 1000001
@@ -341,18 +359,31 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 			CarrierNames:   []string{"Post"},
 			CarrierProduct: "Post Express",
 			CarrierType:    "standard",
-			ShippingCost:   100000,
-			VoucherAmount:  0,
-			Currency:       "IRR",
-			ReactionTime:   24,
-			ShippingTime:   72,
-			ReturnTime:     72,
-			Details:        "پست پیشتاز و تیپاکس برای شهرستان ها و پیک برای تهران به صورت رایگان می باشد",
+			ShippingCost: &pb.Money{
+				Amount:   "100000",
+				Currency: "IRR",
+			},
+			VoucherPrice: nil,
+			ReactionTime: 24,
+			ShippingTime: 72,
+			ReturnTime:   72,
+			Details:      "پست پیشتاز و تیپاکس برای شهرستان ها و پیک برای تهران به صورت رایگان می باشد",
 		},
 		Invoice: &pb.PackageInvoice{
-			Subtotal:       923984753438443,
-			Discount:       97342345334,
-			ShipmentAmount: 23123,
+			Subtotal: &pb.Money{
+				Amount:   "9233454468443",
+				Currency: "IRR",
+			},
+
+			Discount: &pb.Money{
+				Amount:   "9734234",
+				Currency: "IRR",
+			},
+
+			ShipmentPrice: &pb.Money{
+				Amount:   "23123",
+				Currency: "IRR",
+			},
 		},
 	}
 	order.Packages = append(order.Packages, pkg)
@@ -377,13 +408,32 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 			"Materials": "stone",
 		},
 		Invoice: &pb.ItemInvoice{
-			Unit:             200000,
-			Total:            20000000,
-			Original:         220000,
-			Special:          200000,
-			Discount:         20000,
+			Unit: &pb.Money{
+				Amount:   "200000",
+				Currency: "IRR",
+			},
+
+			Total: &pb.Money{
+				Amount:   "20000000",
+				Currency: "IRR",
+			},
+
+			Original: &pb.Money{
+				Amount:   "220000",
+				Currency: "IRR",
+			},
+
+			Special: &pb.Money{
+				Amount:   "200000",
+				Currency: "IRR",
+			},
+
+			Discount: &pb.Money{
+				Amount:   "20000",
+				Currency: "IRR",
+			},
+
 			SellerCommission: 10,
-			Currency:         "IRR",
 		},
 	}
 	pkg.Items = append(pkg.Items, item)
@@ -407,13 +457,31 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 			"Materials": "stone",
 		},
 		Invoice: &pb.ItemInvoice{
-			Unit:             100000,
-			Total:            10000000,
-			Original:         120000,
-			Special:          100000,
-			Discount:         10000,
+			Unit: &pb.Money{
+				Amount:   "1000000",
+				Currency: "IRR",
+			},
+
+			Total: &pb.Money{
+				Amount:   "100000000",
+				Currency: "IRR",
+			},
+
+			Original: &pb.Money{
+				Amount:   "1200000",
+				Currency: "IRR",
+			},
+
+			Special: &pb.Money{
+				Amount:   "1000000",
+				Currency: "IRR",
+			},
+
+			Discount: &pb.Money{
+				Amount:   "10000",
+				Currency: "IRR",
+			},
 			SellerCommission: 5,
-			Currency:         "IRR",
 		},
 	}
 	pkg.Items = append(pkg.Items, item)
@@ -424,18 +492,34 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 			CarrierNames:   []string{"Post"},
 			CarrierProduct: "Post Express",
 			CarrierType:    "standard",
-			ShippingCost:   100000,
-			VoucherAmount:  0,
-			Currency:       "IRR",
-			ReactionTime:   24,
-			ShippingTime:   72,
-			ReturnTime:     72,
-			Details:        "پست پیشتاز و تیپاکس برای شهرستان ها و پیک برای تهران به صورت رایگان می باشد",
+			ShippingCost: &pb.Money{
+				Amount:   "100000",
+				Currency: "IRR",
+			},
+
+			VoucherPrice: &pb.Money{
+				Amount:   "60000",
+				Currency: "IRR",
+			},
+			ReactionTime: 24,
+			ShippingTime: 72,
+			ReturnTime:   72,
+			Details:      "پست پیشتاز و تیپاکس برای شهرستان ها و پیک برای تهران به صورت رایگان می باشد",
 		},
 		Invoice: &pb.PackageInvoice{
-			Subtotal:       9238443,
-			Discount:       9734234,
-			ShipmentAmount: 23123,
+			Subtotal: &pb.Money{
+				Amount:   "923845355443",
+				Currency: "IRR",
+			},
+			Discount: &pb.Money{
+				Amount:   "9734234",
+				Currency: "IRR",
+			},
+
+			ShipmentPrice: &pb.Money{
+				Amount:   "23123",
+				Currency: "IRR",
+			},
 		},
 	}
 	order.Packages = append(order.Packages, pkg)
@@ -460,17 +544,33 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 			"Materials": "stone",
 		},
 		Invoice: &pb.ItemInvoice{
-			Unit:             200000,
-			Total:            20000000,
-			Original:         220000,
-			Special:          200000,
-			Discount:         20000,
+			Unit: &pb.Money{
+				Amount:   "200000",
+				Currency: "IRR",
+			},
+
+			Total: &pb.Money{
+				Amount:   "200000000",
+				Currency: "IRR",
+			},
+
+			Original: &pb.Money{
+				Amount:   "2200000",
+				Currency: "IRR",
+			},
+
+			Special: &pb.Money{
+				Amount:   "2000000",
+				Currency: "IRR",
+			},
+
+			Discount: &pb.Money{
+				Amount:   "20000",
+				Currency: "IRR",
+			},
+
 			SellerCommission: 8,
-			Currency:         "IRR",
 		},
-		XXX_NoUnkeyedLiteral: struct{}{},
-		XXX_unrecognized:     nil,
-		XXX_sizecache:        0,
 	}
 	pkg.Items = append(pkg.Items, item)
 	item = &pb.Item{
@@ -493,17 +593,36 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 			"Materials": "stone",
 		},
 		Invoice: &pb.ItemInvoice{
-			Unit:             100000,
-			Total:            10000000,
-			Original:         120000,
-			Special:          100000,
-			Discount:         10000,
+			Unit: &pb.Money{
+				Amount:   "1000000",
+				Currency: "IRR",
+			},
+
+			Total: &pb.Money{
+				Amount:   "100000000",
+				Currency: "IRR",
+			},
+
+			Original: &pb.Money{
+				Amount:   "1200000",
+				Currency: "IRR",
+			},
+
+			Special: &pb.Money{
+				Amount:   "1000000",
+				Currency: "IRR",
+			},
+
+			Discount: &pb.Money{
+				Amount:   "10000",
+				Currency: "IRR",
+			},
+
 			SellerCommission: 3,
-			Currency:         "IRR",
 		},
 	}
-	pkg.Items = append(pkg.Items, item)
 
+	pkg.Items = append(pkg.Items, item)
 	return order
 }
 
@@ -2115,8 +2234,14 @@ func TestNewOrderRequestWithZeroAmountAndVoucher(t *testing.T) {
 	assert.Nil(t, err)
 
 	requestNewOrder := createRequestNewOrder()
-	requestNewOrder.Invoice.GrandTotal = 0
-	requestNewOrder.Invoice.Voucher.Amount = 1000000
+	requestNewOrder.Invoice.GrandTotal = &pb.Money{
+		Amount:   "0",
+		Currency: "IRR",
+	}
+	requestNewOrder.Invoice.Voucher.Price = &pb.Money{
+		Amount:   "1000000",
+		Currency: "IRR",
+	}
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
@@ -2149,10 +2274,12 @@ func TestPaymentGateway_Success(t *testing.T) {
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
-	newOrder.PaymentService = []entities.PaymentService{{
+	newOrder.OrderPayment = []entities.PaymentService{{
 		PaymentRequest: &entities.PaymentRequest{
-			Amount:    newOrder.Invoice.GrandTotal,
-			Currency:  "IRR",
+			Price: &entities.Money{
+				Amount:   newOrder.Invoice.GrandTotal.Amount,
+				Currency: "IRR",
+			},
 			Gateway:   "APP",
 			CreatedAt: time.Now().UTC(),
 		},
@@ -2169,10 +2296,14 @@ func TestPaymentGateway_Success(t *testing.T) {
 		OrderID:   strconv.Itoa(int(order.OrderId)),
 		PaymentId: "534545345",
 		InvoiceId: 3434234234,
-		Amount:    int64(order.Invoice.GrandTotal),
+		Amount:    0,
 		CardMask:  "293488374****7234",
 		Result:    true,
 	}
+
+	amount, err := strconv.Atoi(order.Invoice.GrandTotal.Amount)
+	require.Nil(t, err)
+	request.Amount = int64(amount)
 
 	paymentService := pg.NewBankResultHookClient(grpcConn)
 	response, err := paymentService.PaymentGatewayHook(ctx, &request)
@@ -2201,10 +2332,12 @@ func TestPaymentGateway_Fail(t *testing.T) {
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
-	newOrder.PaymentService = []entities.PaymentService{{
+	newOrder.OrderPayment = []entities.PaymentService{{
 		PaymentRequest: &entities.PaymentRequest{
-			Amount:    newOrder.Invoice.GrandTotal,
-			Currency:  "IRR",
+			Price: &entities.Money{
+				Amount:   "newOrder.Invoice.GrandTotal",
+				Currency: "IRR",
+			},
 			Gateway:   "APP",
 			CreatedAt: time.Now().UTC(),
 		},
@@ -2221,10 +2354,14 @@ func TestPaymentGateway_Fail(t *testing.T) {
 		OrderID:   strconv.Itoa(int(order.OrderId)),
 		PaymentId: "534545345",
 		InvoiceId: 3434234234,
-		Amount:    int64(order.Invoice.GrandTotal),
+		Amount:    0,
 		CardMask:  "293488374****7234",
 		Result:    false,
 	}
+
+	amount, err := strconv.Atoi(order.Invoice.GrandTotal.Amount)
+	require.Nil(t, err)
+	request.Amount = int64(amount)
 
 	paymentService := pg.NewBankResultHookClient(grpcConn)
 	response, err := paymentService.PaymentGatewayHook(ctx, &request)

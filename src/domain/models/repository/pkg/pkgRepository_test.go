@@ -220,8 +220,10 @@ func insert(order *entities.Order) (*entities.Order, error) {
 func createOrder() *entities.Order {
 
 	paymentRequest := entities.PaymentRequest{
-		Amount:    75400000,
-		Currency:  "IRR",
+		Price: &entities.Money{
+			Amount:   "75400000",
+			Currency: "IRR",
+		},
 		Gateway:   "AAP",
 		CreatedAt: time.Now().UTC(),
 	}
@@ -237,11 +239,14 @@ func createOrder() *entities.Order {
 	}
 
 	paymentResult := entities.PaymentResult{
-		Result:      true,
-		Reason:      "",
-		PaymentId:   "r3r434ef45d",
-		InvoiceId:   12345678946,
-		Amount:      75400000,
+		Result:    true,
+		Reason:    "",
+		PaymentId: "r3r434ef45d",
+		InvoiceId: 12345678946,
+		Price: &entities.Money{
+			Amount:   "75400000",
+			Currency: "IRR",
+		},
 		CardNumMask: "545498******4553",
 		CreatedAt:   time.Now().UTC(),
 	}
@@ -283,18 +288,13 @@ func createOrder() *entities.Order {
 	newOrder := entities.Order{
 		OrderId: 0,
 		Version: 0,
-		PaymentService: []entities.PaymentService{{
+		OrderPayment: []entities.PaymentService{{
 			PaymentRequest:  &paymentRequest,
 			PaymentResponse: &paymentResponse,
 			PaymentResult:   &paymentResult,
 		}},
 		SystemPayment: entities.SystemPayment{
 			PayToBuyer: []entities.PayToBuyerInfo{{
-				PaymentRequest:  &paymentRequest,
-				PaymentResponse: &paymentResponse,
-				PaymentResult:   &paymentResult,
-			}},
-			PayToSeller: []entities.PayToSellerInfo{{
 				PaymentRequest:  &paymentRequest,
 				PaymentResponse: &paymentResponse,
 				PaymentResult:   &paymentResult,
@@ -308,18 +308,36 @@ func createOrder() *entities.Order {
 		Status:    "New",
 		BuyerInfo: buyerInfo,
 		Invoice: entities.Invoice{
-			GrandTotal:     75400000,
-			Subtotal:       73000000,
-			Discount:       15600000,
-			Currency:       "IRR",
-			ShipmentTotal:  5700000,
+			GrandTotal: entities.Money{
+				Amount:   "75400000",
+				Currency: "IRR",
+			},
+
+			Subtotal: entities.Money{
+				Amount:   "73000000",
+				Currency: "IRR",
+			},
+
+			Discount: entities.Money{
+				Amount:   "15600000",
+				Currency: "IRR",
+			},
+
+			ShipmentTotal: entities.Money{
+				Amount:   "5700000",
+				Currency: "IRR",
+			},
 			PaymentMethod:  "IPG",
 			PaymentGateway: "APP",
 			PaymentOption:  nil,
 			CartRule:       nil,
 			Voucher: &entities.Voucher{
-				Amount: 230000,
-				Code:   "Market",
+				Percent: 0,
+				Price: &entities.Money{
+					Amount:   "230000",
+					Currency: "IRR",
+				},
+				Code: "Market",
 				Details: &entities.VoucherDetails{
 					StartDate:        time.Now().UTC(),
 					EndDate:          time.Now().UTC(),
@@ -336,9 +354,20 @@ func createOrder() *entities.Order {
 				Version:  0,
 				ShopName: "Sazagar",
 				Invoice: entities.PackageInvoice{
-					Subtotal:       2873423,
-					Discount:       9283443,
-					ShipmentAmount: 98734,
+					Subtotal: entities.Money{
+						Amount:   "2873423",
+						Currency: "IRR",
+					},
+
+					Discount: entities.Money{
+						Amount:   "9283443",
+						Currency: "IRR",
+					},
+
+					ShipmentAmount: entities.Money{
+						Amount:   "98734",
+						Currency: "IRR",
+					},
 				},
 				SellerInfo: &entities.SellerProfile{
 					SellerId: 129384234,
@@ -408,13 +437,18 @@ func createOrder() *entities.Order {
 					CarrierNames:   []string{"Post", "Snap"},
 					CarrierProduct: "Post Express",
 					CarrierType:    "Standard",
-					ShippingCost:   1249348,
-					VoucherAmount:  3242344,
-					Currency:       "IRR",
-					ReactionTime:   2,
-					ShippingTime:   8,
-					ReturnTime:     24,
-					Details:        "no return",
+					ShippingCost: &entities.Money{
+						Amount:   "1249348",
+						Currency: "IRR",
+					},
+					VoucherPrice: &entities.Money{
+						Amount:   "3242344",
+						Currency: "IRR",
+					},
+					ReactionTime: 2,
+					ShippingTime: 8,
+					ReturnTime:   24,
+					Details:      "no return",
 				},
 				Subpackages: []entities.Subpackage{
 					{
@@ -444,13 +478,32 @@ func createOrder() *entities.Order {
 									"Materials": "Stone",
 								},
 								Invoice: entities.ItemInvoice{
-									Unit:              1270000,
-									Total:             7450000,
-									Original:          1270000,
-									Special:           1000000,
-									Discount:          23000,
+									Unit: entities.Money{
+										Amount:   "1270000",
+										Currency: "IRR",
+									},
+
+									Total: entities.Money{
+										Amount:   "7450000",
+										Currency: "IRR",
+									},
+
+									Original: entities.Money{
+										Amount:   "1270000",
+										Currency: "IRR",
+									},
+
+									Special: entities.Money{
+										Amount:   "1000000",
+										Currency: "IRR",
+									},
+
+									Discount: entities.Money{
+										Amount:   "23000",
+										Currency: "IRR",
+									},
+
 									SellerCommission:  5334444,
-									Currency:          "IRR",
 									ApplicableVoucher: false,
 								},
 							},
@@ -475,13 +528,32 @@ func createOrder() *entities.Order {
 									"Materials": "Stone",
 								},
 								Invoice: entities.ItemInvoice{
-									Unit:              3270000,
-									Total:             87450000,
-									Original:          21270000,
-									Special:           10000000,
-									Discount:          230000,
-									SellerCommission:  5334444,
-									Currency:          "IRR",
+									Unit: entities.Money{
+										Amount:   "3270000",
+										Currency: "IRR",
+									},
+
+									Total: entities.Money{
+										Amount:   "87450000",
+										Currency: "IRR",
+									},
+
+									Original: entities.Money{
+										Amount:   "21270000",
+										Currency: "IRR",
+									},
+
+									Special: entities.Money{
+										Amount:   "10000000",
+										Currency: "IRR",
+									},
+
+									Discount: entities.Money{
+										Amount:   "230000",
+										Currency: "IRR",
+									},
+
+									SellerCommission:  87,
 									ApplicableVoucher: false,
 								},
 							},
@@ -580,13 +652,32 @@ func createOrder() *entities.Order {
 									"Materials": "Stone",
 								},
 								Invoice: entities.ItemInvoice{
-									Unit:              1270000,
-									Total:             8750000,
-									Original:          1270000,
-									Special:           1000000,
-									Discount:          2355434,
-									SellerCommission:  5334444,
-									Currency:          "IRR",
+									Unit: entities.Money{
+										Amount:   "1270000",
+										Currency: "IRR",
+									},
+
+									Total: entities.Money{
+										Amount:   "8750000",
+										Currency: "IRR",
+									},
+
+									Original: entities.Money{
+										Amount:   "1270000",
+										Currency: "IRR",
+									},
+
+									Special: entities.Money{
+										Amount:   "1000000",
+										Currency: "IRR",
+									},
+
+									Discount: entities.Money{
+										Amount:   "2355434",
+										Currency: "IRR",
+									},
+
+									SellerCommission:  56,
 									ApplicableVoucher: true,
 								},
 							},
@@ -611,13 +702,32 @@ func createOrder() *entities.Order {
 									"Materials": "Stone",
 								},
 								Invoice: entities.ItemInvoice{
-									Unit:              3270000,
-									Total:             12750000,
-									Original:          2270000,
-									Special:           100000,
-									Discount:          2355434,
-									SellerCommission:  5334444,
-									Currency:          "IRR",
+									Unit: entities.Money{
+										Amount:   "3270000",
+										Currency: "IRR",
+									},
+
+									Total: entities.Money{
+										Amount:   "12750000",
+										Currency: "IRR",
+									},
+
+									Original: entities.Money{
+										Amount:   "2270000",
+										Currency: "IRR",
+									},
+
+									Special: entities.Money{
+										Amount:   "100000",
+										Currency: "IRR",
+									},
+
+									Discount: entities.Money{
+										Amount:   "2355434",
+										Currency: "IRR",
+									},
+
+									SellerCommission:  34,
 									ApplicableVoucher: true,
 								},
 							},
@@ -701,9 +811,20 @@ func createOrder() *entities.Order {
 				Version:  0,
 				ShopName: "Sazgar",
 				Invoice: entities.PackageInvoice{
-					Subtotal:       2873423,
-					Discount:       9283443,
-					ShipmentAmount: 98734,
+					Subtotal: entities.Money{
+						Amount:   "2873423",
+						Currency: "IRR",
+					},
+
+					Discount: entities.Money{
+						Amount:   "9283443",
+						Currency: "IRR",
+					},
+
+					ShipmentAmount: entities.Money{
+						Amount:   "98734",
+						Currency: "IRR",
+					},
 				},
 				SellerInfo: &entities.SellerProfile{
 					SellerId: 99988887777,
@@ -773,13 +894,18 @@ func createOrder() *entities.Order {
 					CarrierNames:   []string{"Post", "Snap"},
 					CarrierProduct: "Post Express",
 					CarrierType:    "Standard",
-					ShippingCost:   1249348,
-					VoucherAmount:  3242344,
-					Currency:       "IRR",
-					ReactionTime:   2,
-					ShippingTime:   8,
-					ReturnTime:     24,
-					Details:        "no return",
+					ShippingCost: &entities.Money{
+						Amount:   "1249348",
+						Currency: "IRR",
+					},
+					VoucherPrice: &entities.Money{
+						Amount:   "3242344",
+						Currency: "IRR",
+					},
+					ReactionTime: 2,
+					ShippingTime: 8,
+					ReturnTime:   24,
+					Details:      "no return",
 				},
 				Subpackages: []entities.Subpackage{
 					{
@@ -809,13 +935,31 @@ func createOrder() *entities.Order {
 									"Materials": "Stone",
 								},
 								Invoice: entities.ItemInvoice{
-									Unit:              1270000,
-									Total:             7340000,
-									Original:          1270000,
-									Special:           1000000,
-									Discount:          23000,
-									SellerCommission:  5334444,
-									Currency:          "IRR",
+									Unit: entities.Money{
+										Amount:   "1270000",
+										Currency: "IRR",
+									},
+
+									Total: entities.Money{
+										Amount:   "7340000",
+										Currency: "IRR",
+									},
+
+									Original: entities.Money{
+										Amount:   "1270000",
+										Currency: "IRR",
+									},
+									Special: entities.Money{
+										Amount:   "1000000",
+										Currency: "IRR",
+									},
+
+									Discount: entities.Money{
+										Amount:   "23000",
+										Currency: "IRR",
+									},
+
+									SellerCommission:  34,
 									ApplicableVoucher: false,
 								},
 							},
@@ -840,13 +984,32 @@ func createOrder() *entities.Order {
 									"Materials": "Stone",
 								},
 								Invoice: entities.ItemInvoice{
-									Unit:              2270000,
-									Total:             6340000,
-									Original:          4270000,
-									Special:           100000,
-									Discount:          2343000,
-									SellerCommission:  533444,
-									Currency:          "IRR",
+									Unit: entities.Money{
+										Amount:   "2270000",
+										Currency: "IRR",
+									},
+
+									Total: entities.Money{
+										Amount:   "6340000",
+										Currency: "IRR",
+									},
+
+									Original: entities.Money{
+										Amount:   "4270000",
+										Currency: "IRR",
+									},
+
+									Special: entities.Money{
+										Amount:   "100000",
+										Currency: "IRR",
+									},
+
+									Discount: entities.Money{
+										Amount:   "2343000",
+										Currency: "IRR",
+									},
+
+									SellerCommission:  23,
 									ApplicableVoucher: false,
 								},
 							},
@@ -945,13 +1108,32 @@ func createOrder() *entities.Order {
 									"Materials": "Stone",
 								},
 								Invoice: entities.ItemInvoice{
-									Unit:              1270000,
-									Total:             5646700,
-									Original:          7340000,
-									Special:           1000000,
-									Discount:          2355434,
-									SellerCommission:  5334444,
-									Currency:          "IRR",
+									Unit: entities.Money{
+										Amount:   "1270000",
+										Currency: "IRR",
+									},
+
+									Total: entities.Money{
+										Amount:   "5646700",
+										Currency: "IRR",
+									},
+
+									Original: entities.Money{
+										Amount:   "7340000",
+										Currency: "IRR",
+									},
+
+									Special: entities.Money{
+										Amount:   "1000000",
+										Currency: "IRR",
+									},
+
+									Discount: entities.Money{
+										Amount:   "2355434",
+										Currency: "IRR",
+									},
+
+									SellerCommission:  23,
 									ApplicableVoucher: true,
 								},
 							},
@@ -976,13 +1158,32 @@ func createOrder() *entities.Order {
 									"Materials": "Stone",
 								},
 								Invoice: entities.ItemInvoice{
-									Unit:              7270000,
-									Total:             4646700,
-									Original:          2340000,
-									Special:           1000000,
-									Discount:          45355434,
-									SellerCommission:  5334444,
-									Currency:          "IRR",
+									Unit: entities.Money{
+										Amount:   "7270000",
+										Currency: "IRR",
+									},
+
+									Total: entities.Money{
+										Amount:   "4646700",
+										Currency: "IRR",
+									},
+
+									Original: entities.Money{
+										Amount:   "2340000",
+										Currency: "IRR",
+									},
+
+									Special: entities.Money{
+										Amount:   "1000000",
+										Currency: "IRR",
+									},
+
+									Discount: entities.Money{
+										Amount:   "45355434",
+										Currency: "IRR",
+									},
+
+									SellerCommission:  34,
 									ApplicableVoucher: true,
 								},
 							},

@@ -95,19 +95,43 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 		return nil, errors.New("invoice of RequestNewOrder invalid")
 	}
 
-	order.Invoice.GrandTotal = newOrderDto.Invoice.GrandTotal
-	order.Invoice.Subtotal = newOrderDto.Invoice.Subtotal
-	order.Invoice.Discount = newOrderDto.Invoice.Discount
-	order.Invoice.ShipmentTotal = newOrderDto.Invoice.ShipmentTotal
-	order.Invoice.Currency = newOrderDto.Invoice.Currency
+	order.Invoice.GrandTotal = entities.Money{
+		Amount:   newOrderDto.Invoice.GrandTotal.Amount,
+		Currency: newOrderDto.Invoice.GrandTotal.Currency,
+	}
+
+	order.Invoice.Subtotal = entities.Money{
+		Amount:   newOrderDto.Invoice.Subtotal.Amount,
+		Currency: newOrderDto.Invoice.Subtotal.Currency,
+	}
+
+	order.Invoice.Discount = entities.Money{
+		Amount:   newOrderDto.Invoice.Discount.Amount,
+		Currency: newOrderDto.Invoice.Discount.Currency,
+	}
+
+	order.Invoice.ShipmentTotal = entities.Money{
+		Amount:   newOrderDto.Invoice.ShipmentTotal.Amount,
+		Currency: newOrderDto.Invoice.ShipmentTotal.Currency,
+	}
+
 	order.Invoice.PaymentMethod = newOrderDto.Invoice.PaymentMethod
 	order.Invoice.PaymentGateway = newOrderDto.Invoice.PaymentGateway
 	order.Invoice.PaymentOption = nil
 
 	if newOrderDto.Invoice.Voucher != nil {
 		order.Invoice.Voucher = &entities.Voucher{
-			Amount: float64(newOrderDto.Invoice.Voucher.Amount),
-			Code:   newOrderDto.Invoice.Voucher.Code,
+			Percent: float64(newOrderDto.Invoice.Voucher.Percent),
+			Price:   nil,
+			Code:    newOrderDto.Invoice.Voucher.Code,
+			Details: nil,
+		}
+
+		if newOrderDto.Invoice.Voucher.Price != nil {
+			order.Invoice.Voucher.Price = &entities.Money{
+				Amount:   newOrderDto.Invoice.Voucher.Price.Amount,
+				Currency: newOrderDto.Invoice.Voucher.Price.Currency,
+			}
 		}
 
 		if newOrderDto.Invoice.Voucher.Details != nil {
@@ -151,25 +175,75 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 		}
 
 		var pkgItem = entities.PackageItem{
-			PId:      pkgDto.SellerId,
-			ShopName: pkgDto.ShopName,
+			PId:         pkgDto.SellerId,
+			OrderId:     0,
+			Version:     0,
+			SellerInfo:  nil,
+			ShopName:    pkgDto.ShopName,
+			PayToSeller: nil,
+			Subpackages: nil,
+			Status:      "",
+			CreatedAt:   time.Now().UTC(),
+			UpdatedAt:   time.Now().UTC(),
+			DeletedAt:   nil,
+			Extended:    nil,
+
+			ShippingAddress: entities.AddressInfo{
+				FirstName:     order.BuyerInfo.ShippingAddress.FirstName,
+				LastName:      order.BuyerInfo.ShippingAddress.LastName,
+				Address:       order.BuyerInfo.ShippingAddress.Address,
+				Phone:         order.BuyerInfo.ShippingAddress.Phone,
+				Mobile:        order.BuyerInfo.ShippingAddress.Mobile,
+				Country:       order.BuyerInfo.ShippingAddress.Country,
+				City:          order.BuyerInfo.ShippingAddress.City,
+				Province:      order.BuyerInfo.ShippingAddress.Province,
+				Neighbourhood: order.BuyerInfo.ShippingAddress.Neighbourhood,
+				Location:      order.BuyerInfo.ShippingAddress.Location,
+				ZipCode:       order.BuyerInfo.ShippingAddress.ZipCode,
+				Extended:      order.BuyerInfo.ShippingAddress.Extended,
+			},
+
 			Invoice: entities.PackageInvoice{
-				Subtotal:       pkgDto.Invoice.Subtotal,
-				Discount:       pkgDto.Invoice.Discount,
-				ShipmentAmount: pkgDto.Invoice.ShipmentAmount,
+				Subtotal: entities.Money{
+					Amount:   pkgDto.Invoice.Subtotal.Amount,
+					Currency: pkgDto.Invoice.Subtotal.Currency,
+				},
+
+				Discount: entities.Money{
+					Amount:   pkgDto.Invoice.Discount.Amount,
+					Currency: pkgDto.Invoice.Discount.Currency,
+				},
+
+				ShipmentAmount: entities.Money{
+					Amount:   pkgDto.Invoice.ShipmentPrice.Amount,
+					Currency: pkgDto.Invoice.ShipmentPrice.Currency,
+				},
 			},
 			ShipmentSpec: entities.ShipmentSpec{
 				CarrierNames:   pkgDto.Shipment.CarrierNames,
 				CarrierProduct: pkgDto.Shipment.CarrierProduct,
 				CarrierType:    pkgDto.Shipment.CarrierType,
-				ShippingCost:   pkgDto.Shipment.ShippingCost,
-				VoucherAmount:  pkgDto.Shipment.VoucherAmount,
-				Currency:       pkgDto.Shipment.Currency,
+				ShippingCost:   nil,
+				VoucherPrice:   nil,
 				ReactionTime:   pkgDto.Shipment.ReactionTime,
 				ShippingTime:   pkgDto.Shipment.ReturnTime,
 				ReturnTime:     pkgDto.Shipment.ReturnTime,
 				Details:        pkgDto.Shipment.Details,
 			},
+		}
+
+		if pkgDto.Shipment.ShippingCost != nil {
+			pkgItem.ShipmentSpec.ShippingCost = &entities.Money{
+				Amount:   pkgDto.Shipment.ShippingCost.Amount,
+				Currency: pkgDto.Shipment.ShippingCost.Currency,
+			}
+		}
+
+		if pkgDto.Shipment.VoucherPrice != nil {
+			pkgItem.ShipmentSpec.VoucherPrice = &entities.Money{
+				Amount:   pkgDto.Shipment.VoucherPrice.Amount,
+				Currency: pkgDto.Shipment.VoucherPrice.Currency,
+			}
 		}
 
 		pkgItem.Subpackages = []entities.Subpackage{
@@ -199,15 +273,37 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 				Quantity:    itemDto.Quantity,
 				Attributes:  itemDto.Attributes,
 				Invoice: entities.ItemInvoice{
-					Unit:              itemDto.Invoice.Unit,
-					Total:             itemDto.Invoice.Total,
-					Original:          itemDto.Invoice.Original,
-					Special:           itemDto.Invoice.Special,
-					Discount:          itemDto.Invoice.Discount,
+					Unit: entities.Money{
+						Amount:   itemDto.Invoice.Unit.Amount,
+						Currency: itemDto.Invoice.Unit.Currency,
+					},
+
+					Total: entities.Money{
+						Amount:   itemDto.Invoice.Total.Amount,
+						Currency: itemDto.Invoice.Total.Currency,
+					},
+
+					Original: entities.Money{
+						Amount:   itemDto.Invoice.Original.Amount,
+						Currency: itemDto.Invoice.Original.Currency,
+					},
+
+					Special: entities.Money{
+						Amount:   itemDto.Invoice.Special.Amount,
+						Currency: itemDto.Invoice.Special.Currency,
+					},
+					Discount: entities.Money{
+						Amount:   itemDto.Invoice.Discount.Amount,
+						Currency: itemDto.Invoice.Discount.Currency,
+					},
+
 					SellerCommission:  itemDto.Invoice.SellerCommission,
-					Currency:          itemDto.Invoice.Currency,
-					ApplicableVoucher: newOrderDto.Invoice.Voucher != nil && newOrderDto.Invoice.Voucher.Amount > 0,
+					ApplicableVoucher: false,
 				},
+			}
+
+			if newOrderDto.Invoice.Voucher != nil && (newOrderDto.Invoice.Voucher.Price != nil || newOrderDto.Invoice.Voucher.Percent > 0) {
+				item.Invoice.ApplicableVoucher = true
 			}
 
 			pkgItem.Subpackages[0].Items = append(pkgItem.Subpackages[0].Items, item)

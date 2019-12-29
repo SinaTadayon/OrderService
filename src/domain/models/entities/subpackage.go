@@ -15,7 +15,7 @@ type Subpackage struct {
 	CreatedAt time.Time              `bson:"createdAt"`
 	UpdatedAt time.Time              `bson:"updatedAt"`
 	DeletedAt *time.Time             `bson:"deletedAt"`
-	Extended  map[string]interface{} `bson:"extended"`
+	Extended  map[string]interface{} `bson:"ext"`
 }
 
 type Shipment struct {
@@ -31,7 +31,7 @@ type ShippingDetail struct {
 	Description    string                 `bson:"description"`
 	ShippedAt      *time.Time             `bson:"shippedDate"`
 	CreatedAt      time.Time              `bson:"createdAt"`
-	Extended       map[string]interface{} `bson:"extended"`
+	Extended       map[string]interface{} `bson:"ext"`
 }
 
 type ReturnShippingDetail struct {
@@ -43,7 +43,7 @@ type ReturnShippingDetail struct {
 	ShippedAt      *time.Time             `bson:"shippedDate"`
 	RequestedAt    *time.Time             `bson:"requestedAt"`
 	CreatedAt      time.Time              `bson:"createdAt"`
-	Extended       map[string]interface{} `bson:"extended"`
+	Extended       map[string]interface{} `bson:"ext"`
 }
 
 type Item struct {
@@ -59,26 +59,30 @@ type Item struct {
 	Reasons     []string               `bson:"reasons"`
 	Attributes  map[string]string      `bson:"attributes"`
 	Invoice     ItemInvoice            `bson:"invoice"`
-	Extended    map[string]interface{} `bson:"extended"`
+	Extended    map[string]interface{} `bson:"ext"`
 }
 
 type ItemInvoice struct {
-	Unit              uint64                 `bson:"unit"`
-	Total             uint64                 `bson:"total"`
-	Original          uint64                 `bson:"original"`
-	Special           uint64                 `bson:"special"`
-	Discount          uint64                 `bson:"discount"`
+	Unit              Money                  `bson:"unit"`
+	Total             Money                  `bson:"total"`
+	Original          Money                  `bson:"original"`
+	Special           Money                  `bson:"special"`
+	Discount          Money                  `bson:"discount"`
 	SellerCommission  float32                `bson:"sellerCommission"`
-	Currency          string                 `bson:"currency"`
 	ApplicableVoucher bool                   `bson:"applicableVoucher"`
-	Extended          map[string]interface{} `bson:"extended"`
+	Voucher           *PackageVoucher        `bson:"voucher"`
+	CartRule          *CartRule              `bson:"cartRule"`
+	SSO               *SSO                   `bson:"sso"`
+	VAT               *VAT                   `bson:"vat"`
+	TAX               *TAX                   `bson:"tax"`
+	Extended          map[string]interface{} `bson:"ext"`
 }
 
 type Progress struct {
 	State    *State                 `bson:"state"`
 	Action   *Action                `bson:"action"`
 	History  []State                `bson:"history"`
-	Extended map[string]interface{} `bson:"extended"`
+	Extended map[string]interface{} `bson:"ext"`
 }
 
 type State struct {
@@ -87,7 +91,7 @@ type State struct {
 	Data      map[string]interface{} `bson:"data"`
 	Actions   []Action               `bson:"actions"`
 	CreatedAt time.Time              `bson:"createdAt"`
-	Extended  map[string]interface{} `bson:"extended"`
+	Extended  map[string]interface{} `bson:"ext"`
 }
 
 type SchedulerData struct {
@@ -116,7 +120,7 @@ type Action struct {
 	Reasons   []string               `bson:"reasons"`
 	Data      map[string]interface{} `bson:"data"`
 	CreatedAt time.Time              `bson:"createdAt"`
-	Extended  map[string]interface{} `bson:"extended"`
+	Extended  map[string]interface{} `bson:"ext"`
 }
 
 func (item Item) DeepCopy() *Item {
@@ -130,7 +134,9 @@ func (item Item) DeepCopy() *Item {
 		Image:       item.Image,
 		Returnable:  item.Returnable,
 		Quantity:    item.Quantity,
+		Reasons:     nil,
 		Attributes:  item.Attributes,
+		Extended:    item.Extended,
 		Invoice: ItemInvoice{
 			Unit:              item.Invoice.Unit,
 			Total:             item.Invoice.Total,
@@ -138,8 +144,13 @@ func (item Item) DeepCopy() *Item {
 			Special:           item.Invoice.Special,
 			Discount:          item.Invoice.Discount,
 			SellerCommission:  item.Invoice.SellerCommission,
-			Currency:          item.Invoice.Currency,
 			ApplicableVoucher: item.Invoice.ApplicableVoucher,
+			Voucher:           item.Invoice.Voucher,
+			CartRule:          item.Invoice.CartRule,
+			SSO:               item.Invoice.SSO,
+			VAT:               item.Invoice.VAT,
+			TAX:               item.Invoice.TAX,
+			Extended:          item.Extended,
 		},
 	}
 	if item.Reasons != nil {
@@ -158,6 +169,9 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 		PId:       subpackage.PId,
 		OrderId:   subpackage.OrderId,
 		Version:   subpackage.Version,
+		Items:     nil,
+		Shipments: nil,
+		Tracking:  Progress{},
 		Status:    subpackage.Status,
 		CreatedAt: subpackage.CreatedAt,
 		UpdatedAt: subpackage.UpdatedAt,
@@ -179,6 +193,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 			Quantity:    item.Quantity,
 			Attributes:  item.Attributes,
 			Extended:    item.Extended,
+			Reasons:     nil,
 			Invoice: ItemInvoice{
 				Unit:              item.Invoice.Unit,
 				Total:             item.Invoice.Total,
@@ -186,8 +201,12 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 				Special:           item.Invoice.Special,
 				Discount:          item.Invoice.Discount,
 				SellerCommission:  item.Invoice.SellerCommission,
-				Currency:          item.Invoice.Currency,
 				ApplicableVoucher: item.Invoice.ApplicableVoucher,
+				Voucher:           item.Invoice.Voucher,
+				CartRule:          item.Invoice.CartRule,
+				SSO:               item.Invoice.SSO,
+				VAT:               item.Invoice.VAT,
+				TAX:               item.Invoice.TAX,
 				Extended:          item.Invoice.Extended,
 			},
 		}
@@ -233,6 +252,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 		State:    nil,
 		Action:   nil,
 		Extended: subpackage.Tracking.Extended,
+		History:  nil,
 	}
 
 	if subpackage.Tracking.State != nil {

@@ -449,11 +449,14 @@ func (flowManager iFlowManagerImpl) PaymentGatewayResult(ctx context.Context, re
 	}
 
 	paymentResult := &entities.PaymentResult{
-		Result:      req.Result,
-		Reason:      "",
-		PaymentId:   req.PaymentId,
-		InvoiceId:   req.InvoiceId,
-		Amount:      uint64(req.Amount),
+		Result:    req.Result,
+		Reason:    "",
+		PaymentId: req.PaymentId,
+		InvoiceId: req.InvoiceId,
+		Price: &entities.Money{
+			Amount:   strconv.Itoa(int(req.Amount)),
+			Currency: "IRR",
+		},
 		CardNumMask: req.CardMask,
 		CreatedAt:   time.Now().UTC(),
 	}
@@ -801,9 +804,9 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 //		response.Items = append(response.Items, itemInfo)
 //	}
 //
-//	if order.PaymentService != nil && len(order.PaymentService) == 1 {
-//		if order.PaymentService[0].PaymentResult != nil {
-//			response.Payment.Result = order.PaymentService[0].PaymentResponse.Result
+//	if order.OrderPayment != nil && len(order.OrderPayment) == 1 {
+//		if order.OrderPayment[0].PaymentResult != nil {
+//			response.Payment.Result = order.OrderPayment[0].PaymentResponse.Result
 //		} else {
 //			response.Payment.Result = false
 //		}

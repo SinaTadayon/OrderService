@@ -12,7 +12,7 @@ type BuyerInfo struct {
 	IP              string                 `bson:"ip"`
 	FinanceInfo     FinanceInfo            `bson:"financeInfo"`
 	ShippingAddress AddressInfo            `bson:"shippingAddress"`
-	Extended        map[string]interface{} `bson:"extended"`
+	Extended        map[string]interface{} `bson:"ext"`
 }
 
 type FinanceInfo struct {
@@ -20,7 +20,7 @@ type FinanceInfo struct {
 	CardNumber    string                 `bson:"cardNumber"`
 	AccountNumber string                 `bson:"accountNumber"`
 	BankName      string                 `bson:"backName"`
-	Extended      map[string]interface{} `bson:"extended"`
+	Extended      map[string]interface{} `bson:"ext"`
 }
 
 type AddressInfo struct {
@@ -35,7 +35,7 @@ type AddressInfo struct {
 	Neighbourhood string                 `bson:"neighbourhood"`
 	Location      *Location              `bson:"location"`
 	ZipCode       string                 `bson:"zipCode"`
-	Extended      map[string]interface{} `bson:"extended"`
+	Extended      map[string]interface{} `bson:"ext"`
 }
 
 type Location struct {

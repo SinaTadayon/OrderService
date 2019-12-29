@@ -3,7 +3,7 @@ package user_service
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
@@ -17,7 +17,7 @@ import (
 var config *configs.Config
 var userService *iUserServiceImpl
 
-func init() {
+func TestMain(m *testing.M) {
 	var err error
 	var path string
 	if os.Getenv("APP_ENV") == "dev" {
@@ -29,7 +29,7 @@ func init() {
 	config, err = configs.LoadConfig(path)
 	if err != nil {
 		logger.Err(err.Error())
-		panic("configs.LoadConfig failed")
+		os.Exit(1)
 	}
 
 	userService = &iUserServiceImpl{
@@ -37,39 +37,44 @@ func init() {
 		serverAddress: config.UserService.Address,
 		serverPort:    config.UserService.Port,
 	}
+
+	// Running Tests
+	code := m.Run()
+	os.Exit(code)
+
 }
 
 func TestGetSellerInfo(t *testing.T) {
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	err := userService.getUserService(ctx)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	ctx, _ = context.WithCancel(context.Background())
 
 	// user service create dummy user with id 1000001
 	iFuture := userService.GetSellerProfile(ctx, "1000001")
 	futureData := iFuture.Get()
-	assert.Nil(t, futureData.Error())
-	assert.Equal(t, futureData.Data().(*entities.SellerProfile).SellerId, int64(1000001))
+	require.Nil(t, futureData.Error())
+	require.Equal(t, futureData.Data().(*entities.SellerProfile).SellerId, int64(1000001))
 }
 
 func TestAuthenticationToken(t *testing.T) {
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	err := userService.getUserService(ctx)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	result, err := userService.client.Login("989100000002", "123456", ctx)
-	assert.Nil(t, err)
-	assert.NotNil(t, result)
-	assert.Equal(t, 200, int(result.Code))
+	require.Nil(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, 200, int(result.Code))
 
 	var authorization = map[string]string{"authorization": fmt.Sprintf("Bearer %v", result.Data.AccessToken)}
 	md := metadata.New(authorization)
 	ctxToken := metadata.NewIncomingContext(context.Background(), md)
 
 	acl, err := userService.AuthenticateContextToken(ctxToken)
-	assert.Nil(t, err)
-	assert.Equal(t, acl.User().UserID, int64(1000001))
+	require.Nil(t, err)
+	require.Equal(t, acl.User().UserID, int64(1000001))
 }
 
 //func CreateRandomMobileNumber(prefix string) string {

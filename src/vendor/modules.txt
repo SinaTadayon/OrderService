@@ -32,6 +32,8 @@ github.com/pkg/errors
 github.com/pmezard/go-difflib/difflib
 # github.com/rs/xid v1.2.1
 github.com/rs/xid
+# github.com/shopspring/decimal v0.0.0-20191130220710-360f2bc03045
+github.com/shopspring/decimal
 # github.com/sirupsen/logrus v1.4.2
 github.com/sirupsen/logrus
 # github.com/stretchr/testify v1.4.0

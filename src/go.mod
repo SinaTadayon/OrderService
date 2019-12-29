@@ -10,6 +10,7 @@ require (
 	github.com/joho/godotenv v1.3.0
 	github.com/kr/pretty v0.1.0 // indirect
 	github.com/pkg/errors v0.8.1
+	github.com/shopspring/decimal v0.0.0-20191130220710-360f2bc03045
 	github.com/stretchr/testify v1.4.0
 	gitlab.faza.io/go-framework/acl v0.0.3
 	gitlab.faza.io/go-framework/logger v0.0.3

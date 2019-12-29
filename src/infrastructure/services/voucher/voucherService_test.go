@@ -16,7 +16,7 @@ import (
 var config *configs.Config
 var voucherSrv iVoucherServiceImpl
 
-func init() {
+func TestMain(m *testing.M) {
 	var err error
 	var path string
 	if os.Getenv("APP_ENV") == "dev" {
@@ -28,7 +28,7 @@ func init() {
 	config, err = configs.LoadConfig(path)
 	if err != nil {
 		logger.Err(err.Error())
-		panic("configs.LoadConfig failed")
+		os.Exit(1)
 	}
 
 	voucherSrv = iVoucherServiceImpl{
@@ -37,6 +37,10 @@ func init() {
 		serverAddress:  config.VoucherService.Address,
 		serverPort:     config.VoucherService.Port,
 	}
+
+	// Running Tests
+	code := m.Run()
+	os.Exit(code)
 }
 
 func TestVoucherSettlement(t *testing.T) {

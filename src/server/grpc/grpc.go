@@ -2,6 +2,7 @@ package grpc_server
 
 import (
 	"context"
+	"github.com/shopspring/decimal"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	buyer_action "gitlab.faza.io/order-project/order-service/domain/actions/buyer"
 	operator_action "gitlab.faza.io/order-project/order-service/domain/actions/operator"
@@ -874,10 +875,15 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 		}
 	}
 
-	orderList, totalPage, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+	orderList, totalCount, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
 	if err != nil {
 		logger.Err("operatorOrderListHandler() => CountWithFilter failed,  oid: %d, filterValue: %s, page: %d, perPage: %d, error: %s", oid, filter, page, perPage, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	if totalCount == 0 || orderList == nil || len(orderList) == 0 {
+		logger.Err("operatorOrderListHandler() => order not found, orderId: %d, filter:%s", oid, filter)
+		return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
 	}
 
 	operatorOrders := make([]*pb.OperatorOrderList_Order, 0, len(orderList))
@@ -893,22 +899,58 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 			IP:          orderList[i].BuyerInfo.IP,
 			Status:      orderList[i].Status,
 			Invoice: &pb.OperatorOrderList_Order_Invoice{
-				GrandTotal:     orderList[i].Invoice.GrandTotal,
-				Subtotal:       orderList[i].Invoice.Subtotal,
+				GrandTotal:     0,
+				Subtotal:       0,
 				PaymentMethod:  orderList[i].Invoice.PaymentMethod,
 				PaymentGateway: orderList[i].Invoice.PaymentGateway,
-				Shipment:       orderList[i].Invoice.ShipmentTotal,
+				Shipment:       0,
 			},
 		}
 
+		amount, err := decimal.NewFromString(orderList[i].Invoice.GrandTotal.Amount)
+		if err != nil {
+			logger.Err("operatorOrderListHandler() => decimal.NewFromString failed, GrandTotal invalid, grandTotal: %s, orderId: %d, error:%s",
+				orderList[i].Invoice.GrandTotal.Amount, orderList[i].OrderId, err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+		order.Invoice.GrandTotal = uint64(amount.IntPart())
+
+		subtotal, err := decimal.NewFromString(orderList[i].Invoice.Subtotal.Amount)
+		if err != nil {
+			logger.Err("operatorOrderListHandler() => decimal.NewFromString failed, Subtotal invalid, subtotal: %s, orderId: %d, error:%s",
+				orderList[i].Invoice.Subtotal.Amount, orderList[i].OrderId, err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+		order.Invoice.Subtotal = uint64(subtotal.IntPart())
+
+		shipmentTotal, err := decimal.NewFromString(orderList[i].Invoice.ShipmentTotal.Amount)
+		if err != nil {
+			logger.Err("operatorOrderListHandler() => decimal.NewFromString failed, shipmentTotal invalid, shipmentTotal: %s, orderId: %d, error:%s",
+				orderList[i].Invoice.ShipmentTotal.Amount, orderList[i].OrderId, err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+		order.Invoice.Shipment = uint64(shipmentTotal.IntPart())
+
 		if orderList[i].Invoice.Voucher != nil {
-			order.Invoice.Voucher = float32(orderList[i].Invoice.Voucher.Amount)
+			if orderList[i].Invoice.Voucher.Percent > 0 {
+				order.Invoice.Voucher = float32(orderList[i].Invoice.Voucher.Percent)
+			} else {
+				var voucherAmount decimal.Decimal
+				if orderList[i].Invoice.Voucher.Price != nil {
+					voucherAmount, err = decimal.NewFromString(orderList[i].Invoice.Voucher.Price.Amount)
+					if err != nil {
+						logger.Err("operatorOrderListHandler() => order.Invoice.Voucher.Price.Amount invalid, price: %s, orderId: %d, error: %s", orderList[i].Invoice.Voucher.Price.Amount, order.OrderId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+				}
+				order.Invoice.Voucher = float32(voucherAmount.IntPart())
+			}
 		}
 
-		if orderList[i].PaymentService != nil &&
-			len(orderList[i].PaymentService) > 0 &&
-			orderList[i].PaymentService[0].PaymentResult != nil {
-			if orderList[i].PaymentService[0].PaymentResult.Result {
+		if orderList[i].OrderPayment != nil &&
+			len(orderList[i].OrderPayment) > 0 &&
+			orderList[i].OrderPayment[0].PaymentResult != nil {
+			if orderList[i].OrderPayment[0].PaymentResult.Result {
 				order.Invoice.PaymentStatus = "success"
 			} else {
 				order.Invoice.PaymentStatus = "fail"
@@ -939,7 +981,7 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 	}
 
 	meta := &pb.ResponseMetadata{
-		Total:   uint32(totalPage),
+		Total:   uint32(totalCount),
 		Page:    page,
 		PerPage: perPage,
 	}
@@ -969,11 +1011,11 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 		PurchasedOn: order.CreatedAt.Format(ISO8601),
 		IP:          order.BuyerInfo.IP,
 		Invoice: &pb.OperatorOrderDetail_Invoice{
-			GrandTotal:     order.Invoice.GrandTotal,
-			Subtotal:       order.Invoice.Subtotal,
+			GrandTotal:     0,
+			Subtotal:       0,
 			PaymentMethod:  order.Invoice.PaymentMethod,
 			PaymentGateway: order.Invoice.PaymentGateway,
-			ShipmentTotal:  order.Invoice.ShipmentTotal,
+			ShipmentTotal:  0,
 		},
 		Billing: &pb.OperatorOrderDetail_BillingInfo{
 			BuyerId:    order.BuyerInfo.BuyerId,
@@ -996,14 +1038,50 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 		Subpackages: nil,
 	}
 
+	amount, err := decimal.NewFromString(order.Invoice.GrandTotal.Amount)
+	if err != nil {
+		logger.Err("operatorOrderDetailHandler() => decimal.NewFromString failed, GrandTotal invalid, grandTotal: %s, orderId: %d, error:%s",
+			order.Invoice.GrandTotal.Amount, order.OrderId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+	orderDetail.Invoice.GrandTotal = uint64(amount.IntPart())
+
+	subtotal, err := decimal.NewFromString(order.Invoice.Subtotal.Amount)
+	if err != nil {
+		logger.Err("operatorOrderDetailHandler() => decimal.NewFromString failed, Subtotal invalid, subtotal: %s, orderId: %d, error:%s",
+			order.Invoice.Subtotal.Amount, order.OrderId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+	orderDetail.Invoice.Subtotal = uint64(subtotal.IntPart())
+
+	shipmentTotal, err := decimal.NewFromString(order.Invoice.ShipmentTotal.Amount)
+	if err != nil {
+		logger.Err("operatorOrderDetailHandler() => decimal.NewFromString failed, shipmentTotal invalid, shipmentTotal: %s, orderId: %d, error:%s",
+			order.Invoice.ShipmentTotal.Amount, order.OrderId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+	orderDetail.Invoice.ShipmentTotal = uint64(shipmentTotal.IntPart())
+
 	if order.Invoice.Voucher != nil {
-		orderDetail.Invoice.VoucherAmount = float32(order.Invoice.Voucher.Amount)
+		if order.Invoice.Voucher.Percent > 0 {
+			orderDetail.Invoice.VoucherAmount = float32(order.Invoice.Voucher.Percent)
+		} else {
+			var voucherAmount decimal.Decimal
+			if order.Invoice.Voucher.Price != nil {
+				voucherAmount, err = decimal.NewFromString(order.Invoice.Voucher.Price.Amount)
+				if err != nil {
+					logger.Err("operatorOrderDetailHandler() => order.Invoice.Voucher.Price.Amount invalid, price: %s, orderId: %d, error: %s", order.Invoice.Voucher.Price.Amount, order.OrderId, err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+				}
+			}
+			orderDetail.Invoice.VoucherAmount = float32(voucherAmount.IntPart())
+		}
 	}
 
-	if order.PaymentService != nil &&
-		len(order.PaymentService) > 0 &&
-		order.PaymentService[0].PaymentResult != nil {
-		if order.PaymentService[0].PaymentResult.Result {
+	if order.OrderPayment != nil &&
+		len(order.OrderPayment) > 0 &&
+		order.OrderPayment[0].PaymentResult != nil {
+		if order.OrderPayment[0].PaymentResult.Result {
 			orderDetail.Invoice.PaymentStatus = "success"
 		} else {
 			orderDetail.Invoice.PaymentStatus = "fail"
@@ -1094,14 +1172,55 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 					Attributes:  order.Packages[i].Subpackages[j].Items[z].Attributes,
 					Quantity:    order.Packages[i].Subpackages[j].Items[z].Quantity,
 					Invoice: &pb.OperatorOrderDetail_Subpackage_Item_Invoice{
-						Unit:     order.Packages[i].Subpackages[j].Items[z].Invoice.Unit,
-						Total:    order.Packages[i].Subpackages[j].Items[z].Invoice.Total,
-						Original: order.Packages[i].Subpackages[j].Items[z].Invoice.Original,
-						Special:  order.Packages[i].Subpackages[j].Items[z].Invoice.Special,
-						Discount: order.Packages[i].Subpackages[j].Items[z].Invoice.Discount,
-						Currency: order.Packages[i].Subpackages[j].Items[z].Invoice.Currency,
+						Unit:     0,
+						Total:    0,
+						Original: 0,
+						Special:  0,
+						Discount: 0,
+						Currency: "IRR",
 					},
 				}
+
+				unit, err := decimal.NewFromString(order.Packages[i].Subpackages[j].Items[z].Invoice.Unit.Amount)
+				if err != nil {
+					logger.Err("operatorOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Unit invalid, unit: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+						order.Packages[i].Subpackages[j].Items[z].Invoice.Unit.Amount, order.OrderId, order.Packages[i].Subpackages[j].PId, order.Packages[i].Subpackages[j].SId, err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+				}
+				item.Invoice.Unit = uint64(unit.IntPart())
+
+				total, err := decimal.NewFromString(order.Packages[i].Subpackages[j].Items[z].Invoice.Total.Amount)
+				if err != nil {
+					logger.Err("operatorOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Total invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+						order.Packages[i].Subpackages[j].Items[z].Invoice.Total.Amount, order.OrderId, order.Packages[i].Subpackages[j].PId, order.Packages[i].Subpackages[j].SId, err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+				}
+				item.Invoice.Total = uint64(total.IntPart())
+
+				original, err := decimal.NewFromString(order.Packages[i].Subpackages[j].Items[z].Invoice.Original.Amount)
+				if err != nil {
+					logger.Err("operatorOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+						order.Packages[i].Subpackages[j].Items[z].Invoice.Original.Amount, order.OrderId, order.Packages[i].Subpackages[j].PId, order.Packages[i].Subpackages[j].SId, err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+				}
+				item.Invoice.Original = uint64(original.IntPart())
+
+				special, err := decimal.NewFromString(order.Packages[i].Subpackages[j].Items[z].Invoice.Special.Amount)
+				if err != nil {
+					logger.Err("operatorOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Special invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+						order.Packages[i].Subpackages[j].Items[z].Invoice.Special.Amount, order.OrderId, order.Packages[i].Subpackages[j].PId, order.Packages[i].Subpackages[j].SId, err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+				}
+				item.Invoice.Special = uint64(special.IntPart())
+
+				discount, err := decimal.NewFromString(order.Packages[i].Subpackages[j].Items[z].Invoice.Discount.Amount)
+				if err != nil {
+					logger.Err("operatorOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Discount invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+						order.Packages[i].Subpackages[j].Items[z].Invoice.Discount.Amount, order.OrderId, order.Packages[i].Subpackages[j].PId, order.Packages[i].Subpackages[j].SId, err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+				}
+				item.Invoice.Discount = uint64(discount.IntPart())
+
 				subpackage.Items = append(subpackage.Items, item)
 			}
 			orderDetail.Subpackages = append(orderDetail.Subpackages, subpackage)
@@ -1145,6 +1264,11 @@ func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint6
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
+	if orderList == nil || len(orderList) == 0 {
+		logger.Err("operatorGetOrderByIdHandler() => orderId not found, orderId: %d, filter:%s", oid, filter)
+		return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
+	}
+
 	operatorOrders := make([]*pb.OperatorOrderList_Order, 0, len(orderList))
 	for i := 0; i < len(orderList); i++ {
 		order := &pb.OperatorOrderList_Order{
@@ -1158,21 +1282,61 @@ func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint6
 			IP:          orderList[i].BuyerInfo.IP,
 			Status:      orderList[i].Status,
 			Invoice: &pb.OperatorOrderList_Order_Invoice{
-				GrandTotal:     orderList[i].Invoice.GrandTotal,
-				Subtotal:       orderList[i].Invoice.Subtotal,
+				GrandTotal:     0,
+				Subtotal:       0,
+				Shipment:       0,
+				Voucher:        0,
+				PaymentStatus:  "",
 				PaymentMethod:  orderList[i].Invoice.PaymentMethod,
 				PaymentGateway: orderList[i].Invoice.PaymentGateway,
 			},
 		}
 
+		grandTotal, err := decimal.NewFromString(orderList[i].Invoice.GrandTotal.Amount)
+		if err != nil {
+			logger.Err("operatorGetOrderByIdHandler() => decimal.NewFromString failed, GrandTotal invalid, grandTotal: %s, orderId: %d, error:%s",
+				orderList[i].Invoice.GrandTotal.Amount, orderList[i].OrderId, err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+		order.Invoice.GrandTotal = uint64(grandTotal.IntPart())
+
+		subtotal, err := decimal.NewFromString(orderList[i].Invoice.Subtotal.Amount)
+		if err != nil {
+			logger.Err("operatorGetOrderByIdHandler() => decimal.NewFromString failed, Subtotal invalid, subtotal: %s, orderId: %d, error:%s",
+				orderList[i].Invoice.Subtotal.Amount, orderList[i].OrderId, err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+		order.Invoice.Subtotal = uint64(subtotal.IntPart())
+
+		shipmentTotal, err := decimal.NewFromString(orderList[i].Invoice.ShipmentTotal.Amount)
+		if err != nil {
+			logger.Err("operatorGetOrderByIdHandler() => decimal.NewFromString failed, shipmentTotal invalid, shipmentTotal: %s, orderId: %d, error:%s",
+				orderList[i].Invoice.ShipmentTotal.Amount, orderList[i].OrderId, err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+		order.Invoice.Shipment = uint64(shipmentTotal.IntPart())
+
 		if orderList[i].Invoice.Voucher != nil {
-			order.Invoice.Voucher = float32(orderList[i].Invoice.Voucher.Amount)
+			if orderList[i].Invoice.Voucher.Percent > 0 {
+				order.Invoice.Voucher = float32(orderList[i].Invoice.Voucher.Percent)
+			} else {
+				var voucherAmount decimal.Decimal
+				if orderList[i].Invoice.Voucher.Price != nil {
+					voucherAmount, err = decimal.NewFromString(orderList[i].Invoice.Voucher.Price.Amount)
+					if err != nil {
+						logger.Err("operatorGetOrderByIdHandler() => decimal.NewFromString failed, order.Invoice.Voucher.Price.Amount invalid, price: %s, orderId: %d, error: %s",
+							orderList[i].Invoice.Voucher.Price.Amount, order.OrderId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+				}
+				order.Invoice.Voucher = float32(voucherAmount.IntPart())
+			}
 		}
 
-		if orderList[i].PaymentService != nil &&
-			len(orderList[i].PaymentService) > 0 &&
-			orderList[i].PaymentService[0].PaymentResult != nil {
-			if orderList[i].PaymentService[0].PaymentResult.Result {
+		if orderList[i].OrderPayment != nil &&
+			len(orderList[i].OrderPayment) > 0 &&
+			orderList[i].OrderPayment[0].PaymentResult != nil {
+			if orderList[i].OrderPayment[0].PaymentResult.Result {
 				order.Invoice.PaymentStatus = "success"
 			} else {
 				order.Invoice.PaymentStatus = "fail"
@@ -1241,14 +1405,27 @@ func (server *Server) sellerGetOrderByIdHandler(ctx context.Context, oid uint64,
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
+	if pkgList == nil || len(pkgList) == 0 {
+		logger.Err("sellerGetOrderByIdHandler() => pid not found, orderId: %d, pid: %d, filter:%s", oid, pid, filter)
+		return nil, status.Error(codes.Code(future.NotFound), "Pid Not Found")
+	}
+
 	itemList := make([]*pb.SellerOrderList_ItemList, 0, 1)
 
 	for _, pkgItem := range pkgList {
 		sellerOrderItem := &pb.SellerOrderList_ItemList{
 			OID:       pkgItem.OrderId,
 			RequestAt: pkgItem.CreatedAt.Format(ISO8601),
-			Amount:    pkgItem.Invoice.Subtotal,
+			Amount:    0,
 		}
+
+		subtotal, err := decimal.NewFromString(pkgItem.Invoice.Subtotal.Amount)
+		if err != nil {
+			logger.Err("sellerGetOrderByIdHandler() => decimal.NewFromString failed, pkgItem.Invoice.Subtotal invalid, subtotal: %s, orderId: %d, pid: %d, error: %s",
+				pkgItem.Invoice.Subtotal.Amount, pkgItem.OrderId, pkgItem.PId, err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+		sellerOrderItem.Amount = uint64(subtotal.IntPart())
 		itemList = append(itemList, sellerOrderItem)
 	}
 
@@ -1374,8 +1551,17 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, oid, pid uint6
 		sellerOrderItem := &pb.SellerOrderList_ItemList{
 			OID:       pkgItem.OrderId,
 			RequestAt: pkgItem.CreatedAt.Format(ISO8601),
-			Amount:    pkgItem.Invoice.Subtotal,
+			Amount:    0,
 		}
+		subtotal, err := decimal.NewFromString(pkgItem.Invoice.Subtotal.Amount)
+		if err != nil {
+			logger.Err("sellerOrderListHandler() => decimal.NewFromString failed, pkgItem.Invoice.Subtotal invalid, subtotal: %s, orderId: %d, pid: %d, error: %s",
+				pkgItem.Invoice.Subtotal.Amount, pkgItem.OrderId, pkgItem.PId, err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+
+		}
+		sellerOrderItem.Amount = uint64(subtotal.IntPart())
+
 		itemList = append(itemList, sellerOrderItem)
 	}
 
@@ -1520,8 +1706,17 @@ func (server *Server) sellerAllOrdersHandler(ctx context.Context, pid uint64, pa
 		sellerOrderItem := &pb.SellerOrderList_ItemList{
 			OID:       pkgItem.OrderId,
 			RequestAt: pkgItem.CreatedAt.Format(ISO8601),
-			Amount:    pkgItem.Invoice.Subtotal,
+			Amount:    0,
 		}
+		subtotal, err := decimal.NewFromString(pkgItem.Invoice.Subtotal.Amount)
+		if err != nil {
+			logger.Err("sellerAllOrdersHandler() => decimal.NewFromString failed, pkgItem.Invoice.Subtotal invalid, subtotal: %s, orderId: %d, pid: %d, error: %s",
+				pkgItem.Invoice.Subtotal.Amount, pkgItem.OrderId, pkgItem.PId, err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+
+		}
+		sellerOrderItem.Amount = uint64(subtotal.IntPart())
+
 		itemList = append(itemList, sellerOrderItem)
 	}
 
@@ -1563,12 +1758,17 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
-	var pkgItem entities.PackageItem
+	var pkgItem *entities.PackageItem = nil
 	for i := 0; i < len(order.Packages); i++ {
 		if order.Packages[i].PId == pid {
-			pkgItem = order.Packages[i]
+			pkgItem = &order.Packages[i]
 			break
 		}
+	}
+
+	if pkgItem == nil {
+		logger.Err("sellerOrderDetailHandler() => pid not found, orderId: %d, pid: %d, filter:%s", orderId, pid, filter)
+		return nil, status.Error(codes.Code(future.NotFound), "Pid Not Found")
 	}
 
 	sellerOrderDetailItems := make([]*pb.SellerOrderDetail_ItemDetail, 0, 32)
@@ -1591,14 +1791,55 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId
 						Quantity:    pkgItem.Subpackages[i].Items[j].Quantity,
 						Attributes:  pkgItem.Subpackages[i].Items[j].Attributes,
 						Invoice: &pb.SellerOrderDetail_ItemDetail_Invoice{
-							Unit:             pkgItem.Subpackages[i].Items[j].Invoice.Unit,
-							Total:            pkgItem.Subpackages[i].Items[j].Invoice.Total,
-							Original:         pkgItem.Subpackages[i].Items[j].Invoice.Original,
-							Special:          pkgItem.Subpackages[i].Items[j].Invoice.Special,
-							Discount:         pkgItem.Subpackages[i].Items[j].Invoice.Discount,
+							Unit:             0,
+							Total:            0,
+							Original:         0,
+							Special:          0,
+							Discount:         0,
 							SellerCommission: pkgItem.Subpackages[i].Items[j].Invoice.SellerCommission,
 						},
 					}
+
+					unit, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Unit.Amount)
+					if err != nil {
+						logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Unit invalid, unit: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							pkgItem.Subpackages[i].Items[j].Invoice.Unit.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					itemDetail.Invoice.Unit = uint64(unit.IntPart())
+
+					total, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Total.Amount)
+					if err != nil {
+						logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Total invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							pkgItem.Subpackages[i].Items[j].Invoice.Total.Amount, order.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					itemDetail.Invoice.Total = uint64(total.IntPart())
+
+					original, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Original.Amount)
+					if err != nil {
+						logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							pkgItem.Subpackages[i].Items[j].Invoice.Original.Amount, order.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					itemDetail.Invoice.Original = uint64(original.IntPart())
+
+					special, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Special.Amount)
+					if err != nil {
+						logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Special invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							pkgItem.Subpackages[i].Items[j].Invoice.Special.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					itemDetail.Invoice.Special = uint64(special.IntPart())
+
+					discount, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Discount.Amount)
+					if err != nil {
+						logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Discount invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							pkgItem.Subpackages[i].Items[j].Invoice.Discount.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					itemDetail.Invoice.Discount = uint64(discount.IntPart())
+
 					sellerOrderDetailItems = append(sellerOrderDetailItems, itemDetail)
 				}
 			}
@@ -1608,7 +1849,7 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId
 	sellerOrderDetail := &pb.SellerOrderDetail{
 		OID:       orderId,
 		PID:       pid,
-		Amount:    pkgItem.Invoice.Subtotal,
+		Amount:    0,
 		RequestAt: order.CreatedAt.Format(ISO8601),
 		Address: &pb.SellerOrderDetail_ShipmentAddress{
 			FirstName:     order.BuyerInfo.ShippingAddress.FirstName,
@@ -1626,6 +1867,15 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId
 		},
 		Items: sellerOrderDetailItems,
 	}
+
+	subtotal, err := decimal.NewFromString(pkgItem.Invoice.Subtotal.Amount)
+	if err != nil {
+		logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, pkgItem.Invoice.Subtotal invalid, subtotal: %s, orderId: %d, pid: %d, error: %s",
+			pkgItem.Invoice.Subtotal.Amount, pkgItem.OrderId, pkgItem.PId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+
+	}
+	sellerOrderDetail.Amount = uint64(subtotal.IntPart())
 
 	if order.BuyerInfo.ShippingAddress.Location != nil {
 		sellerOrderDetail.Address.Lat = strconv.Itoa(int(order.BuyerInfo.ShippingAddress.Location.Coordinates[0]))
@@ -1822,16 +2072,56 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 									ReturnRequestAt: "",
 									ReturnShippedAt: "",
 									Invoice: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item_Detail_Invoice{
-										Unit:             orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit,
-										Total:            orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total,
-										Original:         orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original,
-										Special:          orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special,
-										Discount:         orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount,
+										Unit:             0,
+										Total:            0,
+										Original:         0,
+										Special:          0,
+										Discount:         0,
 										SellerCommission: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.SellerCommission,
-										Currency:         orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Currency,
+										Currency:         "IRR",
 									},
 								},
 							}
+
+							unit, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount)
+							if err != nil {
+								logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Unit invalid, unit: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+									orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+								return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+							}
+							itemOrder.Detail.Invoice.Unit = uint64(unit.IntPart())
+
+							total, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount)
+							if err != nil {
+								logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Total invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+									orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+								return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+							}
+							itemOrder.Detail.Invoice.Total = uint64(total.IntPart())
+
+							original, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount)
+							if err != nil {
+								logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+									orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+								return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+							}
+							itemOrder.Detail.Invoice.Original = uint64(original.IntPart())
+
+							special, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount)
+							if err != nil {
+								logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Special invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+									orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+								return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+							}
+							itemOrder.Detail.Invoice.Special = uint64(special.IntPart())
+
+							discount, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount)
+							if err != nil {
+								logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Discount invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+									orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+								return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+							}
+							itemOrder.Detail.Invoice.Discount = uint64(discount.IntPart())
 
 							if orderList[i].Packages[j].Subpackages[z].Shipments != nil &&
 								orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail != nil {
@@ -1851,7 +2141,7 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 				if itemDetailList != nil {
 					returnOrderDetail := &pb.SellerReturnOrderDetailList_ReturnOrderDetail{
 						OID:       orderList[i].Packages[j].OrderId,
-						Amount:    orderList[i].Packages[j].Invoice.Subtotal,
+						Amount:    0,
 						RequestAt: orderList[i].Packages[j].CreatedAt.Format(ISO8601),
 						Items:     itemDetailList,
 						Address: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_ShipmentAddress{
@@ -1869,6 +2159,16 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 							ZipCode:       orderList[i].BuyerInfo.ShippingAddress.ZipCode,
 						},
 					}
+
+					subtotal, err := decimal.NewFromString(orderList[i].Packages[j].Invoice.Subtotal.Amount)
+					if err != nil {
+						logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, pkgItem.Invoice.Subtotal invalid, subtotal: %s, orderId: %d, pid: %d, error: %s",
+							orderList[i].Packages[j].Invoice.Subtotal.Amount, orderList[i].Packages[j].OrderId, orderList[i].Packages[j].PId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+
+					}
+					returnOrderDetail.Amount = uint64(subtotal.IntPart())
+
 					if orderList[i].BuyerInfo.ShippingAddress.Location != nil {
 						returnOrderDetail.Address.Lat = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[0]))
 						returnOrderDetail.Address.Long = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[1]))
@@ -2350,8 +2650,13 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 
 	orderList, total, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
 	if err != nil {
-		logger.Err("sellerOrderReturnDetailListHandler() => FindByFilter failed, userId: %d, page: %d, perPage: %d, error: %s", userId, page, perPage, err)
+		logger.Err("buyerOrderDetailListHandler() => FindByFilter failed, userId: %d, page: %d, perPage: %d, error: %s", userId, page, perPage, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	if total == 0 || orderList == nil || len(orderList) == 0 {
+		logger.Err("buyerOrderDetailListHandler() => oid not found, orderId: %d, userId: %d, filter:%s", oid, userId, filter)
+		return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
 	}
 
 	orderDetailList := make([]*pb.BuyerOrderDetailList_OrderDetail, 0, len(orderList))
@@ -2376,14 +2681,55 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 						Quantity:           orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
 						Attributes:         orderList[i].Packages[j].Subpackages[z].Items[t].Attributes,
 						Invoice: &pb.BuyerOrderDetailList_OrderDetail_Package_Item_Invoice{
-							Unit:     orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit,
-							Total:    orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total,
-							Original: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original,
-							Special:  orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special,
-							Discount: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount,
-							Currency: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Currency,
+							Unit:     0,
+							Total:    0,
+							Original: 0,
+							Special:  0,
+							Discount: 0,
+							Currency: "IRR",
 						},
 					}
+
+					unit, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount)
+					if err != nil {
+						logger.Err("buyerOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Unit invalid, unit: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					itemPackageDetail.Invoice.Unit = uint64(unit.IntPart())
+
+					total, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount)
+					if err != nil {
+						logger.Err("buyerOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Total invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					itemPackageDetail.Invoice.Total = uint64(total.IntPart())
+
+					original, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount)
+					if err != nil {
+						logger.Err("buyerOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					itemPackageDetail.Invoice.Original = uint64(original.IntPart())
+
+					special, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount)
+					if err != nil {
+						logger.Err("buyerOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Special invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					itemPackageDetail.Invoice.Special = uint64(special.IntPart())
+
+					discount, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount)
+					if err != nil {
+						logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Discount invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					itemPackageDetail.Invoice.Discount = uint64(discount.IntPart())
+
 					if itemPackageDetail.Status == states.ApprovalPending.StateName() ||
 						itemPackageDetail.Status == states.ShipmentPending.StateName() ||
 						itemPackageDetail.Status == states.ShipmentDelayed.StateName() {
@@ -2411,9 +2757,20 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 					packageDetail.ShipmentInfo = &pb.BuyerOrderDetailList_OrderDetail_Package_Shipment{
 						DeliveryAt:     "",
 						ShippedAt:      orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601),
-						ShipmentAmount: orderList[i].Packages[j].ShipmentSpec.ShippingCost,
+						ShipmentAmount: 0,
 						CarrierName:    orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.CarrierName,
 						TrackingNumber: orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.TrackingNumber,
+					}
+
+					if orderList[i].Packages[j].ShipmentSpec.ShippingCost != nil {
+						shippingCost, err := decimal.NewFromString(orderList[i].Packages[j].ShipmentSpec.ShippingCost.Amount)
+						if err != nil {
+							logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, package ShippingCost.Amount invalid, ShippingCost: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+								orderList[i].Packages[j].ShipmentSpec.ShippingCost, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+							return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+						}
+
+						packageDetail.ShipmentInfo.ShipmentAmount = uint64(shippingCost.IntPart())
 					}
 
 					packageDetail.ShipmentInfo.DeliveryAt = orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.
@@ -2440,21 +2797,54 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 				ZipCode:       orderList[i].BuyerInfo.ShippingAddress.ZipCode,
 			},
 			PackageCount:     int32(len(orderList[i].Packages)),
-			TotalAmount:      orderList[i].Invoice.Subtotal,
-			PayableAmount:    orderList[i].Invoice.GrandTotal,
-			Discounts:        orderList[i].Invoice.Discount,
-			ShipmentAmount:   orderList[i].Invoice.ShipmentTotal,
+			TotalAmount:      0,
+			PayableAmount:    0,
+			Discounts:        0,
+			ShipmentAmount:   0,
 			IsPaymentSuccess: false,
 			RequestAt:        orderList[i].CreatedAt.Format(ISO8601),
 			Packages:         packageDetailList,
 		}
+
+		grandTotal, err := decimal.NewFromString(orderList[i].Invoice.GrandTotal.Amount)
+		if err != nil {
+			logger.Err("buyerOrderDetailListHandler() => decimal.NewFromString failed, GrandTotal invalid, grandTotal: %s, orderId: %d, error:%s",
+				orderList[i].Invoice.GrandTotal.Amount, orderList[i].OrderId, err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+		orderDetail.PayableAmount = uint64(grandTotal.IntPart())
+
+		subtotal, err := decimal.NewFromString(orderList[i].Invoice.Subtotal.Amount)
+		if err != nil {
+			logger.Err("buyerOrderDetailListHandler() => decimal.NewFromString failed, Subtotal invalid, subtotal: %s, orderId: %d, error:%s",
+				orderList[i].Invoice.Subtotal.Amount, orderList[i].OrderId, err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+		orderDetail.TotalAmount = uint64(subtotal.IntPart())
+
+		shipmentTotal, err := decimal.NewFromString(orderList[i].Invoice.ShipmentTotal.Amount)
+		if err != nil {
+			logger.Err("buyerOrderDetailListHandler() => decimal.NewFromString failed, shipmentTotal invalid, shipmentTotal: %s, orderId: %d, error:%s",
+				orderList[i].Invoice.ShipmentTotal.Amount, orderList[i].OrderId, err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+		orderDetail.ShipmentAmount = uint64(shipmentTotal.IntPart())
+
+		discount, err := decimal.NewFromString(orderList[i].Invoice.Discount.Amount)
+		if err != nil {
+			logger.Err("buyerOrderDetailListHandler() => decimal.NewFromString failed, discount invalid, discount: %s, orderId: %d, error:%s",
+				orderList[i].Invoice.Discount.Amount, orderList[i].OrderId, err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+		orderDetail.Discounts = uint64(discount.IntPart())
+
 		if orderList[i].BuyerInfo.ShippingAddress.Location != nil {
 			orderDetail.Address.Lat = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[0]))
 			orderDetail.Address.Long = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[1]))
 		}
 
-		if orderList[i].PaymentService != nil && orderList[i].PaymentService[0].PaymentResult != nil {
-			orderDetail.IsPaymentSuccess = orderList[i].PaymentService[0].PaymentResult.Result
+		if orderList[i].OrderPayment != nil && orderList[i].OrderPayment[0].PaymentResult != nil {
+			orderDetail.IsPaymentSuccess = orderList[i].OrderPayment[0].PaymentResult.Result
 		}
 
 		orderDetailList = append(orderDetailList, orderDetail)
@@ -2517,14 +2907,55 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 					Quantity:           order.Packages[j].Subpackages[z].Items[t].Quantity,
 					Attributes:         order.Packages[j].Subpackages[z].Items[t].Attributes,
 					Invoice: &pb.BuyerOrderDetailList_OrderDetail_Package_Item_Invoice{
-						Unit:     order.Packages[j].Subpackages[z].Items[t].Invoice.Unit,
-						Total:    order.Packages[j].Subpackages[z].Items[t].Invoice.Total,
-						Original: order.Packages[j].Subpackages[z].Items[t].Invoice.Original,
-						Special:  order.Packages[j].Subpackages[z].Items[t].Invoice.Special,
-						Discount: order.Packages[j].Subpackages[z].Items[t].Invoice.Discount,
-						Currency: order.Packages[j].Subpackages[z].Items[t].Invoice.Currency,
+						Unit:     0,
+						Total:    0,
+						Original: 0,
+						Special:  0,
+						Discount: 0,
+						Currency: "IRR",
 					},
 				}
+
+				unit, err := decimal.NewFromString(order.Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount)
+				if err != nil {
+					logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, subpackage Invoice.Unit invalid, unit: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+						order.Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount, order.Packages[j].Subpackages[z].OrderId, order.Packages[j].Subpackages[z].PId, order.Packages[j].Subpackages[z].SId, err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+				}
+				itemPackageDetail.Invoice.Unit = uint64(unit.IntPart())
+
+				total, err := decimal.NewFromString(order.Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount)
+				if err != nil {
+					logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, subpackage Invoice.Total invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+						order.Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount, order.Packages[j].Subpackages[z].OrderId, order.Packages[j].Subpackages[z].PId, order.Packages[j].Subpackages[z].SId, err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+				}
+				itemPackageDetail.Invoice.Total = uint64(total.IntPart())
+
+				original, err := decimal.NewFromString(order.Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount)
+				if err != nil {
+					logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+						order.Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount, order.Packages[j].Subpackages[z].OrderId, order.Packages[j].Subpackages[z].PId, order.Packages[j].Subpackages[z].SId, err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+				}
+				itemPackageDetail.Invoice.Original = uint64(original.IntPart())
+
+				special, err := decimal.NewFromString(order.Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount)
+				if err != nil {
+					logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, subpackage Invoice.Special invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+						order.Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount, order.Packages[j].Subpackages[z].OrderId, order.Packages[j].Subpackages[z].PId, order.Packages[j].Subpackages[z].SId, err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+				}
+				itemPackageDetail.Invoice.Special = uint64(special.IntPart())
+
+				discount, err := decimal.NewFromString(order.Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount)
+				if err != nil {
+					logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, subpackage Invoice.Discount invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+						order.Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount, order.Packages[j].Subpackages[z].OrderId, order.Packages[j].Subpackages[z].PId, order.Packages[j].Subpackages[z].SId, err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+				}
+				itemPackageDetail.Invoice.Discount = uint64(discount.IntPart())
+
 				if itemPackageDetail.Status == states.ApprovalPending.StateName() ||
 					itemPackageDetail.Status == states.ShipmentPending.StateName() ||
 					itemPackageDetail.Status == states.ShipmentDelayed.StateName() {
@@ -2552,9 +2983,20 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 				packageDetail.ShipmentInfo = &pb.BuyerOrderDetailList_OrderDetail_Package_Shipment{
 					DeliveryAt:     "",
 					ShippedAt:      order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601),
-					ShipmentAmount: order.Packages[j].ShipmentSpec.ShippingCost,
+					ShipmentAmount: 0,
 					CarrierName:    order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.CarrierName,
 					TrackingNumber: order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.TrackingNumber,
+				}
+
+				if order.Packages[j].ShipmentSpec.ShippingCost != nil {
+					shippingCost, err := decimal.NewFromString(order.Packages[j].ShipmentSpec.ShippingCost.Amount)
+					if err != nil {
+						logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, package ShippingCost.Amount invalid, ShippingCost: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							order.Packages[j].ShipmentSpec.ShippingCost, order.Packages[j].Subpackages[z].OrderId, order.Packages[j].Subpackages[z].PId, order.Packages[j].Subpackages[z].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+
+					packageDetail.ShipmentInfo.ShipmentAmount = uint64(shippingCost.IntPart())
 				}
 
 				packageDetail.ShipmentInfo.DeliveryAt = order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.
@@ -2581,21 +3023,54 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 			ZipCode:       order.BuyerInfo.ShippingAddress.ZipCode,
 		},
 		PackageCount:     int32(len(order.Packages)),
-		TotalAmount:      order.Invoice.Subtotal,
-		PayableAmount:    order.Invoice.GrandTotal,
-		Discounts:        order.Invoice.Discount,
-		ShipmentAmount:   order.Invoice.ShipmentTotal,
+		TotalAmount:      0,
+		PayableAmount:    0,
+		Discounts:        0,
+		ShipmentAmount:   0,
 		IsPaymentSuccess: false,
 		RequestAt:        order.CreatedAt.Format(ISO8601),
 		Packages:         packageDetailList,
 	}
+
+	grandTotal, err := decimal.NewFromString(order.Invoice.GrandTotal.Amount)
+	if err != nil {
+		logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, GrandTotal invalid, grandTotal: %s, orderId: %d, error:%s",
+			order.Invoice.GrandTotal.Amount, order.OrderId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+	orderDetail.PayableAmount = uint64(grandTotal.IntPart())
+
+	subtotal, err := decimal.NewFromString(order.Invoice.Subtotal.Amount)
+	if err != nil {
+		logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, Subtotal invalid, subtotal: %s, orderId: %d, error:%s",
+			order.Invoice.Subtotal.Amount, order.OrderId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+	orderDetail.TotalAmount = uint64(subtotal.IntPart())
+
+	shipmentTotal, err := decimal.NewFromString(order.Invoice.ShipmentTotal.Amount)
+	if err != nil {
+		logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, shipmentTotal invalid, shipmentTotal: %s, orderId: %d, error:%s",
+			order.Invoice.ShipmentTotal.Amount, order.OrderId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+	orderDetail.ShipmentAmount = uint64(shipmentTotal.IntPart())
+
+	discount, err := decimal.NewFromString(order.Invoice.Discount.Amount)
+	if err != nil {
+		logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, discount invalid, discount: %s, orderId: %d, error:%s",
+			order.Invoice.Discount.Amount, order.OrderId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+	orderDetail.Discounts = uint64(discount.IntPart())
+
 	if order.BuyerInfo.ShippingAddress.Location != nil {
 		orderDetail.Address.Lat = strconv.Itoa(int(order.BuyerInfo.ShippingAddress.Location.Coordinates[0]))
 		orderDetail.Address.Long = strconv.Itoa(int(order.BuyerInfo.ShippingAddress.Location.Coordinates[1]))
 	}
 
-	if order.PaymentService != nil && order.PaymentService[0].PaymentResult != nil {
-		orderDetail.IsPaymentSuccess = order.PaymentService[0].PaymentResult.Result
+	if order.OrderPayment != nil && order.OrderPayment[0].PaymentResult != nil {
+		orderDetail.IsPaymentSuccess = order.OrderPayment[0].PaymentResult.Result
 	}
 
 	orderDetailList = append(orderDetailList, orderDetail)
@@ -2792,6 +3267,11 @@ func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId ui
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
+	if total == 0 || orderList == nil || len(orderList) == 0 {
+		logger.Err("buyerAllReturnOrdersHandler() => order not found, userId: %d", userId)
+		return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
+	}
+
 	returnOrderDetailList := make([]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail, 0, len(orderList))
 	for i := 0; i < len(orderList); i++ {
 		returnPackageDetailList := make([]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail, 0, len(orderList[i].Packages))
@@ -2815,14 +3295,54 @@ func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId ui
 						Reason:          "",
 						ReturnRequestAt: "",
 						Invoice: &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Invoice{
-							Unit:     orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit,
-							Total:    orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total,
-							Original: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original,
-							Special:  orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special,
-							Discount: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount,
-							Currency: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Currency,
+							Unit:     0,
+							Total:    0,
+							Original: 0,
+							Special:  0,
+							Discount: 0,
+							Currency: "IRR",
 						},
 					}
+
+					unit, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount)
+					if err != nil {
+						logger.Err("buyerAllReturnOrdersHandler() => decimal.NewFromString failed, subpackage Invoice.Unit invalid, unit: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					returnItemPackageDetail.Invoice.Unit = uint64(unit.IntPart())
+
+					total, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount)
+					if err != nil {
+						logger.Err("buyerAllReturnOrdersHandler() => decimal.NewFromString failed, subpackage Invoice.Total invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					returnItemPackageDetail.Invoice.Total = uint64(total.IntPart())
+
+					original, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount)
+					if err != nil {
+						logger.Err("buyerAllReturnOrdersHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					returnItemPackageDetail.Invoice.Original = uint64(original.IntPart())
+
+					special, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount)
+					if err != nil {
+						logger.Err("buyerAllReturnOrdersHandler() => decimal.NewFromString failed, subpackage Invoice.Special invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					returnItemPackageDetail.Invoice.Special = uint64(special.IntPart())
+
+					discount, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount)
+					if err != nil {
+						logger.Err("buyerAllReturnOrdersHandler() => decimal.NewFromString failed, subpackage Invoice.Discount invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					returnItemPackageDetail.Invoice.Discount = uint64(discount.IntPart())
 
 					if orderList[i].Packages[j].Subpackages[z].Items[t].Reasons != nil {
 						returnItemPackageDetail.Reason = orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0]
@@ -2875,9 +3395,17 @@ func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId ui
 		returnOrderDetail := &pb.BuyerReturnOrderDetailList_ReturnOrderDetail{
 			OID:                 orderList[i].OrderId,
 			CreatedAt:           orderList[i].CreatedAt.Format(ISO8601),
-			TotalAmount:         orderList[i].Invoice.Subtotal,
+			TotalAmount:         0,
 			ReturnPackageDetail: returnPackageDetailList,
 		}
+
+		subtotal, err := decimal.NewFromString(orderList[i].Invoice.Subtotal.Amount)
+		if err != nil {
+			logger.Err("buyerAllReturnOrdersHandler() => decimal.NewFromString failed, Subtotal invalid, subtotal: %s, orderId: %d, error:%s",
+				orderList[i].Invoice.Subtotal.Amount, orderList[i].OrderId, err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+		returnOrderDetail.TotalAmount = uint64(subtotal.IntPart())
 
 		returnOrderDetailList = append(returnOrderDetailList, returnOrderDetail)
 	}
@@ -2959,6 +3487,11 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
+	if total == 0 || orderList == nil || len(orderList) == 0 {
+		logger.Err("buyerReturnOrderDetailListHandler() => oid not found, userId: %d, filter:%s", userId, filter)
+		return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
+	}
+
 	returnOrderDetailList := make([]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail, 0, len(orderList))
 	for i := 0; i < len(orderList); i++ {
 		returnPackageDetailList := make([]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail, 0, len(orderList[i].Packages))
@@ -2982,14 +3515,54 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 						Reason:          "",
 						ReturnRequestAt: "",
 						Invoice: &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Invoice{
-							Unit:     orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit,
-							Total:    orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total,
-							Original: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original,
-							Special:  orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special,
-							Discount: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount,
-							Currency: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Currency,
+							Unit:     0,
+							Total:    0,
+							Original: 0,
+							Special:  0,
+							Discount: 0,
+							Currency: "IRR",
 						},
 					}
+
+					unit, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount)
+					if err != nil {
+						logger.Err("buyerReturnOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Unit invalid, unit: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					returnItemPackageDetail.Invoice.Unit = uint64(unit.IntPart())
+
+					total, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount)
+					if err != nil {
+						logger.Err("buyerReturnOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Total invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					returnItemPackageDetail.Invoice.Total = uint64(total.IntPart())
+
+					original, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount)
+					if err != nil {
+						logger.Err("buyerReturnOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					returnItemPackageDetail.Invoice.Original = uint64(original.IntPart())
+
+					special, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount)
+					if err != nil {
+						logger.Err("buyerReturnOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Special invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					returnItemPackageDetail.Invoice.Special = uint64(special.IntPart())
+
+					discount, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount)
+					if err != nil {
+						logger.Err("buyerReturnOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Discount invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+					returnItemPackageDetail.Invoice.Discount = uint64(discount.IntPart())
 
 					if orderList[i].Packages[j].Subpackages[z].Items[t].Reasons != nil {
 						returnItemPackageDetail.Reason = orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0]
@@ -3042,9 +3615,17 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 		returnOrderDetail := &pb.BuyerReturnOrderDetailList_ReturnOrderDetail{
 			OID:                 orderList[i].OrderId,
 			CreatedAt:           orderList[i].CreatedAt.Format(ISO8601),
-			TotalAmount:         orderList[i].Invoice.Subtotal,
+			TotalAmount:         0,
 			ReturnPackageDetail: returnPackageDetailList,
 		}
+
+		subtotal, err := decimal.NewFromString(orderList[i].Invoice.Subtotal.Amount)
+		if err != nil {
+			logger.Err("buyerReturnOrderDetailListHandler() => decimal.NewFromString failed, Subtotal invalid, subtotal: %s, orderId: %d, error:%s",
+				orderList[i].Invoice.Subtotal.Amount, orderList[i].OrderId, err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+		returnOrderDetail.TotalAmount = uint64(subtotal.IntPart())
 
 		returnOrderDetailList = append(returnOrderDetailList, returnOrderDetail)
 	}
