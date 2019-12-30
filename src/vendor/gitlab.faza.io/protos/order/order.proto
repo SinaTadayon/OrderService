@@ -132,9 +132,8 @@ message ShippingSpec {
     string carrierProduct = 2;
     string carrierType = 3;
     Money shippingCost = 4;
-    Money voucherPrice = 5;
-    int32 reactionTime = 6;
-    int32 shippingTime = 7;
-    int32 returnTime = 8;
-    string details = 9;
+    int32 reactionTime = 5;
+    int32 shippingTime = 6;
+    int32 returnTime = 7;
+    string details = 8;
 }

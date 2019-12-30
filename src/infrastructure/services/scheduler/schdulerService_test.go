@@ -278,7 +278,6 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 				Amount:   "100000",
 				Currency: "IRR",
 			},
-			VoucherPrice: nil,
 			ReactionTime: 24,
 			ShippingTime: 72,
 			ReturnTime:   72,
@@ -412,10 +411,6 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 				Currency: "IRR",
 			},
 
-			VoucherPrice: &pb.Money{
-				Amount:   "60000",
-				Currency: "IRR",
-			},
 			ReactionTime: 24,
 			ShippingTime: 72,
 			ReturnTime:   72,

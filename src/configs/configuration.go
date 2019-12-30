@@ -14,6 +14,9 @@ type Config struct {
 		SmsTemplateDir                       string `env:"NOTIFICATION_SMS_TEMPLATES"`
 		EmailTemplateNotifySellerForNewOrder string `env:"EMAIL_TMP_NOTIFY_SELLER_FOR_NEW_ORDER"`
 
+		OrderPaymentCallbackUrlStaging      string `env:"ORDER_PAYMENT_CALLBACK_URL_STAGING"`
+		OrderPaymentCallbackUrlAsanpardakht string `env:"ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT"`
+
 		SchedulerTimeUint            string `env:"ORDER_SCHEDULER_TIME_UNIT"`
 		SchedulerStates              string `env:"ORDER_SCHEDULER_STATES"`
 		SchedulerInterval            string `env:"ORDER_SCHEDULER_INTERVAL"`

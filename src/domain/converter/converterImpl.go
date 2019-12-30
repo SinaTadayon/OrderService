@@ -224,7 +224,6 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 				CarrierProduct: pkgDto.Shipment.CarrierProduct,
 				CarrierType:    pkgDto.Shipment.CarrierType,
 				ShippingCost:   nil,
-				VoucherPrice:   nil,
 				ReactionTime:   pkgDto.Shipment.ReactionTime,
 				ShippingTime:   pkgDto.Shipment.ReturnTime,
 				ReturnTime:     pkgDto.Shipment.ReturnTime,
@@ -236,13 +235,6 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 			pkgItem.ShipmentSpec.ShippingCost = &entities.Money{
 				Amount:   pkgDto.Shipment.ShippingCost.Amount,
 				Currency: pkgDto.Shipment.ShippingCost.Currency,
-			}
-		}
-
-		if pkgDto.Shipment.VoucherPrice != nil {
-			pkgItem.ShipmentSpec.VoucherPrice = &entities.Money{
-				Amount:   pkgDto.Shipment.VoucherPrice.Amount,
-				Currency: pkgDto.Shipment.VoucherPrice.Currency,
 			}
 		}
 

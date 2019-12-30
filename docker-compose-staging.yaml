@@ -40,6 +40,9 @@ services:
       - ORDER_SCHEDULER_RETURN_SHIPMENT_PENDING_STATE=96
       - ORDER_SCHEDULER_RETURN_DELIVERED_STATE=96
 
+      - ORDER_PAYMENT_CALLBACK_URL_STAGING=http://staging.faza.io/callback-success?orderid=
+      - ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT=http://staging.faza.io/callback-success?orderid=
+
       - NOTIFICATION_SMS_TEMPLATES=testdata/notification/sms
       - EMAIL_TMP_NOTIFY_SELLER_FOR_NEW_ORDER=NotifySellerForNewOrder.html
       - PAYMENT_GATEWAY_ADDRESS=

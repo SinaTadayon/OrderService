@@ -70,9 +70,12 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order.Buyer.Finance.CardNumber = "4345345423533453"
 	order.Buyer.Finance.BankName = "pasargad"
 
+	order.Buyer.ShippingAddress.FirstName = "sina"
+	order.Buyer.ShippingAddress.LastName = "tadayon"
 	order.Buyer.ShippingAddress.Address = "Sheikh bahaee, p 5"
 	order.Buyer.ShippingAddress.Province = "Tehran"
-	order.Buyer.ShippingAddress.Phone = "+98912193870"
+	order.Buyer.ShippingAddress.Mobile = "+98912193870"
+	order.Buyer.ShippingAddress.Phone = "+98218475644"
 	order.Buyer.ShippingAddress.ZipCode = "1651764614"
 	order.Buyer.ShippingAddress.City = "Tehran"
 	order.Buyer.ShippingAddress.Country = "Iran"
@@ -93,7 +96,6 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 				Amount:   "100000",
 				Currency: "IRR",
 			},
-			VoucherPrice: nil,
 			ReactionTime: 24,
 			ShippingTime: 72,
 			ReturnTime:   72,
@@ -227,10 +229,6 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 				Currency: "IRR",
 			},
 
-			VoucherPrice: &pb.Money{
-				Amount:   "60000",
-				Currency: "IRR",
-			},
 			ReactionTime: 24,
 			ShippingTime: 72,
 			ReturnTime:   72,

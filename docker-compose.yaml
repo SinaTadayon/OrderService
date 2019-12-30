@@ -180,9 +180,16 @@ services:
       - CART_MONGO_CONN_TIMEOUT=5
       - CART_MONGO_READ_TIMEOUT=5
       - CART_MONGO_WRITE_TIMEOUT=5
+      - USER_SERVICE_HOST=userservice
+      - USER_SERVICE_PORT=9096
+      - STOCK_SERVICE_HOST=stockservice
+      - STOCK_SERVICE_PORT=9098
+
     depends_on:
       - mongo
       - redis
+      - userservice
+      - stockservice
 
   notificationservice:
     image: registry.faza.io/notification-app/notification-app:staging

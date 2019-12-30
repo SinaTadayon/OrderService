@@ -54,6 +54,12 @@ func main() {
 
 		app.Globals.FlowManagerConfig = make(map[string]interface{}, 32)
 
+		if app.Globals.Config.App.OrderPaymentCallbackUrlStaging == "" ||
+			app.Globals.Config.App.OrderPaymentCallbackUrlAsanpardakht == "" {
+			logger.Err("OrderPaymentCallbackUrlStaging or OrderPaymentCallbackUrlAsanpardakht empty")
+			os.Exit(1)
+		}
+
 		if app.Globals.Config.App.SchedulerStateTimeUint == "" {
 			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig] = app.HourTimeUnit
 		} else {

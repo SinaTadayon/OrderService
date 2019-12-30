@@ -99,7 +99,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 
 					PaymentResponse: &entities.PaymentResponse{
 						Result:      true,
-						CallBackUrl: "http://staging.faza.io/callback-success?orderid=" + strconv.Itoa(int(order.OrderId)),
+						CallBackUrl: app.Globals.Config.App.OrderPaymentCallbackUrlStaging + strconv.Itoa(int(order.OrderId)),
 						InvoiceId:   0,
 						PaymentId:   "",
 						CreatedAt:   time.Now().UTC(),

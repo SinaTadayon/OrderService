@@ -48,7 +48,6 @@ type ShipmentSpec struct {
 	CarrierProduct string                 `bson:"carrierProduct"`
 	CarrierType    string                 `bson:"carrierType"`
 	ShippingCost   *Money                 `bson:"shippingCost"`
-	VoucherPrice   *Money                 `bson:"voucherPrice"`
 	ReactionTime   int32                  `bson:"reactionTime"`
 	ShippingTime   int32                  `bson:"shippingTime"`
 	ReturnTime     int32                  `bson:"returnTime"`

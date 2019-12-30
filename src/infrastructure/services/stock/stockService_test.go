@@ -240,10 +240,6 @@ func createOrder() *entities.Order {
 						Amount:   "1249348",
 						Currency: "IRR",
 					},
-					VoucherPrice: &entities.Money{
-						Amount:   "3242344",
-						Currency: "IRR",
-					},
 					ReactionTime: 2,
 					ShippingTime: 8,
 					ReturnTime:   24,
@@ -695,10 +691,6 @@ func createOrder() *entities.Order {
 					CarrierType:    "Standard",
 					ShippingCost: &entities.Money{
 						Amount:   "1249348",
-						Currency: "IRR",
-					},
-					VoucherPrice: &entities.Money{
-						Amount:   "3242344",
 						Currency: "IRR",
 					},
 					ReactionTime: 2,
