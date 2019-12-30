@@ -1,6 +1,7 @@
 package state_30
 
 import (
+	"bytes"
 	"context"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
@@ -9,13 +10,16 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
 	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
+	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
+	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"strconv"
+	"text/template"
 	"time"
 )
 
@@ -66,6 +70,69 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 			return
 		}
 
+		var templateData struct {
+			OrderId  uint64
+			ShopName string
+		}
+
+		templateData.OrderId = pkgItem.OrderId
+		templateData.ShopName = pkgItem.ShopName
+
+		var buyerNotificationAction *entities.Action = nil
+		smsTemplate, err := template.New("SMS").Parse(app.Globals.Config.App.OrderNotifyBuyerShipmentPendingState)
+		if err != nil {
+			logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
+				state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifyBuyerShipmentPendingState, err)
+		} else {
+			var buf bytes.Buffer
+			err = smsTemplate.Execute(&buf, templateData)
+			if err != nil {
+				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
+					state.Name(), app.Globals.Config.App.OrderNotifyBuyerShipmentPendingState, pkgItem.OrderId, err)
+			} else {
+				buyerNotify := notify_service.SMSRequest{
+					Phone: pkgItem.ShippingAddress.Mobile,
+					Body:  buf.String(),
+				}
+				sellerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
+				if sellerFutureData.Error() != nil {
+					logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, pid: %d, error: %s",
+						buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, sellerFutureData.Error().Reason())
+					buyerNotificationAction = &entities.Action{
+						Name:      system_action.SellerNotification.ActionName(),
+						Type:      "",
+						UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+						UTP:       actions.System.ActionName(),
+						Perm:      "",
+						Priv:      "",
+						Policy:    "",
+						Result:    string(states.ActionFail),
+						Reasons:   nil,
+						Data:      nil,
+						CreatedAt: time.Now().UTC(),
+						Extended:  nil,
+					}
+				} else {
+					logger.Audit("Process() => NotifyService.NotifyBySMS success, sellerNotify: %v, state: %s, orderId: %d, pid: %d",
+						buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId)
+					buyerNotificationAction = &entities.Action{
+						Name:      system_action.SellerNotification.ActionName(),
+						Type:      "",
+						UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+						UTP:       actions.System.ActionName(),
+						Perm:      "",
+						Priv:      "",
+						Policy:    "",
+						Result:    string(states.ActionSuccess),
+						Reasons:   nil,
+						Data:      nil,
+						CreatedAt: time.Now().UTC(),
+						Extended:  nil,
+					}
+				}
+			}
+		}
+
 		var expireTime time.Time
 		value, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShipmentPendingStateConfig].(time.Duration)
 		if ok {
@@ -96,7 +163,7 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 		}
 
 		for i := 0; i < len(subpackages); i++ {
-			state.UpdateSubPackage(ctx, subpackages[i], nil)
+			state.UpdateSubPackage(ctx, subpackages[i], buyerNotificationAction)
 			subpackages[i].Tracking.State.Data = map[string]interface{}{
 				"scheduler": []entities.SchedulerData{
 					{

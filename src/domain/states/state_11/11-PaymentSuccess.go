@@ -1,6 +1,7 @@
 package state_11
 
 import (
+	"bytes"
 	"context"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
@@ -9,7 +10,9 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
+	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
+	"text/template"
 	"time"
 )
 
@@ -42,9 +45,64 @@ func (state paymentSuccessState) Process(ctx context.Context, iFrame frame.IFram
 	if iFrame.Header().KeyExists(string(frame.HeaderOrderId)) && iFrame.Body().Content() != nil {
 		order, ok := iFrame.Body().Content().(*entities.Order)
 		if !ok {
-			logger.Err("iFrame.Body().Content() not a order, orderId: %d, %s state ",
+			logger.Err("Process() => iFrame.Body().Content() not a order, orderId: %d, %s state ",
 				iFrame.Header().Value(string(frame.HeaderOrderId)), state.Name())
 			return
+		}
+
+		var buyerNotificationAction *entities.Action = nil
+		smsTemplate, err := template.New("SMS").Parse(app.Globals.Config.App.OrderNotifyBuyerPaymentSuccessState)
+		if err != nil {
+			logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
+				state.Name(), order.OrderId, app.Globals.Config.App.OrderNotifyBuyerPaymentSuccessState, err)
+		} else {
+			var buf bytes.Buffer
+			err = smsTemplate.Execute(&buf, order.OrderId)
+			if err != nil {
+				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
+					state.Name(), app.Globals.Config.App.OrderNotifyBuyerPaymentSuccessState, order.OrderId, err)
+			} else {
+				buyerNotify := notify_service.SMSRequest{
+					Phone: order.BuyerInfo.ShippingAddress.Mobile,
+					Body:  buf.String(),
+				}
+
+				buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
+				if buyerFutureData.Error() != nil {
+					logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, error: %s",
+						buyerNotify, state.Name(), order.OrderId, buyerFutureData.Error().Reason())
+					buyerNotificationAction = &entities.Action{
+						Name:      system_action.BuyerNotification.ActionName(),
+						Type:      "",
+						UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+						UTP:       actions.System.ActionName(),
+						Perm:      "",
+						Priv:      "",
+						Policy:    "",
+						Result:    string(states.ActionFail),
+						Reasons:   nil,
+						Data:      nil,
+						CreatedAt: time.Now().UTC(),
+						Extended:  nil,
+					}
+				} else {
+					logger.Audit("Process() => NotifyService.NotifyBySMS success, state: %s, orderId: %d", state.Name(), order.OrderId)
+					buyerNotificationAction = &entities.Action{
+						Name:      system_action.BuyerNotification.ActionName(),
+						Type:      "",
+						UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+						UTP:       actions.System.ActionName(),
+						Perm:      "",
+						Priv:      "",
+						Policy:    "",
+						Result:    string(states.ActionSuccess),
+						Reasons:   nil,
+						Data:      nil,
+						CreatedAt: time.Now().UTC(),
+						Extended:  nil,
+					}
+				}
+			}
 		}
 
 		paymentAction := &entities.Action{
@@ -62,6 +120,9 @@ func (state paymentSuccessState) Process(ctx context.Context, iFrame frame.IFram
 			Extended:  nil,
 		}
 
+		if buyerNotificationAction != nil {
+			state.UpdateOrderAllSubPkg(ctx, order, buyerNotificationAction)
+		}
 		state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
 		orderUpdated, err := app.Globals.OrderRepository.Save(ctx, *order)
 		if err != nil {

@@ -1,14 +1,21 @@
 package state_80
 
 import (
+	"bytes"
 	"context"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
+	operator_action "gitlab.faza.io/order-project/order-service/domain/actions/operator"
+	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
+	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
+	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
+	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
+	"text/template"
 	"time"
 )
 
@@ -45,6 +52,100 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			return
 		}
 
+		sids, ok := iFrame.Header().Value(string(frame.HeaderSIds)).([]uint64)
+		if !ok {
+			logger.Err("iFrame.Header() not a sids, frame: %v, %s state ", iFrame, state.Name())
+			return
+		}
+
+		event, ok := iFrame.Header().Value(string(frame.HeaderEvent)).(events.IEvent)
+		if !ok {
+			logger.Err("Process() => received frame doesn't have a event, state: %s, frame: %v", state.String(), iFrame)
+			return
+		}
+
+		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
+		if !ok {
+			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, pid: %d, sid: %d, %s state ",
+				subpackages[0].OrderId, subpackages[0].PId, subpackages[0].SId, state.Name())
+			return
+		}
+
+		var buyerNotificationAction *entities.Action = nil
+		if event.Action().ActionEnum() == seller_action.Accept ||
+			event.Action().ActionEnum() == operator_action.Accept {
+
+			var message string
+			if event.Action().ActionEnum() == seller_action.Accept {
+				message = app.Globals.Config.App.OrderNotifyBuyerReturnDeliveredToPayToBuyerState
+			} else if event.Action().ActionEnum() == operator_action.Accept {
+				message = app.Globals.Config.App.OrderNotifyBuyerReturnRejectedToPayToBuyerState
+			}
+
+			var templateData struct {
+				OrderId  uint64
+				ShopName string
+			}
+
+			templateData.OrderId = pkgItem.OrderId
+			templateData.ShopName = pkgItem.ShopName
+
+			smsTemplate, err := template.New("SMS").Parse(message)
+			if err != nil {
+				logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
+					state.Name(), pkgItem.OrderId, message, err)
+			} else {
+				var buf bytes.Buffer
+				err = smsTemplate.Execute(&buf, templateData)
+				if err != nil {
+					logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
+						state.Name(), message, pkgItem.OrderId, err)
+				} else {
+					buyerNotify := notify_service.SMSRequest{
+						Phone: pkgItem.ShippingAddress.Mobile,
+						Body:  buf.String(),
+					}
+
+					buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
+					if buyerFutureData.Error() != nil {
+						logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
+							buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, sids, buyerFutureData.Error().Reason())
+						buyerNotificationAction = &entities.Action{
+							Name:      system_action.BuyerNotification.ActionName(),
+							Type:      "",
+							UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+							UTP:       actions.System.ActionName(),
+							Perm:      "",
+							Priv:      "",
+							Policy:    "",
+							Result:    string(states.ActionFail),
+							Reasons:   nil,
+							Data:      nil,
+							CreatedAt: time.Now().UTC(),
+							Extended:  nil,
+						}
+					} else {
+						logger.Audit("Process() => NotifyService.NotifyBySMS success, state: %s, orderId: %d, pid: %d, sids: %v",
+							state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
+						buyerNotificationAction = &entities.Action{
+							Name:      system_action.BuyerNotification.ActionName(),
+							Type:      "",
+							UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+							UTP:       actions.System.ActionName(),
+							Perm:      "",
+							Priv:      "",
+							Policy:    "",
+							Result:    string(states.ActionSuccess),
+							Reasons:   nil,
+							Data:      nil,
+							CreatedAt: time.Now().UTC(),
+							Extended:  nil,
+						}
+					}
+				}
+			}
+		}
+
 		var releaseStockAction *entities.Action
 		if err := state.releasedStock(ctx, subpackages); err != nil {
 			releaseStockAction = &entities.Action{
@@ -79,6 +180,9 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 		}
 
 		for _, subpackage := range subpackages {
+			if buyerNotificationAction != nil {
+				state.UpdateSubPackage(ctx, subpackage, buyerNotificationAction)
+			}
 			state.UpdateSubPackage(ctx, subpackage, releaseStockAction)
 			_, err := app.Globals.SubPkgRepository.Update(ctx, *subpackage)
 			if err != nil {

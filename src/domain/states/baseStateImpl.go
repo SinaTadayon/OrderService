@@ -164,6 +164,21 @@ func (base BaseStateImpl) UpdateOrderAllSubPkg(ctx context.Context, order *entit
 	}
 }
 
+func (base BaseStateImpl) UpdatePackageAllSubPkg(ctx context.Context, packageItem *entities.PackageItem, actions ...*entities.Action) {
+	for i := 0; i < len(packageItem.Subpackages); i++ {
+		packageItem.UpdatedAt = time.Now().UTC()
+		if actions != nil && len(actions) > 0 {
+			for j := 0; j < len(actions); j++ {
+				base.UpdateSubPackage(ctx, &packageItem.Subpackages[i], actions[j])
+			}
+		} else {
+			for i := 0; i < len(packageItem.Subpackages); i++ {
+				base.UpdateSubPackage(ctx, &packageItem.Subpackages[i], nil)
+			}
+		}
+	}
+}
+
 func (base BaseStateImpl) UpdateSubPackage(ctx context.Context, subpackage *entities.Subpackage, action *entities.Action) {
 	subpackage.UpdatedAt = time.Now().UTC()
 	subpackage.Status = base.Name()

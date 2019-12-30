@@ -1,6 +1,7 @@
 package state_34
 
 import (
+	"bytes"
 	"context"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
@@ -18,6 +19,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"strconv"
+	"text/template"
 	"time"
 )
 
@@ -192,14 +194,9 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 			if event.Action().ActionType() == actions.Scheduler &&
 				(event.Action().ActionEnum() == scheduler_action.Notification ||
 					event.Action().ActionEnum() == scheduler_action.Deliver) {
-				order, err := app.Globals.OrderRepository.FindById(ctx, pkgItem.OrderId)
-				if err != nil {
-					logger.Err("Process() => OrderRepository.FindById failed, state: %s, orderId: %d, pid: %d, error: %s",
-						state.Name(), pkgItem.OrderId, pkgItem.PId, err.Error())
-					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-						SetError(future.InternalError, "Unknown Err", err).Send()
-					return
-				}
+
+				var buyerNotificationAction *entities.Action
+				var buyerNotify notify_service.SMSRequest
 
 				schedulerAction := &entities.Action{
 					Name:      scheduler_action.Notification.ActionName(),
@@ -216,96 +213,102 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 					Extended:  nil,
 				}
 
-				// TODO Notification template must be load from file
-				// TODO scheduler user
-				if order != nil {
-					buyerNotify := notify_service.SMSRequest{
-						Phone: order.BuyerInfo.ShippingAddress.Mobile,
-						Body:  "Order Satisfaction",
-					}
-
-					var notificationAction *entities.Action
-					futureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
-					if futureData.Error() != nil {
-						logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, pid: %d, error: %s",
-							buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, futureData.Error().Reason())
-						notificationAction = &entities.Action{
-							Name:      system_action.BuyerNotification.ActionName(),
-							Type:      "",
-							UId:       0,
-							UTP:       actions.System.ActionName(),
-							Perm:      "",
-							Priv:      "",
-							Policy:    "",
-							Result:    string(states.ActionFail),
-							Reasons:   nil,
-							Data:      nil,
-							CreatedAt: time.Now().UTC(),
-							Extended:  nil,
-						}
+				smsTemplate, err := template.New("SMS").Parse(app.Globals.Config.App.OrderNotifyBuyerDeliveryPendingState)
+				if err != nil {
+					logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
+						state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifyBuyerDeliveryPendingState, err)
+				} else {
+					var buf bytes.Buffer
+					err = smsTemplate.Execute(&buf, pkgItem.OrderId)
+					if err != nil {
+						logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
+							state.Name(), app.Globals.Config.App.OrderNotifyBuyerDeliveryPendingState, pkgItem.OrderId, err)
 					} else {
-						notificationAction = &entities.Action{
-							Name:      system_action.BuyerNotification.ActionName(),
-							Type:      "",
-							UId:       0,
-							UTP:       actions.System.ActionName(),
-							Perm:      "",
-							Priv:      "",
-							Policy:    "",
-							Result:    string(states.ActionSuccess),
-							Reasons:   nil,
-							Data:      nil,
-							CreatedAt: time.Now().UTC(),
-							Extended:  nil,
+						buyerNotify = notify_service.SMSRequest{
+							Phone: pkgItem.ShippingAddress.Mobile,
+							Body:  buf.String(),
 						}
-					}
 
-					var sids = make([]uint64, 0, 32)
-					for _, eventSubPkg := range actionData.SubPackages {
-						for i := 0; i < len(pkgItem.Subpackages); i++ {
-							if eventSubPkg.SId == pkgItem.Subpackages[i].SId && pkgItem.Subpackages[i].Status == state.Name() {
-								if pkgItem.Subpackages[i].Tracking.State.Data != nil && pkgItem.Subpackages[i].Tracking.State.Data["scheduler"] != nil {
-									schedulerDataList := pkgItem.Subpackages[i].Tracking.State.Data["scheduler"].(primitive.A)
-									for _, data := range schedulerDataList {
-										schedulerData := data.(map[string]interface{})
-										if schedulerData["name"] == "notifyAt" {
-											schedulerData["enabled"] = false
-											sids = append(sids, pkgItem.Subpackages[i].SId)
-											state.UpdateSubPackage(ctx, &pkgItem.Subpackages[i], schedulerAction)
-											state.UpdateSubPackage(ctx, &pkgItem.Subpackages[i], notificationAction)
-											_, err := app.Globals.SubPkgRepository.Update(ctx, pkgItem.Subpackages[i])
-											if err != nil {
-												logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, pid: %d, sid: %d, event: %v, error: %s", state.Name(),
-													pkgItem.Subpackages[i].OrderId, pkgItem.Subpackages[i].PId, pkgItem.Subpackages[i].SId, event, err.Error())
-												future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-													SetError(future.InternalError, "Unknown Err", err).Send()
-												return
-											}
-										}
-									}
-								} else {
-									logger.Err("Process() => Tracking.State.Data is nil, state: %s, orderId: %d, pid: %d, sid: %d, event: %v",
-										state.Name(), pkgItem.Subpackages[i].OrderId, pkgItem.Subpackages[i].PId, pkgItem.Subpackages[i].SId, event)
-								}
+						futureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
+						if futureData.Error() != nil {
+							logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, pid: %d, error: %s",
+								buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, futureData.Error().Reason())
+							buyerNotificationAction = &entities.Action{
+								Name:      system_action.BuyerNotification.ActionName(),
+								Type:      "",
+								UId:       0,
+								UTP:       actions.System.ActionName(),
+								Perm:      "",
+								Priv:      "",
+								Policy:    "",
+								Result:    string(states.ActionFail),
+								Reasons:   nil,
+								Data:      nil,
+								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
+							}
+						} else {
+							buyerNotificationAction = &entities.Action{
+								Name:      system_action.BuyerNotification.ActionName(),
+								Type:      "",
+								UId:       0,
+								UTP:       actions.System.ActionName(),
+								Perm:      "",
+								Priv:      "",
+								Policy:    "",
+								Result:    string(states.ActionSuccess),
+								Reasons:   nil,
+								Data:      nil,
+								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							}
 						}
 					}
+				}
 
+				var sids = make([]uint64, 0, 32)
+				for _, eventSubPkg := range actionData.SubPackages {
+					for i := 0; i < len(pkgItem.Subpackages); i++ {
+						if eventSubPkg.SId == pkgItem.Subpackages[i].SId && pkgItem.Subpackages[i].Status == state.Name() {
+							if pkgItem.Subpackages[i].Tracking.State.Data != nil && pkgItem.Subpackages[i].Tracking.State.Data["scheduler"] != nil {
+								schedulerDataList := pkgItem.Subpackages[i].Tracking.State.Data["scheduler"].(primitive.A)
+								for _, data := range schedulerDataList {
+									schedulerData := data.(map[string]interface{})
+									if schedulerData["name"] == "notifyAt" {
+										schedulerData["enabled"] = false
+										sids = append(sids, pkgItem.Subpackages[i].SId)
+										state.UpdateSubPackage(ctx, &pkgItem.Subpackages[i], schedulerAction)
+										state.UpdateSubPackage(ctx, &pkgItem.Subpackages[i], buyerNotificationAction)
+										_, err := app.Globals.SubPkgRepository.Update(ctx, pkgItem.Subpackages[i])
+										if err != nil {
+											logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, pid: %d, sid: %d, event: %v, error: %s", state.Name(),
+												pkgItem.Subpackages[i].OrderId, pkgItem.Subpackages[i].PId, pkgItem.Subpackages[i].SId, event, err.Error())
+											future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+												SetError(future.InternalError, "Unknown Err", err).Send()
+											return
+										}
+									}
+								}
+							} else {
+								logger.Err("Process() => Tracking.State.Data is nil, state: %s, orderId: %d, pid: %d, sid: %d, event: %v",
+									state.Name(), pkgItem.Subpackages[i].OrderId, pkgItem.Subpackages[i].PId, pkgItem.Subpackages[i].SId, event)
+							}
+						}
+					}
+				}
+
+				logger.Audit("Process() => NotifyService.NotifyBySMS success, buyerNotify: %v, state: %s, orderId: %d, pid: %d, error: %s",
+					buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId)
+
+				if event.Action().ActionEnum() == scheduler_action.Notification {
 					response := events.ActionResponse{
 						OrderId: pkgItem.OrderId,
 						SIds:    sids,
 					}
 
-					if event.Action().ActionEnum() == scheduler_action.Notification {
-						future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-							SetData(response).Send()
-					}
+					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+						SetData(response).Send()
 
-					logger.Audit("Process() => NotifyService.NotifyBySMS success, buyerNotify: %v, state: %s, orderId: %d, pid: %d, error: %s",
-						buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, futureData.Error().Reason())
-				}
-
-				if event.Action().ActionEnum() == scheduler_action.Notification {
 					return
 				}
 			}

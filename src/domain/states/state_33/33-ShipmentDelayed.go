@@ -1,6 +1,7 @@
 package state_33
 
 import (
+	"bytes"
 	"context"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
@@ -18,6 +19,7 @@ import (
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"strconv"
+	"text/template"
 	"time"
 )
 
@@ -62,7 +64,7 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 
 		sids, ok := iFrame.Header().Value(string(frame.HeaderSIds)).([]uint64)
 		if !ok {
-			logger.Err("iFrame.Header() not a sids, frame: %v, %s state ", iFrame, state.Name())
+			logger.Err("Process() => iFrame.Header() not a sids, frame: %v, %s state ", iFrame, state.Name())
 			return
 		}
 
@@ -73,74 +75,94 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 			return
 		}
 
-		// TODO Notification template must be load from file
-		var notifyOnce = true
-		for _, subpackage := range subpackages {
-			var buyerNotificationAction *entities.Action
-			var sellerNotificationAction *entities.Action
-			if notifyOnce {
-				notifyOnce = false
-				order, err := app.Globals.OrderRepository.FindById(ctx, pkgItem.OrderId)
-				if err != nil {
-					logger.Err("Process() => OrderRepository.FindById failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
-						state.Name(), subpackages[0].OrderId, subpackages[0].PId, sids, err.Error())
-				} else {
-					buyerNotify := notify_service.SMSRequest{
-						Phone: order.BuyerInfo.ShippingAddress.Mobile,
-						Body:  "Shipment Delay",
-					}
+		var buyerNotificationAction *entities.Action
+		var sellerNotificationAction *entities.Action
+		var templateData struct {
+			OrderId  uint64
+			ShopName string
+		}
 
-					buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
-					if buyerFutureData.Error() != nil {
-						logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
-							buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, sids, buyerFutureData.Error().Reason())
-						buyerNotificationAction = &entities.Action{
-							Name:      system_action.BuyerNotification.ActionName(),
-							Type:      "",
-							UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
-							UTP:       actions.System.ActionName(),
-							Perm:      "",
-							Priv:      "",
-							Policy:    "",
-							Result:    string(states.ActionFail),
-							Reasons:   nil,
-							Data:      nil,
-							CreatedAt: time.Now().UTC(),
-							Extended:  nil,
-						}
-					} else {
-						logger.Audit("Process() => NotifyService.NotifyBySMS success, state: %s, orderId: %d, pid: %d, sids: %v",
-							state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
-						buyerNotificationAction = &entities.Action{
-							Name:      system_action.BuyerNotification.ActionName(),
-							Type:      "",
-							UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
-							UTP:       actions.System.ActionName(),
-							Perm:      "",
-							Priv:      "",
-							Policy:    "",
-							Result:    string(states.ActionSuccess),
-							Reasons:   nil,
-							Data:      nil,
-							CreatedAt: time.Now().UTC(),
-							Extended:  nil,
-						}
-					}
+		templateData.OrderId = pkgItem.OrderId
+		templateData.ShopName = pkgItem.ShopName
+
+		smsTemplate, err := template.New("SMS").Parse(app.Globals.Config.App.OrderNotifyBuyerShipmentDelayedState)
+		if err != nil {
+			logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
+				state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifyBuyerShipmentDelayedState, err)
+		} else {
+			var buf bytes.Buffer
+			err = smsTemplate.Execute(&buf, templateData)
+			if err != nil {
+				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
+					state.Name(), app.Globals.Config.App.OrderNotifyBuyerShipmentDelayedState, pkgItem.OrderId, err)
+			} else {
+				buyerNotify := notify_service.SMSRequest{
+					Phone: pkgItem.ShippingAddress.Mobile,
+					Body:  buf.String(),
 				}
 
-				futureData := app.Globals.UserService.GetSellerProfile(ctx, strconv.Itoa(int(pkgItem.PId))).Get()
-				if futureData.Error() != nil {
-					logger.Err("Process() => UserService.GetSellerProfile failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
-						state.Name(), subpackages[0].OrderId, subpackages[0].PId, sids, futureData.Error().Reason())
+				buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
+				if buyerFutureData.Error() != nil {
+					logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
+						buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, sids, buyerFutureData.Error().Reason())
+					buyerNotificationAction = &entities.Action{
+						Name:      system_action.BuyerNotification.ActionName(),
+						Type:      "",
+						UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+						UTP:       actions.System.ActionName(),
+						Perm:      "",
+						Priv:      "",
+						Policy:    "",
+						Result:    string(states.ActionFail),
+						Reasons:   nil,
+						Data:      nil,
+						CreatedAt: time.Now().UTC(),
+						Extended:  nil,
+					}
 				} else {
-					if futureData.Data() != nil {
-						sellerProfile := futureData.Data().(*entities.SellerProfile)
+					logger.Audit("Process() => NotifyService.NotifyBySMS success, state: %s, orderId: %d, pid: %d, sids: %v",
+						state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
+					buyerNotificationAction = &entities.Action{
+						Name:      system_action.BuyerNotification.ActionName(),
+						Type:      "",
+						UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+						UTP:       actions.System.ActionName(),
+						Perm:      "",
+						Priv:      "",
+						Policy:    "",
+						Result:    string(states.ActionSuccess),
+						Reasons:   nil,
+						Data:      nil,
+						CreatedAt: time.Now().UTC(),
+						Extended:  nil,
+					}
+				}
+			}
+		}
 
+		futureData := app.Globals.UserService.GetSellerProfile(ctx, strconv.Itoa(int(pkgItem.PId))).Get()
+		if futureData.Error() != nil {
+			logger.Err("Process() => UserService.GetSellerProfile failed, send sms message failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
+				state.Name(), subpackages[0].OrderId, subpackages[0].PId, sids, futureData.Error().Reason())
+		} else {
+			if futureData.Data() != nil {
+				sellerProfile := futureData.Data().(*entities.SellerProfile)
+
+				smsTemplate, err := template.New("SMS").Parse(app.Globals.Config.App.OrderNotifySellerShipmentDelayedState)
+				if err != nil {
+					logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
+						state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifySellerShipmentDelayedState, err)
+				} else {
+					var buf bytes.Buffer
+					err = smsTemplate.Execute(&buf, pkgItem.OrderId)
+					if err != nil {
+						logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
+							state.Name(), app.Globals.Config.App.OrderNotifySellerShipmentDelayedState, pkgItem.OrderId, err)
+					} else {
 						sellerNotify := notify_service.SMSRequest{
 							Phone: sellerProfile.GeneralInfo.MobilePhone,
-							Body:  "Shipment Delay",
+							Body:  buf.String(),
 						}
-
 						sellerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, sellerNotify).Get()
 						if sellerFutureData.Error() != nil {
 							logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
@@ -177,22 +199,25 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 								Extended:  nil,
 							}
 						}
-					} else {
-						logger.Err("Process() => UserService.GetSellerProfile futureData.Data() is nil, state: %s, orderId: %d, pid: %d, sids: %v",
-							state.Name(), subpackages[0].OrderId, subpackages[0].PId, sids)
 					}
 				}
+			} else {
+				logger.Err("Process() => UserService.GetSellerProfile futureData.Data() is nil, send sms message failed, state: %s, orderId: %d, pid: %d, sids: %v",
+					state.Name(), subpackages[0].OrderId, subpackages[0].PId, sids)
+			}
+		}
 
-				state.UpdateSubPackage(ctx, subpackage, sellerNotificationAction)
-				state.UpdateSubPackage(ctx, subpackage, buyerNotificationAction)
-				_, err = app.Globals.SubPkgRepository.Update(ctx, *subpackage)
-				if err != nil {
-					logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, pid: %d, sids: %v, error: %s",
-						state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId, err.Error())
-				} else {
-					logger.Audit("Process() => Status of subpackages update to %s state, orderId: %d, pid: %d, sids: %v",
-						state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId)
-				}
+		// TODO optimize it repository update
+		for _, subpackage := range subpackages {
+			state.UpdateSubPackage(ctx, subpackage, sellerNotificationAction)
+			state.UpdateSubPackage(ctx, subpackage, buyerNotificationAction)
+			_, err := app.Globals.SubPkgRepository.Update(ctx, *subpackage)
+			if err != nil {
+				logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, pid: %d, sids: %v, error: %s",
+					state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId, err.Error())
+			} else {
+				logger.Audit("Process() => Status of subpackages update to %s state, orderId: %d, pid: %d, sids: %v",
+					state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId)
 			}
 		}
 

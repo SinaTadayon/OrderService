@@ -35,6 +35,27 @@ type Config struct {
 		SchedulerReturnRequestPendingState  string `env:"ORDER_SCHEDULER_RETURN_REQUEST_PENDING_STATE"`
 		SchedulerReturnShipmentPendingState string `env:"ORDER_SCHEDULER_RETURN_SHIPMENT_PENDING_STATE"`
 		SchedulerReturnDeliveredState       string `env:"ORDER_SCHEDULER_RETURN_DELIVERED_STATE"`
+
+		OrderNotifyBuyerPaymentSuccessState                         string `env:"ORDER_NOTIFY_BUYER_PAYMENT_SUCCESS_STATE"`
+		OrderNotifyBuyerPaymentFailedState                          string `env:"ORDER_NOTIFY_BUYER_PAYMENT_FAILED_STATE"`
+		OrderNotifySellerApprovalPendingState                       string `env:"ORDER_NOTIFY_SELLER_APPROVAL_PENDING_STATE"`
+		OrderNotifyBuyerShipmentPendingState                        string `env:"ORDER_NOTIFY_BUYER_SHIPMENT_PENDING_STATE"`
+		OrderNotifySellerShipmentDelayedState                       string `env:"ORDER_NOTIFY_SELLER_SHIPMENT_DELAYED_STATE"`
+		OrderNotifyBuyerShipmentDelayedState                        string `env:"ORDER_NOTIFY_BUYER_SHIPMENT_DELAYED_STATE"`
+		OrderNotifySellerCanceledByBuyerState                       string `env:"ORDER_NOTIFY_SELLER_CANCELED_BY_BUYER_STATE"`
+		OrderNotifyBuyerCanceledByBuyerState                        string `env:"ORDER_NOTIFY_BUYER_CANCELED_BY_BUYER_STATE"`
+		OrderNotifyBuyerCanceledBySellerState                       string `env:"ORDER_NOTIFY_BUYER_CANCELED_BY_SELLER_STATE"`
+		OrderNotifyBuyerDeliveryPendingState                        string `env:"ORDER_NOTIFY_BUYER_DELIVERY_PENDING_STATE"`
+		OrderNotifySellerReturnRequestPendingState                  string `env:"ORDER_NOTIFY_SELLER_RETURN_REQUEST_PENDING_STATE"`
+		OrderNotifyBuyerReturnRequestPendingState                   string `env:"ORDER_NOTIFY_BUYER_RETURN_REQUEST_PENDING_STATE"`
+		OrderNotifyBuyerReturnShipmentPendingState                  string `env:"ORDER_NOTIFY_BUYER_RETURN_SHIPMENT_PENDING_STATE"`
+		OrderNotifySellerReturnRequestRejectedState                 string `env:"ORDER_NOTIFY_SELLER_RETURN_REQUEST_REJECTED_STATE"`
+		OrderNotifyBuyerReturnCanceledState                         string `env:"ORDER_NOTIFY_BUYER_RETURN_CANCELED_STATE"`
+		OrderNotifyBuyerReturnDeliveryPendingToReturnDeliveredState string `env:"ORDER_NOTIFY_BUYER_RETURN_DELIVERY_PENDING_TO_RETURN_DELIVERED_STATE"`
+		OrderNotifyBuyerReturnDeliveryDelayedToReturnDeliveredState string `env:"ORDER_NOTIFY_BUYER_RETURN_DELIVERY_DELAYED_TO_RETURN_DELIVERED_STATE"`
+		OrderNotifyBuyerReturnDeliveredToPayToBuyerState            string `env:"ORDER_NOTIFY_BUYER_RETURN_DELIVERED_TO_PAY_TO_BUYER_STATE"`
+		OrderNotifyBuyerReturnRejectedToPayToBuyerState             string `env:"ORDER_NOTIFY_BUYER_RETURN_REJECTED_TO_PAY_TO_BUYER_STATE"`
+		OrderNotifyBuyerReturnRejectedToPayToSellerState            string `env:"ORDER_NOTIFY_BUYER_RETURN_REJECTED_TO_PAY_TO_SELLER_STATE"`
 	}
 
 	GRPCServer struct {

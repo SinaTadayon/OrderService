@@ -1,6 +1,7 @@
 package state_50
 
 import (
+	"bytes"
 	"context"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
@@ -9,13 +10,16 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	buyer_action "gitlab.faza.io/order-project/order-service/domain/actions/buyer"
 	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
+	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
+	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"strconv"
+	"text/template"
 	"time"
 )
 
@@ -58,12 +62,74 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 			return
 		}
 
-		//pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
-		//if !ok {
-		//	logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, pid: %d, sid: %d, %s state ",
-		//		subpackages[0].OrderId, subpackages[0].PId, subpackages[0].SId, state.Name())
-		//	return
-		//}
+		sids, ok := iFrame.Header().Value(string(frame.HeaderSIds)).([]uint64)
+		if !ok {
+			logger.Err("Process() => iFrame.Header() not a sids, frame: %v, %s state ", iFrame, state.Name())
+			return
+		}
+
+		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
+		if !ok {
+			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, pid: %d, sid: %d, %s state ",
+				subpackages[0].OrderId, subpackages[0].PId, subpackages[0].SId, state.Name())
+			return
+		}
+
+		var buyerNotificationAction *entities.Action
+		smsTemplate, err := template.New("SMS").Parse(app.Globals.Config.App.OrderNotifyBuyerReturnShipmentPendingState)
+		if err != nil {
+			logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
+				state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifyBuyerReturnShipmentPendingState, err)
+		} else {
+			var buf bytes.Buffer
+			err = smsTemplate.Execute(&buf, pkgItem.OrderId)
+			if err != nil {
+				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
+					state.Name(), app.Globals.Config.App.OrderNotifyBuyerReturnShipmentPendingState, pkgItem.OrderId, err)
+			} else {
+				buyerNotify := notify_service.SMSRequest{
+					Phone: pkgItem.ShippingAddress.Mobile,
+					Body:  buf.String(),
+				}
+
+				buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
+				if buyerFutureData.Error() != nil {
+					logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
+						buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, sids, buyerFutureData.Error().Reason())
+					buyerNotificationAction = &entities.Action{
+						Name:      system_action.BuyerNotification.ActionName(),
+						Type:      "",
+						UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+						UTP:       actions.System.ActionName(),
+						Perm:      "",
+						Priv:      "",
+						Policy:    "",
+						Result:    string(states.ActionFail),
+						Reasons:   nil,
+						Data:      nil,
+						CreatedAt: time.Now().UTC(),
+						Extended:  nil,
+					}
+				} else {
+					logger.Audit("Process() => NotifyService.NotifyBySMS success, state: %s, orderId: %d, pid: %d, sids: %v",
+						state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
+					buyerNotificationAction = &entities.Action{
+						Name:      system_action.BuyerNotification.ActionName(),
+						Type:      "",
+						UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+						UTP:       actions.System.ActionName(),
+						Perm:      "",
+						Priv:      "",
+						Policy:    "",
+						Result:    string(states.ActionSuccess),
+						Reasons:   nil,
+						Data:      nil,
+						CreatedAt: time.Now().UTC(),
+						Extended:  nil,
+					}
+				}
+			}
+		}
 
 		var expireTime time.Time
 		value, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnShipmentPendingStateConfig].(time.Duration)
@@ -90,7 +156,7 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 		//	time.Second*time.Duration(0))
 
 		for i := 0; i < len(subpackages); i++ {
-			state.UpdateSubPackage(ctx, subpackages[i], nil)
+			state.UpdateSubPackage(ctx, subpackages[i], buyerNotificationAction)
 			subpackages[i].Tracking.State.Data = map[string]interface{}{
 				"scheduler": []entities.SchedulerData{
 					{

@@ -1,6 +1,7 @@
 package state_20
 
 import (
+	"bytes"
 	"context"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
@@ -9,13 +10,16 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
 	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
+	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
+	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"strconv"
+	"text/template"
 	"time"
 )
 
@@ -58,6 +62,78 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 			logger.Err("Process() => iFrame.Body().Content() not a order, orderId: %d, %s state ",
 				iFrame.Header().Value(string(frame.HeaderOrderId)), state.Name())
 			return
+		}
+
+		for i := 0; i < len(order.Packages); i++ {
+			futureData := app.Globals.UserService.GetSellerProfile(ctx, strconv.Itoa(int(order.Packages[i].PId))).Get()
+			if futureData.Error() != nil {
+				logger.Err("Process() => UserService.GetSellerProfile failed, send sms message failed, state: %s, orderId: %d, pid: %d, error: %s",
+					state.Name(), order.Packages[i].OrderId, order.Packages[i].PId, futureData.Error().Reason())
+			} else {
+				if futureData.Data() != nil {
+					sellerProfile := futureData.Data().(*entities.SellerProfile)
+
+					var sellerNotificationAction *entities.Action = nil
+					smsTemplate, err := template.New("SMS").Parse(app.Globals.Config.App.OrderNotifySellerApprovalPendingState)
+					if err != nil {
+						logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
+							state.Name(), order.OrderId, app.Globals.Config.App.OrderNotifySellerApprovalPendingState, err)
+					} else {
+						var buf bytes.Buffer
+						err = smsTemplate.Execute(&buf, order.OrderId)
+						if err != nil {
+							logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
+								state.Name(), app.Globals.Config.App.OrderNotifySellerApprovalPendingState, order.OrderId, err)
+						} else {
+							sellerNotify := notify_service.SMSRequest{
+								Phone: sellerProfile.GeneralInfo.MobilePhone,
+								Body:  buf.String(),
+							}
+							sellerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, sellerNotify).Get()
+							if sellerFutureData.Error() != nil {
+								logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, pid: %d, error: %s",
+									sellerNotify, state.Name(), order.Packages[i].OrderId, order.Packages[i].PId, sellerFutureData.Error().Reason())
+								sellerNotificationAction = &entities.Action{
+									Name:      system_action.SellerNotification.ActionName(),
+									Type:      "",
+									UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+									UTP:       actions.System.ActionName(),
+									Perm:      "",
+									Priv:      "",
+									Policy:    "",
+									Result:    string(states.ActionFail),
+									Reasons:   nil,
+									Data:      nil,
+									CreatedAt: time.Now().UTC(),
+									Extended:  nil,
+								}
+							} else {
+								logger.Audit("Process() => NotifyService.NotifyBySMS success, sellerNotify: %v, state: %s, orderId: %d, pid: %d",
+									sellerNotify, state.Name(), order.Packages[i].OrderId, order.Packages[i].PId)
+								sellerNotificationAction = &entities.Action{
+									Name:      system_action.SellerNotification.ActionName(),
+									Type:      "",
+									UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+									UTP:       actions.System.ActionName(),
+									Perm:      "",
+									Priv:      "",
+									Policy:    "",
+									Result:    string(states.ActionSuccess),
+									Reasons:   nil,
+									Data:      nil,
+									CreatedAt: time.Now().UTC(),
+									Extended:  nil,
+								}
+							}
+							//update subpackage and package
+							state.UpdatePackageAllSubPkg(ctx, &order.Packages[i], sellerNotificationAction)
+						}
+					}
+				} else {
+					logger.Err("Process() => UserService.GetSellerProfile futureData.Data() is nil, send sms message failed, state: %s, orderId: %d, pid: %d",
+						state.Name(), order.Packages[i].OrderId, order.Packages[i].PId)
+				}
+			}
 		}
 
 		var expireTime time.Time
