@@ -71,16 +71,16 @@ func (state canceledBySellerState) Process(ctx context.Context, iFrame frame.IFr
 		templateData.OrderId = pkgItem.OrderId
 		templateData.ShopName = pkgItem.ShopName
 
-		smsTemplate, err := template.New("SMS").Parse(app.Globals.Config.App.OrderNotifyBuyerCanceledBySellerState)
+		smsTemplate, err := template.New("SMS").Parse(app.Globals.SMSTemplate.OrderNotifyBuyerCanceledBySellerState)
 		if err != nil {
 			logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
-				state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifyBuyerCanceledBySellerState, err)
+				state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerCanceledBySellerState, err)
 		} else {
 			var buf bytes.Buffer
 			err = smsTemplate.Execute(&buf, templateData)
 			if err != nil {
 				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-					state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifyBuyerCanceledBySellerState, err)
+					state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerCanceledBySellerState, err)
 			} else {
 				buyerNotify := notify_service.SMSRequest{
 					Phone: pkgItem.ShippingAddress.Mobile,

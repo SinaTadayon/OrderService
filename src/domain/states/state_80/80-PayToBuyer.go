@@ -77,9 +77,9 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 
 			var message string
 			if event.Action().ActionEnum() == seller_action.Accept {
-				message = app.Globals.Config.App.OrderNotifyBuyerReturnDeliveredToPayToBuyerState
+				message = app.Globals.SMSTemplate.OrderNotifyBuyerReturnDeliveredToPayToBuyerState
 			} else if event.Action().ActionEnum() == operator_action.Accept {
-				message = app.Globals.Config.App.OrderNotifyBuyerReturnRejectedToPayToBuyerState
+				message = app.Globals.SMSTemplate.OrderNotifyBuyerReturnRejectedToPayToBuyerState
 			}
 
 			var templateData struct {

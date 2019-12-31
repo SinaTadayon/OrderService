@@ -9,9 +9,11 @@ RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on GOPRIVATE=*.faza.io go build -mod ve
 # Final stage
 FROM registry.faza.io/golang:1.13.1
 COPY --from=builder /etc_passwd /etc/passwd
-COPY --from=builder /go/bin/app /app/app
-COPY --from=builder /go/src/apps/testdata/.env /go/testdata/.env
+COPY --from=builder /go/bin/app /app/order
+COPY --from=builder /go/src/apps/.docker-env /app/.docker-env
+COPY --from=builder /go/src/apps/testdata/notification/sms/smsTemplate.txt /app/notification/sms/smsTemplate.txt
+
 #USER appuser
 
 EXPOSE $PORT
-CMD ["/app/app"]
+CMD ["/app/order"]

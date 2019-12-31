@@ -40,11 +40,12 @@ import (
 
 func TestMain(m *testing.M) {
 	var err error
-	if os.Getenv("APP_ENV") == "dev" {
-		app.Globals.Config, err = configs.LoadConfig("../../testdata/.env")
+	if os.Getenv("APP_MODE") == "dev" {
+		app.Globals.Config, app.Globals.SMSTemplate, err = configs.LoadConfigs("../../testdata/.env", "../../testdata/notification/sms/smsTemplate.txt")
 	} else {
-		app.Globals.Config, err = configs.LoadConfig("")
+		app.Globals.Config, app.Globals.SMSTemplate, err = configs.LoadConfig("")
 	}
+
 	if err != nil {
 		logger.Err("LoadConfig of main init failed, %s ", err.Error())
 		os.Exit(1)

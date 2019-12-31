@@ -79,16 +79,16 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 		templateData.ShopName = pkgItem.ShopName
 
 		var buyerNotificationAction *entities.Action = nil
-		smsTemplate, err := template.New("SMS").Parse(app.Globals.Config.App.OrderNotifyBuyerShipmentPendingState)
+		smsTemplate, err := template.New("SMS").Parse(app.Globals.SMSTemplate.OrderNotifyBuyerShipmentPendingState)
 		if err != nil {
 			logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
-				state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifyBuyerShipmentPendingState, err)
+				state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerShipmentPendingState, err)
 		} else {
 			var buf bytes.Buffer
 			err = smsTemplate.Execute(&buf, templateData)
 			if err != nil {
 				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-					state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifyBuyerShipmentPendingState, err)
+					state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerShipmentPendingState, err)
 			} else {
 				buyerNotify := notify_service.SMSRequest{
 					Phone: pkgItem.ShippingAddress.Mobile,

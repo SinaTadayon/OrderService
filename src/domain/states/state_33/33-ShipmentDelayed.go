@@ -85,16 +85,16 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 		templateData.OrderId = pkgItem.OrderId
 		templateData.ShopName = pkgItem.ShopName
 
-		smsTemplate, err := template.New("SMS").Parse(app.Globals.Config.App.OrderNotifyBuyerShipmentDelayedState)
+		smsTemplate, err := template.New("SMS").Parse(app.Globals.SMSTemplate.OrderNotifyBuyerShipmentDelayedState)
 		if err != nil {
 			logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
-				state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifyBuyerShipmentDelayedState, err)
+				state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerShipmentDelayedState, err)
 		} else {
 			var buf bytes.Buffer
 			err = smsTemplate.Execute(&buf, templateData)
 			if err != nil {
 				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-					state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifyBuyerShipmentDelayedState, err)
+					state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerShipmentDelayedState, err)
 			} else {
 				buyerNotify := notify_service.SMSRequest{
 					Phone: pkgItem.ShippingAddress.Mobile,
@@ -148,16 +148,16 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 			if futureData.Data() != nil {
 				sellerProfile := futureData.Data().(*entities.SellerProfile)
 
-				smsTemplate, err := template.New("SMS").Parse(app.Globals.Config.App.OrderNotifySellerShipmentDelayedState)
+				smsTemplate, err := template.New("SMS").Parse(app.Globals.SMSTemplate.OrderNotifySellerShipmentDelayedState)
 				if err != nil {
 					logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
-						state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifySellerShipmentDelayedState, err)
+						state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifySellerShipmentDelayedState, err)
 				} else {
 					var buf bytes.Buffer
 					err = smsTemplate.Execute(&buf, pkgItem.OrderId)
 					if err != nil {
 						logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-							state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifySellerShipmentDelayedState, err)
+							state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifySellerShipmentDelayedState, err)
 					} else {
 						sellerNotify := notify_service.SMSRequest{
 							Phone: sellerProfile.GeneralInfo.MobilePhone,

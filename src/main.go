@@ -33,10 +33,12 @@ var MainApp struct {
 
 func main() {
 	var err error
-	if os.Getenv("APP_ENV") == "dev" {
-		app.Globals.Config, err = configs.LoadConfig("./testdata/.env")
+	if os.Getenv("APP_MODE") == "dev" {
+		app.Globals.Config, app.Globals.SMSTemplate, err = configs.LoadConfig("./testdata/.env")
+	} else if os.Getenv("APP_MODE") == "docker" {
+		app.Globals.Config, app.Globals.SMSTemplate, err = configs.LoadConfig("/app/.docker-env")
 	} else {
-		app.Globals.Config, err = configs.LoadConfig("")
+		app.Globals.Config, app.Globals.SMSTemplate, err = configs.LoadConfig("")
 	}
 
 	if err != nil {

@@ -74,16 +74,16 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 					sellerProfile := futureData.Data().(*entities.SellerProfile)
 
 					var sellerNotificationAction *entities.Action = nil
-					smsTemplate, err := template.New("SMS").Parse(app.Globals.Config.App.OrderNotifySellerApprovalPendingState)
+					smsTemplate, err := template.New("SMS").Parse(app.Globals.SMSTemplate.OrderNotifySellerApprovalPendingState)
 					if err != nil {
 						logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
-							state.Name(), order.OrderId, app.Globals.Config.App.OrderNotifySellerApprovalPendingState, err)
+							state.Name(), order.OrderId, app.Globals.SMSTemplate.OrderNotifySellerApprovalPendingState, err)
 					} else {
 						var buf bytes.Buffer
 						err = smsTemplate.Execute(&buf, order.OrderId)
 						if err != nil {
 							logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-								state.Name(), order.OrderId, app.Globals.Config.App.OrderNotifySellerApprovalPendingState, err)
+								state.Name(), order.OrderId, app.Globals.SMSTemplate.OrderNotifySellerApprovalPendingState, err)
 						} else {
 							sellerNotify := notify_service.SMSRequest{
 								Phone: sellerProfile.GeneralInfo.MobilePhone,

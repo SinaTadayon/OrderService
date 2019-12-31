@@ -51,16 +51,16 @@ func (state paymentSuccessState) Process(ctx context.Context, iFrame frame.IFram
 		}
 
 		var buyerNotificationAction *entities.Action = nil
-		smsTemplate, err := template.New("SMS").Parse(app.Globals.Config.App.OrderNotifyBuyerPaymentSuccessState)
+		smsTemplate, err := template.New("SMS").Parse(app.Globals.SMSTemplate.OrderNotifyBuyerPaymentSuccessState)
 		if err != nil {
 			logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
-				state.Name(), order.OrderId, app.Globals.Config.App.OrderNotifyBuyerPaymentSuccessState, err)
+				state.Name(), order.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerPaymentSuccessState, err)
 		} else {
 			var buf bytes.Buffer
 			err = smsTemplate.Execute(&buf, order.OrderId)
 			if err != nil {
 				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-					state.Name(), order.OrderId, app.Globals.Config.App.OrderNotifyBuyerPaymentSuccessState, err)
+					state.Name(), order.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerPaymentSuccessState, err)
 			} else {
 				buyerNotify := notify_service.SMSRequest{
 					Phone: order.BuyerInfo.ShippingAddress.Mobile,

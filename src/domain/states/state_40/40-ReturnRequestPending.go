@@ -77,16 +77,16 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 
 		var buyerNotificationAction *entities.Action
 		var sellerNotificationAction *entities.Action
-		smsTemplate, err := template.New("SMS").Parse(app.Globals.Config.App.OrderNotifyBuyerReturnRequestPendingState)
+		smsTemplate, err := template.New("SMS").Parse(app.Globals.SMSTemplate.OrderNotifyBuyerReturnRequestPendingState)
 		if err != nil {
 			logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
-				state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifyBuyerReturnRequestPendingState, err)
+				state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerReturnRequestPendingState, err)
 		} else {
 			var buf bytes.Buffer
 			err = smsTemplate.Execute(&buf, pkgItem.OrderId)
 			if err != nil {
 				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-					state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifyBuyerReturnRequestPendingState, err)
+					state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerReturnRequestPendingState, err)
 			} else {
 				buyerNotify := notify_service.SMSRequest{
 					Phone: pkgItem.ShippingAddress.Mobile,
@@ -140,16 +140,16 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 			if futureData.Data() != nil {
 				sellerProfile := futureData.Data().(*entities.SellerProfile)
 
-				smsTemplate, err := template.New("SMS").Parse(app.Globals.Config.App.OrderNotifySellerReturnRequestPendingState)
+				smsTemplate, err := template.New("SMS").Parse(app.Globals.SMSTemplate.OrderNotifySellerReturnRequestPendingState)
 				if err != nil {
 					logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
-						state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifySellerReturnRequestPendingState, err)
+						state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifySellerReturnRequestPendingState, err)
 				} else {
 					var buf bytes.Buffer
 					err = smsTemplate.Execute(&buf, pkgItem.OrderId)
 					if err != nil {
 						logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-							state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifySellerReturnRequestPendingState, err)
+							state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifySellerReturnRequestPendingState, err)
 					} else {
 						sellerNotify := notify_service.SMSRequest{
 							Phone: sellerProfile.GeneralInfo.MobilePhone,

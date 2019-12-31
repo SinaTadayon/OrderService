@@ -10,7 +10,8 @@ test:
 ifndef PORT
 	$(error PORT is not set)
 endif
-	cd ./src && go clean -testcache && export PORT=$(PORT) && export APP_ENV=dev && go test -mod vendor -v ./... | grep -v "\[no test files\]"  && cd ..
+	cd ./src && go clean -testcache && export PORT=$(PORT) && export APP_MODE=dev && go test -mod vendor -v ./... | grep -v "\[no test files\]"  && cd ..
+
 
 compose-down:
 ifndef PORT
@@ -20,7 +21,7 @@ endif
 	PORT=$(PORT) docker-compose rm -f
 
 compose:
-ifeq (,$(wildcard src/.env))
+ifeq (,$(wildcard src/.docker-env))
 	$(error env file not found)
 endif
 ifndef PORT
@@ -37,7 +38,7 @@ endif
 	PORT=$(PORT) DOCKERIP=$(DOCKERIPADDR) docker-compose up -d
 
 compose-debug:
-ifeq (,$(wildcard src/.env))
+ifeq (,$(wildcard src/.docker-env))
 	$(error env file not found)
 endif
 ifndef PORT

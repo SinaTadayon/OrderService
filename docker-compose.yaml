@@ -10,11 +10,11 @@ services:
       - seccomp:unconfined
     environment:
       - PORT=${PORT}
-      - APP_ENV=dev
+      - APP_MODE=docker
 #      - PAYMENT_KAFKA_CONSUMER_TOPIC=payment-pending
 #      - PAYMENT_KAFKA_CONSUMER_GROUP=payment-pending
     env_file:
-      - ./src/.env
+      - src/.docker-env
     depends_on:
       - mongo
       - stockservice
@@ -31,11 +31,11 @@ services:
 #    security_opt:
 #      - seccomp:unconfined
 #    environment:
-#      - APP_ENV=dev
+#      - APP_MODE=dev
 #      - PAYMENT_KAFKA_CONSUMER_TOPIC=payment-success
 #      - PAYMENT_KAFKA_CONSUMER_GROUP=payment-success
 #    env_file:
-#      - ./src/.env
+#      - ./src/.docker-env
 #
 #  seller_approval_pending:
 #    image: ${TAG}
@@ -45,11 +45,11 @@ services:
 #    security_opt:
 #      - seccomp:unconfined
 #    environment:
-#      - APP_ENV=dev
+#      - APP_MODE=dev
 #      - PAYMENT_KAFKA_CONSUMER_TOPIC=seller-approval-pending
 #      - PAYMENT_KAFKA_CONSUMER_GROUP=seller-approval-pending
 #    env_file:
-#      - ./src/.env
+#      - ./src/.docker-env
 #
 #  zoo1:
 #    image: registry.faza.io/zookeeper:latest
@@ -109,7 +109,7 @@ services:
     environment:
       - PORT=9098
       - APP_MODE=grpc-server
-      - APP_ENV=staging
+      - APP_MODE=staging
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_DB=0
@@ -170,7 +170,7 @@ services:
     environment:
       - PORT=9097
       - APP_MODE=grpc-server
-      - APP_ENV=dev
+      - APP_MODE=dev
       - CART_REDIS_HOST=redis
       - CART_REDIS_PORT=6379
       - CART_MONGO_HOST=mongo
@@ -200,9 +200,9 @@ services:
       - seccomp:unconfined
     environment:
       - PORT=9099
-      - APP_ENV=dev
+      - APP_MODE=dev
     env_file:
-      - ./src/.env
+      - src/.docker-env
 
 
   redis:

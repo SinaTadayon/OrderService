@@ -23,13 +23,13 @@ var orderRepository IOrderRepository
 func TestMain(m *testing.M) {
 	var err error
 	var path string
-	if os.Getenv("APP_ENV") == "dev" {
+	if os.Getenv("APP_MODE") == "dev" {
 		path = "../../../../testdata/.env"
 	} else {
 		path = ""
 	}
 
-	config, err := configs.LoadConfig(path)
+	config, _, err := configs.LoadConfigs(path, "")
 	if err != nil {
 		logger.Err("configs.LoadConfig failed, %s", err.Error())
 		os.Exit(1)

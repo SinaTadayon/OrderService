@@ -8,10 +8,33 @@ import (
 	"os"
 )
 
+type SmsTemplate struct {
+	OrderNotifyBuyerPaymentSuccessState                         string `env:"ORDER_NOTIFY_BUYER_PAYMENT_SUCCESS_STATE"`
+	OrderNotifyBuyerPaymentFailedState                          string `env:"ORDER_NOTIFY_BUYER_PAYMENT_FAILED_STATE"`
+	OrderNotifySellerApprovalPendingState                       string `env:"ORDER_NOTIFY_SELLER_APPROVAL_PENDING_STATE"`
+	OrderNotifyBuyerShipmentPendingState                        string `env:"ORDER_NOTIFY_BUYER_SHIPMENT_PENDING_STATE"`
+	OrderNotifySellerShipmentDelayedState                       string `env:"ORDER_NOTIFY_SELLER_SHIPMENT_DELAYED_STATE"`
+	OrderNotifyBuyerShipmentDelayedState                        string `env:"ORDER_NOTIFY_BUYER_SHIPMENT_DELAYED_STATE"`
+	OrderNotifySellerCanceledByBuyerState                       string `env:"ORDER_NOTIFY_SELLER_CANCELED_BY_BUYER_STATE"`
+	OrderNotifyBuyerCanceledByBuyerState                        string `env:"ORDER_NOTIFY_BUYER_CANCELED_BY_BUYER_STATE"`
+	OrderNotifyBuyerCanceledBySellerState                       string `env:"ORDER_NOTIFY_BUYER_CANCELED_BY_SELLER_STATE"`
+	OrderNotifyBuyerDeliveryPendingState                        string `env:"ORDER_NOTIFY_BUYER_DELIVERY_PENDING_STATE"`
+	OrderNotifySellerReturnRequestPendingState                  string `env:"ORDER_NOTIFY_SELLER_RETURN_REQUEST_PENDING_STATE"`
+	OrderNotifyBuyerReturnRequestPendingState                   string `env:"ORDER_NOTIFY_BUYER_RETURN_REQUEST_PENDING_STATE"`
+	OrderNotifyBuyerReturnShipmentPendingState                  string `env:"ORDER_NOTIFY_BUYER_RETURN_SHIPMENT_PENDING_STATE"`
+	OrderNotifySellerReturnRequestRejectedState                 string `env:"ORDER_NOTIFY_SELLER_RETURN_REQUEST_REJECTED_STATE"`
+	OrderNotifyBuyerReturnCanceledState                         string `env:"ORDER_NOTIFY_BUYER_RETURN_CANCELED_STATE"`
+	OrderNotifyBuyerReturnDeliveryPendingToReturnDeliveredState string `env:"ORDER_NOTIFY_BUYER_RETURN_DELIVERY_PENDING_TO_RETURN_DELIVERED_STATE"`
+	OrderNotifyBuyerReturnDeliveryDelayedToReturnDeliveredState string `env:"ORDER_NOTIFY_BUYER_RETURN_DELIVERY_DELAYED_TO_RETURN_DELIVERED_STATE"`
+	OrderNotifyBuyerReturnDeliveredToPayToBuyerState            string `env:"ORDER_NOTIFY_BUYER_RETURN_DELIVERED_TO_PAY_TO_BUYER_STATE"`
+	OrderNotifyBuyerReturnRejectedToPayToBuyerState             string `env:"ORDER_NOTIFY_BUYER_RETURN_REJECTED_TO_PAY_TO_BUYER_STATE"`
+	OrderNotifyBuyerReturnRejectedToPayToSellerState            string `env:"ORDER_NOTIFY_BUYER_RETURN_REJECTED_TO_PAY_TO_SELLER_STATE"`
+}
+
 type Config struct {
 	App struct {
 		ServiceMode                          string `env:"ORDER_SERVICE_MODE"`
-		SmsTemplateDir                       string `env:"NOTIFICATION_SMS_TEMPLATES"`
+		SmsTemplates                         string `env:"NOTIFICATION_SMS_TEMPLATES"`
 		EmailTemplateNotifySellerForNewOrder string `env:"EMAIL_TMP_NOTIFY_SELLER_FOR_NEW_ORDER"`
 
 		OrderPaymentCallbackUrlStaging      string `env:"ORDER_PAYMENT_CALLBACK_URL_STAGING"`
@@ -35,27 +58,6 @@ type Config struct {
 		SchedulerReturnRequestPendingState  string `env:"ORDER_SCHEDULER_RETURN_REQUEST_PENDING_STATE"`
 		SchedulerReturnShipmentPendingState string `env:"ORDER_SCHEDULER_RETURN_SHIPMENT_PENDING_STATE"`
 		SchedulerReturnDeliveredState       string `env:"ORDER_SCHEDULER_RETURN_DELIVERED_STATE"`
-
-		OrderNotifyBuyerPaymentSuccessState                         string `env:"ORDER_NOTIFY_BUYER_PAYMENT_SUCCESS_STATE"`
-		OrderNotifyBuyerPaymentFailedState                          string `env:"ORDER_NOTIFY_BUYER_PAYMENT_FAILED_STATE"`
-		OrderNotifySellerApprovalPendingState                       string `env:"ORDER_NOTIFY_SELLER_APPROVAL_PENDING_STATE"`
-		OrderNotifyBuyerShipmentPendingState                        string `env:"ORDER_NOTIFY_BUYER_SHIPMENT_PENDING_STATE"`
-		OrderNotifySellerShipmentDelayedState                       string `env:"ORDER_NOTIFY_SELLER_SHIPMENT_DELAYED_STATE"`
-		OrderNotifyBuyerShipmentDelayedState                        string `env:"ORDER_NOTIFY_BUYER_SHIPMENT_DELAYED_STATE"`
-		OrderNotifySellerCanceledByBuyerState                       string `env:"ORDER_NOTIFY_SELLER_CANCELED_BY_BUYER_STATE"`
-		OrderNotifyBuyerCanceledByBuyerState                        string `env:"ORDER_NOTIFY_BUYER_CANCELED_BY_BUYER_STATE"`
-		OrderNotifyBuyerCanceledBySellerState                       string `env:"ORDER_NOTIFY_BUYER_CANCELED_BY_SELLER_STATE"`
-		OrderNotifyBuyerDeliveryPendingState                        string `env:"ORDER_NOTIFY_BUYER_DELIVERY_PENDING_STATE"`
-		OrderNotifySellerReturnRequestPendingState                  string `env:"ORDER_NOTIFY_SELLER_RETURN_REQUEST_PENDING_STATE"`
-		OrderNotifyBuyerReturnRequestPendingState                   string `env:"ORDER_NOTIFY_BUYER_RETURN_REQUEST_PENDING_STATE"`
-		OrderNotifyBuyerReturnShipmentPendingState                  string `env:"ORDER_NOTIFY_BUYER_RETURN_SHIPMENT_PENDING_STATE"`
-		OrderNotifySellerReturnRequestRejectedState                 string `env:"ORDER_NOTIFY_SELLER_RETURN_REQUEST_REJECTED_STATE"`
-		OrderNotifyBuyerReturnCanceledState                         string `env:"ORDER_NOTIFY_BUYER_RETURN_CANCELED_STATE"`
-		OrderNotifyBuyerReturnDeliveryPendingToReturnDeliveredState string `env:"ORDER_NOTIFY_BUYER_RETURN_DELIVERY_PENDING_TO_RETURN_DELIVERED_STATE"`
-		OrderNotifyBuyerReturnDeliveryDelayedToReturnDeliveredState string `env:"ORDER_NOTIFY_BUYER_RETURN_DELIVERY_DELAYED_TO_RETURN_DELIVERED_STATE"`
-		OrderNotifyBuyerReturnDeliveredToPayToBuyerState            string `env:"ORDER_NOTIFY_BUYER_RETURN_DELIVERED_TO_PAY_TO_BUYER_STATE"`
-		OrderNotifyBuyerReturnRejectedToPayToBuyerState             string `env:"ORDER_NOTIFY_BUYER_RETURN_REJECTED_TO_PAY_TO_BUYER_STATE"`
-		OrderNotifyBuyerReturnRejectedToPayToSellerState            string `env:"ORDER_NOTIFY_BUYER_RETURN_REJECTED_TO_PAY_TO_SELLER_STATE"`
 	}
 
 	GRPCServer struct {
@@ -113,14 +115,15 @@ type Config struct {
 	}
 }
 
-func LoadConfig(path string) (*Config, error) {
+func LoadConfig(path string) (*Config, *SmsTemplate, error) {
 	var config = &Config{}
+	var smsTemplate = &SmsTemplate{}
 	currntPath, err := os.Getwd()
 	if err != nil {
 		logger.Err("get current working directory failed, error %s", err)
 	}
 
-	if os.Getenv("APP_ENV") == "dev" {
+	if os.Getenv("APP_MODE") == "dev" {
 		if path != "" {
 			err := godotenv.Load(path)
 			if err != nil {
@@ -129,31 +132,85 @@ func LoadConfig(path string) (*Config, error) {
 		} else if flag.Lookup("test.v") != nil {
 			// test mode
 			err := godotenv.Load("../testdata/.env")
-			//err := godotenv.Load(path)
 			if err != nil {
 				logger.Err("Error loading testdata .env file, error: %s", err)
 			}
-		} else {
-			//err := godotenv.Load(path)
-			err := godotenv.Load("./.env")
-			if err != nil {
-				logger.Err("Error loading .env file")
-			}
+		}
+	} else if os.Getenv("APP_MODE") == "docker" {
+		err := godotenv.Load(path)
+		if err != nil {
+			logger.Err("Error loading .docker-env file, " + path)
 		}
 	}
-
-	//else if len(path) != 0 {
-	//	err := godotenv.Load(path)
-	//	if err != nil {
-	//		logger.Err("Error loading .env file, path: %s", path)
-	//	}
-	//}
 
 	// Get environment variables for Config
 	_, err = env.UnmarshalFromEnviron(config)
 	if err != nil {
-		return nil, err
+		logger.Err("env.UnmarshalFromEnviron config failed")
+		return nil, nil, err
 	}
 
-	return config, nil
+	if config.App.SmsTemplates != "" {
+		err := godotenv.Load(config.App.SmsTemplates)
+		if err != nil {
+			logger.Err("Error loading " + config.App.SmsTemplates + " file")
+			return nil, nil, err
+		}
+	}
+
+	_, err = env.UnmarshalFromEnviron(smsTemplate)
+	if err != nil {
+		logger.Err("env.UnmarshalFromEnviron smsTemplate failed")
+		return nil, nil, err
+	}
+
+	return config, smsTemplate, nil
+}
+
+func LoadConfigs(configPath string, smsTemplatePath string) (*Config, *SmsTemplate, error) {
+	var config = &Config{}
+	var smsTemplate = &SmsTemplate{}
+	currntPath, err := os.Getwd()
+	if err != nil {
+		logger.Err("get current working directory failed, error %s", err)
+	}
+
+	if os.Getenv("APP_MODE") == "dev" {
+		if configPath != "" {
+			err := godotenv.Load(configPath)
+			if err != nil {
+				logger.Err("Error loading testdata .env file, Working Directory: %s  path: %s, error: %s", currntPath, configPath, err)
+			}
+		} else if flag.Lookup("test.v") != nil {
+			// test mode
+			err := godotenv.Load("../testdata/.env")
+			if err != nil {
+				logger.Err("Error loading testdata .env file, error: %s", err)
+			}
+		}
+	}
+
+	// Get environment variables for Config
+	_, err = env.UnmarshalFromEnviron(config)
+	if err != nil {
+		logger.Err("env.UnmarshalFromEnviron config failed")
+		return nil, nil, err
+	}
+
+	if smsTemplatePath != "" {
+		err = godotenv.Load(smsTemplatePath)
+		if err != nil {
+			logger.Err("Error loading " + smsTemplatePath + " file")
+			return nil, nil, err
+		}
+
+		_, err = env.UnmarshalFromEnviron(smsTemplate)
+		if err != nil {
+			logger.Err("env.UnmarshalFromEnviron smsTemplate failed")
+			return nil, nil, err
+		}
+		return config, smsTemplate, nil
+	}
+
+	return config, nil, nil
 }

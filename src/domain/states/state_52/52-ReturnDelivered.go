@@ -88,9 +88,9 @@ func (state returnDeliveredState) Process(ctx context.Context, iFrame frame.IFra
 
 			var message string
 			if event.Action().ActionEnum() == seller_action.Deliver {
-				message = app.Globals.Config.App.OrderNotifyBuyerReturnDeliveryPendingToReturnDeliveredState
+				message = app.Globals.SMSTemplate.OrderNotifyBuyerReturnDeliveryPendingToReturnDeliveredState
 			} else if event.Action().ActionEnum() == operator_action.Deliver {
-				message = app.Globals.Config.App.OrderNotifyBuyerReturnDeliveryDelayedToReturnDeliveredState
+				message = app.Globals.SMSTemplate.OrderNotifyBuyerReturnDeliveryDelayedToReturnDeliveredState
 			}
 
 			var templateData struct {

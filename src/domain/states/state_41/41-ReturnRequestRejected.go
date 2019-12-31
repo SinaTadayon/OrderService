@@ -82,16 +82,16 @@ func (state returnRequestRejectedState) Process(ctx context.Context, iFrame fram
 			if futureData.Data() != nil {
 				sellerProfile := futureData.Data().(*entities.SellerProfile)
 
-				smsTemplate, err := template.New("SMS").Parse(app.Globals.Config.App.OrderNotifySellerReturnRequestRejectedState)
+				smsTemplate, err := template.New("SMS").Parse(app.Globals.SMSTemplate.OrderNotifySellerReturnRequestRejectedState)
 				if err != nil {
 					logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
-						state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifySellerReturnRequestRejectedState, err)
+						state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifySellerReturnRequestRejectedState, err)
 				} else {
 					var buf bytes.Buffer
 					err = smsTemplate.Execute(&buf, pkgItem.OrderId)
 					if err != nil {
 						logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-							state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifySellerReturnRequestRejectedState, err)
+							state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifySellerReturnRequestRejectedState, err)
 					} else {
 						sellerNotify := notify_service.SMSRequest{
 							Phone: sellerProfile.GeneralInfo.MobilePhone,

@@ -1,29 +1,3 @@
-ORDER_SERVICE_MODE=server
-ORDER_SERVER_ADDRESS=
-ORDER_SERVER_PORT=9095
-
-ORDER_PAYMENT_CALLBACK_URL_STAGING=http://staging.faza.io/callback-success?orderid=
-ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT=http://staging.faza.io/callback-success?orderid=
-
-ORDER_SCHEDULER_TIME_UNIT=minute
-ORDER_SCHEDULER_STATES=Approval_Pending;Shipment_Pending;Shipment_Delayed;Shipped;Delivery_Pending;Delivered;Return_Shipment_Pending;Return_Shipped;Return_Delivered
-ORDER_SCHEDULER_INTERVAL=60
-ORDER_SCHEDULER_TIMEOUT=25
-ORDER_SCHEDULER_WORKER_TIMEOUT=20
-
-ORDER_SCHEDULER_STATE_TIME_UNIT=hour
-ORDER_SCHEDULER_SELLER_REACTION_TIME=10
-ORDER_SCHEDULER_APPROVAL_PENDING_STATE=24
-ORDER_SCHEDULER_SHIPMENT_PENDING_STATE=80
-ORDER_SCHEDULER_SHIPPED_STATE=72
-ORDER_SCHEDULER_DELIVERY_PENDING_STATE=96
-ORDER_SCHEDULER_NOTIFY_DELIVERY_PENDING_STATE=48
-ORDER_SCHEDULER_DELIVERED_STATE=144
-ORDER_SCHEDULER_RETURN_SHIPPED_STATE=72
-ORDER_SCHEDULER_RETURN_REQUEST_PENDING_STATE=72
-ORDER_SCHEDULER_RETURN_SHIPMENT_PENDING_STATE=96
-ORDER_SCHEDULER_RETURN_DELIVERED_STATE=96
-
 ORDER_NOTIFY_BUYER_PAYMENT_SUCCESS_STATE=بامن‌شاپ\nمشتری گرامی، سفارش شمابا شماره {{.}} با موفقیت ثبت و پرداخت شد.\nوضعیت سفارش شما در تمام مراحل برای شما پیامک خواهد شد.\nهمچنین می‌توانید سفارش خود را از طریق حساب کاربری پیگیری کنید.
 ORDER_NOTIFY_BUYER_PAYMENT_FAILED_STATE=بامن‌شاپ\nمشتری گرامی، وضعیت پرداخت سفارش شما با شماره {{.}} موفقیت‌آمیز نبود، مبلغ پرداختی تا حداکثر 72 ساعت به حساب شما بازمی‌گردد.
 ORDER_NOTIFY_SELLER_APPROVAL_PENDING_STATE=بامن‌شاپ\nفروشنده گرامی، سفارش شماره {{.}} در انتظار تایید شما می‌باشد. شما 24 ساعت برای تایید سفارش فرصت دارید، در غیر این ‌صورت سفارش به صورت خودکار لغو شده و شامل جریمه خواهد شد.
@@ -44,40 +18,4 @@ ORDER_NOTIFY_BUYER_RETURN_DELIVERY_DELAYED_TO_RETURN_DELIVERED_STATE=بامن‌
 ORDER_NOTIFY_BUYER_RETURN_DELIVERED_TO_PAY_TO_BUYER_STATE=بامن‌شاپ\nمشتری گرامی، مرجوعی مربوط به سفارش شماره {{.OrderId}} توسط فروشگاه {{.ShopName}} قبول شد.\n مبلغ پرداختی تا حداکثر 72 ساعت به حساب شما بازمی‌گردد.
 ORDER_NOTIFY_BUYER_RETURN_REJECTED_TO_PAY_TO_BUYER_STATE=بامن‌شاپ\nمشتری گرامی، مرجوعی مربوط به سفارش شماره {{.OrderId}} توسط فروشگاه {{.ShopName}} قبول شد.\n مبلغ پرداختی تا حداکثر 72 ساعت به حساب شما بازمی‌گردد.
 ORDER_NOTIFY_BUYER_RETURN_REJECTED_TO_PAY_TO_SELLER_STATE=بامن‌شاپ\nمشتری گرامی، مرجوعی مربوط به سفارش شماره {{.OrderId}} توسط فروشگاه {{.ShopName}} پذیرفته نشد.\nطی ساعات آینده برای مشخص کردن وضعیت سفارش با شما تماس گرفته می‌شود.
-
-
-ORDER_SERVICE_KAFKA_VERSION=2.2.0
-ORDER_SERVICE_KAFKA_BROKERS=kafka1:9092
-ORDER_SERVICE_KAFKA_CONSUMER_GROUP=order-pending
-ORDER_SERVICE_KAFKA_CONSUMER_TOPIC=order-pending
-ORDER_SERVICE_KAFKA_PARTITION=3
-ORDER_SERVICE_KAFKA_REPLICA=1
-
-ORDER_SERVICE_MONGO_HOST=mongo
-ORDER_SERVICE_MONGO_PORT=27017
-ORDER_SERVICE_MONGO_USER=root
-#ORDER_SERVICE_MONGO_PASS=toor
-ORDER_SERVICE_MONGO_CONN_TIMEOUT=5
-ORDER_SERVICE_MONGO_READ_TIMEOUT=5
-ORDER_SERVICE_MONGO_WRITE_TIMEOUT=5
-ORDER_SERVICE_MONGO_MAX_CONN_IDLE_TIME=60
-ORDER_SERVICE_MONGO_MAX_POOL_SIZE=128
-ORDER_SERVICE_MONGO_MIN_POOL_SIZE=64
-
-NOTIFICATION_SMS_TEMPLATES=./testdata/notification/sms
-EMAIL_TMP_NOTIFY_SELLER_FOR_NEW_ORDER=testdata/notification/email/NotifySellerForNewOrder.html
-
-PAYMENT_GATEWAY_ADDRESS=paymentservice
-PAYMENT_GATEWAY_PORT=3010
-PAYMENT_SERVICE_MOCK_ENABLED=true
-STOCK_SERVICE_ADDRESS=stockservice
-STOCK_SERVICE_PORT=9098
-STOCK_SERVICE_MOCK_ENABLED=false
-USER_SERVICE_ADDRESS=userservice
-USER_SERVICE_PORT=9096
-VOUCHER_SERVICE_ADDRESS=voucherservice
-VOUCHER_SERVICE_PORT=9097
-VOUCHER_SERVICE_MOCK_ENABLED=false
-NOTIFY_SERVICE_ADDRESS=notifyservice
-NOTIFY_SERVICE_PORT=9099
 

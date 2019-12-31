@@ -10,6 +10,7 @@ services:
       - seccomp:unconfined
     environment:
       - PORT=${PORT}
+      - APP_MODE=docker
       - ORDER_SERVICE_MODE=server
       - ORDER_SERVER_ADDRESS=
       - ORDER_SERVER_PORT=9095
@@ -43,28 +44,7 @@ services:
       - ORDER_PAYMENT_CALLBACK_URL_STAGING=http://staging.faza.io/callback-success?orderid=
       - ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT=http://staging.faza.io/callback-success?orderid=
 
-      - ORDER_NOTIFY_BUYER_PAYMENT_SUCCESS_STATE=بامن‌شاپ\nمشتری گرامی، سفارش شمابا شماره {{.}} با موفقیت ثبت و پرداخت شد.\nوضعیت سفارش شما در تمام مراحل برای شما پیامک خواهد شد.\nهمچنین می‌توانید سفارش خود را از طریق حساب کاربری پیگیری کنید.
-      - ORDER_NOTIFY_BUYER_PAYMENT_FAILED_STATE=بامن‌شاپ\nمشتری گرامی، وضعیت پرداخت سفارش شما با شماره {{.}} موفقیت‌آمیز نبود، مبلغ پرداختی تا حداکثر 72 ساعت به حساب شما بازمی‌گردد.
-      - ORDER_NOTIFY_SELLER_APPROVAL_PENDING_STATE=بامن‌شاپ\nفروشنده گرامی، سفارش شماره {{.}} در انتظار تایید شما می‌باشد. شما 24 ساعت برای تایید سفارش فرصت دارید، در غیر این ‌صورت سفارش به صورت خودکار لغو شده و شامل جریمه خواهد شد.
-      - ORDER_NOTIFY_BUYER_SHIPMENT_PENDING_STATE=بامن‌شاپ\nمشتری گرامی، سفارش شما با شماره {{.OrderId}} توسط فروشگاه {{.ShopName}} تایید شده و در انتظار ارسال می‌باشد.
-      - ORDER_NOTIFY_SELLER_SHIPMENT_DELAYED_STATE=بامن‌شاپ\nفروشنده گرامی، سفارش شماره {{.}} در حالت تاخیر در ارسال قرار دارد.\nبا توجه به تاخیر به وجود آمده، امکان لغو سفارش برای خریدار فعال شده و در صورت عدم ورود اطلاعات ارسال توسط شما به صورت خودکار لغو می‌گردد و شامل جریمه خواهد شد، از این رو در صورتی که سفارش را ارسال کرده‌اید، سریعا اطلاعات ارسال را در پنل فروشندگان وارد کنید.
-      - ORDER_NOTIFY_BUYER_SHIPMENT_DELAYED_STATE=بامن‌شاپ\nمشتری گرامی، سفارش شماره {{.OrderId}} توسط فروشنده {{.ShopName}} در وضعیت "تاخیر در ارسال" قرار دارد و تاخیر به وجود آمده به فروشنده اعلام شده است.\nدر صورت عدم رضایت از وضعیت می‌توانید نسبت به لغو سفارش از حساب کاربری خود اقدام فرمایید.
-      - ORDER_NOTIFY_SELLER_CANCELED_BY_BUYER_STATE=بامن‌شاپ\nفروشنده گرامی، تعدادی از موارد سفارش {{.}} توسط خریدار لغو شد.برای آگاهی از وضعیت سفارش‌ هابه پنل فروشندگان مراجعه فرمایید.
-      - ORDER_NOTIFY_BUYER_CANCELED_BY_BUYER_STATE=بامن‌شاپ\nمشتری گرامی، موارد انتخابی شما از سفارش {{.}} با موفقیت لغو شد و مبلغ آن طی مدت 72 ساعت به حساب شما بازمی‌گردد.
-      - ORDER_NOTIFY_BUYER_CANCELED_BY_SELLER_STATE=بامن‌شاپ\nمشتری گرامی، موارد انتخابی شمااز سفارش {{.OrderId}} متاسفانه توسط فروشگاه {{.ShopName}} لغو شد و مبلغ آن طی مدت 72 ساعت به حساب شما بازمی‌گردد.
-      - ORDER_NOTIFY_BUYER_DELIVERY_PENDING_STATE=بامن‌شاپ\nمشتری گرامی، سفارش شماباشماره {{.OrderId}} تحویل شما گردید.
-      - ORDER_NOTIFY_SELLER_RETURN_REQUEST_PENDING_STATE=بامن‌شاپ\nفروشنده گرامی، یک درخواست مرجوعی برای سفارش شماره {{.}} توسط خریدار ثبت شده، لطفا طی 48 ساعت آینده نسبت به قبول، رد یا گفتگو با خریدار اقدام فرمایید.\nعدم پاسخ به درخواست به منزله تایید درخواست خواهد بود.
-      - ORDER_NOTIFY_BUYER_RETURN_REQUEST_PENDING_STATE=بامن‌ شاپ\nمشتری گرامی، درخواست مرجوعی شمابرای سفارش شماره {{.}} ثبت گردید و پس از تایید از طریق پیامک به اطلاع شما خواهد رسید.
-      - ORDER_NOTIFY_BUYER_RETURN_SHIPMENT_PENDING_STATE=بامن‌شاپ\nمشتری گرامی، درخواست مرجوعی شما با شماره سفارش  {{.}} از طرف فروشنده قبول شد، لطفا ظرف مدت 72 ساعت نسبت به ارسال موارد مرجوعی به آدرس فروشنده و ثبت اطلاعات ارسال در حساب کاربری اقدام فرمایید، در غیر این‌صورت درخواست شما به صورت خودکار لغو می‌گردد.برای دسترسی به آدرس فروشنده می‌توانید از طریق حساب کاربری خود اقدام فرمایید.
-      - ORDER_NOTIFY_SELLER_RETURN_REQUEST_REJECTED_STATE=بامن‌شاپ\nفروشنده گرامی، درخواست مرجوعی مربوط به سفارش شماره {{.}} از طرف شما رد شد.\nلازم به ذکر است تیم پشتیبانی مشتریان بامن‌شاپ پس از بررسی دلایل رد درخواست از طرف شما، نتیجه نهایی را اعلام خواهد کرد.
-      - ORDER_NOTIFY_BUYER_RETURN_CANCELED_STATE=بامن‌شاپ\nمشتری گرامی، درخواست مرجوعی برای سفارش شماره {{.}} از طرف شما لغو گردید.
-      - ORDER_NOTIFY_BUYER_RETURN_DELIVERY_PENDING_TO_RETURN_DELIVERED_STATE=بامن‌شاپ\مشتری گرامی، بسته مرجوعی مربوط به سفارش شماره {{.OrderId}} توسط فروشگاه {{.ShopName}} دریافت شد و نتیجه مرجوعی پس از بررسی فروشنده از طریق پیامک به شما اعلام خواهد شد.
-      - ORDER_NOTIFY_BUYER_RETURN_DELIVERY_DELAYED_TO_RETURN_DELIVERED_STATE=بامن‌شاپ\nمشتری گرامی، بسته مرجوعی مربوط به سفارش شماره {{.OrderId}} توسط فروشگاه {{.ShopName}} دریافت شد و نتیجه مرجوعی پس از بررسی فروشنده از طریق پیامک به شما اعلام خواهد شد.
-      - ORDER_NOTIFY_BUYER_RETURN_DELIVERED_TO_PAY_TO_BUYER_STATE=بامن‌شاپ\nمشتری گرامی، مرجوعی مربوط به سفارش شماره {{.OrderId}} توسط فروشگاه {{.ShopName}} قبول شد.\n مبلغ پرداختی تا حداکثر 72 ساعت به حساب شما بازمی‌گردد.
-      - ORDER_NOTIFY_BUYER_RETURN_REJECTED_TO_PAY_TO_BUYER_STATE=بامن‌شاپ\nمشتری گرامی، مرجوعی مربوط به سفارش شماره {{.OrderId}} توسط فروشگاه {{.ShopName}} قبول شد.\n مبلغ پرداختی تا حداکثر 72 ساعت به حساب شما بازمی‌گردد.
-      - ORDER_NOTIFY_BUYER_RETURN_REJECTED_TO_PAY_TO_SELLER_STATE=بامن‌شاپ\nمشتری گرامی، مرجوعی مربوط به سفارش شماره {{.OrderId}} توسط فروشگاه {{.ShopName}} پذیرفته نشد.\nطی ساعات آینده برای مشخص کردن وضعیت سفارش با شما تماس گرفته می‌شود.
-
-      - NOTIFICATION_SMS_TEMPLATES=testdata/notification/sms
+      - NOTIFICATION_SMS_TEMPLATES=/app/notification/sms/smsTemplate.txt
       - EMAIL_TMP_NOTIFY_SELLER_FOR_NEW_ORDER=NotifySellerForNewOrder.html
       - PAYMENT_GATEWAY_ADDRESS=
       - PAYMENT_GATEWAY_PORT=3010
@@ -76,7 +56,7 @@ services:
       - USER_SERVICE_PORT=9096
       - VOUCHER_SERVICE_ADDRESS=voucherservice
       - VOUCHER_SERVICE_PORT=9097
-      - VOUCHER_SERVICE_MOCK_ENABLED=true
+      - VOUCHER_SERVICE_MOCK_ENABLED=false
     depends_on:
       - mongo
 

@@ -52,6 +52,7 @@ const (
 var Globals struct {
 	MongoDriver       *mongoadapter.Mongo
 	Config            *configs.Config
+	SMSTemplate       *configs.SmsTemplate
 	OrderRepository   order_repository.IOrderRepository
 	PkgItemRepository pkg_repository.IPkgItemRepository
 	SubPkgRepository  subpkg_repository.ISubpackageRepository
