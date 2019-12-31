@@ -99,7 +99,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 				err = smsTemplate.Execute(&buf, templateData)
 				if err != nil {
 					logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-						state.Name(), message, pkgItem.OrderId, err)
+						state.Name(), pkgItem.OrderId, message, err)
 				} else {
 					buyerNotify := notify_service.SMSRequest{
 						Phone: pkgItem.ShippingAddress.Mobile,

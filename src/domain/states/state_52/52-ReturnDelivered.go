@@ -110,7 +110,7 @@ func (state returnDeliveredState) Process(ctx context.Context, iFrame frame.IFra
 				err = smsTemplate.Execute(&buf, templateData)
 				if err != nil {
 					logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-						state.Name(), message, pkgItem.OrderId, err)
+						state.Name(), pkgItem.OrderId, message, err)
 				} else {
 					buyerNotify := notify_service.SMSRequest{
 						Phone: pkgItem.ShippingAddress.Mobile,
@@ -476,7 +476,7 @@ func (state returnDeliveredState) Process(ctx context.Context, iFrame frame.IFra
 
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 					SetData(response).Send()
-				nextActionState.Process(ctx, frame.Factory().SetSIds(sids).SetSubpackages(newSubPackages).SetBody(pkgItem).Build())
+				nextActionState.Process(ctx, frame.Factory().SetEvent(event).SetSIds(sids).SetSubpackages(newSubPackages).SetBody(pkgItem).Build())
 			} else {
 				logger.Err("Process() => event action data invalid, state: %s, event: %v, frame: %v", state.String(), event, iFrame)
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).

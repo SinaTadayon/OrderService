@@ -83,7 +83,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 						err = smsTemplate.Execute(&buf, order.OrderId)
 						if err != nil {
 							logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-								state.Name(), app.Globals.Config.App.OrderNotifySellerApprovalPendingState, order.OrderId, err)
+								state.Name(), order.OrderId, app.Globals.Config.App.OrderNotifySellerApprovalPendingState, err)
 						} else {
 							sellerNotify := notify_service.SMSRequest{
 								Phone: sellerProfile.GeneralInfo.MobilePhone,
@@ -446,9 +446,8 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 					SIds:    sids,
 				}
 
-				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-					SetData(response).Send()
-				nextActionState.Process(ctx, frame.Factory().SetSIds(sids).SetSubpackages(newSubPackages).SetBody(pkgItem).Build())
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).SetData(response).Send()
+				nextActionState.Process(ctx, frame.Factory().SetEvent(event).SetSIds(sids).SetSubpackages(newSubPackages).SetBody(pkgItem).Build())
 			} else {
 				logger.Err("Process() => event action data invalid, state: %s, event: %v, frame: %v", state.String(), event, iFrame)
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).

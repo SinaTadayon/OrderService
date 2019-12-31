@@ -72,7 +72,7 @@ func (state returnCanceledState) Process(ctx context.Context, iFrame frame.IFram
 			err = smsTemplate.Execute(&buf, pkgItem.OrderId)
 			if err != nil {
 				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-					state.Name(), app.Globals.Config.App.OrderNotifyBuyerReturnCanceledState, pkgItem.OrderId, err)
+					state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifyBuyerReturnCanceledState, err)
 			} else {
 				buyerNotify := notify_service.SMSRequest{
 					Phone: pkgItem.ShippingAddress.Mobile,

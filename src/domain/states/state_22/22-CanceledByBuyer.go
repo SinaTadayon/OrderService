@@ -75,7 +75,7 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 			err = smsTemplate.Execute(&buf, pkgItem.OrderId)
 			if err != nil {
 				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-					state.Name(), app.Globals.Config.App.OrderNotifyBuyerCanceledByBuyerState, pkgItem.OrderId, err)
+					state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifyBuyerCanceledByBuyerState, err)
 			} else {
 				buyerNotify := notify_service.SMSRequest{
 					Phone: pkgItem.ShippingAddress.Mobile,
@@ -138,7 +138,7 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 					err = smsTemplate.Execute(&buf, pkgItem.OrderId)
 					if err != nil {
 						logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-							state.Name(), app.Globals.Config.App.OrderNotifySellerCanceledByBuyerState, pkgItem.OrderId, err)
+							state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifySellerCanceledByBuyerState, err)
 					} else {
 						sellerNotify := notify_service.SMSRequest{
 							Phone: sellerProfile.GeneralInfo.MobilePhone,

@@ -88,7 +88,7 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 			err = smsTemplate.Execute(&buf, templateData)
 			if err != nil {
 				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-					state.Name(), app.Globals.Config.App.OrderNotifyBuyerShipmentPendingState, pkgItem.OrderId, err)
+					state.Name(), pkgItem.OrderId, app.Globals.Config.App.OrderNotifyBuyerShipmentPendingState, err)
 			} else {
 				buyerNotify := notify_service.SMSRequest{
 					Phone: pkgItem.ShippingAddress.Mobile,
@@ -163,7 +163,7 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 		}
 
 		for i := 0; i < len(subpackages); i++ {
-			state.UpdateSubPackage(ctx, subpackages[i], buyerNotificationAction)
+			state.UpdateSubPackage(ctx, subpackages[i], nil)
 			subpackages[i].Tracking.State.Data = map[string]interface{}{
 				"scheduler": []entities.SchedulerData{
 					{
@@ -178,7 +178,7 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 			logger.Audit("Process() => set expireTime: %s , orderId: %d, pid: %d, sid: %d, %s state ",
 				expireTime, subpackages[i].OrderId, subpackages[i].PId, subpackages[i].SId, state.Name())
 			// must again call to update history state
-			state.UpdateSubPackage(ctx, subpackages[i], nil)
+			state.UpdateSubPackage(ctx, subpackages[i], buyerNotificationAction)
 			_, err := app.Globals.SubPkgRepository.Update(ctx, *subpackages[i])
 			if err != nil {
 				logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, pid: %d, sid: %d, error: %s",
@@ -458,7 +458,7 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 					SetData(response).Send()
-				nextActionState.Process(ctx, frame.Factory().SetSIds(sids).SetSubpackages(newSubPackages).SetBody(pkgItem).Build())
+				nextActionState.Process(ctx, frame.Factory().SetEvent(event).SetSIds(sids).SetSubpackages(newSubPackages).SetBody(pkgItem).Build())
 			} else {
 				logger.Err("Process() => event action data invalid, state: %s, event: %v, frame: %v", state.String(), event, iFrame)
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).

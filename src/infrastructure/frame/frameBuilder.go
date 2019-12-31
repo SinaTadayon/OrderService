@@ -39,7 +39,7 @@ func (builder *Builder) initBuilder(frame IFrame, header IFrameHeader, body IFra
 	if frame != nil {
 		frameHeader := frame.Header().(*iFrameHeaderImpl)
 		builder.header = deepCopy(frameHeader.header)
-		builder.body = NewBodyFrom(body)
+		builder.body = NewBodyFrom(frame.Body())
 	} else if header != nil {
 		frameHeader := header.(*iFrameHeaderImpl)
 		builder.header = deepCopy(frameHeader.header)
