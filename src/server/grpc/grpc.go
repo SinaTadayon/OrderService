@@ -13,6 +13,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
+	"path"
+	"runtime/debug"
 	"strconv"
 	"time"
 
@@ -28,14 +30,16 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	//"github.com/pkg/errors"
-	"net"
-	//"net/http"
-	//"time"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	//grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
-	_ "github.com/devfeel/mapper"
 	"gitlab.faza.io/go-framework/logger"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
+	"net"
 )
 
 type RequestADT string
@@ -172,6 +176,12 @@ const (
 	// ISO8601 standard time format
 	ISO8601 = "2006-01-02T15:04:05-0700"
 )
+
+type stackTraceDisabler struct{}
+
+func (s stackTraceDisabler) Enabled(zapcore.Level) bool {
+	return false
+}
 
 type Server struct {
 	pb.UnimplementedOrderServiceServer
@@ -4173,8 +4183,6 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 //}
 
 func (server Server) Start() {
-	//addGrpcStateRule()
-
 	port := strconv.Itoa(int(server.port))
 	lis, err := net.Listen("tcp", server.address+":"+port)
 	if err != nil {
@@ -4182,22 +4190,58 @@ func (server Server) Start() {
 	}
 	logger.Audit("app started at %s:%s", server.address, port)
 
+	customFunc := func(p interface{}) (err error) {
+		logger.Err("rpc panic recovered, panic: %v, stacktrace: %v", p, string(debug.Stack()))
+		return grpc.Errorf(codes.Unknown, "panic triggered: %v", p)
+	}
+
+	//zapLogger, _ := zap.NewProduction()
+	//stackDisableOpt := zap.AddStacktrace(stackTraceDisabler{})
+	//noStackLogger := app.Globals.ZapLogger.WithOptions(stackDisableOpt)
+
+	opts := []grpc_recovery.Option{
+		grpc_recovery.WithRecoveryHandler(customFunc),
+	}
+
+	uIntOpt := grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+		grpc_prometheus.UnaryServerInterceptor,
+		grpc_recovery.UnaryServerInterceptor(opts...),
+		myUnaryLogger(app.Globals.Logger),
+		//grpc_zap.UnaryServerInterceptor(zapLogger),
+	))
+
+	sIntOpt := grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+		grpc_prometheus.StreamServerInterceptor,
+		grpc_recovery.StreamServerInterceptor(opts...),
+		//grpc_zap.StreamServerInterceptor(app.Globals.ZapLogger),
+	))
+
+	// enable grpc prometheus interceptors to log timing info for grpc APIs
+	grpc_prometheus.EnableHandlingTimeHistogram()
+
 	// Start GRPC server and register the server
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(uIntOpt, sIntOpt)
 	pb.RegisterOrderServiceServer(grpcServer, &server)
 	pg.RegisterBankResultHookServer(grpcServer, &server)
 	if err := grpcServer.Serve(lis); err != nil {
 		logger.Err("GRPC server start field " + err.Error())
 		panic("GRPC server start field")
 	}
-
-	//logger.Audit("GRPC server is running . . . ")
 }
 
-// TODO Check ACL and Security with Mostafa SDK
-// TODO Check Order Owner
-// TODO: add grpc context validation for all
-// TODO: Request / Response System Service
-// TODO: Add notifications - SMS -farzan SDK
-// TODO: Add Product id to Add RPC Order Request / Response
-// TODO: API Server GRPC impl
+func myUnaryLogger(log logger.Logger) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+		startTime := time.Now()
+		resp, err = handler(ctx, req)
+		dur := time.Since(startTime)
+		lg := log.FromContext(ctx)
+		lg = lg.With(
+			zap.Duration("took_sec", dur),
+			zap.String("grpc.Method", path.Base(info.FullMethod)),
+			zap.String("grpc.Service", path.Dir(info.FullMethod)[1:]),
+			zap.String("grpc.Code", grpc.Code(err).String()),
+		)
+		lg.Debug("finished unary call")
+		return
+	}
+}

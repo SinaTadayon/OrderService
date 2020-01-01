@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	_ "github.com/devfeel/mapper"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/configs"
@@ -19,6 +21,7 @@ import (
 	user_service "gitlab.faza.io/order-project/order-service/infrastructure/services/user"
 	voucher_service "gitlab.faza.io/order-project/order-service/infrastructure/services/voucher"
 	grpc_server "gitlab.faza.io/order-project/order-service/server/grpc"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -40,6 +43,9 @@ func main() {
 	} else {
 		app.Globals.Config, app.Globals.SMSTemplate, err = configs.LoadConfig("")
 	}
+
+	app.Globals.ZapLogger = app.InitZap()
+	app.Globals.Logger = logger.NewZapLogger(app.Globals.ZapLogger)
 
 	if err != nil {
 		logger.Err("LoadConfig of main init failed, error: %s ", err.Error())
@@ -252,7 +258,19 @@ func main() {
 		app.Globals.NotifyService = notify_service.NewNotificationService(app.Globals.Config.NotifyService.Address, app.Globals.Config.NotifyService.Port)
 		app.Globals.UserService = user_service.NewUserService(app.Globals.Config.UserService.Address, app.Globals.Config.UserService.Port)
 
+		// listen and serve prometheus scraper
+		go func() {
+			http.Handle("/metrics", promhttp.Handler())
+			promPort := fmt.Sprintf(":%d", app.Globals.Config.App.PrometheusPort)
+			logger.Audit("prometheus port: %s", promPort)
+			e := http.ListenAndServe(promPort, nil)
+			if e != nil {
+				logger.Err("error listening for prometheus: %s", e.Error())
+			}
+		}()
+
 		MainApp.grpcServer.Start()
+
 	} else if app.Globals.Config.App.ServiceMode == "scheduler" {
 		if app.Globals.Config.App.SchedulerStates == "" {
 			logger.Err("main() => SchedulerState env is empty ")

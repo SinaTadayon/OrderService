@@ -36,6 +36,7 @@ type Config struct {
 		ServiceMode                          string `env:"ORDER_SERVICE_MODE"`
 		SmsTemplates                         string `env:"NOTIFICATION_SMS_TEMPLATES"`
 		EmailTemplateNotifySellerForNewOrder string `env:"EMAIL_TMP_NOTIFY_SELLER_FOR_NEW_ORDER"`
+		PrometheusPort                       int    `env:"PROMETHEUS_PORT"`
 
 		OrderPaymentCallbackUrlStaging      string `env:"ORDER_PAYMENT_CALLBACK_URL_STAGING"`
 		OrderPaymentCallbackUrlAsanpardakht string `env:"ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT"`

@@ -14,6 +14,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	user_service "gitlab.faza.io/order-project/order-service/infrastructure/services/user"
 	voucher_service "gitlab.faza.io/order-project/order-service/infrastructure/services/voucher"
+	"go.uber.org/zap"
 	"time"
 )
 
@@ -53,6 +54,8 @@ var Globals struct {
 	MongoDriver       *mongoadapter.Mongo
 	Config            *configs.Config
 	SMSTemplate       *configs.SmsTemplate
+	ZapLogger         *zap.Logger
+	Logger            logger.Logger
 	OrderRepository   order_repository.IOrderRepository
 	PkgItemRepository pkg_repository.IPkgItemRepository
 	SubPkgRepository  subpkg_repository.ISubpackageRepository
@@ -105,4 +108,18 @@ func SetupMongoDriver(config configs.Config) (*mongoadapter.Mongo, error) {
 	}
 
 	return mongoDriver, nil
+}
+
+func InitZap() (zapLogger *zap.Logger) {
+	conf := zap.NewProductionConfig()
+	conf.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+	conf.DisableCaller = true
+	conf.DisableStacktrace = true
+	zapLogger, e := conf.Build(zap.AddCaller(), zap.AddCallerSkip(1))
+	// zapLogger, e := conf.Build()
+	// zapLogger, e := zap.NewProduction(zap.AddCallerSkip(3))
+	if e != nil {
+		panic(e)
+	}
+	return
 }
