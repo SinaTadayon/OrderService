@@ -4229,6 +4229,24 @@ func (server Server) Start() {
 	}
 }
 
+func (server Server) StartTest() {
+	port := strconv.Itoa(int(server.port))
+	lis, err := net.Listen("tcp", server.address+":"+port)
+	if err != nil {
+		logger.Err("Failed to listen to TCP on port " + port + err.Error())
+	}
+	logger.Audit("app started at %s:%s", server.address, port)
+
+	// Start GRPC server and register the server
+	grpcServer := grpc.NewServer()
+	pb.RegisterOrderServiceServer(grpcServer, &server)
+	pg.RegisterBankResultHookServer(grpcServer, &server)
+	if err := grpcServer.Serve(lis); err != nil {
+		logger.Err("GRPC server start field " + err.Error())
+		panic("GRPC server start field")
+	}
+}
+
 func myUnaryLogger(log logger.Logger) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
 		startTime := time.Now()

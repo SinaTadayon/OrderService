@@ -64,6 +64,21 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 			return
 		}
 
+		var sellerNotificationAction = &entities.Action{
+			Name:      system_action.SellerNotification.ActionName(),
+			Type:      "",
+			UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+			UTP:       actions.System.ActionName(),
+			Perm:      "",
+			Priv:      "",
+			Policy:    "",
+			Result:    string(states.ActionSuccess),
+			Reasons:   nil,
+			Data:      nil,
+			CreatedAt: time.Now().UTC(),
+			Extended:  nil,
+		}
+
 		for i := 0; i < len(order.Packages); i++ {
 			futureData := app.Globals.UserService.GetSellerProfile(ctx, strconv.Itoa(int(order.Packages[i].PId))).Get()
 			if futureData.Error() != nil {
@@ -72,8 +87,6 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 			} else {
 				if futureData.Data() != nil {
 					sellerProfile := futureData.Data().(*entities.SellerProfile)
-
-					var sellerNotificationAction *entities.Action = nil
 					smsTemplate, err := template.New("SMS").Parse(app.Globals.SMSTemplate.OrderNotifySellerApprovalPendingState)
 					if err != nil {
 						logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
@@ -155,9 +168,9 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 			}
 		}
 
-		// TODO refactor it
-		state.UpdateOrderAllSubPkg(ctx, order)
+		order.UpdatedAt = time.Now().UTC()
 		for i := 0; i < len(order.Packages); i++ {
+			order.Packages[i].UpdatedAt = time.Now().UTC()
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
 				order.Packages[i].Subpackages[j].Tracking.State.Data = map[string]interface{}{
 					"scheduler": []entities.SchedulerData{
@@ -170,7 +183,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 						},
 					},
 				}
-				state.UpdateSubPackage(ctx, &order.Packages[i].Subpackages[j], nil)
+				state.UpdateSubPackage(ctx, order.Packages[i].Subpackages[j], sellerNotificationAction)
 			}
 		}
 
@@ -209,7 +222,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 			var newSubPackages []*entities.Subpackage
 			var requestAction *entities.Action
 			var newSubPkg *entities.Subpackage
-			var fullItems []entities.Item
+			var fullItems []*entities.Item
 			var nextActionState states.IState
 			var actionState actions.IAction
 
@@ -250,7 +263,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 										if newSubPkg == nil {
 											newSubPkg = pkgItem.Subpackages[i].DeepCopy()
 											newSubPkg.SId = 0
-											newSubPkg.Items = make([]entities.Item, 0, len(eventSubPkg.Items))
+											newSubPkg.Items = make([]*entities.Item, 0, len(eventSubPkg.Items))
 
 											requestAction = &entities.Action{
 												Name:      actionState.ActionEnum().ActionName(),
@@ -285,7 +298,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 										newItem.Quantity = actionItem.Quantity
 										newItem.Reasons = actionItem.Reasons
 										newItem.Invoice.Total.Amount = strconv.Itoa(int(unit.IntPart() * int64(newItem.Quantity)))
-										newSubPkg.Items = append(newSubPkg.Items, *newItem)
+										newSubPkg.Items = append(newSubPkg.Items, newItem)
 
 									} else if actionItem.Quantity > pkgItem.Subpackages[i].Items[j].Quantity {
 										logger.Err("Process() => received action not acceptable, Requested quantity greater than item quantity, state: %s, event: %v", state.String(), event)
@@ -295,7 +308,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 
 									} else {
 										if fullItems == nil {
-											fullItems = make([]entities.Item, 0, len(pkgItem.Subpackages[i].Items))
+											fullItems = make([]*entities.Item, 0, len(pkgItem.Subpackages[i].Items))
 											requestAction = &entities.Action{
 												Name:      actionState.ActionEnum().ActionName(),
 												Type:      "",
@@ -338,7 +351,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 							for z := 0; z < len(fullItems); z++ {
 								pkgItem.Subpackages[i].Items = append(pkgItem.Subpackages[i].Items, fullItems[z])
 							}
-							newSubPackages = append(newSubPackages, &pkgItem.Subpackages[i])
+							newSubPackages = append(newSubPackages, pkgItem.Subpackages[i])
 						}
 					}
 				}
@@ -348,25 +361,11 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 				var sids = make([]uint64, 0, 32)
 				for i := 0; i < len(newSubPackages); i++ {
 					if newSubPackages[i].SId == 0 {
-						// TODO must be optimized performance
-						state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
-						err := app.Globals.SubPkgRepository.Save(ctx, newSubPackages[i])
-						if err != nil {
-							logger.Err("Process() => SubPkgRepository.Save in %s state failed, orderId: %d, pid: %d, event: %v, error: %s", state.Name(),
-								newSubPackages[i].OrderId, newSubPackages[i].PId, event, err.Error())
-							// TODO must distinct system error from update version error
-							future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-								SetError(future.InternalError, "Unknown Err", err).Send()
-							return
-						}
-
-						pkgItem.Subpackages = append(pkgItem.Subpackages, *newSubPackages[i])
-						logger.Audit("Process() => Status of new subpackage update to %v event, orderId: %d, pid: %d, sid: %d",
-							event, newSubPackages[i].OrderId, newSubPackages[i].PId, newSubPackages[i].SId)
+						pkgItem.Subpackages = append(pkgItem.Subpackages, newSubPackages[i])
 					} else {
-						state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
+						sids = append(sids, newSubPackages[i].SId)
 					}
-					sids = append(sids, newSubPackages[i].SId)
+					state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
 				}
 
 				if event.Action().ActionEnum() != seller_action.Approve {
@@ -430,15 +429,16 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 						return
 					}
 				}
-				pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
+				pkgItemUpdated, newSids, err := app.Globals.PkgItemRepository.UpdateWithUpsert(ctx, *pkgItem)
 				if err != nil {
-					logger.Err("Process() => PkgItemRepository.Update in %s state failed, orderId: %d, pid: %d, event: %v, error: %s", state.Name(),
-						pkgItem.OrderId, pkgItem.PId, event, err.Error())
+					logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, event: %v, error: %s", state.Name(),
+						pkgItem.OrderId, pkgItem.PId, sids, event, err.Error())
 					// TODO must distinct system error from update version error
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 						SetError(future.InternalError, "Unknown Err", err).Send()
 					return
 				}
+				sids = append(sids, newSids...)
 				pkgItem = pkgItemUpdated
 
 				response := events.ActionResponse{
@@ -446,8 +446,11 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 					SIds:    sids,
 				}
 
+				logger.Audit("Process() => Status of subpackages update success, state: %s, action: %s, orderId: %d, pid: %d, sids: %d",
+					state.Name(), event.Action().ActionEnum().ActionName(), pkgItem.OrderId, pkgItem.PId, sids)
+
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).SetData(response).Send()
-				nextActionState.Process(ctx, frame.Factory().SetEvent(event).SetSIds(sids).SetSubpackages(newSubPackages).SetBody(pkgItem).Build())
+				nextActionState.Process(ctx, frame.Factory().SetEvent(event).SetSIds(sids).SetBody(pkgItem).Build())
 			} else {
 				logger.Err("Process() => event action data invalid, state: %s, event: %v, frame: %v", state.String(), event, iFrame)
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).

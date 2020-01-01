@@ -36,7 +36,7 @@ import (
 	"time"
 )
 
-var config *configs.Config
+//var config *configs.Config
 var schedulerService *SchedulerService
 
 func TestMain(m *testing.M) {
@@ -48,7 +48,7 @@ func TestMain(m *testing.M) {
 		path = ""
 	}
 
-	config, _, err = configs.LoadConfigs(path, "")
+	app.Globals.Config, app.Globals.SMSTemplate, err = configs.LoadConfigs(path, "../../../testdata/notification/sms/smsTemplate.txt")
 	if err != nil {
 		logger.Err(err.Error())
 		os.Exit(1)
@@ -56,16 +56,16 @@ func TestMain(m *testing.M) {
 
 	// store in mongo
 	mongoConf := &mongoadapter.MongoConfig{
-		Host:     config.Mongo.Host,
-		Port:     config.Mongo.Port,
-		Username: config.Mongo.User,
-		//Password:     App.Config.Mongo.Pass,
-		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout),
-		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout),
-		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout),
-		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime),
-		MaxPoolSize:     uint64(config.Mongo.MaxPoolSize),
-		MinPoolSize:     uint64(config.Mongo.MinPoolSize),
+		Host:     app.Globals.Config.Mongo.Host,
+		Port:     app.Globals.Config.Mongo.Port,
+		Username: app.Globals.Config.Mongo.User,
+		//Password:     App.app.Globals.Config.Mongo.Pass,
+		ConnTimeout:     time.Duration(app.Globals.Config.Mongo.ConnectionTimeout),
+		ReadTimeout:     time.Duration(app.Globals.Config.Mongo.ReadTimeout),
+		WriteTimeout:    time.Duration(app.Globals.Config.Mongo.WriteTimeout),
+		MaxConnIdleTime: time.Duration(app.Globals.Config.Mongo.MaxConnIdleTime),
+		MaxPoolSize:     uint64(app.Globals.Config.Mongo.MaxPoolSize),
+		MinPoolSize:     uint64(app.Globals.Config.Mongo.MinPoolSize),
 	}
 
 	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
@@ -84,20 +84,20 @@ func TestMain(m *testing.M) {
 	app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver)
 	app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver)
 	app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver)
-	app.Globals.StockService = stock_service.NewStockService(config.StockService.Address, config.StockService.Port)
-	app.Globals.UserService = user_service.NewUserService(config.UserService.Address, config.UserService.Port)
-	app.Globals.NotifyService = notify_service.NewNotificationService(config.NotifyService.Address, config.NotifyService.Port)
+	app.Globals.StockService = stock_service.NewStockService(app.Globals.Config.StockService.Address, app.Globals.Config.StockService.Port)
+	app.Globals.UserService = user_service.NewUserService(app.Globals.Config.UserService.Address, app.Globals.Config.UserService.Port)
+	app.Globals.NotifyService = notify_service.NewNotificationService(app.Globals.Config.NotifyService.Address, app.Globals.Config.NotifyService.Port)
 	app.Globals.Converter = converter.NewConverter()
 
-	if config.App.SchedulerInterval == "" ||
-		config.App.SchedulerParentWorkerTimeout == "" ||
-		config.App.SchedulerWorkerTimeout == "" {
+	if app.Globals.Config.App.SchedulerInterval == "" ||
+		app.Globals.Config.App.SchedulerParentWorkerTimeout == "" ||
+		app.Globals.Config.App.SchedulerWorkerTimeout == "" {
 		logger.Err("main() => SchedulerInterval or SchedulerParentWorkerTimeout or SchedulerWorkerTimeout env is empty ")
 		os.Exit(1)
 	}
 
 	var stateList = make([]states.IEnumState, 0, 16)
-	for _, strState := range strings.Split(config.App.SchedulerStates, ";") {
+	for _, strState := range strings.Split(app.Globals.Config.App.SchedulerStates, ";") {
 		state := states.FromString(strState)
 		if state != nil {
 			stateList = append(stateList, state)
@@ -106,24 +106,6 @@ func TestMain(m *testing.M) {
 			os.Exit(1)
 		}
 	}
-
-	//schedulerInterval, err := strconv.Atoi(config.App.SchedulerInterval)
-	//if err != nil {
-	//	logger.Err("main() => SchedulerInterval env is empty ")
-	//	os.Exit(1)
-	//}
-	//
-	//schedulerTimeout, err := strconv.Atoi(config.App.SchedulerParentWorkerTimeout)
-	//if err != nil {
-	//	logger.Err("main() => SchedulerParentWorkerTimeout env is empty ")
-	//	os.Exit(1)
-	//}
-	//
-	//schedulerWorkerTimeout, err := strconv.Atoi(config.App.SchedulerWorkerTimeout)
-	//if err != nil {
-	//	logger.Err("main() => SchedulerWorkerTimeout env is empty ")
-	//	os.Exit(1)
-	//}
 
 	app.Globals.FlowManagerConfig = make(map[string]interface{}, 32)
 
@@ -141,18 +123,18 @@ func TestMain(m *testing.M) {
 	app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnDeliveredStateConfig] = 2 * time.Second
 
 	schedulerService = NewScheduler(mongoDriver,
-		config.GRPCServer.Address,
-		config.GRPCServer.Port,
+		app.Globals.Config.GRPCServer.Address,
+		app.Globals.Config.GRPCServer.Port,
 		10*time.Second,
 		20*time.Second,
 		5*time.Second,
 		stateList...)
 
-	grpcServer := grpc_server.NewServer(config.GRPCServer.Address, uint16(config.GRPCServer.Port), flowManager)
+	grpcServer := grpc_server.NewServer(app.Globals.Config.GRPCServer.Address, uint16(app.Globals.Config.GRPCServer.Port), flowManager)
 
-	if !checkTcpPort(config.GRPCServer.Address, strconv.Itoa(config.GRPCServer.Port)) {
+	if !checkTcpPort(app.Globals.Config.GRPCServer.Address, strconv.Itoa(app.Globals.Config.GRPCServer.Port)) {
 		logger.Audit("Start GRPC Server for testing . . . ")
-		go grpcServer.Start()
+		go grpcServer.StartTest()
 	}
 
 	// Running Tests
@@ -545,7 +527,7 @@ func UpdateOrderAllStatus(ctx context.Context, order *entities.Order,
 		order.Packages[i].Status = string(pkgStatus)
 		//for z := 0; z < len(actions); z++ {
 		for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-			UpdateSubPackage(ctx, subPkgState, &order.Packages[i].Subpackages[j], nil)
+			UpdateSubPackage(ctx, subPkgState, order.Packages[i].Subpackages[j], nil)
 		}
 		//}
 	}
@@ -558,12 +540,12 @@ func UpdateOrderAllSubPkg(ctx context.Context, subPkgState states.IEnumState, or
 		if actions != nil && len(actions) > 0 {
 			for z := 0; z < len(actions); z++ {
 				for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-					UpdateSubPackage(ctx, subPkgState, &order.Packages[i].Subpackages[j], actions[z])
+					UpdateSubPackage(ctx, subPkgState, order.Packages[i].Subpackages[j], actions[z])
 				}
 			}
 		} else {
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-				UpdateSubPackage(ctx, subPkgState, &order.Packages[i].Subpackages[j], nil)
+				UpdateSubPackage(ctx, subPkgState, order.Packages[i].Subpackages[j], nil)
 			}
 		}
 	}
@@ -778,8 +760,8 @@ func releaseStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) erro
 func TestSchedulerSellerShipmentPending(t *testing.T) {
 
 	ctx, _ := context.WithCancel(context.Background())
-	grpcConn, err := grpc.DialContext(ctx, config.GRPCServer.Address+":"+
-		strconv.Itoa(int(config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
 	defer grpcConn.Close()
 
@@ -888,8 +870,8 @@ func TestSchedulerSellerShipmentPending(t *testing.T) {
 func TestSchedulerDeliveryPending_Notification(t *testing.T) {
 
 	ctx, _ := context.WithCancel(context.Background())
-	grpcConn, err := grpc.DialContext(ctx, config.GRPCServer.Address+":"+
-		strconv.Itoa(int(config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
 	defer grpcConn.Close()
 
@@ -1001,8 +983,8 @@ func TestSchedulerDeliveryPending_Notification(t *testing.T) {
 func TestSchedulerDeliveryPending_Delivered(t *testing.T) {
 
 	ctx, _ := context.WithCancel(context.Background())
-	grpcConn, err := grpc.DialContext(ctx, config.GRPCServer.Address+":"+
-		strconv.Itoa(int(config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
 	defer grpcConn.Close()
 

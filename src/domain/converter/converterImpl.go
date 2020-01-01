@@ -238,10 +238,10 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 			}
 		}
 
-		pkgItem.Subpackages = []entities.Subpackage{
+		pkgItem.Subpackages = []*entities.Subpackage{
 			{
 				PId:   pkgDto.SellerId,
-				Items: make([]entities.Item, 0, len(pkgDto.Items)),
+				Items: make([]*entities.Item, 0, len(pkgDto.Items)),
 			},
 		}
 		for _, itemDto := range pkgDto.Items {
@@ -253,7 +253,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 				return nil, errors.New("Items Quantity of RequestNewOrder invalid")
 			}
 
-			var item = entities.Item{
+			var item = &entities.Item{
 				SKU:         itemDto.Sku,
 				InventoryId: itemDto.InventoryId,
 				Title:       itemDto.Title,

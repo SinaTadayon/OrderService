@@ -140,7 +140,7 @@ func (base BaseStateImpl) UpdateOrderAllStatus(ctx context.Context, order *entit
 		order.Packages[i].Status = string(pkgStatus)
 		for z := 0; z < len(actions); z++ {
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-				base.UpdateSubPackage(ctx, &order.Packages[i].Subpackages[j], actions[z])
+				base.UpdateSubPackage(ctx, order.Packages[i].Subpackages[j], actions[z])
 			}
 		}
 	}
@@ -153,12 +153,12 @@ func (base BaseStateImpl) UpdateOrderAllSubPkg(ctx context.Context, order *entit
 		if actions != nil && len(actions) > 0 {
 			for z := 0; z < len(actions); z++ {
 				for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-					base.UpdateSubPackage(ctx, &order.Packages[i].Subpackages[j], actions[z])
+					base.UpdateSubPackage(ctx, order.Packages[i].Subpackages[j], actions[z])
 				}
 			}
 		} else {
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-				base.UpdateSubPackage(ctx, &order.Packages[i].Subpackages[j], nil)
+				base.UpdateSubPackage(ctx, order.Packages[i].Subpackages[j], nil)
 			}
 		}
 	}
@@ -169,11 +169,11 @@ func (base BaseStateImpl) UpdatePackageAllSubPkg(ctx context.Context, packageIte
 		packageItem.UpdatedAt = time.Now().UTC()
 		if actions != nil && len(actions) > 0 {
 			for j := 0; j < len(actions); j++ {
-				base.UpdateSubPackage(ctx, &packageItem.Subpackages[i], actions[j])
+				base.UpdateSubPackage(ctx, packageItem.Subpackages[i], actions[j])
 			}
 		} else {
 			for i := 0; i < len(packageItem.Subpackages); i++ {
-				base.UpdateSubPackage(ctx, &packageItem.Subpackages[i], nil)
+				base.UpdateSubPackage(ctx, packageItem.Subpackages[i], nil)
 			}
 		}
 	}
@@ -207,6 +207,56 @@ func (base BaseStateImpl) UpdateSubPackage(ctx context.Context, subpackage *enti
 				Name:      base.Name(),
 				Index:     base.Index(),
 				Data:      nil,
+				Actions:   nil,
+				CreatedAt: time.Now().UTC(),
+			}
+			if action != nil {
+				newState.Actions = make([]entities.Action, 0, 8)
+				newState.Actions = append(newState.Actions, *action)
+			}
+			if subpackage.Tracking.History == nil {
+				subpackage.Tracking.History = make([]entities.State, 0, 3)
+			}
+			subpackage.Tracking.State = &newState
+			subpackage.Tracking.History = append(subpackage.Tracking.History, newState)
+		} else {
+			if action != nil {
+				subpackage.Tracking.State.Actions = append(subpackage.Tracking.State.Actions, *action)
+				subpackage.Tracking.Action = action
+			}
+			subpackage.Tracking.History[len(subpackage.Tracking.History)-1] = *subpackage.Tracking.State
+		}
+	}
+}
+
+func (base BaseStateImpl) UpdateSubPackageWithData(ctx context.Context, subpackage *entities.Subpackage, data map[string]interface{}, action *entities.Action) {
+	subpackage.UpdatedAt = time.Now().UTC()
+	subpackage.Status = base.Name()
+	subpackage.Tracking.Action = action
+	if subpackage.Tracking.State == nil {
+		state := entities.State{
+			Name:      base.Name(),
+			Index:     base.Index(),
+			Data:      data,
+			Actions:   nil,
+			CreatedAt: time.Now().UTC(),
+		}
+		if action != nil {
+			state.Actions = make([]entities.Action, 0, 8)
+			state.Actions = append(state.Actions, *action)
+		}
+
+		if subpackage.Tracking.History == nil {
+			subpackage.Tracking.History = make([]entities.State, 0, 3)
+		}
+		subpackage.Tracking.State = &state
+		subpackage.Tracking.History = append(subpackage.Tracking.History, state)
+	} else {
+		if subpackage.Tracking.State.Index != base.Index() {
+			newState := entities.State{
+				Name:      base.Name(),
+				Index:     base.Index(),
+				Data:      data,
 				Actions:   nil,
 				CreatedAt: time.Now().UTC(),
 			}

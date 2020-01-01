@@ -45,16 +45,28 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 }
 
 func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
-	if iFrame.Header().KeyExists(string(frame.HeaderSubpackages)) {
-		subpackages, ok := iFrame.Header().Value(string(frame.HeaderSubpackages)).([]*entities.Subpackage)
-		if !ok {
-			logger.Err("iFrame.Header() not a subpackages, frame: %v, %s state ", iFrame, state.Name())
-			return
-		}
+	if iFrame.Header().KeyExists(string(frame.HeaderSIds)) {
+		//subpackages, ok := iFrame.Header().Value(string(frame.HeaderSubpackages)).([]*entities.Subpackage)
+		//if !ok {
+		//	logger.Err("iFrame.Header() not a subpackages, frame: %v, %s state ", iFrame, state.Name())
+		//	return
+		//}
 
 		sids, ok := iFrame.Header().Value(string(frame.HeaderSIds)).([]uint64)
 		if !ok {
-			logger.Err("iFrame.Header() not a sids, frame: %v, %s state ", iFrame, state.Name())
+			logger.Err("Process() => iFrame.Header() not a sids, state: %s, frame: %v", state.Name(), iFrame)
+			return
+		}
+
+		if iFrame.Body().Content() == nil {
+			logger.Err("Process() => iFrame.Body().Content() is nil, state: %s, frame: %v", state.Name(), iFrame)
+			return
+		}
+
+		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
+		if !ok {
+			logger.Err("Process() => pkgItem in iFrame.Body().Content() is not found, %s state, sids: %v, frame: %v",
+				state.Name(), sids, iFrame)
 			return
 		}
 
@@ -64,14 +76,21 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			return
 		}
 
-		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
-		if !ok {
-			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, pid: %d, sid: %d, %s state ",
-				subpackages[0].OrderId, subpackages[0].PId, subpackages[0].SId, state.Name())
-			return
+		var buyerNotificationAction = &entities.Action{
+			Name:      system_action.BuyerNotification.ActionName(),
+			Type:      "",
+			UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+			UTP:       actions.System.ActionName(),
+			Perm:      "",
+			Priv:      "",
+			Policy:    "",
+			Result:    string(states.ActionFail),
+			Reasons:   nil,
+			Data:      nil,
+			CreatedAt: time.Now().UTC(),
+			Extended:  nil,
 		}
 
-		var buyerNotificationAction *entities.Action = nil
 		if event.Action().ActionEnum() == seller_action.Accept ||
 			event.Action().ActionEnum() == operator_action.Accept {
 
@@ -147,7 +166,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 		}
 
 		var releaseStockAction *entities.Action
-		if err := state.releasedStock(ctx, subpackages); err != nil {
+		if err := state.releasedStock(ctx, sids, pkgItem); err != nil {
 			releaseStockAction = &entities.Action{
 				Name:      system_action.StockRelease.ActionName(),
 				Type:      "",
@@ -179,24 +198,43 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			}
 		}
 
-		for _, subpackage := range subpackages {
-			if buyerNotificationAction != nil {
-				state.UpdateSubPackage(ctx, subpackage, buyerNotificationAction)
-			}
-			state.UpdateSubPackage(ctx, subpackage, releaseStockAction)
-			_, err := app.Globals.SubPkgRepository.Update(ctx, *subpackage)
-			if err != nil {
-				logger.Err("SubPkgRepository.Update in %s state failed, orderId: %d, pid: %d, sid: %d, error: %s",
-					state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId, err.Error())
-				return
-			} else {
-				logger.Audit("%s state success, orderId: %d, pid: %d, sid: %d", state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId)
+		for i := 0; i < len(sids); i++ {
+			for j := 0; j < len(pkgItem.Subpackages); j++ {
+				if pkgItem.Subpackages[j].SId == sids[i] {
+					state.UpdateSubPackage(ctx, pkgItem.Subpackages[j], buyerNotificationAction)
+					state.UpdateSubPackage(ctx, pkgItem.Subpackages[j], releaseStockAction)
+				}
 			}
 		}
-		order, err := app.Globals.OrderRepository.FindById(ctx, subpackages[0].OrderId)
+
+		_, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 		if err != nil {
-			logger.Err("OrderRepository.FindById in %s state failed, orderId: %d, pid: %d, sid: %d, error: %s",
-				state.Name(), subpackages[0].OrderId, subpackages[0].PId, subpackages[0].SId, err.Error())
+			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
+				state.Name(), pkgItem.OrderId, pkgItem.PId, sids, err.Error())
+		}
+
+		logger.Audit("Process() => Status of subpackages update success, state: %s, orderId: %d, pid: %d, sids: %v",
+			state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
+
+		//for _, subpackage := range subpackages {
+		//	if buyerNotificationAction != nil {
+		//		state.UpdateSubPackage(ctx, subpackage, buyerNotificationAction)
+		//	}
+		//	state.UpdateSubPackage(ctx, subpackage, releaseStockAction)
+		//	_, err := app.Globals.SubPkgRepository.Update(ctx, *subpackage)
+		//	if err != nil {
+		//		logger.Err("SubPkgRepository.Update in %s state failed, orderId: %d, pid: %d, sid: %d, error: %s",
+		//			state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId, err.Error())
+		//		return
+		//	} else {
+		//		logger.Audit("%s state success, orderId: %d, pid: %d, sid: %d", state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId)
+		//	}
+		//}
+
+		order, err := app.Globals.OrderRepository.FindById(ctx, pkgItem.OrderId)
+		if err != nil {
+			logger.Err("OrderRepository.FindById in %s state failed, orderId: %d, pid: %d, sids: %v, error: %s",
+				state.Name(), pkgItem.OrderId, pkgItem.PId, sids, err.Error())
 			return
 		}
 
@@ -247,27 +285,25 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 	}
 }
 
-func (state payToBuyerState) releasedStock(ctx context.Context, subpackages []*entities.Subpackage) error {
+func (state payToBuyerState) releasedStock(ctx context.Context, sids []uint64, pkgItem *entities.PackageItem) error {
 
-	var sids = make([]uint64, 0, len(subpackages))
 	var inventories = make(map[string]int, 32)
-	for _, subpackage := range subpackages {
-		for z := 0; z < len(subpackage.Items); z++ {
-			item := subpackage.Items[z]
+	for i := 0; i < len(pkgItem.Subpackages); i++ {
+		for z := 0; z < len(pkgItem.Subpackages[i].Items); z++ {
+			item := pkgItem.Subpackages[i].Items[z]
 			inventories[item.InventoryId] = int(item.Quantity)
 		}
-		sids = append(sids, subpackage.SId)
 	}
 
 	iFuture := app.Globals.StockService.BatchStockActions(ctx, inventories, system_action.New(system_action.StockRelease))
 	futureData := iFuture.Get()
 	if futureData.Error() != nil {
 		logger.Err("Reserved stock from stockService failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
-			state.Name(), subpackages[0].OrderId, subpackages[0].PId, sids, futureData.Error())
+			state.Name(), pkgItem.OrderId, pkgItem.PId, sids, futureData.Error())
 		return futureData.Error().Reason()
 	}
 
 	logger.Audit("Release stock success, state: %s, orderId: %d, pid: %d, sids: %v",
-		state.Name(), subpackages[0].OrderId, subpackages[0].PId, sids)
+		state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
 	return nil
 }

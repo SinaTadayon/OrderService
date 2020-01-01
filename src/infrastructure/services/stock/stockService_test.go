@@ -245,13 +245,13 @@ func createOrder() *entities.Order {
 					ReturnTime:   24,
 					Details:      "no return",
 				},
-				Subpackages: []entities.Subpackage{
+				Subpackages: []*entities.Subpackage{
 					{
 						SId:     0,
 						PId:     129384234,
 						OrderId: 0,
 						Version: 0,
-						Items: []entities.Item{
+						Items: []*entities.Item{
 							{
 								SKU:         "yt545-34",
 								InventoryId: "1111111111",
@@ -425,7 +425,7 @@ func createOrder() *entities.Order {
 						PId:     129384234,
 						OrderId: 0,
 						Version: 0,
-						Items: []entities.Item{
+						Items: []*entities.Item{
 							{
 								SKU:         "gd534-34344",
 								InventoryId: "2222222222",
@@ -698,13 +698,13 @@ func createOrder() *entities.Order {
 					ReturnTime:   24,
 					Details:      "no return",
 				},
-				Subpackages: []entities.Subpackage{
+				Subpackages: []*entities.Subpackage{
 					{
 						SId:     0,
 						PId:     99988887777,
 						OrderId: 0,
 						Version: 0,
-						Items: []entities.Item{
+						Items: []*entities.Item{
 							{
 								SKU:         "trrer-5343fdf",
 								InventoryId: "55555555555",
@@ -877,7 +877,7 @@ func createOrder() *entities.Order {
 						PId:     99988887777,
 						OrderId: 0,
 						Version: 0,
-						Items: []entities.Item{
+						Items: []*entities.Item{
 							{
 								SKU:         "5456",
 								InventoryId: "3333333333333",

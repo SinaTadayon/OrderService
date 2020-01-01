@@ -39,16 +39,28 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 }
 
 func (state deliveryFailedState) Process(ctx context.Context, iFrame frame.IFrame) {
-	if iFrame.Header().KeyExists(string(frame.HeaderSubpackages)) {
-		subpackages, ok := iFrame.Header().Value(string(frame.HeaderSubpackages)).([]*entities.Subpackage)
-		if !ok {
-			logger.Err("iFrame.Header() not a subpackages, frame: %v, %s state ", iFrame, state.Name())
-			return
-		}
+	if iFrame.Header().KeyExists(string(frame.HeaderSIds)) {
+		//subpackages, ok := iFrame.Header().Value(string(frame.HeaderSubpackages)).([]*entities.Subpackage)
+		//if !ok {
+		//	logger.Err("iFrame.Header() not a subpackages, frame: %v, %s state ", iFrame, state.Name())
+		//	return
+		//}
 
 		sids, ok := iFrame.Header().Value(string(frame.HeaderSIds)).([]uint64)
 		if !ok {
-			logger.Err("iFrame.Header() not a sids, frame: %v, %s state ", iFrame, state.Name())
+			logger.Err("Process() => iFrame.Header() not a sids, state: %s, frame: %v", state.Name(), iFrame)
+			return
+		}
+
+		if iFrame.Body().Content() == nil {
+			logger.Err("Process() => iFrame.Body().Content() is nil, state: %s, frame: %v", state.Name(), iFrame)
+			return
+		}
+
+		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
+		if !ok {
+			logger.Err("Process() => pkgItem in iFrame.Body().Content() is not found, %s state, sids: %v, frame: %v",
+				state.Name(), sids, iFrame)
 			return
 		}
 
@@ -67,20 +79,35 @@ func (state deliveryFailedState) Process(ctx context.Context, iFrame frame.IFram
 			Extended:  nil,
 		}
 
-		var updatedSubpackages = make([]*entities.Subpackage, 0, len(subpackages))
-		for _, subpackage := range subpackages {
-			state.UpdateSubPackage(ctx, subpackage, nextToAction)
-			subPkgUpdated, err := app.Globals.SubPkgRepository.Update(ctx, *subpackage)
-			if err != nil {
-				logger.Err("SubPkgRepository.Update in %s state failed, orderId: %d, pid: %d, sid: %d, error: %s",
-					state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId, err.Error())
-				return
+		for i := 0; i < len(sids); i++ {
+			for j := 0; j < len(pkgItem.Subpackages); j++ {
+				if pkgItem.Subpackages[j].SId == sids[i] {
+					state.UpdateSubPackage(ctx, pkgItem.Subpackages[j], nextToAction)
+				}
 			}
-			updatedSubpackages = append(updatedSubpackages, subPkgUpdated)
 		}
 
-		logger.Audit("%s state success, orderId: %d, pid: %d, sid: %v", state.Name(), updatedSubpackages[0].OrderId, updatedSubpackages[0].PId, sids)
-		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetSubpackages(updatedSubpackages).Build())
+		pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
+		if err != nil {
+			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %s", state.Name(),
+				pkgItem.OrderId, pkgItem.PId, sids, err.Error())
+			return
+		}
+
+		//var updatedSubpackages = make([]*entities.Subpackage, 0, len(subpackages))
+		//for _, subpackage := range subpackages {
+		//	state.UpdateSubPackage(ctx, subpackage, nextToAction)
+		//	subPkgUpdated, err := app.Globals.SubPkgRepository.Update(ctx, *subpackage)
+		//	if err != nil {
+		//		logger.Err("SubPkgRepository.Update in %s state failed, orderId: %d, pid: %d, sid: %d, error: %s",
+		//			state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId, err.Error())
+		//		return
+		//	}
+		//	updatedSubpackages = append(updatedSubpackages, subPkgUpdated)
+		//}
+
+		//logger.Audit("%s state success, orderId: %d, pid: %d, sid: %v", state.Name(), updatedSubpackages[0].OrderId, updatedSubpackages[0].PId, sids)
+		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItemUpdated).Build())
 
 	} else {
 		logger.Err("iFrame.Header() not a subpackage , state: %s iframe: %v", state.Name(), iFrame)

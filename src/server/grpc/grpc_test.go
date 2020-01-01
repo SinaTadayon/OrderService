@@ -51,6 +51,9 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
+	app.Globals.ZapLogger = app.InitZap()
+	app.Globals.Logger = logger.NewZapLogger(app.Globals.ZapLogger)
+
 	mongoDriver, err := app.SetupMongoDriver(*app.Globals.Config)
 	if err != nil {
 		os.Exit(1)
@@ -790,7 +793,7 @@ func UpdateOrderAllStatus(ctx context.Context, order *entities.Order,
 		order.Packages[i].Status = string(pkgStatus)
 		//for z := 0; z < len(actions); z++ {
 		for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-			UpdateSubPackage(ctx, subPkgState, &order.Packages[i].Subpackages[j], nil)
+			UpdateSubPackage(ctx, subPkgState, order.Packages[i].Subpackages[j], nil)
 		}
 		//}
 	}
@@ -803,12 +806,12 @@ func UpdateOrderAllSubPkg(ctx context.Context, subPkgState states.IEnumState, or
 		if actions != nil && len(actions) > 0 {
 			for z := 0; z < len(actions); z++ {
 				for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-					UpdateSubPackage(ctx, subPkgState, &order.Packages[i].Subpackages[j], actions[z])
+					UpdateSubPackage(ctx, subPkgState, order.Packages[i].Subpackages[j], actions[z])
 				}
 			}
 		} else {
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-				UpdateSubPackage(ctx, subPkgState, &order.Packages[i].Subpackages[j], nil)
+				UpdateSubPackage(ctx, subPkgState, order.Packages[i].Subpackages[j], nil)
 			}
 		}
 	}

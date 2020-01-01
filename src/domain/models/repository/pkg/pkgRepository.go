@@ -8,6 +8,8 @@ import (
 type IPkgItemRepository interface {
 	Update(ctx context.Context, pkgItem entities.PackageItem) (*entities.PackageItem, error)
 
+	UpdateWithUpsert(ctx context.Context, pkgItem entities.PackageItem) (*entities.PackageItem, []uint64, error)
+
 	FindById(ctx context.Context, orderId uint64, id uint64) (*entities.PackageItem, error)
 
 	FindByFilter(ctx context.Context, supplier func() (filter interface{})) ([]*entities.PackageItem, error)

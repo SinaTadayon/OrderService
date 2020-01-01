@@ -34,12 +34,12 @@ func NewPkgItemRepository(mongoDriver *mongoadapter.Mongo) IPkgItemRepository {
 	return &iPkgItemRepositoryImpl{mongoDriver}
 }
 
-func (repo iPkgItemRepositoryImpl) findAndUpdate(ctx context.Context, pkgItem *entities.PackageItem) (*entities.PackageItem, error) {
+func (repo iPkgItemRepositoryImpl) findAndUpdate(ctx context.Context, pkgItem *entities.PackageItem, upsert bool) (*entities.PackageItem, error) {
 	pkgItem.UpdatedAt = time.Now().UTC()
 	currentVersion := pkgItem.Version
 	pkgItem.Version += 1
 	opt := options.FindOneAndUpdate()
-	opt.SetUpsert(true)
+	opt.SetUpsert(upsert)
 	singleResult := repo.mongoAdapter.GetConn().Database(databaseName).Collection(collectionName).FindOneAndUpdate(ctx,
 		bson.D{
 			{"orderId", pkgItem.OrderId},
@@ -74,7 +74,21 @@ func (repo iPkgItemRepositoryImpl) Update(ctx context.Context, pkgItem entities.
 	pkgItem.UpdatedAt = time.Now().UTC()
 	var updatedPkgItem *entities.PackageItem
 	var err error
+	updatedPkgItem, err = repo.findAndUpdate(ctx, &pkgItem, false)
+	if err != nil {
+		return nil, err
+	}
+
+	return updatedPkgItem, nil
+}
+
+func (repo iPkgItemRepositoryImpl) UpdateWithUpsert(ctx context.Context, pkgItem entities.PackageItem) (*entities.PackageItem, []uint64, error) {
+
+	pkgItem.UpdatedAt = time.Now().UTC()
+	var updatedPkgItem *entities.PackageItem
+	var err error
 	subPkgIdMap := make(map[uint64]*entities.Subpackage, len(pkgItem.Subpackages))
+	newSubPkgIds := make([]uint64, 0, len(pkgItem.Subpackages))
 	var isFindNewSubPkg = false
 
 	for i := 0; i < len(pkgItem.Subpackages); i++ {
@@ -99,18 +113,19 @@ func (repo iPkgItemRepositoryImpl) Update(ctx context.Context, pkgItem entities.
 					}
 
 					pkgItem.Subpackages[i].SId = uint64(sid)
+					newSubPkgIds = append(newSubPkgIds, pkgItem.Subpackages[i].SId)
 					break
 				}
 			}
 		}
 	}
 
-	updatedPkgItem, err = repo.findAndUpdate(ctx, &pkgItem)
+	updatedPkgItem, err = repo.findAndUpdate(ctx, &pkgItem, true)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return updatedPkgItem, nil
+	return updatedPkgItem, newSubPkgIds, nil
 }
 
 func (repo iPkgItemRepositoryImpl) FindById(ctx context.Context, orderId uint64, id uint64) (*entities.PackageItem, error) {

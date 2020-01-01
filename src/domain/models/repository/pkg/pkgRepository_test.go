@@ -88,7 +88,7 @@ func TestUpdatePkgItemWithNewSubPkgRepository(t *testing.T) {
 		PId:     order.Packages[0].PId,
 		OrderId: order.OrderId,
 		Version: 0,
-		Items: []entities.Item{
+		Items: []*entities.Item{
 			{
 				SKU:         "trrer-5343fdf",
 				InventoryId: "55555555555",
@@ -209,8 +209,11 @@ func TestUpdatePkgItemWithNewSubPkgRepository(t *testing.T) {
 	order.Packages[1].Subpackages = append(order.Packages[1].Subpackages, subpackage)
 	ctx, _ := context.WithCancel(context.Background())
 	order.Packages[1].Status = "Payment_Pending"
-	packageItem, err := pkgItemRepo.Update(ctx, order.Packages[1])
+	_, err = pkgItemRepo.Update(ctx, order.Packages[1])
 	require.Nil(t, err, "pkgItemRepo.Update failed")
+	packageItem, err := pkgItemRepo.FindById(ctx, order.OrderId, order.Packages[1].PId)
+	require.Nil(t, err, "pkgItemRepo.find failed")
+	require.Equal(t, 3, len(packageItem.Subpackages))
 	require.Equal(t, uint64(1), packageItem.Version)
 	require.Equal(t, "Payment_Pending", packageItem.Status)
 }
@@ -590,7 +593,7 @@ func createOrder() *entities.Order {
 						PId:     129384234,
 						OrderId: 0,
 						Version: 0,
-						Items: []entities.Item{
+						Items: []*entities.Item{
 							{
 								SKU:         "yt545-34",
 								InventoryId: "1111111111",
@@ -764,7 +767,7 @@ func createOrder() *entities.Order {
 						PId:     129384234,
 						OrderId: 0,
 						Version: 0,
-						Items: []entities.Item{
+						Items: []*entities.Item{
 							{
 								SKU:         "gd534-34344",
 								InventoryId: "2222222222",
@@ -1043,7 +1046,7 @@ func createOrder() *entities.Order {
 						PId:     99988887777,
 						OrderId: 0,
 						Version: 0,
-						Items: []entities.Item{
+						Items: []*entities.Item{
 							{
 								SKU:         "trrer-5343fdf",
 								InventoryId: "55555555555",
@@ -1216,7 +1219,7 @@ func createOrder() *entities.Order {
 						PId:     99988887777,
 						OrderId: 0,
 						Version: 0,
-						Items: []entities.Item{
+						Items: []*entities.Item{
 							{
 								SKU:         "5456",
 								InventoryId: "3333333333333",

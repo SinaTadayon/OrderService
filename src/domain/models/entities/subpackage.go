@@ -8,7 +8,7 @@ type Subpackage struct {
 	PId       uint64                 `bson:"pid"`
 	OrderId   uint64                 `bson:"orderId"`
 	Version   uint64                 `bson:"version"`
-	Items     []Item                 `bson:"items"`
+	Items     []*Item                `bson:"items"`
 	Shipments *Shipment              `bson:"shipments"`
 	Tracking  Progress               `bson:"tracking"`
 	Status    string                 `bson:"status"`
@@ -179,9 +179,9 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 		Extended:  subpackage.Extended,
 	}
 
-	subPkg.Items = make([]Item, 0, len(subpackage.Items))
+	subPkg.Items = make([]*Item, 0, len(subpackage.Items))
 	for _, item := range subpackage.Items {
-		newItem := Item{
+		newItem := &Item{
 			SKU:         item.SKU,
 			InventoryId: item.InventoryId,
 			Title:       item.Title,

@@ -43,28 +43,54 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 }
 
 func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
-	if iFrame.Header().KeyExists(string(frame.HeaderSubpackages)) {
-		subpackages, ok := iFrame.Header().Value(string(frame.HeaderSubpackages)).([]*entities.Subpackage)
+	if iFrame.Header().KeyExists(string(frame.HeaderSIds)) {
+		sids, ok := iFrame.Header().Value(string(frame.HeaderSIds)).([]uint64)
 		if !ok {
-			logger.Err("iFrame.Header() not a subpackage, frame: %v, %s state ", iFrame, state.Name())
+			logger.Err("Process() => iFrame.Header() not a sids, state: %s, frame: %v", state.Name(), iFrame)
 			return
 		}
 
-		sids, ok := iFrame.Header().Value(string(frame.HeaderSIds)).([]uint64)
-		if !ok {
-			logger.Err("iFrame.Header() not a sids, frame: %v, %s state ", iFrame, state.Name())
+		if iFrame.Body().Content() == nil {
+			logger.Err("Process() => iFrame.Body().Content() is nil, state: %s, frame: %v", state.Name(), iFrame)
 			return
 		}
 
 		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
 		if !ok {
-			logger.Err("Process() => iFrame.Body().Content() is nil, orderId: %d, pid: %d, sid: %d, %s state ",
-				subpackages[0].OrderId, subpackages[0].PId, subpackages[0].SId, state.Name())
+			logger.Err("Process() => pkgItem in iFrame.Body().Content() is not found, %s state, sids: %v, frame: %v",
+				state.Name(), sids, iFrame)
 			return
 		}
 
-		var buyerNotificationAction *entities.Action
-		var sellerNotificationAction *entities.Action
+		var buyerNotificationAction = &entities.Action{
+			Name:      system_action.BuyerNotification.ActionName(),
+			Type:      "",
+			UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+			UTP:       actions.System.ActionName(),
+			Perm:      "",
+			Priv:      "",
+			Policy:    "",
+			Result:    string(states.ActionFail),
+			Reasons:   nil,
+			Data:      nil,
+			CreatedAt: time.Now().UTC(),
+			Extended:  nil,
+		}
+
+		var sellerNotificationAction = &entities.Action{
+			Name:      system_action.SellerNotification.ActionName(),
+			Type:      "",
+			UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+			UTP:       actions.System.ActionName(),
+			Perm:      "",
+			Priv:      "",
+			Policy:    "",
+			Result:    string(states.ActionFail),
+			Reasons:   nil,
+			Data:      nil,
+			CreatedAt: time.Now().UTC(),
+			Extended:  nil,
+		}
 
 		smsTemplate, err := template.New("SMS").Parse(app.Globals.SMSTemplate.OrderNotifyBuyerCanceledByBuyerState)
 		if err != nil {
@@ -124,7 +150,7 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 		futureData := app.Globals.UserService.GetSellerProfile(ctx, strconv.Itoa(int(pkgItem.PId))).Get()
 		if futureData.Error() != nil {
 			logger.Err("Process() => UserService.GetSellerProfile failed, send sms message failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
-				state.Name(), subpackages[0].OrderId, subpackages[0].PId, sids, futureData.Error().Reason())
+				state.Name(), pkgItem.OrderId, pkgItem.PId, sids, futureData.Error().Reason())
 		} else {
 			if futureData.Data() != nil {
 				sellerProfile := futureData.Data().(*entities.SellerProfile)
@@ -184,7 +210,7 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 				}
 			} else {
 				logger.Err("Process() => UserService.GetSellerProfile futureData.Data() is nil, send sms message failed, state: %s, orderId: %d, pid: %d, sids: %v",
-					state.Name(), subpackages[0].OrderId, subpackages[0].PId, sids)
+					state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
 			}
 		}
 
@@ -203,25 +229,25 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 			Extended:  nil,
 		}
 
-		// TODO optimize it repository update
-		var updatedSubpackages = make([]*entities.Subpackage, 0, len(subpackages))
-		for _, subpackage := range subpackages {
-			state.UpdateSubPackage(ctx, subpackage, sellerNotificationAction)
-			state.UpdateSubPackage(ctx, subpackage, buyerNotificationAction)
-			state.UpdateSubPackage(ctx, subpackage, nextToAction)
-			subPkgUpdated, err := app.Globals.SubPkgRepository.Update(ctx, *subpackage)
-			if err != nil {
-				logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, pid: %d, sid: %d, error: %s",
-					state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId, err.Error())
-			} else {
-				//logger.Audit("Process() => Status of subpackages update to %s state, orderId: %d, pid: %d, sids: %v",
-				//	state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId)
-				updatedSubpackages = append(updatedSubpackages, subPkgUpdated)
+		for i := 0; i < len(sids); i++ {
+			for j := 0; j < len(pkgItem.Subpackages); j++ {
+				if pkgItem.Subpackages[j].SId == sids[i] {
+					state.UpdateSubPackage(ctx, pkgItem.Subpackages[j], sellerNotificationAction)
+					state.UpdateSubPackage(ctx, pkgItem.Subpackages[j], buyerNotificationAction)
+					state.UpdateSubPackage(ctx, pkgItem.Subpackages[j], nextToAction)
+				}
 			}
 		}
 
-		logger.Audit("Process() => %s state success, orderId: %d, pid: %d, sid: %v", state.Name(), updatedSubpackages[0].OrderId, updatedSubpackages[0].PId, sids)
-		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetSubpackages(updatedSubpackages).Build())
+		pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
+		if err != nil {
+			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %s", state.Name(),
+				pkgItem.OrderId, pkgItem.PId, sids, err.Error())
+			return
+		}
+
+		logger.Audit("Process() => Status of subpackages update success, state: %s ,orderId: %d, pid: %d, sids: %v", state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
+		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItemUpdated).Build())
 	} else {
 		logger.Err("iFrame.Header() not a subpackage or sellerId not found, state: %s iframe: %v", state.Name(), iFrame)
 	}
