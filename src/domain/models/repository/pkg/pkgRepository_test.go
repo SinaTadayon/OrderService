@@ -77,6 +77,144 @@ func TestUpdatePkgItemRepository(t *testing.T) {
 	require.Equal(t, "Payment_Pending", packageItem.Status)
 }
 
+func TestUpdatePkgItemWithNewSubPkgRepository(t *testing.T) {
+
+	defer removeCollection()
+	order, err := createOrderAndSave()
+	require.Nil(t, err, "createOrderAndSave failed")
+	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
+	subpackage := &entities.Subpackage{
+		SId:     0,
+		PId:     order.Packages[0].PId,
+		OrderId: order.OrderId,
+		Version: 0,
+		Items: []entities.Item{
+			{
+				SKU:         "trrer-5343fdf",
+				InventoryId: "55555555555",
+				Title:       "Mobile",
+				Brand:       "Nokia",
+				Guaranty:    "Sazegar",
+				Category:    "Electronic",
+				Image:       "",
+				Returnable:  false,
+				Quantity:    5,
+				Reasons:     nil,
+				Attributes: map[string]string{
+					"Quantity":  "0",
+					"Width":     "5cm",
+					"Height":    "7cm",
+					"Length":    "2m",
+					"Weight":    "5kg",
+					"Color":     "Blue",
+					"Materials": "Stone",
+				},
+				Invoice: entities.ItemInvoice{
+					Unit: entities.Money{
+						Amount:   "1270000",
+						Currency: "IRR",
+					},
+
+					Total: entities.Money{
+						Amount:   "7340000",
+						Currency: "IRR",
+					},
+
+					Original: entities.Money{
+						Amount:   "1270000",
+						Currency: "IRR",
+					},
+					Special: entities.Money{
+						Amount:   "1000000",
+						Currency: "IRR",
+					},
+
+					Discount: entities.Money{
+						Amount:   "23000",
+						Currency: "IRR",
+					},
+
+					SellerCommission:  34,
+					ApplicableVoucher: false,
+				},
+			},
+		},
+		Shipments: &entities.Shipment{
+			ShipmentDetail: &entities.ShippingDetail{
+				CarrierName:    "Post",
+				ShippingMethod: "Normal",
+				TrackingNumber: "545349534958349",
+				Image:          "",
+				Description:    "",
+				ShippedAt:      nil,
+				CreatedAt:      time.Now().UTC(),
+			},
+			ReturnShipmentDetail: &entities.ReturnShippingDetail{
+				CarrierName:    "Post",
+				ShippingMethod: "Normal",
+				TrackingNumber: "545349534958349",
+				Image:          "",
+				Description:    "",
+				ShippedAt:      nil,
+				RequestedAt:    nil,
+				CreatedAt:      time.Now().UTC(),
+			},
+		},
+		Tracking: entities.Progress{
+			State: &entities.State{
+				Name:  "1.New",
+				Index: 1,
+				Data:  nil,
+				Actions: []entities.Action{
+					{
+						Name:      "BuyerCancel",
+						UTP:       "OrderBuyerCancel",
+						Result:    "Success",
+						Reasons:   nil,
+						CreatedAt: time.Now().UTC(),
+					},
+				},
+				CreatedAt: time.Now().UTC(),
+			},
+			Action: &entities.Action{
+				Name:      "BuyerCancel",
+				UTP:       "OrderBuyerCancel",
+				Result:    "Success",
+				Reasons:   nil,
+				CreatedAt: time.Now().UTC(),
+			},
+			History: []entities.State{
+				{
+					Name:  "1.New",
+					Index: 1,
+					Data:  nil,
+					Actions: []entities.Action{
+						{
+							Name:      "BuyerCancel",
+							UTP:       "OrderBuyerCancel",
+							Result:    "Success",
+							Reasons:   nil,
+							CreatedAt: time.Now().UTC(),
+						},
+					},
+					CreatedAt: time.Now().UTC(),
+				},
+			},
+		},
+		Status:    "1.New",
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
+		DeletedAt: nil,
+	}
+	order.Packages[1].Subpackages = append(order.Packages[1].Subpackages, subpackage)
+	ctx, _ := context.WithCancel(context.Background())
+	order.Packages[1].Status = "Payment_Pending"
+	packageItem, err := pkgItemRepo.Update(ctx, order.Packages[1])
+	require.Nil(t, err, "pkgItemRepo.Update failed")
+	require.Equal(t, uint64(1), packageItem.Version)
+	require.Equal(t, "Payment_Pending", packageItem.Status)
+}
+
 func TestFindById(t *testing.T) {
 	defer removeCollection()
 	order, err := createOrderAndSave()
@@ -446,7 +584,7 @@ func createOrder() *entities.Order {
 					ReturnTime:   24,
 					Details:      "no return",
 				},
-				Subpackages: []entities.Subpackage{
+				Subpackages: []*entities.Subpackage{
 					{
 						SId:     0,
 						PId:     129384234,
@@ -899,7 +1037,7 @@ func createOrder() *entities.Order {
 					ReturnTime:   24,
 					Details:      "no return",
 				},
-				Subpackages: []entities.Subpackage{
+				Subpackages: []*entities.Subpackage{
 					{
 						SId:     0,
 						PId:     99988887777,

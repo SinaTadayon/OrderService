@@ -12,7 +12,7 @@ type PackageItem struct {
 	ShippingAddress AddressInfo            `bson:"shippingAddress"`
 	ShipmentSpec    ShipmentSpec           `bson:"shipmentSpec"`
 	PayToSeller     []PayToSellerInfo      `bson:"payToSeller"`
-	Subpackages     []Subpackage           `bson:"subpackages"`
+	Subpackages     []*Subpackage          `bson:"subpackages"`
 	Status          string                 `bson:"status"`
 	CreatedAt       time.Time              `bson:"createdAt"`
 	UpdatedAt       time.Time              `bson:"updatedAt"`

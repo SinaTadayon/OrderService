@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"strconv"
 	"time"
 )
 
@@ -38,7 +39,7 @@ func (repo iPkgItemRepositoryImpl) findAndUpdate(ctx context.Context, pkgItem *e
 	currentVersion := pkgItem.Version
 	pkgItem.Version += 1
 	opt := options.FindOneAndUpdate()
-	opt.SetUpsert(false)
+	opt.SetUpsert(true)
 	singleResult := repo.mongoAdapter.GetConn().Database(databaseName).Collection(collectionName).FindOneAndUpdate(ctx,
 		bson.D{
 			{"orderId", pkgItem.OrderId},
@@ -71,7 +72,40 @@ func (repo iPkgItemRepositoryImpl) findAndUpdate(ctx context.Context, pkgItem *e
 func (repo iPkgItemRepositoryImpl) Update(ctx context.Context, pkgItem entities.PackageItem) (*entities.PackageItem, error) {
 
 	pkgItem.UpdatedAt = time.Now().UTC()
-	var updatedPkgItem, err = repo.findAndUpdate(ctx, &pkgItem)
+	var updatedPkgItem *entities.PackageItem
+	var err error
+	subPkgIdMap := make(map[uint64]*entities.Subpackage, len(pkgItem.Subpackages))
+	var isFindNewSubPkg = false
+
+	for i := 0; i < len(pkgItem.Subpackages); i++ {
+		if pkgItem.Subpackages[i].SId != 0 {
+			subPkgIdMap[pkgItem.Subpackages[i].SId] = pkgItem.Subpackages[i]
+		} else {
+			isFindNewSubPkg = true
+		}
+	}
+
+	if isFindNewSubPkg {
+		for i := 0; i < len(pkgItem.Subpackages); i++ {
+			if pkgItem.Subpackages[i].SId == 0 {
+				pkgItem.Subpackages[i].CreatedAt = time.Now().UTC()
+				pkgItem.Subpackages[i].UpdatedAt = time.Now().UTC()
+
+				for {
+					random := strconv.Itoa(int(entities.GenerateRandomNumber()))
+					sid, _ := strconv.Atoi(strconv.Itoa(int(pkgItem.Subpackages[i].OrderId)) + random)
+					if _, ok := subPkgIdMap[uint64(sid)]; ok {
+						continue
+					}
+
+					pkgItem.Subpackages[i].SId = uint64(sid)
+					break
+				}
+			}
+		}
+	}
+
+	updatedPkgItem, err = repo.findAndUpdate(ctx, &pkgItem)
 	if err != nil {
 		return nil, err
 	}
