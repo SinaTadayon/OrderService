@@ -165,11 +165,11 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				state.StatesMap()[successAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(orderUpdated).Build())
 			}
 		} else {
-			// TODO check it for IntPart()
 			paymentRequest := payment_service.PaymentRequest{
-				Amount:  int64(grandTotal.IntPart()),
-				Gateway: order.Invoice.PaymentGateway,
-				OrderId: order.OrderId,
+				Amount:   int64(grandTotal.IntPart()),
+				Currency: order.Invoice.GrandTotal.Currency,
+				Gateway:  order.Invoice.PaymentGateway,
+				OrderId:  order.OrderId,
 			}
 
 			order.OrderPayment = []entities.PaymentService{
@@ -177,7 +177,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 					PaymentRequest: &entities.PaymentRequest{
 						Price: &entities.Money{
 							Amount:   strconv.Itoa(int(paymentRequest.Amount)),
-							Currency: "IRR",
+							Currency: order.Invoice.GrandTotal.Currency,
 						},
 						Gateway:   paymentRequest.Gateway,
 						CreatedAt: time.Now().UTC(),
