@@ -3667,7 +3667,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 
 	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
-		logger.Err("RequestHandler() => UserService.AuthenticateContextToken failed, error: %s ", err)
+		logger.Err("NewOrder() => UserService.AuthenticateContextToken failed, error: %s ", err)
 		//return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
 	}
 
