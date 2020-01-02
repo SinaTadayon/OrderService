@@ -66,7 +66,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 		}
 
 		var voucherAmount decimal.Decimal
-		if order.Invoice.Voucher.Price != nil {
+		if order.Invoice.Voucher != nil && order.Invoice.Voucher.Price != nil {
 			voucherAmount, err = decimal.NewFromString(order.Invoice.Voucher.Price.Amount)
 			if err != nil {
 				logger.Err("Process() => order.Invoice.Voucher.Price.Amount invalid, price: %s, orderId: %d, error: %s", order.Invoice.Voucher.Price.Amount, order.OrderId, err)
@@ -300,7 +300,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 		} else {
 			var voucherAction *entities.Action
 			var voucherAmount = 0
-			if order.Invoice.Voucher.Price != nil {
+			if order.Invoice.Voucher != nil && order.Invoice.Voucher.Price != nil {
 				voucherAmount, err = strconv.Atoi(order.Invoice.Voucher.Price.Amount)
 			}
 
