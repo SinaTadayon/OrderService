@@ -55,6 +55,26 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 		return nil, errors.New("BuyerId of NewOrder invalid")
 	}
 
+	if newOrderDto.Invoice == nil {
+		return nil, errors.New("Invoice of RequestNewOrder invalid")
+	}
+
+	if newOrderDto.Invoice.Discount == nil {
+		return nil, errors.New("Invoice.Discount of RequestNewOrder invalid")
+	}
+
+	if newOrderDto.Invoice.GrandTotal == nil {
+		return nil, errors.New("Invoice.GrandTotal of RequestNewOrder invalid")
+	}
+
+	if newOrderDto.Invoice.Subtotal == nil {
+		return nil, errors.New("Invoice.Subtotal of RequestNewOrder invalid")
+	}
+
+	if newOrderDto.Invoice.ShipmentTotal == nil {
+		return nil, errors.New("Invoice.ShipmentTotal of RequestNewOrder invalid")
+	}
+
 	order.Platform = newOrderDto.Platform
 
 	order.BuyerInfo.BuyerId = newOrderDto.Buyer.BuyerId
@@ -264,6 +284,30 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 
 			if itemDto.Quantity <= 0 {
 				return nil, errors.New("Items Quantity of RequestNewOrder invalid")
+			}
+
+			if itemDto.Invoice == nil {
+				return nil, errors.New("itemDto.Invoice of RequestNewOrder invalid")
+			}
+
+			if itemDto.Invoice.Unit == nil {
+				return nil, errors.New("itemDto.Invoice.Unit of RequestNewOrder invalid")
+			}
+
+			if itemDto.Invoice.Discount == nil {
+				return nil, errors.New("itemDto.Invoice.Discount of RequestNewOrder invalid")
+			}
+
+			if itemDto.Invoice.Special == nil {
+				return nil, errors.New("itemDto.Invoice.Special of RequestNewOrder invalid")
+			}
+
+			if itemDto.Invoice.Original == nil {
+				return nil, errors.New("itemDto.Invoice.Original of RequestNewOrder invalid")
+			}
+
+			if itemDto.Invoice.Total == nil {
+				return nil, errors.New("itemDto.Invoice.Total of RequestNewOrder invalid")
 			}
 
 			var item = &entities.Item{
