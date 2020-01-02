@@ -9,7 +9,6 @@ import (
 	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
 	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
 	"gitlab.faza.io/order-project/order-service/domain/events"
-	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
@@ -145,7 +144,7 @@ const (
 )
 
 const (
-	SellerAllOrders             RequestName = "SellerAllOrders"
+	//SellerAllOrders             RequestName = "SellerAllOrders"
 	SellerOrderList             RequestName = "SellerOrderList"
 	SellerOrderDetail           RequestName = "SellerOrderDetail"
 	SellerReturnOrderDetailList RequestName = "SellerReturnOrderDetailList"
@@ -154,15 +153,13 @@ const (
 	SellerOrderReturnReports    RequestName = "SellerOrderReturnReports"
 	SellerOrderCancelReports    RequestName = "SellerOrderCancelReports"
 
-	//SellerOrderReturnDetail     RequestName = "SellerOrderReturnDetail"
-	//BuyerOrderList             RequestName = "BuyerOrderList"
-
+	//BuyerAllOrders			   RequestName = "BuyerAllOrders"
 	BuyerAllReturnOrders       RequestName = "BuyerAllReturnOrders"
 	BuyerOrderDetailList       RequestName = "BuyerOrderDetailList"
 	BuyerReturnOrderReports    RequestName = "BuyerReturnOrderReports"
 	BuyerReturnOrderDetailList RequestName = "BuyerReturnOrderDetailList"
-	//BuyerReturnOrderDetail  RequestName = "BuyerReturnOrderDetail"
 
+	//OperatorAllOrders	RequestName = "OperatorAllOrders"
 	OperatorOrderList   RequestName = "OperatorOrderList"
 	OperatorOrderDetail RequestName = "OperatorOrderDetail"
 )
@@ -296,26 +293,26 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	}
 
 	reqFilters := make(map[RequestName][]FilterValue, 8)
-	reqFilters[SellerAllOrders] = []FilterValue{
-		ApprovalPendingFilter,
-		CanceledBySellerFilter,
-		CanceledByBuyerFilter,
-		ShipmentPendingFilter,
-		ShipmentDelayedFilter,
-		ShippedFilter,
-		DeliveryPendingFilter,
-		DeliveredFilter,
-		DeliveryFailedFilter,
-		ReturnRequestPendingFilter,
-		ReturnRequestRejectedFilter,
-		ReturnShipmentPendingFilter,
-		ReturnShippedFilter,
-		ReturnDeliveryPendingFilter,
-		ReturnDeliveryDelayedFilter,
-		ReturnDeliveredFilter,
-		ReturnDeliveryFailedFilter,
-		PayToSellerFilter,
-	}
+	//reqFilters[SellerAllOrders] = []FilterValue{
+	//	ApprovalPendingFilter,
+	//	CanceledBySellerFilter,
+	//	CanceledByBuyerFilter,
+	//	ShipmentPendingFilter,
+	//	ShipmentDelayedFilter,
+	//	ShippedFilter,
+	//	DeliveryPendingFilter,
+	//	DeliveredFilter,
+	//	DeliveryFailedFilter,
+	//	ReturnRequestPendingFilter,
+	//	ReturnRequestRejectedFilter,
+	//	ReturnShipmentPendingFilter,
+	//	ReturnShippedFilter,
+	//	ReturnDeliveryPendingFilter,
+	//	ReturnDeliveryDelayedFilter,
+	//	ReturnDeliveredFilter,
+	//	ReturnDeliveryFailedFilter,
+	//	PayToSellerFilter,
+	//}
 
 	reqFilters[SellerOrderList] = []FilterValue{
 		ApprovalPendingFilter,
@@ -1484,7 +1481,6 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, oid, pid uint6
 	filters["packages.deletedAt"] = nil
 	filters[genFilter[0].(string)] = genFilter[1]
 	countFilter := func() interface{} {
-
 		return []bson.M{
 			{"$match": filters},
 			{"$unwind": "$packages"},
@@ -1759,26 +1755,12 @@ func (server *Server) sellerAllOrdersHandler(ctx context.Context, pid uint64, pa
 	return response, nil
 }
 
-// todo refactor to support projection
-// TODO add not found error for FindById
 func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId uint64, filter FilterValue) (*pb.MessageResponse, error) {
-	order, err := app.Globals.OrderRepository.FindById(ctx, orderId)
+
+	pkgItem, err := app.Globals.PkgItemRepository.FindById(ctx, orderId, pid)
 	if err != nil {
-		logger.Err("sellerOrderDetailHandler() => OrderRepository.FindById failed, orderId: %d, pid: %d, filter:%s , error: %s", orderId, pid, filter, err)
+		logger.Err("sellerOrderDetailHandler() => PkgItemRepository.FindById failed, orderId: %d, pid: %d, filter:%s , error: %s", orderId, pid, filter, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-	}
-
-	var pkgItem *entities.PackageItem = nil
-	for i := 0; i < len(order.Packages); i++ {
-		if order.Packages[i].PId == pid {
-			pkgItem = &order.Packages[i]
-			break
-		}
-	}
-
-	if pkgItem == nil {
-		logger.Err("sellerOrderDetailHandler() => pid not found, orderId: %d, pid: %d, filter:%s", orderId, pid, filter)
-		return nil, status.Error(codes.Code(future.NotFound), "Pid Not Found")
 	}
 
 	sellerOrderDetailItems := make([]*pb.SellerOrderDetail_ItemDetail, 0, 32)
@@ -1821,7 +1803,7 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId
 					total, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Total.Amount)
 					if err != nil {
 						logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Total invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							pkgItem.Subpackages[i].Items[j].Invoice.Total.Amount, order.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
+							pkgItem.Subpackages[i].Items[j].Invoice.Total.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 					itemDetail.Invoice.Total = uint64(total.IntPart())
@@ -1829,7 +1811,7 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId
 					original, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Original.Amount)
 					if err != nil {
 						logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							pkgItem.Subpackages[i].Items[j].Invoice.Original.Amount, order.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
+							pkgItem.Subpackages[i].Items[j].Invoice.Original.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 					itemDetail.Invoice.Original = uint64(original.IntPart())
@@ -1860,20 +1842,20 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId
 		OID:       orderId,
 		PID:       pid,
 		Amount:    0,
-		RequestAt: order.CreatedAt.Format(ISO8601),
+		RequestAt: pkgItem.CreatedAt.Format(ISO8601),
 		Address: &pb.SellerOrderDetail_ShipmentAddress{
-			FirstName:     order.BuyerInfo.ShippingAddress.FirstName,
-			LastName:      order.BuyerInfo.ShippingAddress.LastName,
-			Address:       order.BuyerInfo.ShippingAddress.Address,
-			Phone:         order.BuyerInfo.ShippingAddress.Phone,
-			Mobile:        order.BuyerInfo.ShippingAddress.Mobile,
-			Country:       order.BuyerInfo.ShippingAddress.Country,
-			City:          order.BuyerInfo.ShippingAddress.City,
-			Province:      order.BuyerInfo.ShippingAddress.Province,
-			Neighbourhood: order.BuyerInfo.ShippingAddress.Neighbourhood,
+			FirstName:     pkgItem.ShippingAddress.FirstName,
+			LastName:      pkgItem.ShippingAddress.LastName,
+			Address:       pkgItem.ShippingAddress.Address,
+			Phone:         pkgItem.ShippingAddress.Phone,
+			Mobile:        pkgItem.ShippingAddress.Mobile,
+			Country:       pkgItem.ShippingAddress.Country,
+			City:          pkgItem.ShippingAddress.City,
+			Province:      pkgItem.ShippingAddress.Province,
+			Neighbourhood: pkgItem.ShippingAddress.Neighbourhood,
 			Lat:           "",
 			Long:          "",
-			ZipCode:       order.BuyerInfo.ShippingAddress.ZipCode,
+			ZipCode:       pkgItem.ShippingAddress.ZipCode,
 		},
 		Items: sellerOrderDetailItems,
 	}
@@ -1887,9 +1869,9 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId
 	}
 	sellerOrderDetail.Amount = uint64(subtotal.IntPart())
 
-	if order.BuyerInfo.ShippingAddress.Location != nil {
-		sellerOrderDetail.Address.Lat = strconv.Itoa(int(order.BuyerInfo.ShippingAddress.Location.Coordinates[0]))
-		sellerOrderDetail.Address.Long = strconv.Itoa(int(order.BuyerInfo.ShippingAddress.Location.Coordinates[1]))
+	if pkgItem.ShippingAddress.Location != nil {
+		sellerOrderDetail.Address.Lat = strconv.Itoa(int(pkgItem.ShippingAddress.Location.Coordinates[0]))
+		sellerOrderDetail.Address.Long = strconv.Itoa(int(pkgItem.ShippingAddress.Location.Coordinates[1]))
 	}
 
 	serializedData, err := proto.Marshal(sellerOrderDetail)
