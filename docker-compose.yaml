@@ -202,7 +202,7 @@ services:
       - PORT=9099
       - APP_MODE=dev
     env_file:
-      - src/.docker-env
+      - src/.env
 
 
   redis:

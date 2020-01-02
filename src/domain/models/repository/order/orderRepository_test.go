@@ -59,13 +59,13 @@ func TestMain(m *testing.M) {
 
 	// Running Tests
 	code := m.Run()
-	removeCollection()
+	//removeCollection()
 	os.Exit(code)
 }
 
 func TestSaveOrderRepository(t *testing.T) {
 
-	defer removeCollection()
+	//defer removeCollection()
 	order := createOrder()
 	//res, _ := json.Marshal(order)
 	//logger.Audit("order model: %s",res)
