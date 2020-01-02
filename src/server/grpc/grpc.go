@@ -92,6 +92,7 @@ const (
 	DeliveryFailedFilter           FilterValue = "DeliveryFailed"
 	ReturnRequestPendingFilter     FilterValue = "ReturnRequestPending"
 	ReturnRequestRejectedFilter    FilterValue = "ReturnRequestRejected"
+	ReturnCanceledFilter           FilterValue = "ReturnCanceled"
 	ReturnShipmentPendingFilter    FilterValue = "ReturnShipmentPending"
 	ReturnShippedFilter            FilterValue = "ReturnShipped"
 	ReturnDeliveryPendingFilter    FilterValue = "ReturnDeliveryPending"
@@ -224,6 +225,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	operatorFilterStatesMap[DeliveryFailedFilter] = states.DeliveryFailed
 	operatorFilterStatesMap[ReturnRequestPendingFilter] = states.ReturnRequestPending
 	operatorFilterStatesMap[ReturnRequestRejectedFilter] = states.ReturnRequestRejected
+	operatorFilterStatesMap[ReturnCanceledFilter] = states.ReturnCanceled
 	operatorFilterStatesMap[ReturnShipmentPendingFilter] = states.ReturnShipmentPending
 	operatorFilterStatesMap[ReturnShippedFilter] = states.ReturnShipped
 	operatorFilterStatesMap[ReturnDeliveryPendingFilter] = states.ReturnDeliveryPending
@@ -246,6 +248,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	sellerFilterStatesMap[DeliveryFailedFilter] = []states.IEnumState{states.DeliveryFailed}
 	sellerFilterStatesMap[ReturnRequestPendingFilter] = []states.IEnumState{states.ReturnRequestPending}
 	sellerFilterStatesMap[ReturnRequestRejectedFilter] = []states.IEnumState{states.ReturnRequestRejected}
+	sellerFilterStatesMap[ReturnCanceledFilter] = []states.IEnumState{states.ReturnCanceled}
 	sellerFilterStatesMap[ReturnShipmentPendingFilter] = []states.IEnumState{states.ReturnShipmentPending}
 	sellerFilterStatesMap[ReturnShippedFilter] = []states.IEnumState{states.ReturnShipped}
 	sellerFilterStatesMap[ReturnDeliveryPendingFilter] = []states.IEnumState{states.ReturnDeliveryPending}
@@ -342,6 +345,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	reqFilters[SellerReturnOrderDetailList] = []FilterValue{
 		ReturnRequestPendingFilter,
 		ReturnRequestRejectedFilter,
+		ReturnCanceledFilter,
 		ReturnShipmentPendingFilter,
 		ReturnShippedFilter,
 		ReturnDeliveryPendingFilter,
@@ -390,6 +394,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	reqFilters[BuyerAllReturnOrders] = []FilterValue{
 		ReturnRequestPendingFilter,
 		ReturnRequestRejectedFilter,
+		ReturnCanceledFilter,
 		ReturnShipmentPendingFilter,
 		ReturnShippedFilter,
 		ReturnDeliveryPendingFilter,
@@ -399,12 +404,14 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		ReturnRejectedFilter,
 	}
 
-	return Server{flowManager: flowManager, address: address, port: port,
+	return Server{
+		flowManager: flowManager, address: address, port: port,
 		requestFilters:      reqFilters,
 		buyerFilterStates:   buyerStatesMap,
 		sellerFilterStates:  sellerFilterStatesMap,
 		operatorFilterState: operatorFilterStatesMap,
-		actionStates:        actionStateMap}
+		actionStates:        actionStateMap,
+	}
 }
 
 func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
@@ -543,7 +550,8 @@ func (server *Server) buyerGeneratePipelineFilter(ctx context.Context, filter Fi
 		newFilter[0] = "$or"
 		newFilter[1] = bson.A{
 			bson.M{"packages.subpackages.status": states.ReturnRequestPending.StateName()},
-			bson.M{"packages.subpackages.status": states.ReturnRequestRejected.StateName()}}
+			bson.M{"packages.subpackages.status": states.ReturnRequestRejected.StateName()},
+			bson.M{"packages.subpackages.tracking.history.name": states.ReturnCanceled.StateName()}}
 	} else if filter == ReturnShipmentPendingFilter {
 		newFilter[0] = "packages.subpackages.status"
 		newFilter[1] = server.buyerFilterStates[filter][0].StateName()
@@ -578,6 +586,10 @@ func (server *Server) sellerGeneratePipelineFilter(ctx context.Context, filter F
 		newFilter[0] = "packages.subpackages.tracking.history.name"
 		newFilter[1] = server.sellerFilterStates[filter][0].StateName()
 
+	} else if filter == ReturnCanceledFilter {
+		newFilter[0] = "packages.subpackages.tracking.history.name"
+		newFilter[1] = server.sellerFilterStates[filter][0].StateName()
+
 	} else if filter == ReturnDeliveryFailedFilter {
 		newFilter[0] = "packages.subpackages.tracking.history.name"
 		newFilter[1] = server.sellerFilterStates[filter][0].StateName()
@@ -593,6 +605,30 @@ func (server *Server) sellerGeneratePipelineFilter(ctx context.Context, filter F
 		newFilter[1] = bson.A{
 			bson.M{"packages.subpackages.tracking.history.name": states.CanceledBySeller.StateName()},
 			bson.M{"packages.subpackages.tracking.history.name": states.CanceledByBuyer.StateName()}}
+
+	} else {
+		newFilter[0] = "packages.subpackages.status"
+		newFilter[1] = server.sellerFilterStates[filter][0].StateName()
+
+	}
+
+	return newFilter
+}
+
+func (server *Server) OperatorGeneratePipelineFilter(ctx context.Context, filter FilterValue) []interface{} {
+
+	newFilter := make([]interface{}, 2)
+	if filter == CanceledBySellerFilter ||
+		filter == CanceledByBuyerFilter ||
+		filter == DeliveryFailedFilter ||
+		filter == ReturnDeliveryFailedFilter ||
+		filter == ReturnCanceledFilter ||
+		filter == PaymentSuccessFilter ||
+		filter == OrderVerificationFailedFilter ||
+		filter == OrderVerificationPendingFilter ||
+		filter == OrderVerificationSuccessFilter {
+		newFilter[0] = "packages.subpackages.tracking.history.name"
+		newFilter[1] = server.operatorFilterState[filter].StateName()
 
 	} else {
 		newFilter[0] = "packages.subpackages.status"
@@ -853,7 +889,6 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 	return response, nil
 }
 
-// TODO refactor filter for optimization
 func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, filter FilterValue, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
 
@@ -869,8 +904,9 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 		return server.operatorGetOrderByIdHandler(ctx, oid, filter)
 	} else {
 		if filter != "" {
+			filters := server.OperatorGeneratePipelineFilter(ctx, filter)
 			orderFilter = func() (interface{}, string, int) {
-				return bson.D{{"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.operatorFilterState[filter].StateName()}},
+				return bson.D{{"deletedAt", nil}, {filters[0].(string), filters[1]}},
 					sortName, sortDirect
 			}
 		} else {
@@ -1252,114 +1288,118 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 
 func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint64, filter FilterValue) (*pb.MessageResponse, error) {
 
-	var orderFilter func() interface{}
-	if filter != "" {
-		orderFilter = func() interface{} {
-			return bson.D{{"orderId", oid}, {"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.operatorFilterState[filter].StateName()}}
-		}
-	} else {
-		orderFilter = func() interface{} {
-			return bson.D{{"orderId", oid}, {"deletedAt", nil}}
-		}
-	}
+	//var orderFilter func() interface{}
+	//if filter != "" {
+	//	orderFilter = func() interface{} {
+	//		return bson.D{{"orderId", oid}, {"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.operatorFilterState[filter].StateName()}}
+	//	}
+	//} else {
+	//	orderFilter = func() interface{} {
+	//		return bson.D{{"orderId", oid}, {"deletedAt", nil}}
+	//	}
+	//}
+	//
+	//orderList, err := app.Globals.OrderRepository.FindByFilter(ctx, orderFilter)
+	//if err != nil {
+	//	logger.Err("operatorGetOrderByIdHandler() => CountWithFilter failed,  oid: %d, filterValue: %s, error: %s", oid, filter, err)
+	//	return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	//}
+	//
+	//if orderList == nil || len(orderList) == 0 {
+	//	logger.Err("operatorGetOrderByIdHandler() => orderId not found, orderId: %d, filter:%s", oid, filter)
+	//	return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
+	//}
 
-	orderList, err := app.Globals.OrderRepository.FindByFilter(ctx, orderFilter)
+	findOrder, err := app.Globals.OrderRepository.FindById(ctx, oid)
 	if err != nil {
-		logger.Err("operatorGetOrderByIdHandler() => CountWithFilter failed,  oid: %d, filterValue: %s, error: %s", oid, filter, err)
+		logger.Err("operatorGetOrderByIdHandler() => OrderRepository.FindById,  oid: %d, filterValue: %s, error: %s", oid, filter, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
-	if orderList == nil || len(orderList) == 0 {
-		logger.Err("operatorGetOrderByIdHandler() => orderId not found, orderId: %d, filter:%s", oid, filter)
-		return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
+	operatorOrders := make([]*pb.OperatorOrderList_Order, 0, 1)
+	order := &pb.OperatorOrderList_Order{
+		OrderId:     findOrder.OrderId,
+		BuyerId:     findOrder.BuyerInfo.BuyerId,
+		PurchasedOn: findOrder.CreatedAt.Format(ISO8601),
+		BasketSize:  0,
+		BillTo:      findOrder.BuyerInfo.FirstName + " " + findOrder.BuyerInfo.LastName,
+		ShipTo:      findOrder.BuyerInfo.ShippingAddress.FirstName + " " + findOrder.BuyerInfo.ShippingAddress.LastName,
+		Platform:    findOrder.Platform,
+		IP:          findOrder.BuyerInfo.IP,
+		Status:      findOrder.Status,
+		Invoice: &pb.OperatorOrderList_Order_Invoice{
+			GrandTotal:     0,
+			Subtotal:       0,
+			Shipment:       0,
+			Voucher:        0,
+			PaymentStatus:  "",
+			PaymentMethod:  findOrder.Invoice.PaymentMethod,
+			PaymentGateway: findOrder.Invoice.PaymentGateway,
+		},
 	}
 
-	operatorOrders := make([]*pb.OperatorOrderList_Order, 0, len(orderList))
-	for i := 0; i < len(orderList); i++ {
-		order := &pb.OperatorOrderList_Order{
-			OrderId:     orderList[i].OrderId,
-			BuyerId:     orderList[i].BuyerInfo.BuyerId,
-			PurchasedOn: orderList[i].CreatedAt.Format(ISO8601),
-			BasketSize:  0,
-			BillTo:      orderList[i].BuyerInfo.FirstName + " " + orderList[i].BuyerInfo.LastName,
-			ShipTo:      orderList[i].BuyerInfo.ShippingAddress.FirstName + " " + orderList[i].BuyerInfo.ShippingAddress.LastName,
-			Platform:    orderList[i].Platform,
-			IP:          orderList[i].BuyerInfo.IP,
-			Status:      orderList[i].Status,
-			Invoice: &pb.OperatorOrderList_Order_Invoice{
-				GrandTotal:     0,
-				Subtotal:       0,
-				Shipment:       0,
-				Voucher:        0,
-				PaymentStatus:  "",
-				PaymentMethod:  orderList[i].Invoice.PaymentMethod,
-				PaymentGateway: orderList[i].Invoice.PaymentGateway,
-			},
-		}
+	grandTotal, err := decimal.NewFromString(findOrder.Invoice.GrandTotal.Amount)
+	if err != nil {
+		logger.Err("operatorGetOrderByIdHandler() => decimal.NewFromString failed, GrandTotal invalid, grandTotal: %s, orderId: %d, error:%s",
+			findOrder.Invoice.GrandTotal.Amount, findOrder.OrderId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+	order.Invoice.GrandTotal = uint64(grandTotal.IntPart())
 
-		grandTotal, err := decimal.NewFromString(orderList[i].Invoice.GrandTotal.Amount)
-		if err != nil {
-			logger.Err("operatorGetOrderByIdHandler() => decimal.NewFromString failed, GrandTotal invalid, grandTotal: %s, orderId: %d, error:%s",
-				orderList[i].Invoice.GrandTotal.Amount, orderList[i].OrderId, err)
-			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-		}
-		order.Invoice.GrandTotal = uint64(grandTotal.IntPart())
+	subtotal, err := decimal.NewFromString(findOrder.Invoice.Subtotal.Amount)
+	if err != nil {
+		logger.Err("operatorGetOrderByIdHandler() => decimal.NewFromString failed, Subtotal invalid, subtotal: %s, orderId: %d, error:%s",
+			findOrder.Invoice.Subtotal.Amount, findOrder.OrderId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+	order.Invoice.Subtotal = uint64(subtotal.IntPart())
 
-		subtotal, err := decimal.NewFromString(orderList[i].Invoice.Subtotal.Amount)
-		if err != nil {
-			logger.Err("operatorGetOrderByIdHandler() => decimal.NewFromString failed, Subtotal invalid, subtotal: %s, orderId: %d, error:%s",
-				orderList[i].Invoice.Subtotal.Amount, orderList[i].OrderId, err)
-			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-		}
-		order.Invoice.Subtotal = uint64(subtotal.IntPart())
+	shipmentTotal, err := decimal.NewFromString(findOrder.Invoice.ShipmentTotal.Amount)
+	if err != nil {
+		logger.Err("operatorGetOrderByIdHandler() => decimal.NewFromString failed, shipmentTotal invalid, shipmentTotal: %s, orderId: %d, error:%s",
+			findOrder.Invoice.ShipmentTotal.Amount, findOrder.OrderId, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+	order.Invoice.Shipment = uint64(shipmentTotal.IntPart())
 
-		shipmentTotal, err := decimal.NewFromString(orderList[i].Invoice.ShipmentTotal.Amount)
-		if err != nil {
-			logger.Err("operatorGetOrderByIdHandler() => decimal.NewFromString failed, shipmentTotal invalid, shipmentTotal: %s, orderId: %d, error:%s",
-				orderList[i].Invoice.ShipmentTotal.Amount, orderList[i].OrderId, err)
-			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-		}
-		order.Invoice.Shipment = uint64(shipmentTotal.IntPart())
-
-		if orderList[i].Invoice.Voucher != nil {
-			if orderList[i].Invoice.Voucher.Percent > 0 {
-				order.Invoice.Voucher = float32(orderList[i].Invoice.Voucher.Percent)
-			} else {
-				var voucherAmount decimal.Decimal
-				if orderList[i].Invoice.Voucher.Price != nil {
-					voucherAmount, err = decimal.NewFromString(orderList[i].Invoice.Voucher.Price.Amount)
-					if err != nil {
-						logger.Err("operatorGetOrderByIdHandler() => decimal.NewFromString failed, order.Invoice.Voucher.Price.Amount invalid, price: %s, orderId: %d, error: %s",
-							orderList[i].Invoice.Voucher.Price.Amount, order.OrderId, err)
-						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-					}
-				}
-				order.Invoice.Voucher = float32(voucherAmount.IntPart())
-			}
-		}
-
-		if orderList[i].OrderPayment != nil &&
-			len(orderList[i].OrderPayment) > 0 &&
-			orderList[i].OrderPayment[0].PaymentResult != nil {
-			if orderList[i].OrderPayment[0].PaymentResult.Result {
-				order.Invoice.PaymentStatus = "success"
-			} else {
-				order.Invoice.PaymentStatus = "fail"
-			}
+	if findOrder.Invoice.Voucher != nil {
+		if findOrder.Invoice.Voucher.Percent > 0 {
+			order.Invoice.Voucher = float32(findOrder.Invoice.Voucher.Percent)
 		} else {
-			order.Invoice.PaymentStatus = "pending"
-		}
-
-		for j := 0; j < len(orderList[i].Packages); j++ {
-			for z := 0; z < len(orderList[i].Packages[j].Subpackages); z++ {
-				for t := 0; t < len(orderList[i].Packages[j].Subpackages[z].Items); t++ {
-					order.BasketSize += orderList[i].Packages[j].Subpackages[z].Items[t].Quantity
+			var voucherAmount decimal.Decimal
+			if findOrder.Invoice.Voucher.Price != nil {
+				voucherAmount, err = decimal.NewFromString(findOrder.Invoice.Voucher.Price.Amount)
+				if err != nil {
+					logger.Err("operatorGetOrderByIdHandler() => decimal.NewFromString failed, order.Invoice.Voucher.Price.Amount invalid, price: %s, orderId: %d, error: %s",
+						findOrder.Invoice.Voucher.Price.Amount, order.OrderId, err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 				}
 			}
+			order.Invoice.Voucher = float32(voucherAmount.IntPart())
 		}
-
-		operatorOrders = append(operatorOrders, order)
 	}
+
+	if findOrder.OrderPayment != nil &&
+		len(findOrder.OrderPayment) > 0 &&
+		findOrder.OrderPayment[0].PaymentResult != nil {
+		if findOrder.OrderPayment[0].PaymentResult.Result {
+			order.Invoice.PaymentStatus = "success"
+		} else {
+			order.Invoice.PaymentStatus = "fail"
+		}
+	} else {
+		order.Invoice.PaymentStatus = "pending"
+	}
+
+	for j := 0; j < len(findOrder.Packages); j++ {
+		for z := 0; z < len(findOrder.Packages[j].Subpackages); z++ {
+			for t := 0; t < len(findOrder.Packages[j].Subpackages[z].Items); t++ {
+				order.BasketSize += findOrder.Packages[j].Subpackages[z].Items[t].Quantity
+			}
+		}
+	}
+
+	operatorOrders = append(operatorOrders, order)
 
 	operatorOrderList := &pb.OperatorOrderList{
 		Orders: operatorOrders,
@@ -1890,57 +1930,62 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId
 	return response, nil
 }
 
-// TODO should be refactor and projection pkg
 func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pid uint64, filter FilterValue, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
 	if page <= 0 || perPage <= 0 {
 		logger.Err("sellerOrderReturnDetailListHandler() => page or perPage invalid, pid: %d, filterValue: %s, page: %d, perPage: %d", pid, filter, page, perPage)
 		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
 	}
-	//
-	//countFilter := func() interface{} {
-	//	return []bson.M{
-	//		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil, "packages.subpackages.status": filter}},
-	//		{"$project": bson.M{"subSize": 1}},
-	//		{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": "$subSize"}}},
-	//		{"$project": bson.M{"_id": 0, "count": 1}},
-	//	}
-	//}
-	//
-	//var totalCount, err = app.Globals.PkgItemRepository.CountWithFilter(ctx, countFilter)
-	//if err != nil {
-	//	logger.Err("sellerOrderReturnDetailListHandler() => CountWithFilter failed,  sellerId: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
-	//	return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-	//}
-	//
-	//if totalCount == 0 {
-	//	logger.Err("sellerOrderReturnDetailListHandler() => total count is zero,  sellerId: %d, filterValue: %s, page: %d, perPage: %d", pid, filter, page, perPage)
-	//	return nil, status.Error(codes.Code(future.NotFound), "Not Found")
-	//}
-	//
-	//// total 160 page=6 perPage=30
-	//var availablePages int64
-	//
-	//if totalCount%int64(perPage) != 0 {
-	//	availablePages = (totalCount / int64(perPage)) + 1
-	//} else {
-	//	availablePages = totalCount / int64(perPage)
-	//}
-	//
-	//if totalCount < int64(perPage) {
-	//	availablePages = 1
-	//}
-	//
-	//if availablePages < int64(page) {
-	//	logger.Err("sellerOrderListHandler() => availablePages less than page, availablePages: %d, sellerId: %d, filterValue: %s, page: %d, perPage: %d", availablePages, pid, filter, page, perPage)
-	//	return nil, status.Error(codes.Code(future.NotFound), "Not Found")
-	//}
-	//
-	//var offset = (page - 1) * perPage
-	//if int64(offset) >= totalCount {
-	//	logger.Err("sellerOrderListHandler() => offset invalid, offset: %d, sellerId: %d, filterValue: %s, page: %d, perPage: %d", offset, pid, filter, page, perPage)
-	//	return nil, status.Error(codes.Code(future.NotFound), "Not Found")
-	//}
+
+	genFilter := server.sellerGeneratePipelineFilter(ctx, filter)
+	filters := make(bson.M, 3)
+	filters["packages.pid"] = pid
+	filters["packages.deletedAt"] = nil
+	filters[genFilter[0].(string)] = genFilter[1]
+	countFilter := func() interface{} {
+		return []bson.M{
+			{"$match": filters},
+			{"$unwind": "$packages"},
+			{"$match": filters},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	var totalCount, err = app.Globals.PkgItemRepository.CountWithFilter(ctx, countFilter)
+	if err != nil {
+		logger.Err("sellerOrderReturnDetailListHandler() => CountWithFilter failed,  pid: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	if totalCount == 0 {
+		logger.Err("sellerOrderReturnDetailListHandler() => total count is zero,  pid: %d, filterValue: %s, page: %d, perPage: %d", pid, filter, page, perPage)
+		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	}
+
+	// total 160 page=6 perPage=30
+	var availablePages int64
+
+	if totalCount%int64(perPage) != 0 {
+		availablePages = (totalCount / int64(perPage)) + 1
+	} else {
+		availablePages = totalCount / int64(perPage)
+	}
+
+	if totalCount < int64(perPage) {
+		availablePages = 1
+	}
+
+	if availablePages < int64(page) {
+		logger.Err("sellerOrderReturnDetailListHandler() => availablePages less than page, availablePages: %d, pid: %d, filterValue: %s, page: %d, perPage: %d", availablePages, pid, filter, page, perPage)
+		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	}
+
+	var offset = (page - 1) * perPage
+	if int64(offset) >= totalCount {
+		logger.Err("sellerOrderReturnDetailListHandler() => offset invalid, offset: %d, pid: %d, filterValue: %s, page: %d, perPage: %d", offset, pid, filter, page, perPage)
+		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
+	}
 
 	var sortDirect int
 	if direction == "ASC" {
@@ -1949,225 +1994,158 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 		sortDirect = -1
 	}
 
-	//pkgFilter := func() interface{} {
-	//	return []bson.M{
-	//		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil, "packages.subpackages.status": filter}},
-	//		{"$unwind": "$packages"},
-	//		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
-	//		{"$project": bson.M{"_id": 0, "packages": 1}},
-	//		{"$sort": bson.M{"packages.subpackages." + sortName: sortDirect}},
-	//		{"$skip": offset},
-	//		{"$limit": perPage},
-	//		{"$replaceRoot": bson.M{"newRoot": "$packages"}},
-	//	}
-	//}
-
-	var returnFilter bson.D
-
-	switch filter {
-	case ReturnRequestPendingFilter:
-		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.status", states.ReturnRequestPending.StateName()}}
-		break
-	case ReturnRequestRejectedFilter:
-		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.status", states.ReturnRequestRejected.StateName()}}
-		break
-	case ReturnShipmentPendingFilter:
-		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.status", states.ReturnShipmentPending.StateName()}}
-		break
-	case ReturnShippedFilter:
-		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.status", states.ReturnShipped.StateName()}}
-		break
-	case ReturnDeliveryPendingFilter:
-		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.status", states.ReturnDeliveryPending.StateName()}}
-		break
-	case ReturnDeliveryDelayedFilter:
-		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.status", states.ReturnDeliveryDelayed.StateName()}}
-		break
-	case ReturnDeliveredFilter:
-		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.status", states.ReturnDelivered.StateName()}}
-		break
-	case ReturnDeliveryFailedFilter:
-		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.tracking.history.name", states.ReturnDeliveryFailed.StateName()}}
-		break
-	case ReturnRejectedFilter:
-		returnFilter = bson.D{{"packages.pid", pid}, {"packages.deletedAt", nil}, {"packages.subpackages.status", states.ReturnRejected.StateName()}}
-		break
+	pkgFilter := func() interface{} {
+		return []bson.M{
+			{"$match": filters},
+			{"$unwind": "$packages"},
+			{"$match": filters},
+			{"$project": bson.M{"_id": 0, "packages": 1}},
+			{"$sort": bson.M{"packages.subpackages." + sortName: sortDirect}},
+			{"$skip": offset},
+			{"$limit": perPage},
+			{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+		}
 	}
 
-	//if filter == ReturnDeliveredFilter {
-	//	returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"$or", bson.A{
-	//		bson.D{{"packages.subpackages.status", states.ReturnDeliveryPending.StateName()}},
-	//		bson.D{{"packages.subpackages.status", states.ReturnDeliveryDelayed.StateName()}},
-	//		bson.D{{"packages.subpackages.status", states.ReturnDelivered.StateName()}}}}}
-	//} else if filter == DeliveryFailedFilter {
-	//	returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.buyerFilterStates[filter][0].StateName()}}
-	//} else if filter == ReturnRequestPendingFilter {
-	//	returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"$or", bson.A{
-	//		bson.D{{"packages.subpackages.status", states.ReturnRequestPending.StateName()}},
-	//		bson.D{{"packages.subpackages.status", states.ReturnRequestRejected.StateName()}}}}}
-	//} else {
-	//	returnFilter = bson.D{{"packages.pid", pid}, {"deletedAt", nil}, {"packages.subpackages.status", server.buyerFilterStates[filter][0].StateName()}}
-	//}
-
-	//genFilter := server.buyerGeneratePipelineFilter(ctx, filter)
-	//filters := make(bson.M, 3)
-	//filters["packages.pid"] = pid
-	//filters["packages.deletedAt"] = nil
-	//filters[genFilter[0].(string)] = genFilter[1]
-	//pkgFilter := func() (interface{}, string, int) {
-	//	return []bson.M{{"$match": filters}}, sortName, sortDirect
-	//}
-
-	pkgFilter := func() (interface{}, string, int) {
-		return returnFilter, sortName, sortDirect
-	}
-
-	orderList, total, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, pkgFilter, int64(page), int64(perPage))
+	pkgList, err := app.Globals.PkgItemRepository.FindByFilter(ctx, pkgFilter)
 	if err != nil {
 		logger.Err("sellerOrderReturnDetailListHandler() => FindByFilter failed, pid: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
-	filterMap := make(map[string]string, 3)
-	for _, enumState := range server.sellerFilterStates[filter] {
-		filterMap[enumState.StateName()] = enumState.StateName()
-	}
-
-	sellerReturnOrderList := make([]*pb.SellerReturnOrderDetailList_ReturnOrderDetail, 0, len(orderList))
+	sellerReturnOrderList := make([]*pb.SellerReturnOrderDetailList_ReturnOrderDetail, 0, len(pkgList))
 	var itemDetailList []*pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item
 
-	for i := 0; i < len(orderList); i++ {
+	for i := 0; i < len(pkgList); i++ {
 		itemDetailList = nil
-		for j := 0; j < len(orderList[i].Packages); j++ {
-			if orderList[i].Packages[j].PId == pid {
-				for z := 0; z < len(orderList[i].Packages[j].Subpackages); z++ {
-					if _, ok := filterMap[orderList[i].Packages[j].Subpackages[z].Status]; ok {
-						itemDetailList = make([]*pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item, 0, len(orderList[i].Packages[j].Subpackages[z].Items))
-						for t := 0; t < len(orderList[i].Packages[j].Subpackages[z].Items); t++ {
-							itemOrder := &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item{
-								SID:    orderList[i].Packages[j].Subpackages[z].SId,
-								Sku:    orderList[i].Packages[j].Subpackages[z].Items[t].SKU,
-								Status: orderList[i].Packages[j].Subpackages[z].Status,
-								SIdx:   int32(states.FromString(orderList[i].Packages[j].Subpackages[z].Status).StateIndex()),
-								Detail: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item_Detail{
-									InventoryId:     orderList[i].Packages[j].Subpackages[z].Items[t].InventoryId,
-									Title:           orderList[i].Packages[j].Subpackages[z].Items[t].Title,
-									Brand:           orderList[i].Packages[j].Subpackages[z].Items[t].Brand,
-									Category:        orderList[i].Packages[j].Subpackages[z].Items[t].Category,
-									Guaranty:        orderList[i].Packages[j].Subpackages[z].Items[t].Guaranty,
-									Image:           orderList[i].Packages[j].Subpackages[z].Items[t].Image,
-									Returnable:      orderList[i].Packages[j].Subpackages[z].Items[t].Returnable,
-									Quantity:        orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
-									Attributes:      orderList[i].Packages[j].Subpackages[z].Items[t].Attributes,
-									ReturnRequestAt: "",
-									ReturnShippedAt: "",
-									Invoice: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item_Detail_Invoice{
-										Unit:             0,
-										Total:            0,
-										Original:         0,
-										Special:          0,
-										Discount:         0,
-										SellerCommission: orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.SellerCommission,
-										Currency:         "IRR",
-									},
+		for j := 0; j < len(pkgList[i].Subpackages); j++ {
+			for _, state := range server.sellerFilterStates[filter] {
+				if pkgList[i].Subpackages[i].Status == state.StateName() {
+					itemDetailList = make([]*pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item, 0, len(pkgList[i].Subpackages[j].Items))
+					for z := 0; z < len(pkgList[i].Subpackages[j].Items); z++ {
+						itemOrder := &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item{
+							SID:    pkgList[i].Subpackages[j].SId,
+							Sku:    pkgList[i].Subpackages[j].Items[z].SKU,
+							Status: pkgList[i].Subpackages[j].Status,
+							SIdx:   int32(states.FromString(pkgList[i].Subpackages[j].Status).StateIndex()),
+							Detail: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item_Detail{
+								InventoryId:     pkgList[i].Subpackages[j].Items[z].InventoryId,
+								Title:           pkgList[i].Subpackages[j].Items[z].Title,
+								Brand:           pkgList[i].Subpackages[j].Items[z].Brand,
+								Category:        pkgList[i].Subpackages[j].Items[z].Category,
+								Guaranty:        pkgList[i].Subpackages[j].Items[z].Guaranty,
+								Image:           pkgList[i].Subpackages[j].Items[z].Image,
+								Returnable:      pkgList[i].Subpackages[j].Items[z].Returnable,
+								Quantity:        pkgList[i].Subpackages[j].Items[z].Quantity,
+								Attributes:      pkgList[i].Subpackages[j].Items[z].Attributes,
+								ReturnRequestAt: "",
+								ReturnShippedAt: "",
+								Invoice: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item_Detail_Invoice{
+									Unit:             0,
+									Total:            0,
+									Original:         0,
+									Special:          0,
+									Discount:         0,
+									SellerCommission: pkgList[i].Subpackages[j].Items[z].Invoice.SellerCommission,
+									Currency:         "IRR",
 								},
-							}
-
-							unit, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount)
-							if err != nil {
-								logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Unit invalid, unit: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-									orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
-								return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-							}
-							itemOrder.Detail.Invoice.Unit = uint64(unit.IntPart())
-
-							total, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount)
-							if err != nil {
-								logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Total invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-									orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
-								return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-							}
-							itemOrder.Detail.Invoice.Total = uint64(total.IntPart())
-
-							original, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount)
-							if err != nil {
-								logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-									orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
-								return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-							}
-							itemOrder.Detail.Invoice.Original = uint64(original.IntPart())
-
-							special, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount)
-							if err != nil {
-								logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Special invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-									orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
-								return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-							}
-							itemOrder.Detail.Invoice.Special = uint64(special.IntPart())
-
-							discount, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount)
-							if err != nil {
-								logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Discount invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-									orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
-								return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-							}
-							itemOrder.Detail.Invoice.Discount = uint64(discount.IntPart())
-
-							if orderList[i].Packages[j].Subpackages[z].Shipments != nil &&
-								orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail != nil {
-								if orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt != nil {
-									itemOrder.Detail.ReturnRequestAt = orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt.Format(ISO8601)
-								}
-								if orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.ShippedAt != nil {
-									itemOrder.Detail.ReturnShippedAt = orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.ShippedAt.Format(ISO8601)
-								}
-							}
-
-							itemDetailList = append(itemDetailList, itemOrder)
+							},
 						}
-					}
-				}
 
-				if itemDetailList != nil {
-					returnOrderDetail := &pb.SellerReturnOrderDetailList_ReturnOrderDetail{
-						OID:       orderList[i].Packages[j].OrderId,
-						Amount:    0,
-						RequestAt: orderList[i].Packages[j].CreatedAt.Format(ISO8601),
-						Items:     itemDetailList,
-						Address: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_ShipmentAddress{
-							FirstName:     orderList[i].BuyerInfo.ShippingAddress.FirstName,
-							LastName:      orderList[i].BuyerInfo.ShippingAddress.LastName,
-							Address:       orderList[i].BuyerInfo.ShippingAddress.Address,
-							Phone:         orderList[i].BuyerInfo.ShippingAddress.Phone,
-							Mobile:        orderList[i].BuyerInfo.ShippingAddress.Mobile,
-							Country:       orderList[i].BuyerInfo.ShippingAddress.Country,
-							City:          orderList[i].BuyerInfo.ShippingAddress.City,
-							Province:      orderList[i].BuyerInfo.ShippingAddress.Province,
-							Neighbourhood: orderList[i].BuyerInfo.ShippingAddress.Neighbourhood,
-							Lat:           "",
-							Long:          "",
-							ZipCode:       orderList[i].BuyerInfo.ShippingAddress.ZipCode,
-						},
-					}
+						unit, err := decimal.NewFromString(pkgList[i].Subpackages[j].Items[z].Invoice.Unit.Amount)
+						if err != nil {
+							logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Unit invalid, unit: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+								pkgList[i].Subpackages[j].Items[z].Invoice.Unit.Amount, pkgList[i].OrderId, pkgList[i].PId, pkgList[i].Subpackages[j].SId, err)
+							return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+						}
+						itemOrder.Detail.Invoice.Unit = uint64(unit.IntPart())
 
-					subtotal, err := decimal.NewFromString(orderList[i].Packages[j].Invoice.Subtotal.Amount)
-					if err != nil {
-						logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, pkgItem.Invoice.Subtotal invalid, subtotal: %s, orderId: %d, pid: %d, error: %s",
-							orderList[i].Packages[j].Invoice.Subtotal.Amount, orderList[i].Packages[j].OrderId, orderList[i].Packages[j].PId, err)
-						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+						total, err := decimal.NewFromString(pkgList[i].Subpackages[j].Items[z].Invoice.Total.Amount)
+						if err != nil {
+							logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Total invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+								pkgList[i].Subpackages[j].Items[z].Invoice.Total.Amount, pkgList[i].Subpackages[j].OrderId, pkgList[i].Subpackages[j].PId, pkgList[i].Subpackages[j].SId, err)
+							return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+						}
+						itemOrder.Detail.Invoice.Total = uint64(total.IntPart())
 
-					}
-					returnOrderDetail.Amount = uint64(subtotal.IntPart())
+						original, err := decimal.NewFromString(pkgList[i].Subpackages[j].Items[z].Invoice.Original.Amount)
+						if err != nil {
+							logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+								pkgList[i].Subpackages[j].Items[z].Invoice.Original.Amount, pkgList[i].Subpackages[j].OrderId, pkgList[i].Subpackages[j].PId, pkgList[i].Subpackages[j].SId, err)
+							return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+						}
+						itemOrder.Detail.Invoice.Original = uint64(original.IntPart())
 
-					if orderList[i].BuyerInfo.ShippingAddress.Location != nil {
-						returnOrderDetail.Address.Lat = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[0]))
-						returnOrderDetail.Address.Long = strconv.Itoa(int(orderList[i].BuyerInfo.ShippingAddress.Location.Coordinates[1]))
+						special, err := decimal.NewFromString(pkgList[i].Subpackages[j].Items[z].Invoice.Special.Amount)
+						if err != nil {
+							logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Special invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+								pkgList[i].Subpackages[j].Items[z].Invoice.Special.Amount, pkgList[i].Subpackages[j].OrderId, pkgList[i].Subpackages[j].PId, pkgList[i].Subpackages[j].SId, err)
+							return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+						}
+						itemOrder.Detail.Invoice.Special = uint64(special.IntPart())
+
+						discount, err := decimal.NewFromString(pkgList[i].Subpackages[j].Items[z].Invoice.Discount.Amount)
+						if err != nil {
+							logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Discount invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+								pkgList[i].Subpackages[j].Items[z].Invoice.Discount.Amount, pkgList[i].Subpackages[j].OrderId, pkgList[i].Subpackages[j].PId, pkgList[i].Subpackages[j].SId, err)
+							return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+						}
+						itemOrder.Detail.Invoice.Discount = uint64(discount.IntPart())
+
+						if pkgList[i].Subpackages[j].Shipments != nil &&
+							pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail != nil {
+							if pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.RequestedAt != nil {
+								itemOrder.Detail.ReturnRequestAt = pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.RequestedAt.Format(ISO8601)
+							}
+							if pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.ShippedAt != nil {
+								itemOrder.Detail.ReturnShippedAt = pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.ShippedAt.Format(ISO8601)
+							}
+						}
+
+						itemDetailList = append(itemDetailList, itemOrder)
 					}
-					sellerReturnOrderList = append(sellerReturnOrderList, returnOrderDetail)
-				} else {
-					logger.Err("sellerOrderReturnDetailListHandler() => get item from orderList failed, orderId: %d pid: %d, filterValue: %s, page: %d, perPage: %d", orderList[i].OrderId, pid, filter, page, perPage)
 				}
 			}
+		}
+
+		if itemDetailList != nil {
+			returnOrderDetail := &pb.SellerReturnOrderDetailList_ReturnOrderDetail{
+				OID:       pkgList[i].OrderId,
+				Amount:    0,
+				RequestAt: pkgList[i].CreatedAt.Format(ISO8601),
+				Items:     itemDetailList,
+				Address: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_ShipmentAddress{
+					FirstName:     pkgList[i].ShippingAddress.FirstName,
+					LastName:      pkgList[i].ShippingAddress.LastName,
+					Address:       pkgList[i].ShippingAddress.Address,
+					Phone:         pkgList[i].ShippingAddress.Phone,
+					Mobile:        pkgList[i].ShippingAddress.Mobile,
+					Country:       pkgList[i].ShippingAddress.Country,
+					City:          pkgList[i].ShippingAddress.City,
+					Province:      pkgList[i].ShippingAddress.Province,
+					Neighbourhood: pkgList[i].ShippingAddress.Neighbourhood,
+					Lat:           "",
+					Long:          "",
+					ZipCode:       pkgList[i].ShippingAddress.ZipCode,
+				},
+			}
+
+			subtotal, err := decimal.NewFromString(pkgList[i].Invoice.Subtotal.Amount)
+			if err != nil {
+				logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, pkgItem.Invoice.Subtotal invalid, subtotal: %s, orderId: %d, pid: %d, error: %s",
+					pkgList[i].Invoice.Subtotal.Amount, pkgList[i].OrderId, pkgList[i].PId, err)
+				return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+
+			}
+			returnOrderDetail.Amount = uint64(subtotal.IntPart())
+
+			if pkgList[i].ShippingAddress.Location != nil {
+				returnOrderDetail.Address.Lat = strconv.Itoa(int(pkgList[i].ShippingAddress.Location.Coordinates[0]))
+				returnOrderDetail.Address.Long = strconv.Itoa(int(pkgList[i].ShippingAddress.Location.Coordinates[1]))
+			}
+			sellerReturnOrderList = append(sellerReturnOrderList, returnOrderDetail)
+		} else {
+			logger.Err("sellerOrderReturnDetailListHandler() => get item from orderList failed, orderId: %d pid: %d, filterValue: %s, page: %d, perPage: %d", pkgList[i].OrderId, pid, filter, page, perPage)
 		}
 	}
 
@@ -2185,7 +2163,7 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 	response := &pb.MessageResponse{
 		Entity: "SellerReturnOrderDetailList",
 		Meta: &pb.ResponseMetadata{
-			Total:   uint32(total),
+			Total:   uint32(totalCount),
 			Page:    page,
 			PerPage: perPage,
 		},
