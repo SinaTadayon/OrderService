@@ -174,6 +174,18 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 			return nil, errors.New("Items of RequestNewOrder is empty")
 		}
 
+		if pkgDto.Invoice.ShipmentPrice == nil {
+			return nil, errors.New("ShipmentPrice of Invoice is nil")
+		}
+
+		if pkgDto.Invoice.Discount == nil {
+			return nil, errors.New("Discount of Invoice is nil")
+		}
+
+		if pkgDto.Invoice.Subtotal == nil {
+			return nil, errors.New("Subtotal of Invoice is nil")
+		}
+
 		var pkgItem = entities.PackageItem{
 			PId:         pkgDto.SellerId,
 			OrderId:     0,
@@ -219,6 +231,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 					Currency: pkgDto.Invoice.ShipmentPrice.Currency,
 				},
 			},
+
 			ShipmentSpec: entities.ShipmentSpec{
 				CarrierNames:   pkgDto.Shipment.CarrierNames,
 				CarrierProduct: pkgDto.Shipment.CarrierProduct,
