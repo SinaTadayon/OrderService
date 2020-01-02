@@ -14,7 +14,6 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"path"
-	"runtime/debug"
 	"strconv"
 	"time"
 
@@ -29,11 +28,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	//grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
-	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 
 	"gitlab.faza.io/go-framework/logger"
 	"go.uber.org/zap"
@@ -4190,37 +4184,38 @@ func (server Server) Start() {
 	}
 	logger.Audit("app started at %s:%s", server.address, port)
 
-	customFunc := func(p interface{}) (err error) {
-		logger.Err("rpc panic recovered, panic: %v, stacktrace: %v", p, string(debug.Stack()))
-		return grpc.Errorf(codes.Unknown, "panic triggered: %v", p)
-	}
+	//customFunc := func(p interface{}) (err error) {
+	//	logger.Err("rpc panic recovered, panic: %v, stacktrace: %v", p, string(debug.Stack()))
+	//	return grpc.Errorf(codes.Unknown, "panic triggered: %v", p)
+	//}
 
 	//zapLogger, _ := zap.NewProduction()
 	//stackDisableOpt := zap.AddStacktrace(stackTraceDisabler{})
 	//noStackLogger := app.Globals.ZapLogger.WithOptions(stackDisableOpt)
 
-	opts := []grpc_recovery.Option{
-		grpc_recovery.WithRecoveryHandler(customFunc),
-	}
-
-	uIntOpt := grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
-		grpc_prometheus.UnaryServerInterceptor,
-		grpc_recovery.UnaryServerInterceptor(opts...),
-		myUnaryLogger(app.Globals.Logger),
-		//grpc_zap.UnaryServerInterceptor(zapLogger),
-	))
-
-	sIntOpt := grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
-		grpc_prometheus.StreamServerInterceptor,
-		grpc_recovery.StreamServerInterceptor(opts...),
-		//grpc_zap.StreamServerInterceptor(app.Globals.ZapLogger),
-	))
-
-	// enable grpc prometheus interceptors to log timing info for grpc APIs
-	grpc_prometheus.EnableHandlingTimeHistogram()
+	//opts := []grpc_recovery.Option{
+	//	grpc_recovery.WithRecoveryHandler(customFunc),
+	//}
+	//
+	//uIntOpt := grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(
+	//	grpc_prometheus.UnaryServerInterceptor,
+	//	grpc_recovery.UnaryServerInterceptor(opts...),
+	//	myUnaryLogger(app.Globals.Logger),
+	//	//grpc_zap.UnaryServerInterceptor(zapLogger),
+	//))
+	//
+	//sIntOpt := grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+	//	grpc_prometheus.StreamServerInterceptor,
+	//	grpc_recovery.StreamServerInterceptor(opts...),
+	//	//grpc_zap.StreamServerInterceptor(app.Globals.ZapLogger),
+	//))
+	//
+	//// enable grpc prometheus interceptors to log timing info for grpc APIs
+	//grpc_prometheus.EnableHandlingTimeHistogram()
 
 	// Start GRPC server and register the server
-	grpcServer := grpc.NewServer(uIntOpt, sIntOpt)
+	//grpcServer := grpc.NewServer(uIntOpt, sIntOpt)
+	grpcServer := grpc.NewServer()
 	pb.RegisterOrderServiceServer(grpcServer, &server)
 	pg.RegisterBankResultHookServer(grpcServer, &server)
 	if err := grpcServer.Serve(lis); err != nil {
