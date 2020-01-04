@@ -179,6 +179,11 @@ func (s stackTraceDisabler) Enabled(zapcore.Level) bool {
 	return false
 }
 
+type FilterState struct {
+	expectedState states.IEnumState
+	actualState   states.IEnumState
+}
+
 type Server struct {
 	pb.UnimplementedOrderServiceServer
 	pg.UnimplementedBankResultHookServer
@@ -186,77 +191,77 @@ type Server struct {
 	address             string
 	port                uint16
 	requestFilters      map[RequestName][]FilterValue
-	buyerFilterStates   map[FilterValue][]states.IEnumState
-	sellerFilterStates  map[FilterValue][]states.IEnumState
-	operatorFilterState map[FilterValue]states.IEnumState
+	buyerFilterStates   map[FilterValue][]FilterState
+	sellerFilterStates  map[FilterValue][]FilterState
+	operatorFilterState map[FilterValue][]FilterState
 	actionStates        map[UserType][]actions.IAction
 }
 
 func NewServer(address string, port uint16, flowManager domain.IFlowManager) Server {
-	buyerStatesMap := make(map[FilterValue][]states.IEnumState, 8)
-	buyerStatesMap[ApprovalPendingFilter] = []states.IEnumState{states.ApprovalPending}
-	buyerStatesMap[ShipmentPendingFilter] = []states.IEnumState{states.ShipmentPending, states.ShipmentDelayed}
-	buyerStatesMap[ShippedFilter] = []states.IEnumState{states.Shipped}
-	buyerStatesMap[DeliveredFilter] = []states.IEnumState{states.DeliveryPending, states.DeliveryDelayed, states.Delivered}
-	buyerStatesMap[DeliveryFailedFilter] = []states.IEnumState{states.DeliveryFailed}
-	buyerStatesMap[ReturnRequestPendingFilter] = []states.IEnumState{states.ReturnRequestPending, states.ReturnRequestRejected}
-	buyerStatesMap[ReturnShipmentPendingFilter] = []states.IEnumState{states.ReturnShipmentPending}
-	buyerStatesMap[ReturnShippedFilter] = []states.IEnumState{states.ReturnShipped}
-	buyerStatesMap[ReturnDeliveredFilter] = []states.IEnumState{states.ReturnDeliveryPending, states.ReturnDeliveryDelayed, states.ReturnDelivered}
-	buyerStatesMap[ReturnDeliveryFailedFilter] = []states.IEnumState{states.ReturnDeliveryFailed}
+	buyerStatesMap := make(map[FilterValue][]FilterState, 8)
+	buyerStatesMap[ApprovalPendingFilter] = []FilterState{{states.ApprovalPending, states.ApprovalPending}}
+	buyerStatesMap[ShipmentPendingFilter] = []FilterState{{states.ShipmentPending, states.ShipmentDelayed}}
+	buyerStatesMap[ShippedFilter] = []FilterState{{states.Shipped, states.Shipped}}
+	buyerStatesMap[DeliveredFilter] = []FilterState{{states.DeliveryPending, states.DeliveryPending}, {states.DeliveryDelayed, states.DeliveryDelayed}, {states.Delivered, states.Delivered}}
+	buyerStatesMap[DeliveryFailedFilter] = []FilterState{{states.DeliveryFailed, states.PayToBuyer}}
+	buyerStatesMap[ReturnRequestPendingFilter] = []FilterState{{states.ReturnRequestPending, states.ReturnRequestPending}, {states.ReturnRequestRejected, states.ReturnRequestRejected}}
+	buyerStatesMap[ReturnShipmentPendingFilter] = []FilterState{{states.ReturnShipmentPending, states.ReturnShipmentPending}}
+	buyerStatesMap[ReturnShippedFilter] = []FilterState{{states.ReturnShipped, states.ReturnShipped}}
+	buyerStatesMap[ReturnDeliveredFilter] = []FilterState{{states.ReturnDeliveryPending, states.ReturnDeliveryPending}, {states.ReturnDeliveryDelayed, states.ReturnDeliveryDelayed}, {states.ReturnDelivered, states.ReturnDelivered}}
+	buyerStatesMap[ReturnDeliveryFailedFilter] = []FilterState{{states.ReturnDeliveryFailed, states.PayToSeller}}
 
-	operatorFilterStatesMap := make(map[FilterValue]states.IEnumState, 30)
-	operatorFilterStatesMap[NewOrderFilter] = states.NewOrder
-	operatorFilterStatesMap[PaymentPendingFilter] = states.PaymentPending
-	operatorFilterStatesMap[PaymentSuccessFilter] = states.PaymentSuccess
-	operatorFilterStatesMap[PaymentFailedFilter] = states.PaymentFailed
-	operatorFilterStatesMap[OrderVerificationPendingFilter] = states.OrderVerificationPending
-	operatorFilterStatesMap[OrderVerificationSuccessFilter] = states.OrderVerificationSuccess
-	operatorFilterStatesMap[OrderVerificationFailedFilter] = states.OrderVerificationFailed
-	operatorFilterStatesMap[ApprovalPendingFilter] = states.ApprovalPending
-	operatorFilterStatesMap[CanceledBySellerFilter] = states.CanceledBySeller
-	operatorFilterStatesMap[CanceledByBuyerFilter] = states.CanceledByBuyer
-	operatorFilterStatesMap[ShipmentPendingFilter] = states.ShipmentPending
-	operatorFilterStatesMap[ShipmentDelayedFilter] = states.ShipmentDelayed
-	operatorFilterStatesMap[ShippedFilter] = states.Shipped
-	operatorFilterStatesMap[DeliveryPendingFilter] = states.DeliveryPending
-	operatorFilterStatesMap[DeliveryDelayedFilter] = states.DeliveryDelayed
-	operatorFilterStatesMap[DeliveredFilter] = states.Delivered
-	operatorFilterStatesMap[DeliveryFailedFilter] = states.DeliveryFailed
-	operatorFilterStatesMap[ReturnRequestPendingFilter] = states.ReturnRequestPending
-	operatorFilterStatesMap[ReturnRequestRejectedFilter] = states.ReturnRequestRejected
-	operatorFilterStatesMap[ReturnCanceledFilter] = states.ReturnCanceled
-	operatorFilterStatesMap[ReturnShipmentPendingFilter] = states.ReturnShipmentPending
-	operatorFilterStatesMap[ReturnShippedFilter] = states.ReturnShipped
-	operatorFilterStatesMap[ReturnDeliveryPendingFilter] = states.ReturnDeliveryPending
-	operatorFilterStatesMap[ReturnDeliveryDelayedFilter] = states.ReturnDeliveryDelayed
-	operatorFilterStatesMap[ReturnDeliveredFilter] = states.ReturnDelivered
-	operatorFilterStatesMap[ReturnDeliveryFailedFilter] = states.ReturnDeliveryFailed
-	operatorFilterStatesMap[ReturnRejectedFilter] = states.ReturnRejected
-	operatorFilterStatesMap[PayToBuyerFilter] = states.PayToBuyer
-	operatorFilterStatesMap[PayToSellerFilter] = states.PayToSeller
+	operatorFilterStatesMap := make(map[FilterValue][]FilterState, 30)
+	operatorFilterStatesMap[NewOrderFilter] = []FilterState{{states.NewOrder, states.NewOrder}}
+	operatorFilterStatesMap[PaymentPendingFilter] = []FilterState{{states.PaymentPending, states.PaymentPending}}
+	operatorFilterStatesMap[PaymentSuccessFilter] = []FilterState{{states.PaymentSuccess, states.ApprovalPending}}
+	operatorFilterStatesMap[PaymentFailedFilter] = []FilterState{{states.PaymentFailed, states.PaymentFailed}}
+	operatorFilterStatesMap[OrderVerificationPendingFilter] = []FilterState{{states.OrderVerificationPending, states.ApprovalPending}}
+	operatorFilterStatesMap[OrderVerificationSuccessFilter] = []FilterState{{states.OrderVerificationSuccess, states.ApprovalPending}}
+	operatorFilterStatesMap[OrderVerificationFailedFilter] = []FilterState{{states.OrderVerificationFailed, states.PayToBuyer}}
+	operatorFilterStatesMap[ApprovalPendingFilter] = []FilterState{{states.ApprovalPending, states.ApprovalPending}}
+	operatorFilterStatesMap[CanceledBySellerFilter] = []FilterState{{states.CanceledBySeller, states.PayToBuyer}}
+	operatorFilterStatesMap[CanceledByBuyerFilter] = []FilterState{{states.CanceledByBuyer, states.PayToBuyer}}
+	operatorFilterStatesMap[ShipmentPendingFilter] = []FilterState{{states.ShipmentPending, states.ShipmentPending}}
+	operatorFilterStatesMap[ShipmentDelayedFilter] = []FilterState{{states.ShipmentDelayed, states.ShipmentDelayed}}
+	operatorFilterStatesMap[ShippedFilter] = []FilterState{{states.Shipped, states.Shipped}}
+	operatorFilterStatesMap[DeliveryPendingFilter] = []FilterState{{states.DeliveryPending, states.DeliveryPending}}
+	operatorFilterStatesMap[DeliveryDelayedFilter] = []FilterState{{states.DeliveryDelayed, states.DeliveryDelayed}}
+	operatorFilterStatesMap[DeliveredFilter] = []FilterState{{states.Delivered, states.Delivered}}
+	operatorFilterStatesMap[DeliveryFailedFilter] = []FilterState{{states.DeliveryFailed, states.PayToBuyer}}
+	operatorFilterStatesMap[ReturnRequestPendingFilter] = []FilterState{{states.ReturnRequestPending, states.ReturnRequestPending}}
+	operatorFilterStatesMap[ReturnRequestRejectedFilter] = []FilterState{{states.ReturnRequestRejected, states.ReturnRequestRejected}}
+	operatorFilterStatesMap[ReturnCanceledFilter] = []FilterState{{states.ReturnCanceled, states.PayToSeller}}
+	operatorFilterStatesMap[ReturnShipmentPendingFilter] = []FilterState{{states.ReturnShipmentPending, states.ReturnShipmentPending}}
+	operatorFilterStatesMap[ReturnShippedFilter] = []FilterState{{states.ReturnShipped, states.ReturnShipped}}
+	operatorFilterStatesMap[ReturnDeliveryPendingFilter] = []FilterState{{states.ReturnDeliveryPending, states.ReturnDeliveryPending}}
+	operatorFilterStatesMap[ReturnDeliveryDelayedFilter] = []FilterState{{states.ReturnDeliveryDelayed, states.ReturnDeliveryDelayed}}
+	operatorFilterStatesMap[ReturnDeliveredFilter] = []FilterState{{states.ReturnDelivered, states.ReturnDelivered}}
+	operatorFilterStatesMap[ReturnDeliveryFailedFilter] = []FilterState{{states.ReturnDeliveryFailed, states.PayToSeller}}
+	operatorFilterStatesMap[ReturnRejectedFilter] = []FilterState{{states.ReturnRejected, states.ReturnRejected}}
+	operatorFilterStatesMap[PayToBuyerFilter] = []FilterState{{states.PayToBuyer, states.PayToBuyer}}
+	operatorFilterStatesMap[PayToSellerFilter] = []FilterState{{states.PayToSeller, states.PayToSeller}}
 
-	sellerFilterStatesMap := make(map[FilterValue][]states.IEnumState, 30)
-	sellerFilterStatesMap[ApprovalPendingFilter] = []states.IEnumState{states.ApprovalPending}
-	sellerFilterStatesMap[CanceledBySellerFilter] = []states.IEnumState{states.CanceledBySeller}
-	sellerFilterStatesMap[CanceledByBuyerFilter] = []states.IEnumState{states.CanceledByBuyer}
-	sellerFilterStatesMap[ShipmentPendingFilter] = []states.IEnumState{states.ShipmentPending}
-	sellerFilterStatesMap[ShipmentDelayedFilter] = []states.IEnumState{states.ShipmentDelayed}
-	sellerFilterStatesMap[ShippedFilter] = []states.IEnumState{states.Shipped}
-	sellerFilterStatesMap[DeliveryPendingFilter] = []states.IEnumState{states.DeliveryPending, states.DeliveryDelayed}
-	sellerFilterStatesMap[DeliveredFilter] = []states.IEnumState{states.Delivered}
-	sellerFilterStatesMap[DeliveryFailedFilter] = []states.IEnumState{states.DeliveryFailed}
-	sellerFilterStatesMap[ReturnRequestPendingFilter] = []states.IEnumState{states.ReturnRequestPending}
-	sellerFilterStatesMap[ReturnRequestRejectedFilter] = []states.IEnumState{states.ReturnRequestRejected}
-	sellerFilterStatesMap[ReturnCanceledFilter] = []states.IEnumState{states.ReturnCanceled}
-	sellerFilterStatesMap[ReturnShipmentPendingFilter] = []states.IEnumState{states.ReturnShipmentPending}
-	sellerFilterStatesMap[ReturnShippedFilter] = []states.IEnumState{states.ReturnShipped}
-	sellerFilterStatesMap[ReturnDeliveryPendingFilter] = []states.IEnumState{states.ReturnDeliveryPending}
-	sellerFilterStatesMap[ReturnDeliveryDelayedFilter] = []states.IEnumState{states.ReturnDeliveryDelayed}
-	sellerFilterStatesMap[ReturnDeliveredFilter] = []states.IEnumState{states.ReturnDelivered}
-	sellerFilterStatesMap[ReturnDeliveryFailedFilter] = []states.IEnumState{states.ReturnDeliveryFailed}
-	sellerFilterStatesMap[ReturnRejectedFilter] = []states.IEnumState{states.ReturnRejected}
-	sellerFilterStatesMap[PayToSellerFilter] = []states.IEnumState{states.PayToSeller}
+	sellerFilterStatesMap := make(map[FilterValue][]FilterState, 30)
+	sellerFilterStatesMap[ApprovalPendingFilter] = []FilterState{{states.ApprovalPending, states.ApprovalPending}}
+	sellerFilterStatesMap[CanceledBySellerFilter] = []FilterState{{states.CanceledBySeller, states.PayToBuyer}}
+	sellerFilterStatesMap[CanceledByBuyerFilter] = []FilterState{{states.CanceledByBuyer, states.PayToBuyer}}
+	sellerFilterStatesMap[ShipmentPendingFilter] = []FilterState{{states.ShipmentPending, states.ShipmentPending}}
+	sellerFilterStatesMap[ShipmentDelayedFilter] = []FilterState{{states.ShipmentDelayed, states.ShipmentDelayed}}
+	sellerFilterStatesMap[ShippedFilter] = []FilterState{{states.Shipped, states.Shipped}}
+	sellerFilterStatesMap[DeliveryPendingFilter] = []FilterState{{states.DeliveryPending, states.DeliveryPending}, {states.DeliveryDelayed, states.DeliveryDelayed}}
+	sellerFilterStatesMap[DeliveredFilter] = []FilterState{{states.Delivered, states.Delivered}}
+	sellerFilterStatesMap[DeliveryFailedFilter] = []FilterState{{states.DeliveryFailed, states.PayToBuyer}}
+	sellerFilterStatesMap[ReturnRequestPendingFilter] = []FilterState{{states.ReturnRequestPending, states.ReturnRequestPending}}
+	sellerFilterStatesMap[ReturnRequestRejectedFilter] = []FilterState{{states.ReturnRequestRejected, states.ReturnRequestRejected}}
+	sellerFilterStatesMap[ReturnCanceledFilter] = []FilterState{{states.ReturnCanceled, states.PayToSeller}}
+	sellerFilterStatesMap[ReturnShipmentPendingFilter] = []FilterState{{states.ReturnShipmentPending, states.ReturnShipmentPending}}
+	sellerFilterStatesMap[ReturnShippedFilter] = []FilterState{{states.ReturnShipped, states.ReturnShipped}}
+	sellerFilterStatesMap[ReturnDeliveryPendingFilter] = []FilterState{{states.ReturnDeliveryPending, states.ReturnDeliveryPending}}
+	sellerFilterStatesMap[ReturnDeliveryDelayedFilter] = []FilterState{{states.ReturnDeliveryDelayed, states.ReturnDeliveryDelayed}}
+	sellerFilterStatesMap[ReturnDeliveredFilter] = []FilterState{{states.ReturnDelivered, states.ReturnDelivered}}
+	sellerFilterStatesMap[ReturnDeliveryFailedFilter] = []FilterState{{states.ReturnDeliveryFailed, states.PayToSeller}}
+	sellerFilterStatesMap[ReturnRejectedFilter] = []FilterState{{states.ReturnRejected, states.ReturnRejected}}
+	sellerFilterStatesMap[PayToSellerFilter] = []FilterState{{states.PayToSeller, states.PayToSeller}}
 
 	actionStateMap := make(map[UserType][]actions.IAction, 8)
 	actionStateMap[SellerUser] = []actions.IAction{
@@ -528,7 +533,7 @@ func (server *Server) buyerGeneratePipelineFilter(ctx context.Context, filter Fi
 
 	if filter == ApprovalPendingFilter {
 		newFilter[0] = "packages.subpackages.status"
-		newFilter[1] = server.buyerFilterStates[filter][0].StateName()
+		newFilter[1] = server.buyerFilterStates[filter][0].expectedState.StateName()
 	} else if filter == ShipmentPendingFilter {
 		newFilter[0] = "$or"
 		newFilter[1] = bson.A{
@@ -536,7 +541,7 @@ func (server *Server) buyerGeneratePipelineFilter(ctx context.Context, filter Fi
 			bson.M{"packages.subpackages.status": states.ShipmentDelayed.StateName()}}
 	} else if filter == ShippedFilter {
 		newFilter[0] = "packages.subpackages.status"
-		newFilter[1] = server.buyerFilterStates[filter][0].StateName()
+		newFilter[1] = server.buyerFilterStates[filter][0].expectedState.StateName()
 	} else if filter == DeliveredFilter {
 		newFilter[0] = "$or"
 		newFilter[1] = bson.A{
@@ -545,7 +550,7 @@ func (server *Server) buyerGeneratePipelineFilter(ctx context.Context, filter Fi
 			bson.M{"packages.subpackages.status": states.Delivered.StateName()}}
 	} else if filter == DeliveryFailedFilter {
 		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.buyerFilterStates[filter][0].StateName()
+		newFilter[1] = server.buyerFilterStates[filter][0].expectedState.StateName()
 	} else if filter == ReturnRequestPendingFilter {
 		newFilter[0] = "$or"
 		newFilter[1] = bson.A{
@@ -554,10 +559,10 @@ func (server *Server) buyerGeneratePipelineFilter(ctx context.Context, filter Fi
 			bson.M{"packages.subpackages.tracking.history.name": states.ReturnCanceled.StateName()}}
 	} else if filter == ReturnShipmentPendingFilter {
 		newFilter[0] = "packages.subpackages.status"
-		newFilter[1] = server.buyerFilterStates[filter][0].StateName()
+		newFilter[1] = server.buyerFilterStates[filter][0].expectedState.StateName()
 	} else if filter == ReturnShippedFilter {
 		newFilter[0] = "packages.subpackages.status"
-		newFilter[1] = server.buyerFilterStates[filter][0].StateName()
+		newFilter[1] = server.buyerFilterStates[filter][0].expectedState.StateName()
 	} else if filter == ReturnDeliveredFilter {
 		newFilter[0] = "$or"
 		newFilter[1] = bson.A{
@@ -566,7 +571,7 @@ func (server *Server) buyerGeneratePipelineFilter(ctx context.Context, filter Fi
 			bson.M{"packages.subpackages.status": states.ReturnDelivered.StateName()}}
 	} else if filter == DeliveryFailedFilter {
 		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.buyerFilterStates[filter][0].StateName()
+		newFilter[1] = server.buyerFilterStates[filter][0].expectedState.StateName()
 	}
 	return newFilter
 }
@@ -576,23 +581,23 @@ func (server *Server) sellerGeneratePipelineFilter(ctx context.Context, filter F
 	newFilter := make([]interface{}, 2)
 	if filter == CanceledBySellerFilter {
 		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.sellerFilterStates[filter][0].StateName()
+		newFilter[1] = server.sellerFilterStates[filter][0].expectedState.StateName()
 
 	} else if filter == CanceledByBuyerFilter {
 		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.sellerFilterStates[filter][0].StateName()
+		newFilter[1] = server.sellerFilterStates[filter][0].expectedState.StateName()
 
 	} else if filter == DeliveryFailedFilter {
 		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.sellerFilterStates[filter][0].StateName()
+		newFilter[1] = server.sellerFilterStates[filter][0].expectedState.StateName()
 
 	} else if filter == ReturnCanceledFilter {
 		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.sellerFilterStates[filter][0].StateName()
+		newFilter[1] = server.sellerFilterStates[filter][0].expectedState.StateName()
 
 	} else if filter == ReturnDeliveryFailedFilter {
 		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.sellerFilterStates[filter][0].StateName()
+		newFilter[1] = server.sellerFilterStates[filter][0].expectedState.StateName()
 
 	} else if filter == DeliveryPendingFilter {
 		newFilter[0] = "$or"
@@ -608,7 +613,7 @@ func (server *Server) sellerGeneratePipelineFilter(ctx context.Context, filter F
 
 	} else {
 		newFilter[0] = "packages.subpackages.status"
-		newFilter[1] = server.sellerFilterStates[filter][0].StateName()
+		newFilter[1] = server.sellerFilterStates[filter][0].expectedState.StateName()
 
 	}
 
@@ -628,11 +633,11 @@ func (server *Server) OperatorGeneratePipelineFilter(ctx context.Context, filter
 		filter == OrderVerificationPendingFilter ||
 		filter == OrderVerificationSuccessFilter {
 		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.operatorFilterState[filter].StateName()
+		newFilter[1] = server.operatorFilterState[filter][0].expectedState.StateName()
 
 	} else {
 		newFilter[0] = "packages.subpackages.status"
-		newFilter[1] = server.sellerFilterStates[filter][0].StateName()
+		newFilter[1] = server.operatorFilterState[filter][0].expectedState.StateName()
 
 	}
 
@@ -1663,11 +1668,11 @@ func (server *Server) sellerAllOrdersHandler(ctx context.Context, pid uint64, pa
 			if filter == CanceledBySellerFilter || filter == CanceledByBuyerFilter ||
 				filter == DeliveryFailedFilter || filter == ReturnDeliveryFailedFilter {
 				criteria = append(criteria, map[string]string{
-					"packages.subpackages.tracking.history.name": server.sellerFilterStates[filter][0].StateName(),
+					"packages.subpackages.tracking.history.name": server.sellerFilterStates[filter][0].expectedState.StateName(),
 				})
 			} else {
 				criteria = append(criteria, map[string]string{
-					"packages.subpackages.status": server.sellerFilterStates[filter][0].StateName(),
+					"packages.subpackages.status": server.sellerFilterStates[filter][0].expectedState.StateName(),
 				})
 			}
 		}
@@ -1803,8 +1808,8 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId
 
 	sellerOrderDetailItems := make([]*pb.SellerOrderDetail_ItemDetail, 0, 32)
 	for i := 0; i < len(pkgItem.Subpackages); i++ {
-		for _, state := range server.sellerFilterStates[filter] {
-			if pkgItem.Subpackages[i].Status == state.StateName() {
+		for _, filterState := range server.sellerFilterStates[filter] {
+			if pkgItem.Subpackages[i].Status == filterState.actualState.StateName() {
 				for j := 0; j < len(pkgItem.Subpackages[i].Items); j++ {
 					itemDetail := &pb.SellerOrderDetail_ItemDetail{
 						SID:         pkgItem.Subpackages[i].SId,
@@ -2019,8 +2024,8 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 	for i := 0; i < len(pkgList); i++ {
 		itemDetailList = nil
 		for j := 0; j < len(pkgList[i].Subpackages); j++ {
-			for _, state := range server.sellerFilterStates[filter] {
-				if pkgList[i].Subpackages[i].Status == state.StateName() {
+			for _, filterState := range server.sellerFilterStates[filter] {
+				if pkgList[i].Subpackages[i].Status == filterState.actualState.StateName() {
 					itemDetailList = make([]*pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item, 0, len(pkgList[i].Subpackages[j].Items))
 					for z := 0; z < len(pkgList[i].Subpackages[j].Items); z++ {
 						itemOrder := &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item{
@@ -3431,13 +3436,13 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 			bson.D{{"packages.subpackages.status", states.ReturnDeliveryDelayed.StateName()}},
 			bson.D{{"packages.subpackages.status", states.ReturnDelivered.StateName()}}}}}
 	} else if filter == DeliveryFailedFilter {
-		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.buyerFilterStates[filter][0].StateName()}}
+		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.buyerFilterStates[filter][0].expectedState.StateName()}}
 	} else if filter == ReturnRequestPendingFilter {
 		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
 			bson.D{{"packages.subpackages.status", states.ReturnRequestPending.StateName()}},
 			bson.D{{"packages.subpackages.status", states.ReturnRequestRejected.StateName()}}}}}
 	} else {
-		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"packages.subpackages.status", server.buyerFilterStates[filter][0].StateName()}}
+		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"packages.subpackages.status", server.buyerFilterStates[filter][0].expectedState.StateName()}}
 	}
 
 	//genFilter := server.buyerGeneratePipelineFilter(ctx, filter)
