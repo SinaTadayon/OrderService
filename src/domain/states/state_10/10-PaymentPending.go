@@ -189,9 +189,10 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			futureData := iFuture.Get()
 			if futureData.Error() != nil {
 				order.OrderPayment[0].PaymentResponse = &entities.PaymentResponse{
-					Result:    false,
-					Reason:    strconv.Itoa(int(futureData.Error().Code())),
-					CreatedAt: time.Now().UTC(),
+					Result:      false,
+					CallBackUrl: "http://staging.faza.io/callback-failed?orderid=" + strconv.Itoa(int(order.OrderId)),
+					Reason:      strconv.Itoa(int(futureData.Error().Code())),
+					CreatedAt:   time.Now().UTC(),
 				}
 
 				paymentAction := &entities.Action{
@@ -214,7 +215,8 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				if err != nil {
 					logger.Err("Process() => Singletons.OrderRepository.Save failed, orderId: %d, error: %s", order.OrderId, err)
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-						SetError(future.InternalError, "Unknown Error", err).
+						SetData(order.OrderPayment[0].PaymentResponse.CallBackUrl).
+						//SetError(future.InternalError, "Unknown Error", err).
 						Send()
 					return
 				}

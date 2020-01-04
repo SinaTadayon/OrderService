@@ -99,13 +99,14 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 		} else {
 			var buf bytes.Buffer
 			err = smsTemplate.Execute(&buf, pkgItem.OrderId)
+			newBuf := bytes.NewBuffer(bytes.Replace(buf.Bytes(), []byte("\\n"), []byte{10}, -1))
 			if err != nil {
 				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
 					state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerCanceledByBuyerState, err)
 			} else {
 				buyerNotify := notify_service.SMSRequest{
 					Phone: pkgItem.ShippingAddress.Mobile,
-					Body:  buf.String(),
+					Body:  newBuf.String(),
 				}
 
 				buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
@@ -162,13 +163,14 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 				} else {
 					var buf bytes.Buffer
 					err = smsTemplate.Execute(&buf, pkgItem.OrderId)
+					newBuf := bytes.NewBuffer(bytes.Replace(buf.Bytes(), []byte("\\n"), []byte{10}, -1))
 					if err != nil {
 						logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
 							state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifySellerCanceledByBuyerState, err)
 					} else {
 						sellerNotify := notify_service.SMSRequest{
 							Phone: sellerProfile.GeneralInfo.MobilePhone,
-							Body:  buf.String(),
+							Body:  newBuf.String(),
 						}
 						sellerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, sellerNotify).Get()
 						if sellerFutureData.Error() != nil {

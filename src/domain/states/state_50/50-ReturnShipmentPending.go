@@ -96,13 +96,14 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 		} else {
 			var buf bytes.Buffer
 			err = smsTemplate.Execute(&buf, pkgItem.OrderId)
+			newBuf := bytes.NewBuffer(bytes.Replace(buf.Bytes(), []byte("\\n"), []byte{10}, -1))
 			if err != nil {
 				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
 					state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerReturnShipmentPendingState, err)
 			} else {
 				buyerNotify := notify_service.SMSRequest{
 					Phone: pkgItem.ShippingAddress.Mobile,
-					Body:  buf.String(),
+					Body:  newBuf.String(),
 				}
 
 				buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
@@ -402,15 +403,15 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 					}
 
 					shipmentTime := time.Now().UTC()
-					for _, subpackage := range newSubPackages {
-						if subpackage.Shipments != nil && subpackage.Shipments.ReturnShipmentDetail != nil {
-							subpackage.Shipments.ReturnShipmentDetail.TrackingNumber = actionData.TrackingNumber
-							subpackage.Shipments.ReturnShipmentDetail.CarrierName = actionData.Carrier
-							subpackage.Shipments.ReturnShipmentDetail.ShippedAt = &shipmentTime
+					for i := 0; i < len(newSubPackages); i++ {
+						if newSubPackages[i].Shipments != nil && newSubPackages[i].Shipments.ReturnShipmentDetail != nil {
+							newSubPackages[i].Shipments.ReturnShipmentDetail.TrackingNumber = actionData.TrackingNumber
+							newSubPackages[i].Shipments.ReturnShipmentDetail.CarrierName = actionData.Carrier
+							newSubPackages[i].Shipments.ReturnShipmentDetail.ShippedAt = &shipmentTime
 						} else {
 							logger.Err("Process() => subpackage.Shipments is nil, state: %s, event: %v, orderId: %d, pid:%d, sids: %v",
 								state.Name(), event, pkgItem.OrderId, pkgItem.PId, sids)
-							subpackage.Shipments = &entities.Shipment{
+							newSubPackages[i].Shipments = &entities.Shipment{
 								ReturnShipmentDetail: &entities.ReturnShippingDetail{
 									CarrierName:    actionData.Carrier,
 									ShippingMethod: "",

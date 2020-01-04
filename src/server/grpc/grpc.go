@@ -184,17 +184,23 @@ type FilterState struct {
 	actualState   states.IEnumState
 }
 
+type FilterQueryState struct {
+	state     states.IEnumState
+	queryPath string
+}
+
 type Server struct {
 	pb.UnimplementedOrderServiceServer
 	pg.UnimplementedBankResultHookServer
-	flowManager         domain.IFlowManager
-	address             string
-	port                uint16
-	requestFilters      map[RequestName][]FilterValue
-	buyerFilterStates   map[FilterValue][]FilterState
-	sellerFilterStates  map[FilterValue][]FilterState
-	operatorFilterState map[FilterValue][]FilterState
-	actionStates        map[UserType][]actions.IAction
+	flowManager          domain.IFlowManager
+	address              string
+	port                 uint16
+	requestFilters       map[RequestName][]FilterValue
+	buyerFilterStates    map[FilterValue][]FilterState
+	sellerFilterStates   map[FilterValue][]FilterState
+	operatorFilterStates map[FilterValue][]FilterState
+	queryPathStates      map[FilterValue]FilterQueryState
+	actionStates         map[UserType][]actions.IAction
 }
 
 func NewServer(address string, port uint16, flowManager domain.IFlowManager) Server {
@@ -262,6 +268,37 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	sellerFilterStatesMap[ReturnDeliveryFailedFilter] = []FilterState{{states.ReturnDeliveryFailed, states.PayToSeller}}
 	sellerFilterStatesMap[ReturnRejectedFilter] = []FilterState{{states.ReturnRejected, states.ReturnRejected}}
 	sellerFilterStatesMap[PayToSellerFilter] = []FilterState{{states.PayToSeller, states.PayToSeller}}
+
+	queryPathStatesMap := make(map[FilterValue]FilterQueryState, 30)
+	queryPathStatesMap[NewOrderFilter] = FilterQueryState{states.NewOrder, "packages.subpackages.status"}
+	queryPathStatesMap[PaymentPendingFilter] = FilterQueryState{states.PaymentPending, "packages.subpackages.status"}
+	queryPathStatesMap[PaymentSuccessFilter] = FilterQueryState{states.PaymentSuccess, "packages.subpackages.tracking.history.name"}
+	queryPathStatesMap[PaymentFailedFilter] = FilterQueryState{states.PaymentFailed, "packages.subpackages.status"}
+	queryPathStatesMap[OrderVerificationPendingFilter] = FilterQueryState{states.OrderVerificationPending, "packages.subpackages.tracking.history.name"}
+	queryPathStatesMap[OrderVerificationSuccessFilter] = FilterQueryState{states.OrderVerificationSuccess, "packages.subpackages.tracking.history.name"}
+	queryPathStatesMap[OrderVerificationFailedFilter] = FilterQueryState{states.OrderVerificationFailed, "packages.subpackages.tracking.history.name"}
+	queryPathStatesMap[ApprovalPendingFilter] = FilterQueryState{states.ApprovalPending, "packages.subpackages.status"}
+	queryPathStatesMap[CanceledBySellerFilter] = FilterQueryState{states.CanceledBySeller, "packages.subpackages.tracking.history.name"}
+	queryPathStatesMap[CanceledByBuyerFilter] = FilterQueryState{states.CanceledByBuyer, "packages.subpackages.tracking.history.name"}
+	queryPathStatesMap[ShipmentPendingFilter] = FilterQueryState{states.ShipmentPending, "packages.subpackages.status"}
+	queryPathStatesMap[ShipmentDelayedFilter] = FilterQueryState{states.ShipmentDelayed, "packages.subpackages.status"}
+	queryPathStatesMap[ShippedFilter] = FilterQueryState{states.Shipped, "packages.subpackages.status"}
+	queryPathStatesMap[DeliveryPendingFilter] = FilterQueryState{states.DeliveryPending, "packages.subpackages.status"}
+	queryPathStatesMap[DeliveryDelayedFilter] = FilterQueryState{states.DeliveryDelayed, "packages.subpackages.status"}
+	queryPathStatesMap[DeliveredFilter] = FilterQueryState{states.Delivered, "packages.subpackages.status"}
+	queryPathStatesMap[DeliveryFailedFilter] = FilterQueryState{states.DeliveryFailed, "packages.subpackages.tracking.history.name"}
+	queryPathStatesMap[ReturnRequestPendingFilter] = FilterQueryState{states.ReturnRequestPending, "packages.subpackages.status"}
+	queryPathStatesMap[ReturnRequestRejectedFilter] = FilterQueryState{states.ReturnRequestRejected, "packages.subpackages.status"}
+	queryPathStatesMap[ReturnCanceledFilter] = FilterQueryState{states.ReturnCanceled, "packages.subpackages.tracking.history.name"}
+	queryPathStatesMap[ReturnShipmentPendingFilter] = FilterQueryState{states.ReturnShipmentPending, "packages.subpackages.status"}
+	queryPathStatesMap[ReturnShippedFilter] = FilterQueryState{states.ReturnShipped, "packages.subpackages.status"}
+	queryPathStatesMap[ReturnDeliveryPendingFilter] = FilterQueryState{states.ReturnDeliveryPending, "packages.subpackages.status"}
+	queryPathStatesMap[ReturnDeliveryDelayedFilter] = FilterQueryState{states.ReturnDeliveryDelayed, "packages.subpackages.status"}
+	queryPathStatesMap[ReturnDeliveredFilter] = FilterQueryState{states.ReturnDelivered, "packages.subpackages.status"}
+	queryPathStatesMap[ReturnDeliveryFailedFilter] = FilterQueryState{states.ReturnDeliveryFailed, "packages.subpackages.tracking.history.name"}
+	queryPathStatesMap[ReturnRejectedFilter] = FilterQueryState{states.ReturnRejected, "packages.subpackages.status"}
+	queryPathStatesMap[PayToBuyerFilter] = FilterQueryState{states.PayToBuyer, "packages.subpackages.status"}
+	queryPathStatesMap[PayToSellerFilter] = FilterQueryState{states.PayToSeller, "packages.subpackages.status"}
 
 	actionStateMap := make(map[UserType][]actions.IAction, 8)
 	actionStateMap[SellerUser] = []actions.IAction{
@@ -411,11 +448,12 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 
 	return Server{
 		flowManager: flowManager, address: address, port: port,
-		requestFilters:      reqFilters,
-		buyerFilterStates:   buyerStatesMap,
-		sellerFilterStates:  sellerFilterStatesMap,
-		operatorFilterState: operatorFilterStatesMap,
-		actionStates:        actionStateMap,
+		requestFilters:       reqFilters,
+		buyerFilterStates:    buyerStatesMap,
+		sellerFilterStates:   sellerFilterStatesMap,
+		operatorFilterStates: operatorFilterStatesMap,
+		queryPathStates:      queryPathStatesMap,
+		actionStates:         actionStateMap,
 	}
 }
 
@@ -532,46 +570,63 @@ func (server *Server) buyerGeneratePipelineFilter(ctx context.Context, filter Fi
 	newFilter := make([]interface{}, 2)
 
 	if filter == ApprovalPendingFilter {
-		newFilter[0] = "packages.subpackages.status"
-		newFilter[1] = server.buyerFilterStates[filter][0].expectedState.StateName()
+		queryPathApprovalPendingState := server.queryPathStates[ApprovalPendingFilter]
+		newFilter[0] = queryPathApprovalPendingState.queryPath
+		newFilter[1] = queryPathApprovalPendingState.state.StateName()
 	} else if filter == ShipmentPendingFilter {
+		queryPathShipmentPendingState := server.queryPathStates[ShipmentPendingFilter]
+		queryPathShipmentDelayedState := server.queryPathStates[ShipmentDelayedFilter]
 		newFilter[0] = "$or"
 		newFilter[1] = bson.A{
-			bson.M{"packages.subpackages.status": states.ShipmentPending.StateName()},
-			bson.M{"packages.subpackages.status": states.ShipmentDelayed.StateName()}}
+			bson.M{queryPathShipmentPendingState.queryPath: queryPathShipmentPendingState.state.StateName()},
+			bson.M{queryPathShipmentDelayedState.queryPath: queryPathShipmentDelayedState.state.StateName()}}
 	} else if filter == ShippedFilter {
-		newFilter[0] = "packages.subpackages.status"
-		newFilter[1] = server.buyerFilterStates[filter][0].expectedState.StateName()
+		queryPathShippedState := server.queryPathStates[ShippedFilter]
+		newFilter[0] = queryPathShippedState.queryPath
+		newFilter[1] = queryPathShippedState.state.StateName()
 	} else if filter == DeliveredFilter {
+		queryPathDeliveryPendingState := server.queryPathStates[DeliveryPendingFilter]
+		queryPathDeliveryDelayedState := server.queryPathStates[DeliveryDelayedFilter]
+		queryPathDeliveredState := server.queryPathStates[DeliveredFilter]
 		newFilter[0] = "$or"
 		newFilter[1] = bson.A{
-			bson.M{"packages.subpackages.status": states.DeliveryPending.StateName()},
-			bson.M{"packages.subpackages.status": states.DeliveryDelayed.StateName()},
-			bson.M{"packages.subpackages.status": states.Delivered.StateName()}}
+			bson.M{queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()},
+			bson.M{queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()},
+			bson.M{queryPathDeliveredState.queryPath: queryPathDeliveredState.state.StateName()}}
 	} else if filter == DeliveryFailedFilter {
-		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.buyerFilterStates[filter][0].expectedState.StateName()
+		queryPathDeliveryFailedState := server.queryPathStates[DeliveryFailedFilter]
+		newFilter[0] = queryPathDeliveryFailedState.queryPath
+		newFilter[1] = queryPathDeliveryFailedState.state.StateName()
 	} else if filter == ReturnRequestPendingFilter {
+		queryPathReturnRequestPendingState := server.queryPathStates[ReturnRequestPendingFilter]
+		queryPathReturnRequestRejectedState := server.queryPathStates[ReturnRequestRejectedFilter]
+		queryPathReturnCanceledState := server.queryPathStates[ReturnCanceledFilter]
 		newFilter[0] = "$or"
 		newFilter[1] = bson.A{
-			bson.M{"packages.subpackages.status": states.ReturnRequestPending.StateName()},
-			bson.M{"packages.subpackages.status": states.ReturnRequestRejected.StateName()},
-			bson.M{"packages.subpackages.tracking.history.name": states.ReturnCanceled.StateName()}}
+			bson.M{queryPathReturnRequestPendingState.queryPath: queryPathReturnRequestPendingState.state.StateName()},
+			bson.M{queryPathReturnRequestRejectedState.queryPath: queryPathReturnRequestRejectedState.state.StateName()},
+			bson.M{queryPathReturnCanceledState.queryPath: queryPathReturnCanceledState.state.StateName()}}
 	} else if filter == ReturnShipmentPendingFilter {
-		newFilter[0] = "packages.subpackages.status"
-		newFilter[1] = server.buyerFilterStates[filter][0].expectedState.StateName()
+		queryPathReturnShipmentPendingState := server.queryPathStates[ReturnShipmentPendingFilter]
+		newFilter[0] = queryPathReturnShipmentPendingState.queryPath
+		newFilter[1] = queryPathReturnShipmentPendingState.state.StateName()
 	} else if filter == ReturnShippedFilter {
-		newFilter[0] = "packages.subpackages.status"
-		newFilter[1] = server.buyerFilterStates[filter][0].expectedState.StateName()
+		queryPathReturnShippedFilterState := server.queryPathStates[ReturnShippedFilter]
+		newFilter[0] = queryPathReturnShippedFilterState.queryPath
+		newFilter[1] = queryPathReturnShippedFilterState.state.StateName()
 	} else if filter == ReturnDeliveredFilter {
+		queryPathReturnDeliveryPendingState := server.queryPathStates[ReturnDeliveryPendingFilter]
+		queryPathReturnDeliveryDelayedState := server.queryPathStates[ReturnDeliveryDelayedFilter]
+		queryPathReturnDeliveredState := server.queryPathStates[ReturnDeliveredFilter]
 		newFilter[0] = "$or"
 		newFilter[1] = bson.A{
-			bson.M{"packages.subpackages.status": states.ReturnDeliveryPending.StateName()},
-			bson.M{"packages.subpackages.status": states.ReturnDeliveryDelayed.StateName()},
-			bson.M{"packages.subpackages.status": states.ReturnDelivered.StateName()}}
+			bson.M{queryPathReturnDeliveryPendingState.queryPath: queryPathReturnDeliveryPendingState.state.StateName()},
+			bson.M{queryPathReturnDeliveryDelayedState.queryPath: queryPathReturnDeliveryDelayedState.state.StateName()},
+			bson.M{queryPathReturnDeliveredState.queryPath: queryPathReturnDeliveredState.state.StateName()}}
 	} else if filter == DeliveryFailedFilter {
-		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.buyerFilterStates[filter][0].expectedState.StateName()
+		queryPathDeliveryFailedState := server.queryPathStates[DeliveryFailedFilter]
+		newFilter[0] = queryPathDeliveryFailedState.queryPath
+		newFilter[1] = queryPathDeliveryFailedState.state.StateName()
 	}
 	return newFilter
 }
@@ -579,42 +634,27 @@ func (server *Server) buyerGeneratePipelineFilter(ctx context.Context, filter Fi
 func (server *Server) sellerGeneratePipelineFilter(ctx context.Context, filter FilterValue) []interface{} {
 
 	newFilter := make([]interface{}, 2)
-	if filter == CanceledBySellerFilter {
-		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.sellerFilterStates[filter][0].expectedState.StateName()
 
-	} else if filter == CanceledByBuyerFilter {
-		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.sellerFilterStates[filter][0].expectedState.StateName()
-
-	} else if filter == DeliveryFailedFilter {
-		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.sellerFilterStates[filter][0].expectedState.StateName()
-
-	} else if filter == ReturnCanceledFilter {
-		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.sellerFilterStates[filter][0].expectedState.StateName()
-
-	} else if filter == ReturnDeliveryFailedFilter {
-		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.sellerFilterStates[filter][0].expectedState.StateName()
-
-	} else if filter == DeliveryPendingFilter {
+	if filter == DeliveryPendingFilter {
+		queryPathDeliveryPendingState := server.queryPathStates[DeliveryPendingFilter]
+		queryPathDeliveryDelayedState := server.queryPathStates[DeliveryDelayedFilter]
 		newFilter[0] = "$or"
 		newFilter[1] = bson.A{
-			bson.M{"packages.subpackages.status": states.DeliveryPending.StateName()},
-			bson.M{"packages.subpackages.status": states.DeliveryDelayed.StateName()}}
+			bson.M{queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()},
+			bson.M{queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}}
 
 	} else if filter == AllCanceledFilter {
+		queryPathCanceledBySellerState := server.queryPathStates[CanceledBySellerFilter]
+		queryPathCanceledByBuyerState := server.queryPathStates[CanceledByBuyerFilter]
 		newFilter[0] = "$or"
 		newFilter[1] = bson.A{
-			bson.M{"packages.subpackages.tracking.history.name": states.CanceledBySeller.StateName()},
-			bson.M{"packages.subpackages.tracking.history.name": states.CanceledByBuyer.StateName()}}
+			bson.M{queryPathCanceledBySellerState.queryPath: queryPathCanceledBySellerState.state.StateName()},
+			bson.M{queryPathCanceledByBuyerState.queryPath: queryPathCanceledByBuyerState.state.StateName()}}
 
 	} else {
-		newFilter[0] = "packages.subpackages.status"
-		newFilter[1] = server.sellerFilterStates[filter][0].expectedState.StateName()
-
+		queryPathState := server.queryPathStates[filter]
+		newFilter[0] = queryPathState.queryPath
+		newFilter[1] = queryPathState.state.StateName()
 	}
 
 	return newFilter
@@ -623,24 +663,9 @@ func (server *Server) sellerGeneratePipelineFilter(ctx context.Context, filter F
 func (server *Server) OperatorGeneratePipelineFilter(ctx context.Context, filter FilterValue) []interface{} {
 
 	newFilter := make([]interface{}, 2)
-	if filter == CanceledBySellerFilter ||
-		filter == CanceledByBuyerFilter ||
-		filter == DeliveryFailedFilter ||
-		filter == ReturnDeliveryFailedFilter ||
-		filter == ReturnCanceledFilter ||
-		filter == PaymentSuccessFilter ||
-		filter == OrderVerificationFailedFilter ||
-		filter == OrderVerificationPendingFilter ||
-		filter == OrderVerificationSuccessFilter {
-		newFilter[0] = "packages.subpackages.tracking.history.name"
-		newFilter[1] = server.operatorFilterState[filter][0].expectedState.StateName()
-
-	} else {
-		newFilter[0] = "packages.subpackages.status"
-		newFilter[1] = server.operatorFilterState[filter][0].expectedState.StateName()
-
-	}
-
+	queryPathState := server.queryPathStates[filter]
+	newFilter[0] = queryPathState.queryPath
+	newFilter[1] = queryPathState.state.StateName()
 	return newFilter
 }
 
@@ -1156,12 +1181,12 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 					Name:      order.Packages[i].Subpackages[j].Tracking.History[x].Name,
 					Index:     int32(order.Packages[i].Subpackages[j].Tracking.History[x].Index),
 					UTP:       "",
-					CreatedAt: "",
+					CreatedAt: order.Packages[i].Subpackages[j].Tracking.History[x].CreatedAt.Format(ISO8601),
 				}
 
 				if order.Packages[i].Subpackages[j].Tracking.History[x].Actions != nil {
 					state.UTP = order.Packages[i].Subpackages[j].Tracking.History[x].Actions[len(order.Packages[i].Subpackages[j].Tracking.History[x].Actions)-1].UTP
-					state.CreatedAt = order.Packages[i].Subpackages[j].Tracking.History[x].Actions[len(order.Packages[i].Subpackages[j].Tracking.History[x].Actions)-1].CreatedAt.Format(ISO8601)
+					//state.CreatedAt = order.Packages[i].Subpackages[j].Tracking.History[x].Actions[len(order.Packages[i].Subpackages[j].Tracking.History[x].Actions)-1].CreatedAt.Format(ISO8601)
 				}
 				subpackage.States = append(subpackage.States, state)
 			}
@@ -1292,28 +1317,6 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 }
 
 func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint64, filter FilterValue) (*pb.MessageResponse, error) {
-
-	//var orderFilter func() interface{}
-	//if filter != "" {
-	//	orderFilter = func() interface{} {
-	//		return bson.D{{"orderId", oid}, {"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.operatorFilterState[filter].StateName()}}
-	//	}
-	//} else {
-	//	orderFilter = func() interface{} {
-	//		return bson.D{{"orderId", oid}, {"deletedAt", nil}}
-	//	}
-	//}
-	//
-	//orderList, err := app.Globals.OrderRepository.FindByFilter(ctx, orderFilter)
-	//if err != nil {
-	//	logger.Err("operatorGetOrderByIdHandler() => CountWithFilter failed,  oid: %d, filterValue: %s, error: %s", oid, filter, err)
-	//	return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-	//}
-	//
-	//if orderList == nil || len(orderList) == 0 {
-	//	logger.Err("operatorGetOrderByIdHandler() => orderId not found, orderId: %d, filter:%s", oid, filter)
-	//	return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
-	//}
 
 	findOrder, err := app.Globals.OrderRepository.FindById(ctx, oid)
 	if err != nil {
@@ -1659,22 +1662,15 @@ func (server *Server) sellerAllOrdersHandler(ctx context.Context, pid uint64, pa
 	for filter, _ := range server.sellerFilterStates {
 		if filter == DeliveryPendingFilter {
 			criteria = append(criteria, map[string]string{
-				"packages.subpackages.status": states.DeliveryPending.StateName(),
+				server.queryPathStates[DeliveryPendingFilter].queryPath: server.queryPathStates[DeliveryPendingFilter].state.StateName(),
 			})
 			criteria = append(criteria, map[string]string{
-				"packages.subpackages.status": states.DeliveryDelayed.StateName(),
+				server.queryPathStates[DeliveryDelayedFilter].queryPath: server.queryPathStates[DeliveryDelayedFilter].state.StateName(),
 			})
 		} else if filter != AllCanceledFilter {
-			if filter == CanceledBySellerFilter || filter == CanceledByBuyerFilter ||
-				filter == DeliveryFailedFilter || filter == ReturnDeliveryFailedFilter {
-				criteria = append(criteria, map[string]string{
-					"packages.subpackages.tracking.history.name": server.sellerFilterStates[filter][0].expectedState.StateName(),
-				})
-			} else {
-				criteria = append(criteria, map[string]string{
-					"packages.subpackages.status": server.sellerFilterStates[filter][0].expectedState.StateName(),
-				})
-			}
+			criteria = append(criteria, map[string]string{
+				server.queryPathStates[filter].queryPath: server.queryPathStates[filter].state.StateName(),
+			})
 		}
 	}
 	filters["$or"] = bson.A(criteria)
@@ -2183,36 +2179,37 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 
 func (server *Server) sellerOrderShipmentReportsHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
 
+	queryPathShipmentPendingState := server.queryPathStates[ShipmentPendingFilter]
 	shipmentPendingFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"packages.pid": userId, "packages.deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.status": states.ShipmentPending.StateName()}}}},
+			{"$match": bson.M{"packages.pid": userId, "packages.deletedAt": nil, queryPathShipmentPendingState.queryPath: queryPathShipmentPendingState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "packages.deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.status": states.ShipmentPending.StateName()}}}},
+			{"$match": bson.M{"packages.pid": userId, "packages.deletedAt": nil, queryPathShipmentPendingState.queryPath: queryPathShipmentPendingState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
 
+	queryPathShipmentDelayedState := server.queryPathStates[ShipmentDelayedFilter]
 	shipmentDelayedFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ShipmentDelayed.StateName()}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShipmentDelayedState.queryPath: queryPathShipmentDelayedState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ShipmentDelayed.StateName()}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShipmentDelayedState.queryPath: queryPathShipmentDelayedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
 
+	queryPathShippedState := server.queryPathStates[ShippedFilter]
 	shippedFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.Shipped.StateName()}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShippedState.queryPath: queryPathShippedState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.Shipped.StateName()}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShippedState.queryPath: queryPathShippedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -2264,97 +2261,97 @@ func (server *Server) sellerOrderShipmentReportsHandler(ctx context.Context, use
 
 func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
 
+	queryPathRequestPendingState := server.queryPathStates[ReturnRequestPendingFilter]
 	returnRequestPendingFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.status": states.ReturnRequestPending.StateName()}}}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestPendingState.queryPath: queryPathRequestPendingState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.status": states.ReturnRequestPending.StateName()}}}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestPendingState.queryPath: queryPathRequestPendingState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
 
+	queryPathRequestRejectedState := server.queryPathStates[ReturnRequestRejectedFilter]
 	returnRequestRejectedFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnRequestRejected.StateName()}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestRejectedState.queryPath: queryPathRequestRejectedState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnRequestRejected.StateName()}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestRejectedState.queryPath: queryPathRequestRejectedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
 
+	queryPathReturnShipmentPendingState := server.queryPathStates[ReturnShipmentPendingFilter]
 	returnShipmentPendingFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnShipmentPending.StateName()}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShipmentPendingState.queryPath: queryPathReturnShipmentPendingState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnShipmentPending.StateName()}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShipmentPendingState.queryPath: queryPathReturnShipmentPendingState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
 
+	queryPathReturnShippedState := server.queryPathStates[ReturnShippedFilter]
 	returnShippedFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnShipped.StateName()}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShippedState.queryPath: queryPathReturnShippedState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnShipped.StateName()}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShippedState.queryPath: queryPathReturnShippedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
 
+	queryPathReturnDeliveredState := server.queryPathStates[ReturnDeliveredFilter]
 	returnDeliveredFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.status": states.ReturnDelivered.StateName()}}}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveredState.queryPath: queryPathReturnDeliveredState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.status": states.ReturnDelivered.StateName()}}}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveredState.queryPath: queryPathReturnDeliveredState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
 
+	queryPathReturnDeliveryPendingState := server.queryPathStates[ReturnDeliveryPendingFilter]
 	returnDeliveryPendingFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.status": states.ReturnDeliveryPending.StateName()}}}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryPendingState.queryPath: queryPathReturnDeliveryPendingState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.status": states.ReturnDeliveryPending.StateName()}}}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryPendingState.queryPath: queryPathReturnDeliveryPendingState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
 
+	queryPathReturnDeliveryDelayedState := server.queryPathStates[ReturnDeliveryDelayedFilter]
 	returnDeliveryDelayedFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.status": states.ReturnDeliveryDelayed.StateName()}}}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryDelayedState.queryPath: queryPathReturnDeliveryDelayedState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.status": states.ReturnDeliveryDelayed.StateName()}}}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryDelayedState.queryPath: queryPathReturnDeliveryDelayedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
 
+	queryPathReturnDeliveryFailedState := server.queryPathStates[ReturnDeliveryFailedFilter]
 	returnDeliveryFailedFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnDeliveryFailed.StateName()}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryFailedState.queryPath: queryPathReturnDeliveryFailedState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnDeliveryFailed.StateName()}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryFailedState.queryPath: queryPathReturnDeliveryFailedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -2440,38 +2437,42 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 
 func (server *Server) sellerOrderDeliveredReportsHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
 
+	queryPathDeliveryPendingState := server.queryPathStates[DeliveryPendingFilter]
+	queryPathDeliveryDelayedState := server.queryPathStates[DeliveryDelayedFilter]
 	deliveryPendingAndDelayedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.status": states.DeliveryPending.StateName()},
-				bson.M{"packages.subpackages.status": states.DeliveryDelayed.StateName()}}}},
+				bson.M{queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()},
+				bson.M{queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}}}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.status": states.DeliveryPending.StateName()},
-				bson.M{"packages.subpackages.status": states.DeliveryDelayed.StateName()}}}},
+				bson.M{queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()},
+				bson.M{queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}}}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
 
+	queryPathDeliveredState := server.queryPathStates[DeliveredFilter]
 	deliveredFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.Delivered.StateName()}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveredState.queryPath: queryPathDeliveredState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.Delivered.StateName()}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveredState.queryPath: queryPathDeliveredState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
 
+	queryPathDeliveryFailedState := server.queryPathStates[DeliveryFailedFilter]
 	deliveryFailedFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.DeliveryFailed.StateName()}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryFailedState.queryPath: queryPathDeliveryFailedState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "packages.subpackages.status": states.DeliveryFailed.StateName()}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryFailedState.queryPath: queryPathDeliveryFailedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -2523,27 +2524,25 @@ func (server *Server) sellerOrderDeliveredReportsHandler(ctx context.Context, us
 
 func (server *Server) sellerOrderCancelReportsHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
 
+	queryPathCanceledByBuyerState := server.queryPathStates[CanceledByBuyerFilter]
 	cancelByBuyerFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.tracking.history.name": states.CanceledByBuyer.StateName()}}}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledByBuyerState.queryPath: queryPathCanceledByBuyerState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.tracking.history.name": states.CanceledByBuyer.StateName()}}}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledByBuyerState.queryPath: queryPathCanceledByBuyerState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
 
+	queryPathCanceledBySellerState := server.queryPathStates[CanceledBySellerFilter]
 	cancelBySellerFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.tracking.history.name": states.CanceledBySeller.StateName()}}}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledBySellerState.queryPath: queryPathCanceledBySellerState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.tracking.history.name": states.CanceledBySeller.StateName()}}}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledBySellerState.queryPath: queryPathCanceledBySellerState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -2607,17 +2606,17 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 
 	orderFilter := func() (interface{}, string, int) {
 		return bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
-				bson.D{{"packages.subpackages.status", states.PaymentFailed.StateName()}},
-				bson.D{{"packages.subpackages.status", states.ApprovalPending.StateName()}},
-				bson.D{{"packages.subpackages.status", states.ShipmentPending.StateName()}},
-				bson.D{{"packages.subpackages.status", states.ShipmentDelayed.StateName()}},
-				bson.D{{"packages.subpackages.status", states.Shipped.StateName()}},
-				bson.D{{"packages.subpackages.status", states.DeliveryPending.StateName()}},
-				bson.D{{"packages.subpackages.status", states.DeliveryDelayed.StateName()}},
-				bson.D{{"packages.subpackages.status", states.Delivered.StateName()}},
-				bson.D{{"packages.subpackages.status", states.DeliveryFailed.StateName()}},
-				bson.D{{"packages.subpackages.status", states.PayToBuyer.StateName()}},
-				bson.D{{"packages.subpackages.status", states.PayToSeller.StateName()}}}}},
+				bson.D{{server.queryPathStates[PaymentFailedFilter].queryPath, server.queryPathStates[PaymentFailedFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[ApprovalPendingFilter].queryPath, server.queryPathStates[ApprovalPendingFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[ShipmentPendingFilter].queryPath, server.queryPathStates[ShipmentPendingFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[ShipmentDelayedFilter].queryPath, server.queryPathStates[ShipmentDelayedFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[ShippedFilter].queryPath, server.queryPathStates[ShippedFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[DeliveryPendingFilter].queryPath, server.queryPathStates[DeliveryPendingFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[DeliveryDelayedFilter].queryPath, server.queryPathStates[DeliveryDelayedFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[DeliveredFilter].queryPath, server.queryPathStates[DeliveredFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[DeliveryFailedFilter].queryPath, server.queryPathStates[DeliveryFailedFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[PayToBuyerFilter].queryPath, server.queryPathStates[PayToBuyerFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[PayToSellerFilter].queryPath, server.queryPathStates[PayToSellerFilter].state.StateName()}}}}},
 			sortName, sortDirect
 	}
 
@@ -3073,70 +3072,76 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 
 func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
 
+	queryPathReturnRequestPendingState := server.queryPathStates[ReturnRequestPendingFilter]
+	queryPathReturnRequestRejectedState := server.queryPathStates[ReturnRequestRejectedFilter]
 	returnRequestPendingFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.status": states.ReturnRequestPending.StateName()},
-				bson.M{"packages.subpackages.status": states.ReturnRequestRejected.StateName()}}}},
+				bson.M{queryPathReturnRequestPendingState.queryPath: queryPathReturnRequestPendingState.state.StateName()},
+				bson.M{queryPathReturnRequestRejectedState.queryPath: queryPathReturnRequestRejectedState.state.StateName()}}}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
 			{"$match": bson.M{"$or": bson.A{
-				bson.M{"packages.subpackages.status": states.ReturnRequestPending.StateName()},
-				bson.M{"packages.subpackages.status": states.ReturnRequestRejected.StateName()}},
+				bson.M{queryPathReturnRequestPendingState.queryPath: queryPathReturnRequestPendingState.state.StateName()},
+				bson.M{queryPathReturnRequestRejectedState.queryPath: queryPathReturnRequestRejectedState.state.StateName()}},
 				"packages.deletedAt": nil}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
 
+	queryPathReturnShipmentPendingState := server.queryPathStates[ReturnShipmentPendingFilter]
 	returnShipmentPendingFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnShipmentPending.StateName()}},
+			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, queryPathReturnShipmentPendingState.queryPath: queryPathReturnShipmentPendingState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.subpackages.status": states.ReturnShipmentPending.StateName(), "packages.deletedAt": nil}},
+			{"$match": bson.M{queryPathReturnShipmentPendingState.queryPath: queryPathReturnShipmentPendingState.state.StateName(), "packages.deletedAt": nil}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
 
+	queryPathReturnShippedState := server.queryPathStates[ReturnShippedFilter]
 	returnShippedFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnShipped.StateName()}},
+			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, queryPathReturnShippedState.queryPath: queryPathReturnShippedState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.subpackages.status": states.ReturnShipped.StateName(), "packages.deletedAt": nil}},
+			{"$match": bson.M{queryPathReturnShippedState.queryPath: queryPathReturnShippedState.state.StateName(), "packages.deletedAt": nil}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
 
-	// TODO check correct result
+	queryPathReturnDeliveredState := server.queryPathStates[ReturnDeliveredFilter]
+	queryPathReturnDeliveryDelayedState := server.queryPathStates[ReturnDeliveryDelayedFilter]
+	queryPathReturnDeliveryPendingState := server.queryPathStates[ReturnDeliveryPendingFilter]
 	returnDeliveredFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{"packages.subpackages.status": states.ReturnDelivered.StateName()},
-				bson.M{"packages.subpackages.status": states.ReturnDeliveryDelayed.StateName()},
-				bson.M{"packages.subpackages.status": states.ReturnDeliveryPending.StateName()}}}},
+				bson.M{queryPathReturnDeliveredState.queryPath: queryPathReturnDeliveredState.state.StateName()},
+				bson.M{queryPathReturnDeliveryDelayedState.queryPath: queryPathReturnDeliveryDelayedState.state.StateName()},
+				bson.M{queryPathReturnDeliveryPendingState.queryPath: queryPathReturnDeliveryPendingState.state.StateName()}}}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
 			{"$match": bson.M{"$or": bson.A{
-				bson.M{"packages.subpackages.status": states.ReturnDelivered.StateName()},
-				bson.M{"packages.subpackages.status": states.ReturnDeliveryDelayed.StateName()},
-				bson.M{"packages.subpackages.status": states.ReturnDeliveryPending.StateName()}},
+				bson.M{queryPathReturnDeliveredState.queryPath: queryPathReturnDeliveredState.state.StateName()},
+				bson.M{queryPathReturnDeliveryDelayedState.queryPath: queryPathReturnDeliveryDelayedState.state.StateName()},
+				bson.M{queryPathReturnDeliveryPendingState.queryPath: queryPathReturnDeliveryPendingState.state.StateName()}},
 				"packages.deletedAt": nil}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
 
-	// TODO check correct result
+	queryPathReturnDeliveryFailedState := server.queryPathStates[ReturnDeliveryFailedFilter]
 	returnDeliveryFailedFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "packages.subpackages.status": states.ReturnDeliveryFailed.StateName()}},
+			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, queryPathReturnDeliveryFailedState.queryPath: queryPathReturnDeliveryFailedState.state.StateName()}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.subpackages.status": states.ReturnDeliveryFailed.StateName(), "packages.deletedAt": nil}},
+			{"$match": bson.M{queryPathReturnDeliveryFailedState.queryPath: queryPathReturnDeliveryFailedState.state.StateName(), "packages.deletedAt": nil}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -3216,14 +3221,14 @@ func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId ui
 
 	var returnFilter bson.D
 	returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
-		bson.D{{"packages.subpackages.status", states.ReturnRequestPending.StateName()}},
-		bson.D{{"packages.subpackages.status", states.ReturnRequestRejected.StateName()}},
-		bson.D{{"packages.subpackages.status", states.ReturnShipmentPending.StateName()}},
-		bson.D{{"packages.subpackages.status", states.ReturnShipped.StateName()}},
-		bson.D{{"packages.subpackages.status", states.ReturnDeliveryPending.StateName()}},
-		bson.D{{"packages.subpackages.status", states.ReturnDeliveryDelayed.StateName()}},
-		bson.D{{"packages.subpackages.status", states.ReturnDeliveryFailed.StateName()}},
-		bson.D{{"packages.subpackages.status", states.ReturnDelivered.StateName()}}}}}
+		bson.D{{server.queryPathStates[ReturnRequestPendingFilter].queryPath, server.queryPathStates[ReturnRequestPendingFilter].state.StateName()}},
+		bson.D{{server.queryPathStates[ReturnRequestRejectedFilter].queryPath, server.queryPathStates[ReturnRequestRejectedFilter].state.StateName()}},
+		bson.D{{server.queryPathStates[ReturnShipmentPendingFilter].queryPath, server.queryPathStates[ReturnShipmentPendingFilter].state.StateName()}},
+		bson.D{{server.queryPathStates[ReturnShippedFilter].queryPath, server.queryPathStates[ReturnShippedFilter].state.StateName()}},
+		bson.D{{server.queryPathStates[ReturnDeliveryPendingFilter].queryPath, server.queryPathStates[ReturnDeliveryPendingFilter].state.StateName()}},
+		bson.D{{server.queryPathStates[ReturnDeliveryDelayedFilter].queryPath, server.queryPathStates[ReturnDeliveryDelayedFilter].state.StateName()}},
+		bson.D{{server.queryPathStates[ReturnDeliveryFailedFilter].queryPath, server.queryPathStates[ReturnDeliveryFailedFilter].state.StateName()}},
+		bson.D{{server.queryPathStates[ReturnDeliveredFilter].queryPath, server.queryPathStates[ReturnDeliveredFilter].state.StateName()}}}}}
 
 	//genFilter := server.buyerGeneratePipelineFilter(ctx, filter)
 	//filters := make(bson.M, 3)
@@ -3432,17 +3437,17 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 	var returnFilter bson.D
 	if filter == ReturnDeliveredFilter {
 		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
-			bson.D{{"packages.subpackages.status", states.ReturnDeliveryPending.StateName()}},
-			bson.D{{"packages.subpackages.status", states.ReturnDeliveryDelayed.StateName()}},
-			bson.D{{"packages.subpackages.status", states.ReturnDelivered.StateName()}}}}}
+			bson.D{{server.queryPathStates[ReturnDeliveryPendingFilter].queryPath, server.queryPathStates[ReturnDeliveryPendingFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[ReturnDeliveryDelayedFilter].queryPath, server.queryPathStates[ReturnDeliveryDelayedFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[ReturnDeliveredFilter].queryPath, server.queryPathStates[ReturnDeliveredFilter].state.StateName()}}}}}
 	} else if filter == DeliveryFailedFilter {
-		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"packages.subpackages.tracking.history.name", server.buyerFilterStates[filter][0].expectedState.StateName()}}
+		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {server.queryPathStates[DeliveryFailedFilter].queryPath, server.queryPathStates[DeliveryFailedFilter].state.StateName()}}
 	} else if filter == ReturnRequestPendingFilter {
 		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
-			bson.D{{"packages.subpackages.status", states.ReturnRequestPending.StateName()}},
-			bson.D{{"packages.subpackages.status", states.ReturnRequestRejected.StateName()}}}}}
+			bson.D{{server.queryPathStates[ReturnRequestPendingFilter].queryPath, server.queryPathStates[ReturnRequestPendingFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[ReturnRequestRejectedFilter].queryPath, server.queryPathStates[ReturnRequestRejectedFilter].state.StateName()}}}}}
 	} else {
-		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"packages.subpackages.status", server.buyerFilterStates[filter][0].expectedState.StateName()}}
+		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {server.queryPathStates[filter].queryPath, server.queryPathStates[filter].state.StateName()}}
 	}
 
 	//genFilter := server.buyerGeneratePipelineFilter(ctx, filter)
@@ -3679,10 +3684,10 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 	server.flowManager.MessageHandler(ctx, iFrame)
 	futureData := iFuture.Get()
 
-	if futureData.Error() != nil {
-		futureErr := futureData.Error()
-		return nil, status.Error(codes.Code(futureErr.Code()), futureErr.Message())
-	}
+	//if futureData.Error() != nil {
+	//	futureErr := futureData.Error()
+	//	return nil, status.Error(codes.Code(futureErr.Code()), futureErr.Message())
+	//}
 
 	callbackUrl, ok := futureData.Data().(string)
 	if ok != true {

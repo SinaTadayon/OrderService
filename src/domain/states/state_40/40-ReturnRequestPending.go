@@ -111,13 +111,14 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 		} else {
 			var buf bytes.Buffer
 			err = smsTemplate.Execute(&buf, pkgItem.OrderId)
+			newBuf := bytes.NewBuffer(bytes.Replace(buf.Bytes(), []byte("\\n"), []byte{10}, -1))
 			if err != nil {
 				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
 					state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerReturnRequestPendingState, err)
 			} else {
 				buyerNotify := notify_service.SMSRequest{
 					Phone: pkgItem.ShippingAddress.Mobile,
-					Body:  buf.String(),
+					Body:  newBuf.String(),
 				}
 
 				buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
@@ -174,13 +175,14 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 				} else {
 					var buf bytes.Buffer
 					err = smsTemplate.Execute(&buf, pkgItem.OrderId)
+					newBuf := bytes.NewBuffer(bytes.Replace(buf.Bytes(), []byte("\\n"), []byte{10}, -1))
 					if err != nil {
 						logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
 							state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifySellerReturnRequestPendingState, err)
 					} else {
 						sellerNotify := notify_service.SMSRequest{
 							Phone: sellerProfile.GeneralInfo.MobilePhone,
-							Body:  buf.String(),
+							Body:  newBuf.String(),
 						}
 						sellerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, sellerNotify).Get()
 						if sellerFutureData.Error() != nil {
@@ -487,9 +489,9 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 					}
 
 					returnRequestAt := time.Now().UTC()
-					for _, subpackage := range newSubPackages {
-						if subpackage.Shipments != nil {
-							subpackage.Shipments.ReturnShipmentDetail = &entities.ReturnShippingDetail{
+					for i := 0; i < len(newSubPackages); i++ {
+						if newSubPackages[i].Shipments != nil {
+							newSubPackages[i].Shipments.ReturnShipmentDetail = &entities.ReturnShippingDetail{
 								CarrierName:    "",
 								ShippingMethod: "",
 								TrackingNumber: "",
@@ -502,7 +504,7 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 						} else {
 							logger.Err("Process() => subpackage.Shipments is nil, state: %s, event: %v, orderId: %d, pid:%d, sids: %v",
 								state.Name(), event, pkgItem.OrderId, pkgItem.PId, sids)
-							subpackage.Shipments = &entities.Shipment{
+							newSubPackages[i].Shipments = &entities.Shipment{
 								ReturnShipmentDetail: &entities.ReturnShippingDetail{
 									CarrierName:    "",
 									ShippingMethod: "",

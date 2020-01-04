@@ -58,13 +58,14 @@ func (state paymentSuccessState) Process(ctx context.Context, iFrame frame.IFram
 		} else {
 			var buf bytes.Buffer
 			err = smsTemplate.Execute(&buf, order.OrderId)
+			newBuf := bytes.NewBuffer(bytes.Replace(buf.Bytes(), []byte("\\n"), []byte{10}, -1))
 			if err != nil {
 				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
 					state.Name(), order.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerPaymentSuccessState, err)
 			} else {
 				buyerNotify := notify_service.SMSRequest{
 					Phone: order.BuyerInfo.ShippingAddress.Mobile,
-					Body:  buf.String(),
+					Body:  newBuf.String(),
 				}
 
 				buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()

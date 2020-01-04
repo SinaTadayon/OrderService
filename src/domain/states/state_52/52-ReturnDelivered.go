@@ -121,13 +121,14 @@ func (state returnDeliveredState) Process(ctx context.Context, iFrame frame.IFra
 			} else {
 				var buf bytes.Buffer
 				err = smsTemplate.Execute(&buf, templateData)
+				newBuf := bytes.NewBuffer(bytes.Replace(buf.Bytes(), []byte("\\n"), []byte{10}, -1))
 				if err != nil {
 					logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
 						state.Name(), pkgItem.OrderId, message, err)
 				} else {
 					buyerNotify := notify_service.SMSRequest{
 						Phone: pkgItem.ShippingAddress.Mobile,
-						Body:  buf.String(),
+						Body:  newBuf.String(),
 					}
 
 					buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
@@ -427,21 +428,21 @@ func (state returnDeliveredState) Process(ctx context.Context, iFrame frame.IFra
 					var rejectedSubtotal int64 = 0
 					var rejectedDiscount int64 = 0
 
-					for _, subpackage := range newSubPackages {
-						for j := 0; j < len(subpackage.Items); j++ {
-							amount, err := decimal.NewFromString(subpackage.Items[j].Invoice.Total.Amount)
+					for i := 0; i < len(newSubPackages); i++ {
+						for j := 0; j < len(newSubPackages[i].Items); j++ {
+							amount, err := decimal.NewFromString(newSubPackages[i].Items[j].Invoice.Total.Amount)
 							if err != nil {
 								logger.Err("Process() => decimal.NewFromString failed, Total.Amount invalid, total: %s, orderId: %d, pid: %d, sid: %d, state: %s, event: %v",
-									subpackage.Items[j].Invoice.Total.Amount, subpackage.OrderId, subpackage.PId, subpackage.SId, state.Name(), event)
+									newSubPackages[i].Items[j].Invoice.Total.Amount, newSubPackages[i].OrderId, newSubPackages[i].PId, newSubPackages[i].SId, state.Name(), event)
 								future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 									SetError(future.InternalError, "Unknown Error", errors.New("Subpackage Total Invalid")).Send()
 								return
 							}
 
-							discount, err := decimal.NewFromString(subpackage.Items[j].Invoice.Discount.Amount)
+							discount, err := decimal.NewFromString(newSubPackages[i].Items[j].Invoice.Discount.Amount)
 							if err != nil {
 								logger.Err("Process() => decimal.NewFromString failed, Invoice.Discount invalid, discount: %s, orderId: %d, pid: %d, sid: %d, state: %s, event: %v",
-									subpackage.Items[j].Invoice.Discount, subpackage.OrderId, subpackage.PId, subpackage.SId, state.Name(), event)
+									newSubPackages[i].Items[j].Invoice.Discount, newSubPackages[i].OrderId, newSubPackages[i].PId, newSubPackages[i].SId, state.Name(), event)
 								future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 									SetError(future.InternalError, "Unknown Error", errors.New("Subpackage Discount Invalid")).Send()
 								return
