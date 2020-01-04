@@ -1814,7 +1814,7 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId
 					itemDetail := &pb.SellerOrderDetail_ItemDetail{
 						SID:         pkgItem.Subpackages[i].SId,
 						Sku:         pkgItem.Subpackages[i].Items[j].SKU,
-						Status:      pkgItem.Subpackages[i].Status,
+						Status:      filterState.expectedState.StateName(),
 						SIdx:        int32(states.FromString(pkgItem.Subpackages[i].Status).StateIndex()),
 						InventoryId: pkgItem.Subpackages[i].Items[j].InventoryId,
 						Title:       pkgItem.Subpackages[i].Items[j].Title,
@@ -2031,7 +2031,7 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 						itemOrder := &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item{
 							SID:    pkgList[i].Subpackages[j].SId,
 							Sku:    pkgList[i].Subpackages[j].Items[z].SKU,
-							Status: pkgList[i].Subpackages[j].Status,
+							Status: filterState.expectedState.StateName(),
 							SIdx:   int32(states.FromString(pkgList[i].Subpackages[j].Status).StateIndex()),
 							Detail: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item_Detail{
 								InventoryId:     pkgList[i].Subpackages[j].Items[z].InventoryId,
