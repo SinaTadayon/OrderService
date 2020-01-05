@@ -1633,6 +1633,69 @@ func TestSellerOrderReturnReports(t *testing.T) {
 	require.Equal(t, uint64(1000001), sellerOrderReturnReports.SellerId)
 }
 
+func TestSellerOrderDashboardReports(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
+
+	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   string(SellerOrderDashboardReports),
+		Type:   string(DataReqType),
+		ADT:    string(SingleType),
+		Method: string(GetMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       1000001,
+			UTP:       string(SellerUser),
+			OID:       0,
+			PID:       1000001,
+			SIDs:      nil,
+			Page:      1,
+			PerPage:   2,
+			IpAddress: "",
+			Action:    nil,
+			Sorts:     nil,
+			Filters:   nil,
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+
+	var sellerOrderDashboardReports pb.SellerOrderDashboardReports
+	err = ptypes.UnmarshalAny(response.Data, &sellerOrderDashboardReports)
+	require.Nil(t, err)
+
+	require.NotNil(t, sellerOrderDashboardReports)
+	require.Equal(t, uint32(1), sellerOrderDashboardReports.ShipmentDelayed)
+	require.Equal(t, uint64(1000001), sellerOrderDashboardReports.SellerId)
+}
+
 func TestSellerOrderShipmentReports(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+

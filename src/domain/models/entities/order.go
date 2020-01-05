@@ -12,6 +12,10 @@ const (
 	randomMax int = 999
 )
 
+const (
+	DocumentVersion string = "1.0.0"
+)
+
 func init() {
 	rand.Seed(time.Now().UnixNano())
 }
@@ -25,6 +29,7 @@ type Order struct {
 	ID            primitive.ObjectID     `bson:"-"`
 	OrderId       uint64                 `bson:"orderId"`
 	Version       uint64                 `bson:"version"`
+	DocVersion    string                 `bson:"docVersion"`
 	Platform      string                 `bson:"platform"`
 	OrderPayment  []PaymentService       `bson:"orderPayment"`
 	SystemPayment SystemPayment          `bson:"systemPayment"`

@@ -220,12 +220,6 @@ func (repo iPkgItemRepositoryImpl) CountWithFilter(ctx context.Context, supplier
 	}
 
 	return int64(total.Count), nil
-
-	//total, err := repo.mongoAdapter.Count(databaseName, collectionName, supplier())
-	//if err != nil {
-	//	return 0, errors.Wrap(err, "CountWithFilter failed")
-	//}
-	//return total, nil
 }
 
 func closeCursor(context context.Context, cursor *mongo.Cursor) {

@@ -76,6 +76,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	}
 
 	order.Platform = newOrderDto.Platform
+	order.DocVersion = entities.DocumentVersion
 
 	order.BuyerInfo.BuyerId = newOrderDto.Buyer.BuyerId
 	order.BuyerInfo.FirstName = newOrderDto.Buyer.FirstName
