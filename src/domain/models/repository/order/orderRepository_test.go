@@ -8,6 +8,7 @@ import (
 	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository"
 	"go.mongodb.org/mongo-driver/bson"
 	"os"
 	"testing"
@@ -107,7 +108,7 @@ func TestUpdateOrderRepository_Failed(t *testing.T) {
 	order1.BuyerInfo.FirstName = "Siamak"
 	_, err = orderRepository.Save(ctx, *order1)
 	require.Error(t, err)
-	require.Equal(t, ErrorUpdateFailed, err)
+	require.Equal(t, repository.ErrorUpdateFailed, err)
 }
 
 func TestInsertOrderRepository_Success(t *testing.T) {
@@ -203,7 +204,7 @@ func TestFindAllWithPageAndPerPageRepository_failed(t *testing.T) {
 	require.Nil(t, err)
 	_, _, err = orderRepository.FindAllWithPage(ctx, 1002, 2000)
 	require.NotNil(t, err)
-	require.Equal(t, ErrorPageNotAvailable, err)
+	require.Equal(t, repository.ErrorPageNotAvailable, err)
 }
 
 func TestFindAllWithPageAndPerPageAndSortRepository_success(t *testing.T) {
@@ -381,7 +382,7 @@ func TestFindByFilterWithPageAndPerPageRepository_failed(t *testing.T) {
 		return bson.D{{}, {"deletedAt", nil}}
 	}, 20002, 2000)
 	require.NotNil(t, err)
-	require.Equal(t, err, ErrorPageNotAvailable)
+	require.Equal(t, err, repository.ErrorPageNotAvailable)
 }
 
 func TestFindByFilterWithPageAndPerPageAndSortRepository_success(t *testing.T) {

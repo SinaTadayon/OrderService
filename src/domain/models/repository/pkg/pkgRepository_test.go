@@ -62,7 +62,23 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func TestUpdatePkgItemRepository(t *testing.T) {
+func TestUpdatePkgItemRepository_Failed(t *testing.T) {
+
+	defer removeCollection()
+	order, err := createOrderAndSave()
+	require.Nil(t, err, "createOrderAndSave failed")
+	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
+
+	ctx, _ := context.WithCancel(context.Background())
+	order.Packages[0].Version = 1
+	order.Packages[0].Status = "Payment_Pending"
+	_, err = pkgItemRepo.Update(ctx, order.Packages[0])
+	require.Error(t, err, "pkgItemRepo.Update failed")
+	//require.Equal(t, uint64(1), packageItem.Version)
+	//require.Equal(t, "Payment_Pending", packageItem.Status)
+}
+
+func TestUpdatePkgItemRepository_Success(t *testing.T) {
 
 	defer removeCollection()
 	order, err := createOrderAndSave()

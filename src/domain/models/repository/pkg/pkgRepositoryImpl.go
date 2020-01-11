@@ -6,6 +6,7 @@ import (
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -19,13 +20,6 @@ const (
 	defaultDocCount int    = 1024
 )
 
-var ErrorTotalCountExceeded = errors.New("total count exceeded")
-var ErrorPageNotAvailable = errors.New("page not available")
-var ErrorDeleteFailed = errors.New("update deletedAt field failed")
-var ErrorRemoveFailed = errors.New("remove subpackage failed")
-var ErrorUpdateFailed = errors.New("update subpackage failed")
-var ErrorVersionUpdateFailed = errors.New("update subpackage version failed")
-
 type iPkgItemRepositoryImpl struct {
 	mongoAdapter *mongoadapter.Mongo
 }
@@ -34,7 +28,7 @@ func NewPkgItemRepository(mongoDriver *mongoadapter.Mongo) IPkgItemRepository {
 	return &iPkgItemRepositoryImpl{mongoDriver}
 }
 
-func (repo iPkgItemRepositoryImpl) findAndUpdate(ctx context.Context, pkgItem *entities.PackageItem, upsert bool) (*entities.PackageItem, error) {
+func (repo iPkgItemRepositoryImpl) findAndUpdate(ctx context.Context, pkgItem *entities.PackageItem, upsert bool) (*entities.PackageItem, repository.IRepoError) {
 	pkgItem.UpdatedAt = time.Now().UTC()
 	currentVersion := pkgItem.Version
 	pkgItem.Version += 1
@@ -51,30 +45,20 @@ func (repo iPkgItemRepositoryImpl) findAndUpdate(ctx context.Context, pkgItem *e
 			}},
 		},
 		bson.D{{"$set", bson.D{{"packages.$", pkgItem}}}}, opt)
-	//singleResult := repo.mongoAdapter.GetConn().Database(databaseName).Collection(collectionName).FindOneAndUpdate(ctx,
-	//	bson.M{"$and": []bson.M{ // you can try this in []interface
-	//		bson.M{"packages.id": pkgItem.Id},
-	//		bson.M{"packages.deletedAt": nil},
-	//		bson.M{"packages.version": currentVersion}}},
-	//	bson.D{{"$set", bson.D{{"packages.1", pkgItem}}}}, opt)
 	if singleResult.Err() != nil {
-		return nil, errors.Wrap(singleResult.Err(), "findAndUpdate failed")
+		if repo.mongoAdapter.NoDocument(singleResult.Err()) {
+			return nil, repository.ErrorFactory(repository.NotFoundErr, "Package Not Found", repository.ErrorUpdateFailed)
+		}
+		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(singleResult.Err(), ""))
 	}
-	//{"$inc", bson.D{{"packages.$.version", 1}
-	//var updatedPkgItem entities.PackageItem
-	//if err := singleResult.Decode(&updatedPkgItem); err != nil {
-	//	return nil, errors.Wrap(singleResult.Err(), "findAndUpdate pkgItem failed")
-	//}
 
 	return pkgItem, nil
 }
 
-func (repo iPkgItemRepositoryImpl) Update(ctx context.Context, pkgItem entities.PackageItem) (*entities.PackageItem, error) {
+func (repo iPkgItemRepositoryImpl) Update(ctx context.Context, pkgItem entities.PackageItem) (*entities.PackageItem, repository.IRepoError) {
 
 	pkgItem.UpdatedAt = time.Now().UTC()
-	var updatedPkgItem *entities.PackageItem
-	var err error
-	updatedPkgItem, err = repo.findAndUpdate(ctx, &pkgItem, false)
+	updatedPkgItem, err := repo.findAndUpdate(ctx, &pkgItem, false)
 	if err != nil {
 		return nil, err
 	}
@@ -82,11 +66,11 @@ func (repo iPkgItemRepositoryImpl) Update(ctx context.Context, pkgItem entities.
 	return updatedPkgItem, nil
 }
 
-func (repo iPkgItemRepositoryImpl) UpdateWithUpsert(ctx context.Context, pkgItem entities.PackageItem) (*entities.PackageItem, []uint64, error) {
+func (repo iPkgItemRepositoryImpl) UpdateWithUpsert(ctx context.Context, pkgItem entities.PackageItem) (*entities.PackageItem, []uint64, repository.IRepoError) {
 
 	pkgItem.UpdatedAt = time.Now().UTC()
 	var updatedPkgItem *entities.PackageItem
-	var err error
+	var err repository.IRepoError
 	subPkgIdMap := make(map[uint64]*entities.Subpackage, len(pkgItem.Subpackages))
 	newSubPkgIds := make([]uint64, 0, len(pkgItem.Subpackages))
 	var isFindNewSubPkg = false
@@ -128,7 +112,7 @@ func (repo iPkgItemRepositoryImpl) UpdateWithUpsert(ctx context.Context, pkgItem
 	return updatedPkgItem, newSubPkgIds, nil
 }
 
-func (repo iPkgItemRepositoryImpl) FindById(ctx context.Context, orderId uint64, id uint64) (*entities.PackageItem, error) {
+func (repo iPkgItemRepositoryImpl) FindById(ctx context.Context, orderId uint64, id uint64) (*entities.PackageItem, repository.IRepoError) {
 
 	var PkgItem entities.PackageItem
 	pipeline := []bson.M{
@@ -141,26 +125,26 @@ func (repo iPkgItemRepositoryImpl) FindById(ctx context.Context, orderId uint64,
 
 	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
 	if err != nil {
-		return nil, errors.Wrap(err, "Aggregate failed")
+		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
 	}
 
 	defer closeCursor(ctx, cursor)
 
 	for cursor.Next(ctx) {
 		if err := cursor.Decode(&PkgItem); err != nil {
-			return nil, errors.Wrap(err, "cursor.Decode failed")
+			return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "cursor.Decode failed"))
 		}
 	}
 
 	return &PkgItem, nil
 }
 
-func (repo iPkgItemRepositoryImpl) FindByFilter(ctx context.Context, supplier func() (filter interface{})) ([]*entities.PackageItem, error) {
+func (repo iPkgItemRepositoryImpl) FindByFilter(ctx context.Context, supplier func() (filter interface{})) ([]*entities.PackageItem, repository.IRepoError) {
 	filter := supplier()
 
 	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, filter)
 	if err != nil {
-		return nil, errors.Wrap(err, "Aggregate failed")
+		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
 	}
 
 	defer closeCursor(ctx, cursor)
@@ -171,7 +155,7 @@ func (repo iPkgItemRepositoryImpl) FindByFilter(ctx context.Context, supplier fu
 		var packageItem entities.PackageItem
 		// decode the document
 		if err := cursor.Decode(&packageItem); err != nil {
-			return nil, errors.Wrap(err, "cursor.Decode failed")
+			return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "cursor.Decode failed"))
 		}
 		pkgItems = append(pkgItems, &packageItem)
 	}
@@ -179,28 +163,27 @@ func (repo iPkgItemRepositoryImpl) FindByFilter(ctx context.Context, supplier fu
 	return pkgItems, nil
 }
 
-func (repo iPkgItemRepositoryImpl) ExistsById(ctx context.Context, orderId uint64, id uint64) (bool, error) {
+func (repo iPkgItemRepositoryImpl) ExistsById(ctx context.Context, orderId uint64, id uint64) (bool, repository.IRepoError) {
 	singleResult := repo.mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"orderId", orderId}, {"packages.pid", id}, {"deletedAt", nil}})
 	if err := singleResult.Err(); err != nil {
 		if repo.mongoAdapter.NoDocument(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, "ExistsById failed")
+		return false, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, ""))
 	}
 	return true, nil
 }
 
-func (repo iPkgItemRepositoryImpl) Count(ctx context.Context, id uint64) (int64, error) {
+func (repo iPkgItemRepositoryImpl) Count(ctx context.Context, id uint64) (int64, repository.IRepoError) {
 	total, err := repo.mongoAdapter.Count(databaseName, collectionName, bson.D{{"packages.pid", id},
 		{"deletedAt", nil}})
 	if err != nil {
-		return 0, errors.Wrap(err, "Count failed")
+		return 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, ""))
 	}
 	return total, nil
-
 }
 
-func (repo iPkgItemRepositoryImpl) CountWithFilter(ctx context.Context, supplier func() (filter interface{})) (int64, error) {
+func (repo iPkgItemRepositoryImpl) CountWithFilter(ctx context.Context, supplier func() (filter interface{})) (int64, repository.IRepoError) {
 
 	var total struct {
 		Count int
@@ -208,14 +191,14 @@ func (repo iPkgItemRepositoryImpl) CountWithFilter(ctx context.Context, supplier
 
 	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, supplier())
 	if err != nil {
-		return 0, errors.Wrap(err, "Aggregate Failed")
+		return 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate failed"))
 	}
 
 	defer closeCursor(ctx, cursor)
 
 	if cursor.Next(ctx) {
 		if err := cursor.Decode(&total); err != nil {
-			return 0, errors.Wrap(err, "cursor.Decode failed")
+			return 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "cursor.Decode failed"))
 		}
 	}
 
