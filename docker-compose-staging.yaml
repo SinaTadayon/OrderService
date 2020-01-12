@@ -40,9 +40,10 @@ services:
       - ORDER_SCHEDULER_RETURN_REQUEST_PENDING_STATE=72
       - ORDER_SCHEDULER_RETURN_SHIPMENT_PENDING_STATE=96
       - ORDER_SCHEDULER_RETURN_DELIVERED_STATE=96
-
-      - ORDER_PAYMENT_CALLBACK_URL_STAGING=http://staging.faza.io/callback-success?orderid=
-      - ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT=http://staging.faza.io/callback-success?orderid=
+      - ORDER_PAYMENT_CALLBACK_URL_SUCCESS=http://staging.faza.io/callback-success?orderid=
+      - ORDER_PAYMENT_CALLBACK_URL_FAIL=http://staging.faza.io/callback-failed?orderid=
+      - ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT_SUCCESS=http://staging.faza.io/callback-success?orderid=
+      - ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT_FAIL=http://staging.faza.io/callback-fail?orderid=
       - PROMETHEUS_PORT=9100
       - NOTIFICATION_SMS_TEMPLATES=/app/notification/sms/smsTemplate.txt
       - EMAIL_TMP_NOTIFY_SELLER_FOR_NEW_ORDER=NotifySellerForNewOrder.html
