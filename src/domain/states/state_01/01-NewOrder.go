@@ -2,7 +2,6 @@ package state_01
 
 import (
 	"context"
-	"fmt"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
@@ -62,11 +61,10 @@ func (state newOrderState) Process(ctx context.Context, iFrame frame.IFrame) {
 	state.UpdateOrderAllStatus(ctx, order, states.OrderNewStatus, states.PackageNewStatus, action)
 	newOrder, err := app.Globals.OrderRepository.Save(ctx, *order)
 	if err != nil {
-		errStr = fmt.Sprintf("OrderRepository.Save in %s state failed, order: %v, error: %s", state.Name(), order, err.Error())
-		logger.Err(errStr)
+		logger.Err("OrderRepository.Save in %s state failed, order: %v, error: %s", state.Name(), order, err)
 		_ = state.releasedStock(ctx, newOrder)
 		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-			SetError(future.InternalError, errStr, err).
+			SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).
 			Send()
 
 	} else {

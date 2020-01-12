@@ -48,13 +48,13 @@ func main() {
 	app.Globals.Logger = logger.NewZapLogger(app.Globals.ZapLogger)
 
 	if err != nil {
-		logger.Err("LoadConfig of main init failed, error: %s ", err.Error())
+		logger.Err("LoadConfig of main init failed, error: %v ", err)
 		os.Exit(1)
 	}
 
 	mongoDriver, err := app.SetupMongoDriver(*app.Globals.Config)
 	if err != nil {
-		logger.Err("main SetupMongoDriver failed, configs: %v, error: %s ", app.Globals.Config.Mongo, err.Error())
+		logger.Err("main SetupMongoDriver failed, configs: %v, error: %v ", app.Globals.Config.Mongo, err)
 	}
 
 	if app.Globals.Config.App.ServiceMode == "server" {
@@ -82,10 +82,22 @@ func main() {
 		if app.Globals.Config.App.SchedulerSellerReactionTime != "" {
 			temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerSellerReactionTime)
 			if err != nil {
-				logger.Err("SchedulerSellerReactionTime invalid, SchedulerSellerReactionTime: %s, error: %s ", app.Globals.Config.App.SchedulerSellerReactionTime, err.Error())
+				logger.Err("SchedulerSellerReactionTime invalid, SchedulerSellerReactionTime: %s, error: %v ", app.Globals.Config.App.SchedulerSellerReactionTime, err)
 				os.Exit(1)
 			}
 			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig] = temp
+		}
+
+		if app.Globals.Config.App.SchedulerPaymentPendingState == "" {
+			logger.Err("SchedulerPaymentPendingState is empty")
+			os.Exit(1)
+		} else {
+			temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerPaymentPendingState)
+			if err != nil {
+				logger.Err("SchedulerPaymentPendingState invalid, SchedulerPaymentPendingState: %s, error: %v ", app.Globals.Config.App.SchedulerApprovalPendingState, err)
+				os.Exit(1)
+			}
+			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerPaymentPendingStateConfig] = temp
 		}
 
 		if app.Globals.Config.App.SchedulerApprovalPendingState == "" {
@@ -94,7 +106,7 @@ func main() {
 		} else {
 			temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerApprovalPendingState)
 			if err != nil {
-				logger.Err("SchedulerApprovalPendingState invalid, SchedulerApprovalPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerApprovalPendingState, err.Error())
+				logger.Err("SchedulerApprovalPendingState invalid, SchedulerApprovalPendingState: %s, error: %v ", app.Globals.Config.App.SchedulerApprovalPendingState, err)
 				os.Exit(1)
 			}
 			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerApprovalPendingStateConfig] = temp
@@ -106,7 +118,7 @@ func main() {
 		} else {
 			temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerApprovalPendingState)
 			if err != nil {
-				logger.Err("SchedulerApprovalPendingState invalid, SchedulerApprovalPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerApprovalPendingState, err.Error())
+				logger.Err("SchedulerApprovalPendingState invalid, SchedulerApprovalPendingState: %s, error: %v ", app.Globals.Config.App.SchedulerApprovalPendingState, err)
 				os.Exit(1)
 			}
 			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerApprovalPendingStateConfig] = temp
@@ -118,7 +130,7 @@ func main() {
 		} else {
 			temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerShipmentPendingState)
 			if err != nil {
-				logger.Err("SchedulerShipmentPendingState invalid, SchedulerShipmentPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerShipmentPendingState, err.Error())
+				logger.Err("SchedulerShipmentPendingState invalid, SchedulerShipmentPendingState: %s, error: %v ", app.Globals.Config.App.SchedulerShipmentPendingState, err)
 				os.Exit(1)
 			}
 			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShipmentPendingStateConfig] = temp
@@ -130,7 +142,7 @@ func main() {
 		} else {
 			temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerShippedState)
 			if err != nil {
-				logger.Err("SchedulerShippedState invalid, SchedulerShippedState: %s, error: %s ", app.Globals.Config.App.SchedulerShippedState, err.Error())
+				logger.Err("SchedulerShippedState invalid, SchedulerShippedState: %s, error: %v ", app.Globals.Config.App.SchedulerShippedState, err)
 				os.Exit(1)
 			}
 			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShippedStateConfig] = temp
@@ -142,7 +154,7 @@ func main() {
 		} else {
 			temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerDeliveryPendingState)
 			if err != nil {
-				logger.Err("SchedulerDeliveryPendingState invalid, SchedulerDeliveryPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerDeliveryPendingState, err.Error())
+				logger.Err("SchedulerDeliveryPendingState invalid, SchedulerDeliveryPendingState: %v, error: %s ", app.Globals.Config.App.SchedulerDeliveryPendingState, err)
 				os.Exit(1)
 			}
 			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerDeliveryPendingStateConfig] = temp
@@ -154,7 +166,7 @@ func main() {
 		} else {
 			temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerNotifyDeliveryPendingState)
 			if err != nil {
-				logger.Err("SchedulerNotifyDeliveryPendingState invalid, SchedulerNotifyDeliveryPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerNotifyDeliveryPendingState, err.Error())
+				logger.Err("SchedulerNotifyDeliveryPendingState invalid, SchedulerNotifyDeliveryPendingState: %s, error: %v ", app.Globals.Config.App.SchedulerNotifyDeliveryPendingState, err)
 				os.Exit(1)
 			}
 			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerNotifyDeliveryPendingStateConfig] = temp
@@ -166,7 +178,7 @@ func main() {
 		} else {
 			temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerDeliveredState)
 			if err != nil {
-				logger.Err("SchedulerDeliveredState invalid, SchedulerDeliveredState: %s, error: %s ", app.Globals.Config.App.SchedulerDeliveredState, err.Error())
+				logger.Err("SchedulerDeliveredState invalid, SchedulerDeliveredState: %s, error: %v ", app.Globals.Config.App.SchedulerDeliveredState, err)
 				os.Exit(1)
 			}
 			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerDeliveredStateConfig] = temp
@@ -178,7 +190,7 @@ func main() {
 		} else {
 			temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerReturnShippedState)
 			if err != nil {
-				logger.Err("SchedulerReturnShippedState invalid, SchedulerReturnShippedState: %s, error: %s ", app.Globals.Config.App.SchedulerDeliveredState, err.Error())
+				logger.Err("SchedulerReturnShippedState invalid, SchedulerReturnShippedState: %s, error: %v ", app.Globals.Config.App.SchedulerDeliveredState, err)
 				os.Exit(1)
 			}
 			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnShippedStateConfig] = temp
@@ -190,7 +202,7 @@ func main() {
 		} else {
 			temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerReturnRequestPendingState)
 			if err != nil {
-				logger.Err("SchedulerReturnRequestPendingState invalid, SchedulerReturnRequestPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerReturnRequestPendingState, err.Error())
+				logger.Err("SchedulerReturnRequestPendingState invalid, SchedulerReturnRequestPendingState: %s, error: %v ", app.Globals.Config.App.SchedulerReturnRequestPendingState, err)
 				os.Exit(1)
 			}
 			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnRequestPendingStateConfig] = temp
@@ -202,7 +214,7 @@ func main() {
 		} else {
 			temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerReturnShipmentPendingState)
 			if err != nil {
-				logger.Err("SchedulerReturnShipmentPendingState invalid, SchedulerReturnShipmentPendingState: %s, error: %s ", app.Globals.Config.App.SchedulerReturnShipmentPendingState, err.Error())
+				logger.Err("SchedulerReturnShipmentPendingState invalid, SchedulerReturnShipmentPendingState: %s, error: %v ", app.Globals.Config.App.SchedulerReturnShipmentPendingState, err)
 				os.Exit(1)
 			}
 			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnShipmentPendingStateConfig] = temp
@@ -214,7 +226,7 @@ func main() {
 		} else {
 			temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerReturnDeliveredState)
 			if err != nil {
-				logger.Err("SchedulerReturnDeliveredState invalid, SchedulerReturnDeliveredState: %s, error: %s ", app.Globals.Config.App.SchedulerReturnDeliveredState, err.Error())
+				logger.Err("SchedulerReturnDeliveredState invalid, SchedulerReturnDeliveredState: %s, error: %v ", app.Globals.Config.App.SchedulerReturnDeliveredState, err)
 				os.Exit(1)
 			}
 			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnDeliveredStateConfig] = temp
@@ -226,7 +238,7 @@ func main() {
 
 		MainApp.flowManager, err = domain.NewFlowManager()
 		if err != nil {
-			logger.Err("flowManager creation failed, %s ", err.Error())
+			logger.Err("flowManager creation failed, %v ", err)
 			os.Exit(1)
 		}
 
@@ -265,7 +277,7 @@ func main() {
 			logger.Audit("prometheus port: %s", promPort)
 			e := http.ListenAndServe(promPort, nil)
 			if e != nil {
-				logger.Err("error listening for prometheus: %s", e.Error())
+				logger.Err("error listening for prometheus: %v", e)
 			}
 		}()
 

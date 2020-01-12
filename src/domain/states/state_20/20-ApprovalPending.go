@@ -190,7 +190,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 
 		_, err := app.Globals.OrderRepository.Save(ctx, *order)
 		if err != nil {
-			logger.Err("Process() => OrderRepository.Save in %s state failed, orderId: %d, error: %s", state.Name(), order.OrderId, err.Error())
+			logger.Err("Process() => OrderRepository.Save in %s state failed, orderId: %d, error: %v", state.Name(), order.OrderId, err)
 		} else {
 			logger.Audit("Process() => Status of all subpackage update to ApprovalPending, orderId: %d", order.OrderId)
 		}

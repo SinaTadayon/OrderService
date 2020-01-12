@@ -2,7 +2,6 @@ package states
 
 import (
 	"context"
-	"github.com/pkg/errors"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
@@ -282,5 +281,5 @@ func (base BaseStateImpl) UpdateSubPackageWithData(ctx context.Context, subpacka
 func (base BaseStateImpl) SaveOrUpdateOrder(ctx context.Context, order *entities.Order) error {
 	var err error
 	order, err = app.Globals.OrderRepository.Save(ctx, *order)
-	return errors.Wrap(err, "OrderRepository.Save failed")
+	return err
 }

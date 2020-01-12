@@ -234,8 +234,8 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 
 		order, err := app.Globals.OrderRepository.FindById(ctx, pkgItem.OrderId)
 		if err != nil {
-			logger.Err("OrderRepository.FindById in %s state failed, orderId: %d, pid: %d, sids: %v, error: %s",
-				state.Name(), pkgItem.OrderId, pkgItem.PId, sids, err.Error())
+			logger.Err("OrderRepository.FindById in %s state failed, orderId: %d, pid: %d, sids: %v, error: %v",
+				state.Name(), pkgItem.OrderId, pkgItem.PId, sids, err)
 			return
 		}
 
@@ -275,8 +275,8 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			state.SetOrderStatus(ctx, order, states.OrderClosedStatus)
 			_, err := app.Globals.OrderRepository.Save(ctx, *order)
 			if err != nil {
-				logger.Err("update order status to closed failed, state: %s, orderId: %d, error: %s",
-					state.Name(), order.OrderId, err.Error())
+				logger.Err("update order status to closed failed, state: %s, orderId: %d, error: %v",
+					state.Name(), order.OrderId, err)
 			} else {
 				logger.Audit("update order status to closed success, state: %s, orderId: %d", state.Name(), order.OrderId)
 			}

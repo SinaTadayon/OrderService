@@ -65,8 +65,8 @@ func (server *Server) sellerGetOrderByIdHandler(ctx context.Context, oid uint64,
 
 	pkgList, err := app.Globals.PkgItemRepository.FindByFilter(ctx, findFilter)
 	if err != nil {
-		logger.Err("sellerGetOrderByIdHandler() => FindByFilter failed, pid: %d, filterValue: %s, error: %s", pid, filter, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerGetOrderByIdHandler() => FindByFilter failed, pid: %d, filterValue: %s, error: %v", pid, filter, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	if pkgList == nil || len(pkgList) == 0 {
@@ -98,9 +98,9 @@ func (server *Server) sellerGetOrderByIdHandler(ctx context.Context, oid uint64,
 		Items: itemList,
 	}
 
-	serializedData, err := proto.Marshal(sellerOrderList)
-	if err != nil {
-		logger.Err("sellerGetOrderByIdHandler() => could not serialize sellerOrderList, sellerOrderList: %v, error:%s", sellerOrderList, err)
+	serializedData, e := proto.Marshal(sellerOrderList)
+	if e != nil {
+		logger.Err("sellerGetOrderByIdHandler() => could not serialize sellerOrderList, sellerOrderList: %v, error:%s", sellerOrderList, e)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
@@ -149,8 +149,8 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, oid, pid uint6
 
 	var totalCount, err = app.Globals.PkgItemRepository.CountWithFilter(ctx, countFilter)
 	if err != nil {
-		logger.Err("sellerOrderListHandler() => CountWithFilter failed,  pid: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderListHandler() => CountWithFilter failed,  pid: %d, filterValue: %s, page: %d, perPage: %d, error: %v", pid, filter, page, perPage, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	if totalCount == 0 {
@@ -204,8 +204,8 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, oid, pid uint6
 
 	pkgList, err := app.Globals.PkgItemRepository.FindByFilter(ctx, pkgFilter)
 	if err != nil {
-		logger.Err("sellerOrderListHandler() => FindByFilter failed, pid: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderListHandler() => FindByFilter failed, pid: %d, filterValue: %s, page: %d, perPage: %d, error: %v", pid, filter, page, perPage, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	itemList := make([]*pb.SellerOrderList_ItemList, 0, perPage)
@@ -233,9 +233,9 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, oid, pid uint6
 		Items: itemList,
 	}
 
-	serializedData, err := proto.Marshal(sellerOrderList)
-	if err != nil {
-		logger.Err("sellerOrderListHandler() => could not serialize sellerOrderList, sellerOrderList: %v, error:%s", sellerOrderList, err)
+	serializedData, e := proto.Marshal(sellerOrderList)
+	if e != nil {
+		logger.Err("sellerOrderListHandler() => could not serialize sellerOrderList, sellerOrderList: %v, error:%s", sellerOrderList, e)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
@@ -297,8 +297,8 @@ func (server *Server) sellerAllOrdersHandler(ctx context.Context, pid uint64, pa
 
 	var totalCount, err = app.Globals.PkgItemRepository.CountWithFilter(ctx, countFilter)
 	if err != nil {
-		logger.Err("sellerAllOrdersHandler() => CountWithFilter failed,  pid: %d, page: %d, perPage: %d, error: %s", pid, page, perPage, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerAllOrdersHandler() => CountWithFilter failed,  pid: %d, page: %d, perPage: %d, error: %v", pid, page, perPage, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	if totalCount == 0 {
@@ -352,8 +352,8 @@ func (server *Server) sellerAllOrdersHandler(ctx context.Context, pid uint64, pa
 
 	pkgList, err := app.Globals.PkgItemRepository.FindByFilter(ctx, pkgFilter)
 	if err != nil {
-		logger.Err("sellerAllOrdersHandler() => FindByFilter failed, pid: %d, page: %d, perPage: %d, error: %s", pid, page, perPage, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerAllOrdersHandler() => FindByFilter failed, pid: %d, page: %d, perPage: %d, error: %v", pid, page, perPage, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	itemList := make([]*pb.SellerOrderList_ItemList, 0, perPage)
@@ -381,9 +381,9 @@ func (server *Server) sellerAllOrdersHandler(ctx context.Context, pid uint64, pa
 		Items: itemList,
 	}
 
-	serializedData, err := proto.Marshal(sellerOrderList)
-	if err != nil {
-		logger.Err("sellerAllOrdersHandler() => could not serialize sellerOrderList, sellerOrderList: %v, error:%s", sellerOrderList, err)
+	serializedData, e := proto.Marshal(sellerOrderList)
+	if e != nil {
+		logger.Err("sellerAllOrdersHandler() => could not serialize sellerOrderList, sellerOrderList: %v, error:%v", sellerOrderList, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
@@ -510,9 +510,9 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId
 		Items: sellerOrderDetailItems,
 	}
 
-	subtotal, err := decimal.NewFromString(pkgItem.Invoice.Subtotal.Amount)
-	if err != nil {
-		logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, pkgItem.Invoice.Subtotal invalid, subtotal: %s, orderId: %d, pid: %d, error: %s",
+	subtotal, e := decimal.NewFromString(pkgItem.Invoice.Subtotal.Amount)
+	if e != nil {
+		logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, pkgItem.Invoice.Subtotal invalid, subtotal: %s, orderId: %d, pid: %d, error: %v",
 			pkgItem.Invoice.Subtotal.Amount, pkgItem.OrderId, pkgItem.PId, err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 
@@ -524,9 +524,9 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId
 		sellerOrderDetail.Address.Long = strconv.Itoa(int(pkgItem.ShippingAddress.Location.Coordinates[1]))
 	}
 
-	serializedData, err := proto.Marshal(sellerOrderDetail)
-	if err != nil {
-		logger.Err("sellerOrderDetailHandler() => could not serialize sellerOrderDetail, sellerOrderDetail: %v, error:%s", sellerOrderDetail, err)
+	serializedData, e := proto.Marshal(sellerOrderDetail)
+	if e != nil {
+		logger.Err("sellerOrderDetailHandler() => could not serialize sellerOrderDetail, sellerOrderDetail: %v, error:%s", sellerOrderDetail, e)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
@@ -566,8 +566,8 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 
 	var totalCount, err = app.Globals.PkgItemRepository.CountWithFilter(ctx, countFilter)
 	if err != nil {
-		logger.Err("sellerOrderReturnDetailListHandler() => CountWithFilter failed,  pid: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderReturnDetailListHandler() => CountWithFilter failed,  pid: %d, filterValue: %s, page: %d, perPage: %d, error: %v", pid, filter, page, perPage, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	if totalCount == 0 {
@@ -621,8 +621,8 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 
 	pkgList, err := app.Globals.PkgItemRepository.FindByFilter(ctx, pkgFilter)
 	if err != nil {
-		logger.Err("sellerOrderReturnDetailListHandler() => FindByFilter failed, pid: %d, filterValue: %s, page: %d, perPage: %d, error: %s", pid, filter, page, perPage, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderReturnDetailListHandler() => FindByFilter failed, pid: %d, filterValue: %s, page: %d, perPage: %d, error: %v", pid, filter, page, perPage, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	sellerReturnOrderList := make([]*pb.SellerReturnOrderDetailList_ReturnOrderDetail, 0, len(pkgList))
@@ -766,9 +766,9 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 		ReturnOrderDetail: sellerReturnOrderList,
 	}
 
-	serializedData, err := proto.Marshal(sellerReturnOrderDetailList)
-	if err != nil {
-		logger.Err("sellerOrderDetailHandler() => could not serialize sellerReturnOrderDetailList, sellerReturnOrderDetailList: %v, error:%s", sellerReturnOrderDetailList, err)
+	serializedData, e := proto.Marshal(sellerReturnOrderDetailList)
+	if e != nil {
+		logger.Err("sellerOrderDetailHandler() => could not serialize sellerReturnOrderDetailList, sellerReturnOrderDetailList: %v, error:%s", sellerReturnOrderDetailList, e)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
@@ -828,26 +828,26 @@ func (server *Server) sellerOrderDashboardReportsHandler(ctx context.Context, us
 
 	approvalPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, approvalPendingFilter)
 	if err != nil {
-		logger.Err("sellerOrderDashboardReportsHandler() => CountWithFilter for approvalPendingFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderDashboardReportsHandler() => CountWithFilter for approvalPendingFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	shipmentPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shipmentPendingFilter)
 	if err != nil {
-		logger.Err("sellerOrderDashboardReportsHandler() => CountWithFilter for shipmentPendingFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderDashboardReportsHandler() => CountWithFilter for shipmentPendingFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	shipmentDelayedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, shipmentDelayedFilter)
+	shipmentDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shipmentDelayedFilter)
 	if err != nil {
-		logger.Err("sellerOrderDashboardReportsHandler() => CountWithFilter for shipmentDelayedFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderDashboardReportsHandler() => CountWithFilter for shipmentDelayedFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnRequestPendingCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnRequestPendingFilter)
+	returnRequestPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnRequestPendingFilter)
 	if err != nil {
-		logger.Err("sellerOrderDashboardReportsHandler() => CountWithFilter for returnRequestPendingFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderDashboardReportsHandler() => CountWithFilter for returnRequestPendingFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	sellerOrderDashboardReports := &pb.SellerOrderDashboardReports{
@@ -858,9 +858,9 @@ func (server *Server) sellerOrderDashboardReportsHandler(ctx context.Context, us
 		ReturnRequestPending: uint32(returnRequestPendingCount),
 	}
 
-	serializedData, err := proto.Marshal(sellerOrderDashboardReports)
-	if err != nil {
-		logger.Err("sellerOrderDashboardReportsHandler() => could not serialize sellerOrderDashboardReportsHandler, userId: %d, error:%s", userId, err)
+	serializedData, e := proto.Marshal(sellerOrderDashboardReports)
+	if e != nil {
+		logger.Err("sellerOrderDashboardReportsHandler() => could not serialize sellerOrderDashboardReportsHandler, userId: %d, error:%v", userId, e)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
@@ -914,22 +914,22 @@ func (server *Server) sellerOrderShipmentReportsHandler(ctx context.Context, use
 		}
 	}
 
-	shipmentPendingCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, shipmentPendingFilter)
+	shipmentPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shipmentPendingFilter)
 	if err != nil {
-		logger.Err("sellerOrderShipmentReportsHandler() => CountWithFilter for shipmentPendingFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderShipmentReportsHandler() => CountWithFilter for shipmentPendingFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	shipmentDelayedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, shipmentDelayedFilter)
+	shipmentDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shipmentDelayedFilter)
 	if err != nil {
-		logger.Err("sellerOrderShipmentReportsHandler() => CountWithFilter for shipmentDelayedFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderShipmentReportsHandler() => CountWithFilter for shipmentDelayedFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	shippedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, shippedFilter)
+	shippedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shippedFilter)
 	if err != nil {
-		logger.Err("sellerOrderShipmentReportsHandler() => CountWithFilter for shippedFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderShipmentReportsHandler() => CountWithFilter for shippedFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	sellerOrderShipmentReports := &pb.SellerOrderShipmentReports{
@@ -939,9 +939,9 @@ func (server *Server) sellerOrderShipmentReportsHandler(ctx context.Context, use
 		Shipped:         uint32(shippedCount),
 	}
 
-	serializedData, err := proto.Marshal(sellerOrderShipmentReports)
-	if err != nil {
-		logger.Err("sellerOrderShipmentReportsHandler() => could not serialize sellerOrderShipmentReports, userId: %d, error:%s", userId, err)
+	serializedData, e := proto.Marshal(sellerOrderShipmentReports)
+	if e != nil {
+		logger.Err("sellerOrderShipmentReportsHandler() => could not serialize sellerOrderShipmentReports, userId: %d, error:%s", userId, e)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 
 	}
@@ -1056,52 +1056,52 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 		}
 	}
 
-	returnRequestPendingCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnRequestPendingFilter)
+	returnRequestPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnRequestPendingFilter)
 	if err != nil {
-		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnRequestPendingFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnRequestPendingFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnShipmentPendingCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnShipmentPendingFilter)
+	returnShipmentPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnShipmentPendingFilter)
 	if err != nil {
-		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnShipmentPendingFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnShipmentPendingFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnShippedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnShippedFilter)
+	returnShippedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnShippedFilter)
 	if err != nil {
-		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnShippedFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnShippedFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnDeliveredCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnDeliveredFilter)
+	returnDeliveredCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveredFilter)
 	if err != nil {
-		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnDeliveredFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnDeliveredFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnDeliveryFailedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnDeliveryFailedFilter)
+	returnDeliveryFailedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveryFailedFilter)
 	if err != nil {
-		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnDeliveryFailedFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnDeliveryFailedFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnRequestRejectedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnRequestRejectedFilter)
+	returnRequestRejectedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnRequestRejectedFilter)
 	if err != nil {
-		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnRequestRejectedFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnRequestRejectedFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnDeliveryPendingCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnDeliveryPendingFilter)
+	returnDeliveryPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveryPendingFilter)
 	if err != nil {
-		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnDeliveryPendingFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnDeliveryPendingFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnDeliveryDelayedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnDeliveryDelayedFilter)
+	returnDeliveryDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveryDelayedFilter)
 	if err != nil {
-		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnDeliveryDelayedFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderReturnReportsHandler() => CountWithFilter for returnDeliveryDelayedFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	sellerOrderReturnReports := &pb.SellerOrderReturnReports{
@@ -1116,9 +1116,9 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 		ReturnDeliveryFailed:  uint32(returnDeliveryFailedCount),
 	}
 
-	serializedData, err := proto.Marshal(sellerOrderReturnReports)
-	if err != nil {
-		logger.Err("sellerOrderReturnReportsHandler() => could not serialize sellerOrderReturnReports, userId: %d, error:%s", userId, err)
+	serializedData, e := proto.Marshal(sellerOrderReturnReports)
+	if e != nil {
+		logger.Err("sellerOrderReturnReportsHandler() => could not serialize sellerOrderReturnReports, userId: %d, error:%s", userId, e)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
@@ -1177,22 +1177,22 @@ func (server *Server) sellerOrderDeliveredReportsHandler(ctx context.Context, us
 		}
 	}
 
-	deliveryPendingAndDelayedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, deliveryPendingAndDelayedFilter)
+	deliveryPendingAndDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveryPendingAndDelayedFilter)
 	if err != nil {
-		logger.Err("sellerOrderDeliverReportsHandler() => CountWithFilter for deliveryPendingAndDelayedFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderDeliverReportsHandler() => CountWithFilter for deliveryPendingAndDelayedFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	deliveredCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, deliveredFilter)
+	deliveredCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveredFilter)
 	if err != nil {
-		logger.Err("sellerOrderDeliverReportsHandler() => CountWithFilter for deliveredFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderDeliverReportsHandler() => CountWithFilter for deliveredFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	deliveryFailedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, deliveryFailedFilter)
+	deliveryFailedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveryFailedFilter)
 	if err != nil {
-		logger.Err("sellerOrderDeliverReportsHandler() => CountWithFilter for deliveryFailedFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderDeliverReportsHandler() => CountWithFilter for deliveryFailedFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	sellerOrderDeliveredReports := &pb.SellerOrderDeliveredReports{
@@ -1202,9 +1202,9 @@ func (server *Server) sellerOrderDeliveredReportsHandler(ctx context.Context, us
 		DeliveryFailed:            uint32(deliveryFailedCount),
 	}
 
-	serializedData, err := proto.Marshal(sellerOrderDeliveredReports)
-	if err != nil {
-		logger.Err("buyerReturnOrderReportsHandler() => could not serialize sellerOrderDeliveredReports, userId: %d, error:%s", userId, err)
+	serializedData, e := proto.Marshal(sellerOrderDeliveredReports)
+	if e != nil {
+		logger.Err("buyerReturnOrderReportsHandler() => could not serialize sellerOrderDeliveredReports, userId: %d, error:%s", userId, e)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 
 	}
@@ -1247,16 +1247,16 @@ func (server *Server) sellerOrderCancelReportsHandler(ctx context.Context, userI
 		}
 	}
 
-	cancelByBuyerCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, cancelByBuyerFilter)
+	cancelByBuyerCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, cancelByBuyerFilter)
 	if err != nil {
-		logger.Err("sellerOrderCancelReportsHandler() => CountWithFilter for cancelByBuyerFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderCancelReportsHandler() => CountWithFilter for cancelByBuyerFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	cancelBySellerCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, cancelBySellerFilter)
+	cancelBySellerCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, cancelBySellerFilter)
 	if err != nil {
-		logger.Err("sellerOrderCancelReportsHandler() => CountWithFilter for cancelBySellerFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("sellerOrderCancelReportsHandler() => CountWithFilter for cancelBySellerFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	sellerOrderCancelReports := &pb.SellerOrderCancelReports{
@@ -1265,10 +1265,10 @@ func (server *Server) sellerOrderCancelReportsHandler(ctx context.Context, userI
 		CancelByBuyer:  uint32(cancelByBuyerCount),
 	}
 
-	serializedData, err := proto.Marshal(sellerOrderCancelReports)
-	if err != nil {
+	serializedData, e := proto.Marshal(sellerOrderCancelReports)
+	if e != nil {
 		logger.Err("sellerOrderCancelReportsHandler() => could not serialize sellerOrderCancelReports, userId: %d, error:%s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 
 	}
 

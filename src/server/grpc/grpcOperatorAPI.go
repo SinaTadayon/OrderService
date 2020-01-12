@@ -45,8 +45,8 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 
 	orderList, totalCount, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
 	if err != nil {
-		logger.Err("operatorOrderListHandler() => CountWithFilter failed,  oid: %d, filterValue: %s, page: %d, perPage: %d, error: %s", oid, filter, page, perPage, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("operatorOrderListHandler() => CountWithFilter failed,  oid: %d, filterValue: %s, page: %d, perPage: %d, error: %v", oid, filter, page, perPage, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	if totalCount == 0 || orderList == nil || len(orderList) == 0 {
@@ -170,8 +170,8 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 
 	order, err := app.Globals.OrderRepository.FindById(ctx, oid)
 	if err != nil {
-		logger.Err("operatorOrderDetailHandler() => FindById failed, oid: %d, error: %s", oid, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("operatorOrderDetailHandler() => FindById failed, oid: %d, error: %v", oid, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	orderDetail := &pb.OperatorOrderDetail{
@@ -417,8 +417,8 @@ func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint6
 
 	findOrder, err := app.Globals.OrderRepository.FindById(ctx, oid)
 	if err != nil {
-		logger.Err("operatorGetOrderByIdHandler() => OrderRepository.FindById,  oid: %d, filterValue: %s, error: %s", oid, filter, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		logger.Err("operatorGetOrderByIdHandler() => OrderRepository.FindById,  oid: %d, filterValue: %s, error: %v", oid, filter, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	operatorOrders := make([]*pb.OperatorOrderList_Order, 0, 1)

@@ -412,8 +412,9 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
-		system_action.New(system_action.PaymentSuccess): flowManager.statesMap[states.PaymentSuccess],
-		system_action.New(system_action.PaymentFail):    flowManager.statesMap[states.PaymentFailed],
+		system_action.New(system_action.PaymentSuccess):    flowManager.statesMap[states.PaymentSuccess],
+		system_action.New(system_action.PaymentFail):       flowManager.statesMap[states.PaymentFailed],
+		scheduler_action.New(scheduler_action.PaymentFail): flowManager.statesMap[states.PaymentFailed],
 	}
 	childStates = []states.IState{
 		flowManager.statesMap[states.PaymentSuccess],
@@ -528,9 +529,9 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 	if event.EventType() == events.Action {
 		pkgItem, err := app.Globals.PkgItemRepository.FindById(ctx, event.OrderId(), event.PackageId())
 		if err != nil {
-			logger.Err("EventHandler => SubPkgRepository.FindByOrderAndSellerId failed, event: %v, error: %s ", event, err)
+			logger.Err("EventHandler => SubPkgRepository.FindByOrderAndSellerId failed, event: %v, error: %v ", event, err)
 			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				SetError(future.InternalError, "Unknown Err", err).Send()
+				SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).Send()
 		}
 
 		state := states.FromIndex(event.StateIndex())

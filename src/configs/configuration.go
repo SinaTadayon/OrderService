@@ -49,6 +49,7 @@ type Config struct {
 
 		SchedulerStateTimeUint              string `env:"ORDER_SCHEDULER_STATE_TIME_UINT"`
 		SchedulerSellerReactionTime         string `env:"ORDER_SCHEDULER_SELLER_REACTION_TIME"`
+		SchedulerPaymentPendingState        string `env:"ORDER_SCHEDULER_PAYMENT_PENDING_STATE"`
 		SchedulerApprovalPendingState       string `env:"ORDER_SCHEDULER_APPROVAL_PENDING_STATE"`
 		SchedulerShipmentPendingState       string `env:"ORDER_SCHEDULER_SHIPMENT_PENDING_STATE"`
 		SchedulerShippedState               string `env:"ORDER_SCHEDULER_SHIPPED_STATE"`

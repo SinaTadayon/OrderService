@@ -147,7 +147,7 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 		state.UpdateOrderAllStatus(ctx, order, states.OrderClosedStatus, states.PackageClosedStatus, stockAction)
 		_, err = app.Globals.OrderRepository.Save(ctx, *order)
 		if err != nil {
-			logger.Err("OrderRepository.Save in %s state failed, orderId: %d, error: %s", state.Name(), order.OrderId, err.Error())
+			logger.Err("OrderRepository.Save in %s state failed, orderId: %d, error: %v", state.Name(), order.OrderId, err)
 		}
 		logger.Audit("Order System Failed, orderId: %d", order.OrderId)
 	} else {

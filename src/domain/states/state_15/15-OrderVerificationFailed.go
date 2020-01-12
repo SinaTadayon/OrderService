@@ -65,7 +65,7 @@ func (state orderVerificationFailed) Process(ctx context.Context, iFrame frame.I
 		state.UpdateOrderAllStatus(ctx, order, states.OrderClosedStatus, states.PackageClosedStatus, orderVerifyAction)
 		orderUpdated, err := app.Globals.OrderRepository.Save(ctx, *order)
 		if err != nil {
-			logger.Err("OrderRepository.Save in %s state failed, orderId: %d, error: %s", state.Name(), order.OrderId, err.Error())
+			logger.Err("OrderRepository.Save in %s state failed, orderId: %d, error: %v", state.Name(), order.OrderId, err)
 		} else {
 			logger.Audit("Order Verification Fail, orderId: %d", order.OrderId)
 			state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(orderUpdated).Build())
