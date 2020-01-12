@@ -38,8 +38,10 @@ type Config struct {
 		EmailTemplateNotifySellerForNewOrder string `env:"EMAIL_TMP_NOTIFY_SELLER_FOR_NEW_ORDER"`
 		PrometheusPort                       int    `env:"PROMETHEUS_PORT"`
 
-		OrderPaymentCallbackUrlStaging      string `env:"ORDER_PAYMENT_CALLBACK_URL_STAGING"`
-		OrderPaymentCallbackUrlAsanpardakht string `env:"ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT"`
+		OrderPaymentCallbackUrlSuccess             string `env:"ORDER_PAYMENT_CALLBACK_URL_SUCCESS"`
+		OrderPaymentCallbackUrlFail                string `env:"ORDER_PAYMENT_CALLBACK_URL_FAIL"`
+		OrderPaymentCallbackUrlAsanpardakhtSuccess string `env:"ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT_SUCCESS"`
+		OrderPaymentCallbackUrlAsanpardakhtFail    string `env:"ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT_FAIL"`
 
 		SchedulerTimeUint            string `env:"ORDER_SCHEDULER_TIME_UNIT"`
 		SchedulerStates              string `env:"ORDER_SCHEDULER_STATES"`

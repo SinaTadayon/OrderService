@@ -52,7 +52,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 		if !ok {
 			logger.Err("Process() => iFrame.Body().Content() not a order, orderId: %d, state: %s ", iFrame.Header().Value(string(frame.HeaderOrderId)), state.Name())
 			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				SetError(future.InternalError, "Unknown Error", errors.New("Frame body invalid")).
+				SetData(app.Globals.Config.App.OrderPaymentCallbackUrlFail).
 				Send()
 			return
 		}
@@ -61,7 +61,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 		if err != nil {
 			logger.Err("Process() => order.Invoice.GrandTotal.Amount invalid, amount: %s, orderId: %d, error: %s", order.Invoice.GrandTotal.Amount, order.OrderId, err)
 			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				SetError(future.InternalError, "Unknown Error", errors.New("Frame body invalid")).
+				SetData(app.Globals.Config.App.OrderPaymentCallbackUrlFail + strconv.Itoa(int(order.OrderId))).
 				Send()
 			return
 		}
@@ -72,7 +72,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			if err != nil {
 				logger.Err("Process() => order.Invoice.Voucher.Price.Amount invalid, price: %s, orderId: %d, error: %s", order.Invoice.Voucher.Price.Amount, order.OrderId, err)
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-					SetError(future.InternalError, "Unknown Error", errors.New("Voucher.Price invalid")).
+					SetData(app.Globals.Config.App.OrderPaymentCallbackUrlFail + strconv.Itoa(int(order.OrderId))).
 					Send()
 				return
 			}
@@ -100,7 +100,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 
 					PaymentResponse: &entities.PaymentResponse{
 						Result:      true,
-						CallBackUrl: app.Globals.Config.App.OrderPaymentCallbackUrlStaging + strconv.Itoa(int(order.OrderId)),
+						CallBackUrl: app.Globals.Config.App.OrderPaymentCallbackUrlSuccess + strconv.Itoa(int(order.OrderId)),
 						InvoiceId:   0,
 						PaymentId:   "",
 						CreatedAt:   time.Now().UTC(),
@@ -155,7 +155,8 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			if err != nil {
 				logger.Err("Process() => OrderRepository.Save in %s state failed, order: %v, error: %v", state.Name(), order, err)
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-					SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).
+					//SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).
+					SetData(app.Globals.Config.App.OrderPaymentCallbackUrlFail + strconv.Itoa(int(order.OrderId))).
 					Send()
 			} else {
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
@@ -190,7 +191,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			if futureData.Error() != nil {
 				order.OrderPayment[0].PaymentResponse = &entities.PaymentResponse{
 					Result:      false,
-					CallBackUrl: "http://staging.faza.io/callback-failed?orderid=" + strconv.Itoa(int(order.OrderId)),
+					CallBackUrl: app.Globals.Config.App.OrderPaymentCallbackUrlFail + strconv.Itoa(int(order.OrderId)),
 					Reason:      strconv.Itoa(int(futureData.Error().Code())),
 					CreatedAt:   time.Now().UTC(),
 				}
@@ -213,9 +214,9 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
 				orderUpdated, err := app.Globals.OrderRepository.Save(ctx, *order)
 				if err != nil {
-					logger.Err("Process() => Singletons.OrderRepository.Save failed, orderId: %d, error: %v", order.OrderId, err)
+					logger.Err("Process() => OrderRepository.Save failed, orderId: %d, error: %s", order.OrderId, err)
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-						SetData(order.OrderPayment[0].PaymentResponse.CallBackUrl).
+						SetData(app.Globals.Config.App.OrderPaymentCallbackUrlFail + strconv.Itoa(int(order.OrderId))).
 						//SetError(future.InternalError, "Unknown Error", err).
 						Send()
 					return
@@ -223,9 +224,8 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 
 				logger.Err("Process() => PaymentService.OrderPayment in %s state failed, orderId: %d, error: %v",
 					state.Name(), order.OrderId, futureData.Error().Reason())
-
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-					SetErrorOf(futureData.Error()).Send()
+					SetData(order.OrderPayment[0].PaymentResponse.CallBackUrl).Send()
 
 				failAction := state.GetAction(system_action.PaymentFail.ActionName())
 				state.StatesMap()[failAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(orderUpdated).Build())
@@ -280,9 +280,10 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				state.UpdateOrderAllSubPkg(ctx, order, nil)
 				_, err := app.Globals.OrderRepository.Save(ctx, *order)
 				if err != nil {
-					logger.Err("Process() => Singletons.OrderRepository.Save failed, orderId: %d, error: %v", order.OrderId, err)
+					logger.Err("Process() => OrderRepository.Save failed, orderId: %d, error: %s", order.OrderId, err)
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-						SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).
+						SetData(app.Globals.Config.App.OrderPaymentCallbackUrlFail + strconv.Itoa(int(order.OrderId))).
+						//SetError(future.InternalError, "Unknown Error", err).
 						Send()
 					return
 				} else {

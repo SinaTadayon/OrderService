@@ -62,9 +62,11 @@ func main() {
 
 		app.Globals.FlowManagerConfig = make(map[string]interface{}, 32)
 
-		if app.Globals.Config.App.OrderPaymentCallbackUrlStaging == "" ||
-			app.Globals.Config.App.OrderPaymentCallbackUrlAsanpardakht == "" {
-			logger.Err("OrderPaymentCallbackUrlStaging or OrderPaymentCallbackUrlAsanpardakht empty")
+		if app.Globals.Config.App.OrderPaymentCallbackUrlSuccess == "" ||
+			app.Globals.Config.App.OrderPaymentCallbackUrlFail == "" ||
+			app.Globals.Config.App.OrderPaymentCallbackUrlAsanpardakhtSuccess == "" ||
+			app.Globals.Config.App.OrderPaymentCallbackUrlAsanpardakhtFail == "" {
+			logger.Err("OrderPaymentCallbackUrlSuccess/Fail or OrderPaymentCallbackUrlAsanpardakhtSuccess/Fail empty")
 			os.Exit(1)
 		}
 
