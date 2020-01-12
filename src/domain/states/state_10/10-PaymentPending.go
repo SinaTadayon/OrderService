@@ -221,8 +221,8 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 					return
 				}
 
-				logger.Err("Process() => OrderPayment.OrderPayment in orderPaymentState failed, orderId: %d, error: %s",
-					order.OrderId, futureData.Error().Reason())
+				logger.Err("Process() => PaymentService.OrderPayment in %s state failed, orderId: %d, error: %v",
+					state.Name(), order.OrderId, futureData.Error().Reason())
 
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 					SetErrorOf(futureData.Error()).Send()

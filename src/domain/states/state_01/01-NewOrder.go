@@ -40,7 +40,7 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 }
 
 func (state newOrderState) Process(ctx context.Context, iFrame frame.IFrame) {
-	var errStr string
+	//var errStr string
 	//logger.Audit("New Order Received . . .")
 
 	order := iFrame.Header().Value(string(frame.HeaderOrder)).(*entities.Order)
