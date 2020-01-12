@@ -243,8 +243,8 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 
 		pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 		if err != nil {
-			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %s", state.Name(),
-				pkgItem.OrderId, pkgItem.PId, sids, err.Error())
+			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %v", state.Name(),
+				pkgItem.OrderId, pkgItem.PId, sids, err)
 			return
 		}
 

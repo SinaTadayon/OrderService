@@ -78,8 +78,8 @@ func (state returnDeliveryPendingState) Process(ctx context.Context, iFrame fram
 
 		_, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 		if err != nil {
-			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %s", state.Name(),
-				pkgItem.OrderId, pkgItem.PId, sids, err.Error())
+			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %v", state.Name(),
+				pkgItem.OrderId, pkgItem.PId, sids, err)
 			return
 		}
 
@@ -275,11 +275,10 @@ func (state returnDeliveryPendingState) Process(ctx context.Context, iFrame fram
 
 				pkgItemUpdated, newSids, err := app.Globals.PkgItemRepository.UpdateWithUpsert(ctx, *pkgItem)
 				if err != nil {
-					logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, event: %v, error: %s", state.Name(),
-						pkgItem.OrderId, pkgItem.PId, sids, event, err.Error())
-					// TODO must distinct system error from update version error
+					logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, event: %v, error: %v", state.Name(),
+						pkgItem.OrderId, pkgItem.PId, sids, event, err)
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-						SetError(future.InternalError, "Unknown Err", err).Send()
+						SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).Send()
 					return
 				}
 				sids = append(sids, newSids...)

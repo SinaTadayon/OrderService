@@ -190,8 +190,8 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 
 		_, err = app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 		if err != nil {
-			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
-				state.Name(), pkgItem.OrderId, pkgItem.PId, sids, err.Error())
+			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %v",
+				state.Name(), pkgItem.OrderId, pkgItem.PId, sids, err)
 		}
 
 		logger.Audit("Process() => Status of subpackages update success, state: %s, orderId: %d, pid: %d, sids: %v",
@@ -232,8 +232,8 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 				state.SetPkgStatus(ctx, &order.Packages[i], states.PackageClosedStatus)
 				_, err := app.Globals.PkgItemRepository.Update(ctx, order.Packages[i])
 				if err != nil {
-					logger.Err("update pkgItem status to closed failed, state: %s, orderId: %d, pid: %d, error: %s",
-						state.Name(), order.Packages[i].OrderId, order.Packages[i].PId, err.Error())
+					logger.Err("update pkgItem status to closed failed, state: %s, orderId: %d, pid: %d, error: %v",
+						state.Name(), order.Packages[i].OrderId, order.Packages[i].PId, err)
 				} else {
 					logger.Audit("update pkgItem status to closed success, state: %s, orderId: %d, pid: %d",
 						state.Name(), order.Packages[i].OrderId, order.Packages[i].PId)
