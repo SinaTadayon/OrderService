@@ -326,6 +326,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	actionStateMap[SchedulerUser] = []actions.IAction{
 		scheduler_action.New(scheduler_action.Cancel),
 		scheduler_action.New(scheduler_action.Close),
+		scheduler_action.New(scheduler_action.PaymentFail),
 		scheduler_action.New(scheduler_action.DeliveryDelay),
 		scheduler_action.New(scheduler_action.Deliver),
 		scheduler_action.New(scheduler_action.DeliveryPending),
@@ -516,6 +517,27 @@ func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.Messa
 		if userAction == nil {
 			logger.Err("SchedulerMessageHandler() => %s action invalid, request: %v", req.Meta.Action.ActionState, req)
 			return nil, status.Error(codes.Code(future.BadRequest), "Action Invalid")
+		}
+
+		if userAction.ActionEnum() == scheduler_action.PaymentFail {
+			event := events.New(events.Action, orderReq.OID, orderReq.Packages[0].PID, 0,
+				orderReq.StateIndex, userAction,
+				time.Unix(req.Time.GetSeconds(), int64(req.Time.GetNanos())), nil)
+
+			iFuture := future.Factory().SetCapacity(1).Build()
+			iFrame := frame.Factory().SetFuture(iFuture).SetEvent(event).Build()
+			server.flowManager.MessageHandler(ctx, iFrame)
+			futureData := iFuture.Get()
+			if futureData.Error() != nil {
+				logger.Err("SchedulerMessageHandler() => flowManager.MessageHandler failed, event: %v, error: %s", event, futureData.Error().Reason())
+			}
+
+			response := &pb.MessageResponse{
+				Entity: "ActionResponse",
+				Meta:   nil,
+				Data:   nil,
+			}
+			return response, nil
 		}
 
 		for _, pkgReq := range orderReq.Packages {
