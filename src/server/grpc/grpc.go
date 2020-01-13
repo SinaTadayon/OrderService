@@ -82,7 +82,7 @@ const (
 	CanceledBySellerFilter         FilterValue = "CanceledBySeller"
 	CanceledByBuyerFilter          FilterValue = "CanceledByBuyer"
 	ShipmentPendingFilter          FilterValue = "ShipmentPending"
-	ShipmentDelayedFilter          FilterValue = "ShipmentDelayedFilter"
+	ShipmentDelayedFilter          FilterValue = "ShipmentDelayed"
 	ShippedFilter                  FilterValue = "Shipped"
 	DeliveryPendingFilter          FilterValue = "DeliveryPending"
 	DeliveryDelayedFilter          FilterValue = "DeliveryDelayed"
