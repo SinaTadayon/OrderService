@@ -176,7 +176,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 		}
 	}
 
-	order.Packages = make([]entities.PackageItem, 0, len(newOrderDto.Packages))
+	order.Packages = make([]*entities.PackageItem, 0, len(newOrderDto.Packages))
 	for _, pkgDto := range newOrderDto.Packages {
 
 		if pkgDto.SellerId <= 0 {
@@ -207,7 +207,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 			return nil, errors.New("Subtotal of Invoice is nil")
 		}
 
-		var pkgItem = entities.PackageItem{
+		var pkgItem = &entities.PackageItem{
 			PId:         pkgDto.SellerId,
 			OrderId:     0,
 			Version:     0,

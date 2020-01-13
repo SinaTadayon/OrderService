@@ -11,6 +11,8 @@ type IOrderRepository interface {
 
 	SaveAll(ctx context.Context, orders []entities.Order) ([]*entities.Order, repository.IRepoError)
 
+	UpdateStatus(ctx context.Context, order *entities.Order) repository.IRepoError
+
 	Insert(ctx context.Context, order entities.Order) (*entities.Order, repository.IRepoError)
 
 	InsertAll(ctx context.Context, orders []entities.Order) ([]*entities.Order, repository.IRepoError)

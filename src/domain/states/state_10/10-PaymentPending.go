@@ -63,6 +63,25 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 				SetData(app.Globals.Config.App.OrderPaymentCallbackUrlFail + strconv.Itoa(int(order.OrderId))).
 				Send()
+
+			paymentAction := &entities.Action{
+				Name:      system_action.PaymentFail.ActionName(),
+				Type:      "",
+				UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+				UTP:       actions.System.ActionName(),
+				Perm:      "",
+				Priv:      "",
+				Policy:    "",
+				Result:    string(states.ActionFail),
+				Reasons:   nil,
+				Data:      nil,
+				CreatedAt: time.Now().UTC(),
+				Extended:  nil,
+			}
+
+			state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
+			failAction := state.GetAction(system_action.PaymentFail.ActionName())
+			state.StatesMap()[failAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
 			return
 		}
 
@@ -74,6 +93,25 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 					SetData(app.Globals.Config.App.OrderPaymentCallbackUrlFail + strconv.Itoa(int(order.OrderId))).
 					Send()
+
+				paymentAction := &entities.Action{
+					Name:      system_action.PaymentFail.ActionName(),
+					Type:      "",
+					UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+					UTP:       actions.System.ActionName(),
+					Perm:      "",
+					Priv:      "",
+					Policy:    "",
+					Result:    string(states.ActionFail),
+					Reasons:   nil,
+					Data:      nil,
+					CreatedAt: time.Now().UTC(),
+					Extended:  nil,
+				}
+
+				state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
+				failAction := state.GetAction(system_action.PaymentFail.ActionName())
+				state.StatesMap()[failAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
 				return
 			}
 		}
@@ -151,20 +189,21 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			}
 
 			state.UpdateOrderAllSubPkg(ctx, order, voucherAction)
-			orderUpdated, err := app.Globals.OrderRepository.Save(ctx, *order)
-			if err != nil {
-				logger.Err("Process() => OrderRepository.Save in %s state failed, order: %v, error: %v", state.Name(), order, err)
-				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-					//SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).
-					SetData(app.Globals.Config.App.OrderPaymentCallbackUrlFail + strconv.Itoa(int(order.OrderId))).
-					Send()
-			} else {
-				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-					SetData(order.OrderPayment[0].PaymentResponse.CallBackUrl).
-					Send()
-				successAction := state.GetAction(system_action.PaymentSuccess.ActionName())
-				state.StatesMap()[successAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(orderUpdated).Build())
-			}
+			//orderUpdated, err := app.Globals.OrderRepository.Save(ctx, *order)
+			//if err != nil {
+			//	logger.Err("Process() => OrderRepository.Save in %s state failed, order: %v, error: %v", state.Name(), order, err)
+			//	future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+			//		//SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).
+			//		SetData(app.Globals.Config.App.OrderPaymentCallbackUrlFail + strconv.Itoa(int(order.OrderId))).
+			//		Send()
+			//} else {
+			logger.Audit("Process() => Order state of all subpackages update to %s state, orderId: %d", state.Name(), order.OrderId)
+			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+				SetData(order.OrderPayment[0].PaymentResponse.CallBackUrl).
+				Send()
+			successAction := state.GetAction(system_action.PaymentSuccess.ActionName())
+			state.StatesMap()[successAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
+			//}
 		} else {
 			paymentRequest := payment_service.PaymentRequest{
 				Amount:   int64(grandTotal.IntPart()),
@@ -212,15 +251,15 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				}
 
 				state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
-				orderUpdated, err := app.Globals.OrderRepository.Save(ctx, *order)
-				if err != nil {
-					logger.Err("Process() => OrderRepository.Save failed, orderId: %d, error: %s", order.OrderId, err)
-					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-						SetData(app.Globals.Config.App.OrderPaymentCallbackUrlFail + strconv.Itoa(int(order.OrderId))).
-						//SetError(future.InternalError, "Unknown Error", err).
-						Send()
-					return
-				}
+				//orderUpdated, err := app.Globals.OrderRepository.Save(ctx, *order)
+				//if err != nil {
+				//	logger.Err("Process() => OrderRepository.Save failed, orderId: %d, error: %s", order.OrderId, err)
+				//	future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+				//		SetData(app.Globals.Config.App.OrderPaymentCallbackUrlFail + strconv.Itoa(int(order.OrderId))).
+				//		//SetError(future.InternalError, "Unknown Error", err).
+				//		Send()
+				//	return
+				//}
 
 				logger.Err("Process() => PaymentService.OrderPayment in %s state failed, orderId: %d, error: %v",
 					state.Name(), order.OrderId, futureData.Error().Reason())
@@ -228,7 +267,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 					SetData(order.OrderPayment[0].PaymentResponse.CallBackUrl).Send()
 
 				failAction := state.GetAction(system_action.PaymentFail.ActionName())
-				state.StatesMap()[failAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(orderUpdated).Build())
+				state.StatesMap()[failAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
 				return
 			} else {
 				paymentResponse := futureData.Data().(payment_service.PaymentResponse)
@@ -281,15 +320,34 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				_, err := app.Globals.OrderRepository.Save(ctx, *order)
 				if err != nil {
 					logger.Err("Process() => OrderRepository.Save failed, orderId: %d, error: %s", order.OrderId, err)
+
+					paymentAction := &entities.Action{
+						Name:      system_action.PaymentFail.ActionName(),
+						Type:      "",
+						UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+						UTP:       actions.System.ActionName(),
+						Perm:      "",
+						Priv:      "",
+						Policy:    "",
+						Result:    string(states.ActionFail),
+						Reasons:   nil,
+						Data:      nil,
+						CreatedAt: time.Now().UTC(),
+						Extended:  nil,
+					}
+
+					state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-						SetData(app.Globals.Config.App.OrderPaymentCallbackUrlFail + strconv.Itoa(int(order.OrderId))).
+						SetData(order.OrderPayment[0].PaymentResponse.CallBackUrl + strconv.Itoa(int(order.OrderId))).
 						//SetError(future.InternalError, "Unknown Error", err).
 						Send()
+
+					failAction := state.GetAction(system_action.PaymentFail.ActionName())
+					state.StatesMap()[failAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
 					return
-				} else {
-					logger.Audit("Process() => Status of all subpackage update to %s state, orderId: %d", state.Name(), order.OrderId)
 				}
 
+				logger.Audit("Process() => Order state of all subpackages update to %s state, orderId: %d", state.Name(), order.OrderId)
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 					SetData(paymentResponse.CallbackUrl).
 					Send()
@@ -300,13 +358,32 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 		iFrame.Header().KeyExists(string(frame.HeaderPaymentResult)) {
 		order, err := app.Globals.OrderRepository.FindById(ctx, iFrame.Header().Value(string(frame.HeaderOrderId)).(uint64))
 		if err != nil {
-			logger.Err("Process() => Singletons.OrderRepository.Save failed, orderId: %d, paymentResult: %v, error: %v",
+			logger.Err("Process() => OrderRepository.FindById failed, orderId: %d, paymentResult: %v, error: %v",
 				iFrame.Header().Value(string(frame.HeaderOrderId)).(uint64),
 				iFrame.Header().Value(string(frame.HeaderPaymentResult)).(*entities.PaymentResult), err)
 
 			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 				SetCapacity(1).SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).
 				Send()
+
+			paymentAction := &entities.Action{
+				Name:      system_action.PaymentFail.ActionName(),
+				Type:      "",
+				UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+				UTP:       actions.System.ActionName(),
+				Perm:      "",
+				Priv:      "",
+				Policy:    "",
+				Result:    string(states.ActionFail),
+				Reasons:   nil,
+				Data:      nil,
+				CreatedAt: time.Now().UTC(),
+				Extended:  nil,
+			}
+
+			state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
+			failAction := state.GetAction(system_action.PaymentFail.ActionName())
+			state.StatesMap()[failAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
 			return
 		}
 
@@ -333,13 +410,13 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			}
 
 			state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
-			updatedOrder, err := app.Globals.OrderRepository.Save(ctx, *order)
-			if err != nil {
-				logger.Err("Process() => Singletons.OrderRepository.Save failed, orderId: %d, error: %v", order.OrderId, err)
-				return
-			}
+			//updatedOrder, err := app.Globals.OrderRepository.Save(ctx, *order)
+			//if err != nil {
+			//	logger.Err("Process() => Singletons.OrderRepository.Save failed, orderId: %d, error: %v", order.OrderId, err)
+			//	return
+			//}
 			failAction := state.GetAction(system_action.PaymentFail.ActionName())
-			state.StatesMap()[failAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(updatedOrder).Build())
+			state.StatesMap()[failAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
 			return
 		} else {
 			var voucherAction *entities.Action
@@ -414,11 +491,11 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 
 			logger.Audit("Process() => PaymentResult success, orderId: %d", order.OrderId)
 			state.UpdateOrderAllSubPkg(ctx, order, paymentAction, voucherAction)
-			_, err = app.Globals.OrderRepository.Save(ctx, *order)
-			if err != nil {
-				logger.Err("Process() => OrderRepository.Save in %s state failed, orderId: %d, error: %v", state.Name(), order.OrderId, err)
-				return
-			}
+			//_, err = app.Globals.OrderRepository.Save(ctx, *order)
+			//if err != nil {
+			//	logger.Err("Process() => OrderRepository.Save in %s state failed, orderId: %d, error: %v", state.Name(), order.OrderId, err)
+			//	return
+			//}
 			successAction := state.GetAction(system_action.PaymentSuccess.ActionName())
 			state.StatesMap()[successAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
 		}

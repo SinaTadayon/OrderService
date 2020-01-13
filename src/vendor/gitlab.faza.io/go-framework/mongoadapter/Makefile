@@ -29,7 +29,7 @@ test-full:
 .PHONY: only-docker
 only-docker:
 	-docker container rm -f mongo
-	-docker run -d --rm --name mongo -p ${GOTEST_MONGO_PORT}:27017 mongo:4.0.10
+	-docker run -d --rm --name mong-p ${GOTEST_MONGO_PORT}:27017 mongo:4.0.10
 	-docker container rm -f mongo2
 	-docker run -d --rm --name mongo2 -p ${GOTEST_MONGO2_PORT}:27017 mongo:4.0.10
 

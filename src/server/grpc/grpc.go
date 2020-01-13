@@ -752,6 +752,8 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 	userType := UserType(req.Meta.UTP)
 	var userAction actions.IAction
 
+	logger.Audit("requestActionHandler() => received request action: %v", req)
+
 	userActions, ok := server.actionStates[userType]
 	if !ok {
 		logger.Err("requestActionHandler() => action %s user not supported, request: %v", userType, req)

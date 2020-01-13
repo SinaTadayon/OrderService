@@ -149,7 +149,7 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 		if err != nil {
 			logger.Err("OrderRepository.Save in %s state failed, orderId: %d, error: %v", state.Name(), order.OrderId, err)
 		}
-		logger.Audit("Order System Failed, orderId: %d", order.OrderId)
+		logger.Audit("Process() => Order state of all subpackages update to %s state, orderId: %d", state.Name(), order.OrderId)
 	} else {
 		logger.Err("HeaderOrderId of iFrame.Header not found and content of iFrame.Body() not set, state: %s iframe: %v", state.Name(), iFrame)
 	}

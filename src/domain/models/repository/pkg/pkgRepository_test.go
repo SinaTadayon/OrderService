@@ -40,12 +40,15 @@ func TestMain(m *testing.M) {
 		Port:     config.Mongo.Port,
 		Username: config.Mongo.User,
 		//Password:     App.Cfg.Mongo.Pass,
-		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout),
-		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout),
-		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout),
-		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime),
+		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout) * time.Second,
+		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout) * time.Second,
+		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout) * time.Second,
+		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime) * time.Second,
 		MaxPoolSize:     uint64(config.Mongo.MaxPoolSize),
 		MinPoolSize:     uint64(config.Mongo.MinPoolSize),
+		WriteConcernW:   config.Mongo.WriteConcernW,
+		WriteConcernJ:   config.Mongo.WriteConcernJ,
+		RetryWrites:     config.Mongo.RetryWrite,
 	}
 
 	mongoAdapter, err = mongoadapter.NewMongo(mongoConf)
@@ -72,7 +75,7 @@ func TestUpdatePkgItemRepository_Failed(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	order.Packages[0].Version = 1
 	order.Packages[0].Status = "Payment_Pending"
-	_, err = pkgItemRepo.Update(ctx, order.Packages[0])
+	_, err = pkgItemRepo.Update(ctx, *order.Packages[0])
 	require.Error(t, err, "pkgItemRepo.Update failed")
 	//require.Equal(t, uint64(1), packageItem.Version)
 	//require.Equal(t, "Payment_Pending", packageItem.Status)
@@ -87,7 +90,7 @@ func TestUpdatePkgItemRepository_Success(t *testing.T) {
 
 	ctx, _ := context.WithCancel(context.Background())
 	order.Packages[1].Status = "Payment_Pending"
-	packageItem, err := pkgItemRepo.Update(ctx, order.Packages[1])
+	packageItem, err := pkgItemRepo.Update(ctx, *order.Packages[1])
 	require.Nil(t, err, "pkgItemRepo.Update failed")
 	require.Equal(t, uint64(1), packageItem.Version)
 	require.Equal(t, "Payment_Pending", packageItem.Status)
@@ -225,7 +228,7 @@ func TestUpdatePkgItemWithNewSubPkgRepository(t *testing.T) {
 	order.Packages[1].Subpackages = append(order.Packages[1].Subpackages, subpackage)
 	ctx, _ := context.WithCancel(context.Background())
 	order.Packages[1].Status = "Payment_Pending"
-	_, err = pkgItemRepo.Update(ctx, order.Packages[1])
+	_, err = pkgItemRepo.Update(ctx, *order.Packages[1])
 	require.Nil(t, err, "pkgItemRepo.Update failed")
 	packageItem, err := pkgItemRepo.FindById(ctx, order.OrderId, order.Packages[1].PId)
 	require.Nil(t, err, "pkgItemRepo.find failed")
@@ -504,7 +507,7 @@ func createOrder() *entities.Order {
 				},
 			},
 		},
-		Packages: []entities.PackageItem{
+		Packages: []*entities.PackageItem{
 			{
 				PId:      129384234,
 				OrderId:  0,

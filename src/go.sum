@@ -131,6 +131,8 @@ gitlab.faza.io/go-framework/logger v0.0.10/go.mod h1:nB18r4xYKyF6DWB18wzqv0rAnyG
 gitlab.faza.io/go-framework/mongoadapter v0.0.6/go.mod h1:QVQUMgtEeUTTkCNp0S4/wNiH6cwsv8BM4E+wyFuarWQ=
 gitlab.faza.io/go-framework/mongoadapter v0.0.8 h1:hWhm7lgKbfAWOQvghVjdvdqOVPk+g+JdDJYRjjXyeac=
 gitlab.faza.io/go-framework/mongoadapter v0.0.8/go.mod h1:cd15CIUT4zvQxlMuG4Mp6d9RyEcyiK5f9HqRy20X/FI=
+gitlab.faza.io/go-framework/mongoadapter v0.0.9 h1:JS9Y9mlAdlt/w2HlIWpbkUjV4UOWU84GidRwSM29e/A=
+gitlab.faza.io/go-framework/mongoadapter v0.0.9/go.mod h1:cd15CIUT4zvQxlMuG4Mp6d9RyEcyiK5f9HqRy20X/FI=
 gitlab.faza.io/protos/cart v0.0.12 h1:ddIyYurR3jIUl2X2h0IzlSfVB4ZE2khZpJq/2jThM/0=
 gitlab.faza.io/protos/cart v0.0.12/go.mod h1:pemvjJkxFsjd629ESQjWKO7ZJZS6ARDU4sCLGprH7NE=
 gitlab.faza.io/protos/notification v0.0.3 h1:nnM5PVKukjR6qiRxVotmy8lAE/zTaGU4kAxTx+aQWi4=

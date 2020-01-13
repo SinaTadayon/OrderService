@@ -38,4 +38,6 @@ type ISubpackageRepository interface {
 	Count(ctx context.Context, pid uint64) (int64, repository.IRepoError)
 
 	CountWithFilter(ctx context.Context, supplier func() (filter interface{})) (int64, repository.IRepoError)
+
+	GenerateUniqSid(ctx context.Context, oid uint64) (uint64, repository.IRepoError)
 }

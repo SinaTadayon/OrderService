@@ -108,14 +108,22 @@ func (state shipmentDeliveredState) Process(ctx context.Context, iFrame frame.IF
 			}
 		}
 
-		_, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
+		pkgItemUpdated, err := app.Globals.PkgItemRepository.UpdateWithUpsert(ctx, *pkgItem)
 		if err != nil {
-			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %v",
-				state.Name(), pkgItem.OrderId, pkgItem.PId, sids, err)
+			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %v", state.Name(),
+				pkgItem.OrderId, pkgItem.PId, sids, err)
+			return
 		}
 
+		response := events.ActionResponse{
+			OrderId: pkgItem.OrderId,
+			SIds:    sids,
+		}
+
+		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).SetData(response).Send()
+
 		logger.Audit("Process() => Status of subpackages update success, state: %s, orderId: %d, pid: %d, sids: %v",
-			state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
+			state.Name(), pkgItemUpdated.OrderId, pkgItemUpdated.PId, sids)
 
 		//for i := 0; i < len(subpackages); i++ {
 		//	state.UpdateSubPackage(ctx, subpackages[i], nil)
@@ -215,6 +223,8 @@ func (state shipmentDeliveredState) Process(ctx context.Context, iFrame frame.IF
 											newSubPkg = pkgItem.Subpackages[i].DeepCopy()
 											newSubPkg.SId = 0
 											newSubPkg.Items = make([]*entities.Item, 0, len(eventSubPkg.Items))
+											newSubPkg.CreatedAt = time.Now().UTC()
+											newSubPkg.UpdatedAt = time.Now().UTC()
 
 											requestAction = &entities.Action{
 												Name:      actionState.ActionEnum().ActionName(),
@@ -312,34 +322,42 @@ func (state shipmentDeliveredState) Process(ctx context.Context, iFrame frame.IF
 				var sids = make([]uint64, 0, 32)
 				for i := 0; i < len(newSubPackages); i++ {
 					if newSubPackages[i].SId == 0 {
+						newSid, err := app.Globals.SubPkgRepository.GenerateUniqSid(ctx, pkgItem.OrderId)
+						if err != nil {
+							logger.Err("Process() => SubPkgRepository.GenerateUniqSid failed, orderId: %d, pid: %d, sid: %d, state: %s, event: %v",
+								newSubPackages[i].OrderId, newSubPackages[i].PId, newSubPackages[i].SId, state.Name(), event)
+							future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+								SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).Send()
+							return
+						}
+						newSubPackages[i].SId = newSid
 						pkgItem.Subpackages = append(pkgItem.Subpackages, newSubPackages[i])
-					} else {
-						sids = append(sids, newSubPackages[i].SId)
 					}
+					sids = append(sids, newSubPackages[i].SId)
 					state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
 				}
 
-				pkgItemUpdated, newSids, err := app.Globals.PkgItemRepository.UpdateWithUpsert(ctx, *pkgItem)
-				if err != nil {
-					logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, event: %v, error: %v", state.Name(),
-						pkgItem.OrderId, pkgItem.PId, sids, event, err)
-					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-						SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).Send()
-					return
-				}
-				sids = append(sids, newSids...)
-				pkgItem = pkgItemUpdated
-
-				response := events.ActionResponse{
-					OrderId: pkgItem.OrderId,
-					SIds:    sids,
-				}
+				//pkgItemUpdated, newSids, err := app.Globals.PkgItemRepository.UpdateWithUpsert(ctx, *pkgItem)
+				//if err != nil {
+				//	logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, event: %v, error: %v", state.Name(),
+				//		pkgItem.OrderId, pkgItem.PId, sids, event, err)
+				//	future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+				//		SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).Send()
+				//	return
+				//}
+				//sids = append(sids, newSids...)
+				//pkgItem = pkgItemUpdated
+				//
+				//response := events.ActionResponse{
+				//	OrderId: pkgItem.OrderId,
+				//	SIds:    sids,
+				//}
 
 				logger.Audit("Process() => Status of subpackages update success, state: %s, action: %s, orderId: %d, pid: %d, sids: %d",
 					state.Name(), event.Action().ActionEnum().ActionName(), pkgItem.OrderId, pkgItem.PId, sids)
 
-				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).SetData(response).Send()
-				nextActionState.Process(ctx, frame.Factory().SetEvent(event).SetSIds(sids).SetBody(pkgItem).Build())
+				//future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).SetData(response).Send()
+				nextActionState.Process(ctx, frame.FactoryOf(iFrame).SetSIds(sids).SetBody(pkgItem).Build())
 			} else {
 				logger.Err("Process() => event action data invalid, state: %s, event: %v, frame: %v", state.String(), event, iFrame)
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).

@@ -49,6 +49,14 @@ func (state canceledBySellerState) Process(ctx context.Context, iFrame frame.IFr
 		//	return
 		//}
 
+		//event, ok := iFrame.Header().Value(string(frame.HeaderEvent)).(events.IEvent)
+		//if !ok {
+		//	logger.Err("Process() => received frame doesn't have a event, state: %s, frame: %v", state.String(), iFrame)
+		//	future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+		//		SetError(future.InternalError, "Unknown Err", nil).Send()
+		//	return
+		//}
+
 		sids, ok := iFrame.Header().Value(string(frame.HeaderSIds)).([]uint64)
 		if !ok {
 			logger.Err("Process() => iFrame.Header() not a sids, state: %s, frame: %v", state.Name(), iFrame)
@@ -171,27 +179,23 @@ func (state canceledBySellerState) Process(ctx context.Context, iFrame frame.IFr
 			}
 		}
 
-		pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
-		if err != nil {
-			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %v", state.Name(),
-				pkgItem.OrderId, pkgItem.PId, sids, err)
-			return
-		}
-
-		//	subPkgUpdated, err := app.Globals.SubPkgRepository.Update(ctx, *subpackage)
-		//	if err != nil {
-		//		logger.Err("Process() => SubPkgRepository.Update in %s state failed, orderId: %d, pid: %d, sid: %d, error: %s",
-		//			state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId, err.Error())
-		//	} else {
-		//		//logger.Audit("Process() => Status of subpackages update to %s state, orderId: %d, pid: %d, sids: %v",
-		//		//	state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId)
-		//		updatedSubpackages = append(updatedSubpackages, subPkgUpdated)
-		//	}
+		//pkgItemUpdated, err := app.Globals.PkgItemRepository.UpdateWithUpsert(ctx, *pkgItem)
+		//if err != nil {
+		//	logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %v", state.Name(),
+		//		pkgItem.OrderId, pkgItem.PId, sids, err)
+		//	return
 		//}
+		//
+		//response := events.ActionResponse{
+		//	OrderId: pkgItem.OrderId,
+		//	SIds:    sids,
+		//}
+		//
+		//future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).SetData(response).Send()
 
-		logger.Audit("Process() => Status of subpackages update success, state: %s, orderId: %d, pid: %d, sids: %v",
+		logger.Audit("Process() => set status of subpackages success, state: %s, orderId: %d, pid: %d, sids: %v",
 			state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
-		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItemUpdated).Build())
+		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItem).Build())
 
 	} else {
 		logger.Err("iFrame.Header() not a subpackage , state: %s iframe: %v", state.Name(), iFrame)

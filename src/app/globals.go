@@ -76,12 +76,15 @@ func SetupMongoDriver(config configs.Config) (*mongoadapter.Mongo, error) {
 		Port:     config.Mongo.Port,
 		Username: config.Mongo.User,
 		//Password:     MainApp.Config.Mongo.Pass,
-		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout),
-		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout),
-		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout),
-		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime),
+		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout) * time.Second,
+		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout) * time.Second,
+		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout) * time.Second,
+		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime) * time.Second,
 		MaxPoolSize:     uint64(config.Mongo.MaxPoolSize),
 		MinPoolSize:     uint64(config.Mongo.MinPoolSize),
+		WriteConcernW:   config.Mongo.WriteConcernW,
+		WriteConcernJ:   config.Mongo.WriteConcernJ,
+		RetryWrites:     config.Mongo.RetryWrite,
 	}
 
 	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
@@ -102,7 +105,7 @@ func SetupMongoDriver(config configs.Config) (*mongoadapter.Mongo, error) {
 		return nil, err
 	}
 
-	_, err = mongoDriver.AddUniqueIndex(DatabaseName, CollectionName, "packages.subpackages.sid")
+	_, err = mongoDriver.AddTextV3Index(DatabaseName, CollectionName, "packages.subpackages.sid")
 	if err != nil {
 		logger.Err("create packages.subpackages.sid index failed, error: %s", err.Error())
 		return nil, err

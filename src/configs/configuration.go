@@ -116,6 +116,9 @@ type Config struct {
 		MaxConnIdleTime   int    `env:"ORDER_SERVICE_MONGO_MAX_CONN_IDLE_TIME"`
 		MaxPoolSize       int    `env:"ORDER_SERVICE_MONGO_MAX_POOL_SIZE"`
 		MinPoolSize       int    `env:"ORDER_SERVICE_MONGO_MIN_POOL_SIZE"`
+		WriteConcernW     string `env:"ORDER_SERVICE_MONGO_WRITE_CONCERN_W"`
+		WriteConcernJ     string `env:"ORDER_SERVICE_MONGO_WRITE_CONCERN_J"`
+		RetryWrite        bool   `env:"ORDER_SERVICE_MONGO_RETRY_WRITE"`
 	}
 }
 

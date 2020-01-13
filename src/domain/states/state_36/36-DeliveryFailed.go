@@ -3,7 +3,6 @@ package state_36
 import (
 	"context"
 	"gitlab.faza.io/go-framework/logger"
-	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
@@ -87,12 +86,19 @@ func (state deliveryFailedState) Process(ctx context.Context, iFrame frame.IFram
 			}
 		}
 
-		pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
-		if err != nil {
-			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %v", state.Name(),
-				pkgItem.OrderId, pkgItem.PId, sids, err)
-			return
-		}
+		//pkgItemUpdated, err := app.Globals.PkgItemRepository.UpdateWithUpsert(ctx, *pkgItem)
+		//if err != nil {
+		//	logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %v", state.Name(),
+		//		pkgItem.OrderId, pkgItem.PId, sids, err)
+		//	return
+		//}
+		//
+		//response := events.ActionResponse{
+		//	OrderId: pkgItem.OrderId,
+		//	SIds:    sids,
+		//}
+		//
+		//future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).SetData(response).Send()
 
 		//var updatedSubpackages = make([]*entities.Subpackage, 0, len(subpackages))
 		//for _, subpackage := range subpackages {
@@ -106,8 +112,9 @@ func (state deliveryFailedState) Process(ctx context.Context, iFrame frame.IFram
 		//	updatedSubpackages = append(updatedSubpackages, subPkgUpdated)
 		//}
 
-		//logger.Audit("%s state success, orderId: %d, pid: %d, sid: %v", state.Name(), updatedSubpackages[0].OrderId, updatedSubpackages[0].PId, sids)
-		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItemUpdated).Build())
+		logger.Audit("Process() => Set Status of subpackages success, state: %s, orderId: %d, pid: %d, sids: %v",
+			state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
+		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItem).Build())
 
 	} else {
 		logger.Err("iFrame.Header() not a subpackage , state: %s iframe: %v", state.Name(), iFrame)

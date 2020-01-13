@@ -552,6 +552,22 @@ func (repo iSubPkgRepositoryImpl) CountWithFilter(ctx context.Context, supplier 
 	return int64(total.Count), nil
 }
 
+func (repo iSubPkgRepositoryImpl) GenerateUniqSid(ctx context.Context, oid uint64) (uint64, repository.IRepoError) {
+
+	for {
+		random := strconv.Itoa(int(entities.GenerateRandomNumber()))
+		sid, _ := strconv.Atoi(strconv.Itoa(int(oid)) + random)
+		if result, err := repo.ExistsById(ctx, uint64(sid)); err != nil {
+			return 0, err
+		} else {
+			if !result {
+				return uint64(sid), nil
+			}
+		}
+	}
+
+}
+
 func closeCursor(context context.Context, cursor *mongo.Cursor) {
 	err := cursor.Close(context)
 	if err != nil {

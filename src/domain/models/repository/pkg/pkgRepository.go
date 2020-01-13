@@ -9,7 +9,7 @@ import (
 type IPkgItemRepository interface {
 	Update(ctx context.Context, pkgItem entities.PackageItem) (*entities.PackageItem, repository.IRepoError)
 
-	UpdateWithUpsert(ctx context.Context, pkgItem entities.PackageItem) (*entities.PackageItem, []uint64, repository.IRepoError)
+	UpdateWithUpsert(ctx context.Context, pkgItem entities.PackageItem) (*entities.PackageItem, repository.IRepoError)
 
 	FindById(ctx context.Context, orderId uint64, id uint64) (*entities.PackageItem, repository.IRepoError)
 

@@ -60,12 +60,15 @@ func TestMain(m *testing.M) {
 		Port:     app.Globals.Config.Mongo.Port,
 		Username: app.Globals.Config.Mongo.User,
 		//Password:     App.app.Globals.Config.Mongo.Pass,
-		ConnTimeout:     time.Duration(app.Globals.Config.Mongo.ConnectionTimeout),
-		ReadTimeout:     time.Duration(app.Globals.Config.Mongo.ReadTimeout),
-		WriteTimeout:    time.Duration(app.Globals.Config.Mongo.WriteTimeout),
-		MaxConnIdleTime: time.Duration(app.Globals.Config.Mongo.MaxConnIdleTime),
+		ConnTimeout:     time.Duration(app.Globals.Config.Mongo.ConnectionTimeout) * time.Second,
+		ReadTimeout:     time.Duration(app.Globals.Config.Mongo.ReadTimeout) * time.Second,
+		WriteTimeout:    time.Duration(app.Globals.Config.Mongo.WriteTimeout) * time.Second,
+		MaxConnIdleTime: time.Duration(app.Globals.Config.Mongo.MaxConnIdleTime) * time.Second,
 		MaxPoolSize:     uint64(app.Globals.Config.Mongo.MaxPoolSize),
 		MinPoolSize:     uint64(app.Globals.Config.Mongo.MinPoolSize),
+		WriteConcernW:   app.Globals.Config.Mongo.WriteConcernW,
+		WriteConcernJ:   app.Globals.Config.Mongo.WriteConcernJ,
+		RetryWrites:     app.Globals.Config.Mongo.RetryWrite,
 	}
 
 	mongoDriver, err := mongoadapter.NewMongo(mongoConf)

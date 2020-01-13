@@ -7,9 +7,11 @@ import (
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
+	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"text/template"
@@ -188,28 +190,6 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 			}
 		}
 
-		_, err = app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
-		if err != nil {
-			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %v",
-				state.Name(), pkgItem.OrderId, pkgItem.PId, sids, err)
-		}
-
-		logger.Audit("Process() => Status of subpackages update success, state: %s, orderId: %d, pid: %d, sids: %v",
-			state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
-
-		//for _, subpackage := range subpackages {
-		//	state.UpdateSubPackage(ctx, subpackage, buyerNotificationAction)
-		//	state.UpdateSubPackage(ctx, subpackage, settlementStockAction)
-		//	_, err := app.Globals.SubPkgRepository.Update(ctx, *subpackage)
-		//	if err != nil {
-		//		logger.Err("SubPkgRepository.Update in %s state failed, orderId: %d, pid: %d, sid: %d, error: %s",
-		//			state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId, err.Error())
-		//		return
-		//	} else {
-		//		logger.Audit("%s state success, orderId: %d, pid: %d, sid: %d", state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId)
-		//	}
-		//}
-
 		order, err := app.Globals.OrderRepository.FindById(ctx, pkgItem.OrderId)
 		if err != nil {
 			logger.Err("OrderRepository.FindById in %s state failed, orderId: %d, pid: %d, sids: %v, error: %v",
@@ -220,6 +200,10 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 		var findFlag = true
 		for i := 0; i < len(order.Packages); i++ {
 			findFlag = true
+			if order.Packages[i].PId == pkgItem.PId {
+				order.Packages[i] = pkgItem
+			}
+
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
 				if order.Packages[i].Subpackages[j].Status != states.PayToBuyer.StateName() &&
 					order.Packages[i].Subpackages[j].Status != states.PayToSeller.StateName() {
@@ -229,17 +213,28 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 			}
 
 			if findFlag {
-				state.SetPkgStatus(ctx, &order.Packages[i], states.PackageClosedStatus)
-				_, err := app.Globals.PkgItemRepository.Update(ctx, order.Packages[i])
-				if err != nil {
-					logger.Err("update pkgItem status to closed failed, state: %s, orderId: %d, pid: %d, error: %v",
-						state.Name(), order.Packages[i].OrderId, order.Packages[i].PId, err)
-				} else {
-					logger.Audit("update pkgItem status to closed success, state: %s, orderId: %d, pid: %d",
-						state.Name(), order.Packages[i].OrderId, order.Packages[i].PId)
-				}
+				state.SetPkgStatus(ctx, order.Packages[i], states.PackageClosedStatus)
+				logger.Audit("set pkgItem status to closed, state: %s, orderId: %d, pid: %d",
+					state.Name(), order.Packages[i].OrderId, order.Packages[i].PId)
 			}
 		}
+
+		// TODO optimize write performance with journal and w options
+		updatePkgItem, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
+		if err != nil {
+			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %v",
+				state.Name(), pkgItem.OrderId, pkgItem.PId, sids, err)
+			return
+		}
+
+		response := events.ActionResponse{
+			OrderId: pkgItem.OrderId,
+			SIds:    sids,
+		}
+
+		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).SetData(response).Send()
+		logger.Audit("Process() => Set State of subpackages success, state: %s, orderId: %d, pid: %d, sids: %v",
+			state.Name(), updatePkgItem.OrderId, updatePkgItem.PId, sids)
 
 		findFlag = true
 		for i := 0; i < len(order.Packages); i++ {
@@ -251,9 +246,9 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 
 		if findFlag {
 			state.SetOrderStatus(ctx, order, states.OrderClosedStatus)
-			_, err := app.Globals.OrderRepository.Save(ctx, *order)
+			err = app.Globals.OrderRepository.UpdateStatus(ctx, order)
 			if err != nil {
-				logger.Err("update order status to closed failed,state: %s, orderId: %d, error: %v",
+				logger.Err("update order status to closed failed, state: %s, orderId: %d, error: %v",
 					state.Name(), order.OrderId, err)
 			} else {
 				logger.Audit("update order status to closed success, state: %s, orderId: %d", state.Name(), order.OrderId)

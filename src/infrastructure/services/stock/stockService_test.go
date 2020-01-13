@@ -16,6 +16,29 @@ import (
 var config *configs.Config
 var stock *iStockServiceImpl
 
+func TestMain(m *testing.M) {
+	var err error
+	var path string
+	if os.Getenv("APP_MODE") == "dev" {
+		path = "../../../testdata/.env"
+	} else {
+		path = ""
+	}
+
+	config, _, err = configs.LoadConfigs(path, "")
+	if err != nil {
+		logger.Err(err.Error())
+		os.Exit(1)
+	}
+
+	stock = &iStockServiceImpl{nil, nil,
+		config.StockService.Address, config.StockService.Port}
+
+	// Running Tests
+	code := m.Run()
+	os.Exit(code)
+}
+
 func createOrder() *entities.Order {
 
 	paymentRequest := entities.PaymentRequest{
@@ -146,7 +169,7 @@ func createOrder() *entities.Order {
 				},
 			},
 		},
-		Packages: []entities.PackageItem{
+		Packages: []*entities.PackageItem{
 			{
 				PId:      129384234,
 				OrderId:  0,
@@ -1059,29 +1082,6 @@ func createOrder() *entities.Order {
 	}
 
 	return &newOrder
-}
-
-func TestMain(m *testing.M) {
-	var err error
-	var path string
-	if os.Getenv("APP_MODE") == "dev" {
-		path = "../../../testdata/.env"
-	} else {
-		path = ""
-	}
-
-	config, _, err = configs.LoadConfigs(path, "")
-	if err != nil {
-		logger.Err(err.Error())
-		os.Exit(1)
-	}
-
-	stock = &iStockServiceImpl{nil, nil,
-		config.StockService.Address, config.StockService.Port}
-
-	// Running Tests
-	code := m.Run()
-	os.Exit(code)
 }
 
 func TestStockService_ReservedSuccess(t *testing.T) {

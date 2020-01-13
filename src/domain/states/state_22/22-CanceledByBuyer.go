@@ -241,15 +241,22 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 			}
 		}
 
-		pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
-		if err != nil {
-			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %v", state.Name(),
-				pkgItem.OrderId, pkgItem.PId, sids, err)
-			return
-		}
+		//pkgItemUpdated, err := app.Globals.PkgItemRepository.UpdateWithUpsert(ctx, *pkgItem)
+		//if err != nil {
+		//	logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %v", state.Name(),
+		//		pkgItem.OrderId, pkgItem.PId, sids, err)
+		//	return
+		//}
+		//
+		//response := events.ActionResponse{
+		//	OrderId: pkgItem.OrderId,
+		//	SIds:    sids,
+		//}
+		//
+		//future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).SetData(response).Send()
 
 		logger.Audit("Process() => Status of subpackages update success, state: %s ,orderId: %d, pid: %d, sids: %v", state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
-		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItemUpdated).Build())
+		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItem).Build())
 	} else {
 		logger.Err("iFrame.Header() not a subpackage or sellerId not found, state: %s iframe: %v", state.Name(), iFrame)
 	}

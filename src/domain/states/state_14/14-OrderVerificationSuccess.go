@@ -3,7 +3,6 @@ package state_14
 import (
 	"context"
 	"gitlab.faza.io/go-framework/logger"
-	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
@@ -63,13 +62,15 @@ func (state orderVerificationSuccessState) Process(ctx context.Context, iFrame f
 		}
 
 		state.UpdateOrderAllSubPkg(ctx, order, orderVerifyAction)
-		orderUpdated, err := app.Globals.OrderRepository.Save(ctx, *order)
-		if err != nil {
-			logger.Err("OrderRepository.Save in %s state failed, orderId: %d, error: %v", state.Name(), order.OrderId, err)
-		} else {
-			logger.Audit("Order Verification success, orderId: %d", order.OrderId)
-			state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(orderUpdated).Build())
-		}
+		//orderUpdated, err := app.Globals.OrderRepository.Save(ctx, *order)
+		//if err != nil {
+		//	logger.Err("OrderRepository.Save in %s state failed, orderId: %d, error: %v", state.Name(), order.OrderId, err)
+		//} else {
+		//	logger.Audit("Order Verification success, orderId: %d", order.OrderId)
+		//	state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(orderUpdated).Build())
+		//}
+		logger.Audit("Process() => Order state of all subpackages update to %s state, orderId: %d", state.Name(), order.OrderId)
+		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
 	} else {
 		logger.Err("HeaderOrderId of iFrame.Header not found and content of iFrame.Body() not set, state: %s iframe: %v", state.Name(), iFrame)
 	}
