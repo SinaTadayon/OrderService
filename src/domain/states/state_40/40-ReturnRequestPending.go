@@ -229,11 +229,12 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 		}
 
 		var expireTime time.Time
-		value, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnRequestPendingStateConfig].(time.Duration)
-		if ok {
+		timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
+		if timeUnit == app.DurationTimeUnit {
+			value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnRequestPendingStateConfig].(time.Duration)
 			expireTime = time.Now().UTC().Add(value)
 		} else {
-			timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
+			value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnRequestPendingStateConfig].(int)
 			if timeUnit == string(app.HourTimeUnit) {
 				expireTime = time.Now().UTC().Add(
 					time.Hour*time.Duration(value) +

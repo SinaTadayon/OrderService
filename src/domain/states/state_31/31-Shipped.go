@@ -70,12 +70,13 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 		}
 
 		var expireTime time.Time
-		value, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShippedStateConfig].(time.Duration)
-		if ok {
+		timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
+		if timeUnit == app.DurationTimeUnit {
+			value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShippedStateConfig].(time.Duration)
 			expireTime = time.Now().UTC().Add(value)
 		} else {
+			value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShippedStateConfig].(int)
 			if sellerReactionTime, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig]; ok {
-				timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
 				if timeUnit == string(app.HourTimeUnit) {
 					expireTime = time.Now().UTC().Add(
 						time.Hour*time.Duration(sellerReactionTime.(int)+int(value)) +

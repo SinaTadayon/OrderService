@@ -151,12 +151,13 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 		}
 
 		var expireTime time.Time
-		value, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerApprovalPendingStateConfig].(time.Duration)
-		if ok {
+		timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
+		if timeUnit == app.DurationTimeUnit {
+			value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerApprovalPendingStateConfig].(time.Duration)
 			expireTime = time.Now().UTC().Add(value)
 		} else {
-			timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
-			if timeUnit == string(app.HourTimeUnit) {
+			value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerApprovalPendingStateConfig].(int)
+			if timeUnit == app.HourTimeUnit {
 				expireTime = time.Now().UTC().Add(
 					time.Hour*time.Duration(value) +
 						time.Minute*time.Duration(0) +

@@ -75,13 +75,14 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 		}
 
 		var deliveredAt time.Time
-		value, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerDeliveryPendingStateConfig].(time.Duration)
-		if ok {
+		timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
+		if timeUnit == app.DurationTimeUnit {
+			value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerDeliveryPendingStateConfig].(time.Duration)
 			deliveredAt = time.Now().UTC().Add(value)
 		} else {
+			value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerDeliveryPendingStateConfig].(int)
 			shippedTime := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShippedStateConfig].(int)
 			if sellerReactionTime, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig]; ok {
-				timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
 				if timeUnit == string(app.HourTimeUnit) {
 					deliveredAt = time.Now().UTC().Add(
 						time.Hour*time.Duration(sellerReactionTime.(int)+int(shippedTime)+int(value)) +
@@ -94,7 +95,6 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 							time.Second*time.Duration(0))
 				}
 			} else {
-				timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
 				if timeUnit == string(app.HourTimeUnit) {
 					deliveredAt = time.Now().UTC().Add(
 						time.Hour*time.Duration(pkgItem.ShipmentSpec.ReactionTime+int32(shippedTime)+int32(value)) +
@@ -110,13 +110,13 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 		}
 
 		var notifyAt time.Time
-		notifyValue, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerNotifyDeliveryPendingStateConfig].(time.Duration)
-		if ok {
-			notifyAt = time.Now().UTC().Add(notifyValue)
+		if timeUnit == app.DurationTimeUnit {
+			value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerNotifyDeliveryPendingStateConfig].(time.Duration)
+			notifyAt = time.Now().UTC().Add(value)
 		} else {
+			notifyValue := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerNotifyDeliveryPendingStateConfig].(int)
 			shippedTime := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShippedStateConfig].(int)
 			if sellerReactionTime, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig]; ok {
-				timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
 				if timeUnit == string(app.HourTimeUnit) {
 					notifyAt = time.Now().UTC().Add(
 						time.Hour*time.Duration(sellerReactionTime.(int)+int(shippedTime)+int(notifyValue)) +
