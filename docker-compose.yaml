@@ -211,7 +211,7 @@ services:
       - 50079:6379
 
   mongo:
-    image: registry.faza.io/mongo:4.0.10
+    image: registry.faza.io/mongo:4.2.2
     ports:
       - 27017:27017
 

@@ -14,6 +14,7 @@ type PaymentRequest struct {
 	Gateway  string
 	Currency string
 	OrderId  uint64
+	Mobile   string
 }
 
 type PaymentResponse struct {

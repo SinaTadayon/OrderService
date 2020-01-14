@@ -165,7 +165,7 @@ func checkTcpPort(host string, port string) bool {
 }
 
 func createAuthenticatedContext() (context.Context, error) {
-	ctx, _ := context.WithCancel(context.Background())
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	futureData := app.Globals.UserService.UserLogin(ctx, "989100000002", "123456").Get()
 
 	if futureData.Error() != nil {

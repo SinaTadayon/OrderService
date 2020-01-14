@@ -124,6 +124,7 @@ type PaymentRequest struct {
 	Price     *Money                 `bson:"price"`
 	Gateway   string                 `bson:"gateway"`
 	CreatedAt time.Time              `bson:"createdAt"`
+	Mobile    string                 `bson:"mobile"`
 	Extended  map[string]interface{} `bson:"ext"`
 }
 

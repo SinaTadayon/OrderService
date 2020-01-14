@@ -54,6 +54,7 @@ func (payment iPaymentServiceImpl) OrderPayment(ctx context.Context, request Pay
 		Amount:   request.Amount,
 		Currency: request.Currency,
 		OrderID:  strconv.Itoa(int(request.OrderId)),
+		Mobile:   request.Mobile,
 	}
 
 	// TODO decode err code

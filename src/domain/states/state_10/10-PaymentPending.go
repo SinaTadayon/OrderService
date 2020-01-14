@@ -124,6 +124,8 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 						Price:     nil,
 						Gateway:   "",
 						CreatedAt: time.Now().UTC(),
+						Mobile:    order.BuyerInfo.Mobile,
+						Extended:  nil,
 					},
 
 					PaymentResult: &entities.PaymentResult{
@@ -210,6 +212,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				Currency: order.Invoice.GrandTotal.Currency,
 				Gateway:  order.Invoice.PaymentGateway,
 				OrderId:  order.OrderId,
+				Mobile:   order.BuyerInfo.Mobile,
 			}
 
 			order.OrderPayment = []entities.PaymentService{
@@ -221,6 +224,8 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 						},
 						Gateway:   paymentRequest.Gateway,
 						CreatedAt: time.Now().UTC(),
+						Mobile:    order.BuyerInfo.Mobile,
+						Extended:  nil,
 					},
 				},
 			}

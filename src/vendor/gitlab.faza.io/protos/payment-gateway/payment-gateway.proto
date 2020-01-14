@@ -5,6 +5,25 @@ package payment_gateway;
 service PaymentGateway{
   rpc GenerateRedirectURL(GenerateRedirRequest) returns (GenerateRedirResponse) {};
   rpc ListGateways(ListGatewaysRequest) returns (ListGatewaysResponse) {};
+  rpc GetPaymentResultByOrderID(GetPaymentResultByOrderIdRequest) returns (PaymentRequest) {};
+}
+
+message GetPaymentResultByOrderIdRequest{
+  string orderID    = 1;
+}
+
+message PaymentRequest{
+  string  orderID   = 1;
+  string  paymentId = 2;
+  int64   invoiceId = 3;
+  int64   amount    = 4;
+  string  cardMask  = 5;
+  enum Status {
+    PENDING = 0;
+    SUCCESS = 1;
+    FAIL    = 2;
+  }
+  Status  status    = 6;
 }
 
 message GenerateRedirRequest{
@@ -12,6 +31,7 @@ message GenerateRedirRequest{
   int64   amount    = 2; 
   string  currency  = 3; 
   string  orderID   = 4;
+  string  mobile    = 5;
 }
 
 

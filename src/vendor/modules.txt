@@ -82,7 +82,7 @@ gitlab.faza.io/protos/cart
 gitlab.faza.io/protos/notification
 # gitlab.faza.io/protos/order v0.0.53
 gitlab.faza.io/protos/order
-# gitlab.faza.io/protos/payment-gateway v0.0.8
+# gitlab.faza.io/protos/payment-gateway v0.0.13
 gitlab.faza.io/protos/payment-gateway
 # gitlab.faza.io/protos/stock-proto.git v0.0.8
 gitlab.faza.io/protos/stock-proto.git
