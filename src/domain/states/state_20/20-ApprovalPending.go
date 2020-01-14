@@ -181,7 +181,13 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 							expireTime,
 							scheduler_action.Cancel.ActionName(),
 							0,
+							0,
+							"",
+							nil,
+							nil,
+							"",
 							true,
+							nil,
 						},
 					},
 				}

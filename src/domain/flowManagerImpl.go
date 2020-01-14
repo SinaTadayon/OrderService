@@ -527,27 +527,54 @@ func (flowManager iFlowManagerImpl) newOrderHandler(ctx context.Context, iFrame 
 func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame frame.IFrame) {
 	event := iFrame.Header().Value(string(frame.HeaderEvent)).(events.IEvent)
 	if event.EventType() == events.Action {
-		pkgItem, err := app.Globals.PkgItemRepository.FindById(ctx, event.OrderId(), event.PackageId())
-		if err != nil {
-			logger.Err("EventHandler => SubPkgRepository.FindByOrderAndSellerId failed, event: %v, error: %v ", event, err)
-			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).Send()
-		}
+		if event.Action().ActionEnum() == scheduler_action.PaymentFail {
+			order, err := app.Globals.OrderRepository.FindById(ctx, event.OrderId())
+			if err != nil {
+				logger.Err("EventHandler() => OrderRepository.FindById failed, event: %v, error: %v ", event, err)
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).Send()
+				return
+			}
 
-		state := states.FromIndex(event.StateIndex())
-		if state == nil {
-			logger.Err("EventHandler => stateIndex invalid, event: %v, error: %s ", event, err)
-			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				SetError(future.InternalError, "Unknown Err", err).Send()
-			return
-		}
+			state := states.FromIndex(event.StateIndex())
+			if state == nil {
+				logger.Err("EventHandler => stateIndex invalid, event: %v, error: %s ", event, err)
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetError(future.InternalError, "Unknown Err", err).Send()
+				return
+			}
 
-		if state, ok := flowManager.statesMap[state]; ok {
-			state.Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItem).Build())
+			if state, ok := flowManager.statesMap[state]; ok {
+				state.Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
+			} else {
+				logger.Err("EventHandler => state in flowManager.statesMap no found, state: %s, event: %v, error: %s ", state.Name(), event, err)
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetError(future.InternalError, "Unknown Err", err).Send()
+			}
 		} else {
-			logger.Err("EventHandler => state in flowManager.statesMap no found, state: %s, event: %v, error: %s ", state.Name(), event, err)
-			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				SetError(future.InternalError, "Unknown Err", err).Send()
+			pkgItem, err := app.Globals.PkgItemRepository.FindById(ctx, event.OrderId(), event.PackageId())
+			if err != nil {
+				logger.Err("EventHandler => PkgItemRepository.FindById failed, event: %v, error: %v ", event, err)
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).Send()
+				return
+			}
+
+			state := states.FromIndex(event.StateIndex())
+			if state == nil {
+				logger.Err("EventHandler => stateIndex invalid, event: %v, error: %s ", event, err)
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetError(future.InternalError, "Unknown Err", err).Send()
+				return
+			}
+
+			if state, ok := flowManager.statesMap[state]; ok {
+				state.Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItem).Build())
+			} else {
+				logger.Err("EventHandler => state in flowManager.statesMap no found, state: %s, event: %v, error: %s ", state.Name(), event, err)
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetError(future.InternalError, "Unknown Err", err).Send()
+			}
 		}
 	}
 }

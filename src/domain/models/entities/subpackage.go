@@ -1,6 +1,8 @@
 package entities
 
-import "time"
+import (
+	"time"
+)
 
 // subpackage id same as sid
 type Subpackage struct {
@@ -95,11 +97,17 @@ type State struct {
 }
 
 type SchedulerData struct {
-	Name    string    `bson:"name"`
-	Value   time.Time `bson:"value"`
-	Action  string    `bson:"action"`
-	Index   int32     `bson:"index"`
-	Enabled bool      `bson:"enabled"`
+	Name     string                 `bson:"name"`
+	Value    time.Time              `bson:"value"`
+	Action   string                 `bson:"action"`
+	Index    int32                  `bson:"index"`
+	Retry    int32                  `bson:"retry"`
+	Cron     string                 `bson:"cron"`
+	Start    *time.Time             `bson:"start"`
+	Finish   *time.Time             `bson:"finish"`
+	Type     string                 `bson:"type"`
+	Enabled  bool                   `bson:"enabled"`
+	Extended map[string]interface{} `bson:"ext"`
 }
 
 /*
@@ -118,6 +126,7 @@ type Action struct {
 	Policy    string                 `bson:"policy"`
 	Result    string                 `bson:"result"`
 	Reasons   []string               `bson:"reasons"`
+	Note      string                 `bson:"note"`
 	Data      map[string]interface{} `bson:"data"`
 	CreatedAt time.Time              `bson:"createdAt"`
 	Extended  map[string]interface{} `bson:"ext"`

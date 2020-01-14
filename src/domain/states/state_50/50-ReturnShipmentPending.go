@@ -175,7 +175,13 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 								expireTime,
 								scheduler_action.Cancel.ActionName(),
 								0,
+								0,
+								"",
+								nil,
+								nil,
+								"",
 								true,
+								nil,
 							},
 						},
 					}

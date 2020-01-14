@@ -520,7 +520,7 @@ func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.Messa
 		}
 
 		if userAction.ActionEnum() == scheduler_action.PaymentFail {
-			event := events.New(events.Action, orderReq.OID, orderReq.Packages[0].PID, 0,
+			event := events.New(events.Action, orderReq.OID, 0, 0,
 				orderReq.StateIndex, userAction,
 				time.Unix(req.Time.GetSeconds(), int64(req.Time.GetNanos())), nil)
 

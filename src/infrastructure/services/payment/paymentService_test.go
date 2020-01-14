@@ -7,6 +7,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/configs"
 	"os"
 	"testing"
+	"time"
 )
 
 var config *configs.Config
@@ -35,8 +36,25 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+func TestGetQueryOrder(t *testing.T) {
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+
+	err := payment.ConnectToPaymentService()
+	require.Nil(t, err)
+
+	defer func() {
+		if err := payment.grpcConnection.Close(); err != nil {
+		}
+	}()
+
+	iFuture := payment.GetPaymentResult(ctx, 123456789)
+	futureData := iFuture.Get()
+	require.NotNil(t, futureData)
+	require.Error(t, futureData.Error().Reason())
+}
+
 func TestOrderPayment_Success(t *testing.T) {
-	ctx, _ := context.WithCancel(context.Background())
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
 	err := payment.ConnectToPaymentService()
 	require.Nil(t, err)

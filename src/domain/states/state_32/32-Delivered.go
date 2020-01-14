@@ -99,7 +99,13 @@ func (state shipmentDeliveredState) Process(ctx context.Context, iFrame frame.IF
 								expireTime,
 								scheduler_action.Close.ActionName(),
 								0,
+								0,
+								"",
+								nil,
+								nil,
+								"",
 								true,
+								nil,
 							},
 						},
 					}

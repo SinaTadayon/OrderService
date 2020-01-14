@@ -16,6 +16,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"strconv"
 	"time"
 )
@@ -285,11 +286,12 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				}
 
 				var expireTime time.Time
-				value, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerPaymentPendingStateConfig].(time.Duration)
-				if ok {
+				timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
+				if timeUnit == app.DurationTimeUnit {
+					value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerPaymentPendingStateConfig].(time.Duration)
 					expireTime = time.Now().UTC().Add(value)
 				} else {
-					timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
+					value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerPaymentPendingStateConfig].(int)
 					if timeUnit == string(app.HourTimeUnit) {
 						expireTime = time.Now().UTC().Add(
 							time.Hour*time.Duration(value) +
@@ -314,7 +316,13 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 									expireTime,
 									scheduler_action.PaymentFail.ActionName(),
 									0,
+									app.Globals.FlowManagerConfig[app.FlowManagerSchedulerRetryPaymentPendingStateConfig].(int32),
+									"",
+									nil,
+									nil,
+									"",
 									true,
+									nil,
 								},
 							},
 						}
@@ -506,7 +514,6 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 		}
 
 	} else if iFrame.Header().KeyExists(string(frame.HeaderEvent)) {
-		// TODO optimize for performance
 		event, ok := iFrame.Header().Value(string(frame.HeaderEvent)).(events.IEvent)
 		if !ok {
 			logger.Err("Process() => received frame doesn't have a event, state: %s, frame: %v", state.String(), iFrame)
@@ -516,7 +523,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 		}
 
 		if event.EventType() == events.Action {
-			pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
+			order, ok := iFrame.Body().Content().(*entities.Order)
 			if !ok {
 				logger.Err("Process() => received frame body not a PackageItem, state: %s, event: %v, frame: %v", state.String(), event, iFrame)
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
@@ -524,18 +531,6 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				return
 			}
 
-			actionData, ok := event.Data().(events.ActionData)
-			if !ok {
-				logger.Err("Process() => received action event data invalid, state: %s, event: %v", state.String(), event)
-				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-					SetError(future.InternalError, "Unknown Err", errors.New("Action Data event invalid")).Send()
-				return
-			}
-
-			var newSubPackages []*entities.Subpackage
-			var requestAction *entities.Action
-			var newSubPkg *entities.Subpackage
-			var fullItems []*entities.Item
 			var nextActionState states.IState
 			var actionState actions.IAction
 
@@ -555,157 +550,233 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				return
 			}
 
-			// iterate subpackages
-			for _, eventSubPkg := range actionData.SubPackages {
-				for i := 0; i < len(pkgItem.Subpackages); i++ {
-					if eventSubPkg.SId == pkgItem.Subpackages[i].SId && pkgItem.Subpackages[i].Status == state.Name() {
-						newSubPkg = nil
-						fullItems = nil
-						var findItem = false
+			var expireTime time.Time
+			timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
+			if timeUnit == app.DurationTimeUnit {
+				value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerPaymentPendingStateConfig].(time.Duration)
+				expireTime = time.Now().UTC().Add(value)
+			} else {
+				value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerPaymentPendingStateConfig].(int)
+				if timeUnit == string(app.HourTimeUnit) {
+					expireTime = time.Now().UTC().Add(
+						time.Hour*time.Duration(value) +
+							time.Minute*time.Duration(0) +
+							time.Second*time.Duration(0))
+				} else {
+					expireTime = time.Now().UTC().Add(
+						time.Hour*time.Duration(0) +
+							time.Minute*time.Duration(value) +
+							time.Second*time.Duration(0))
+				}
+			}
 
-						// iterate items
-						for _, actionItem := range eventSubPkg.Items {
-							findItem = false
-							for j := 0; j < len(pkgItem.Subpackages[i].Items); j++ {
-								if actionItem.InventoryId == pkgItem.Subpackages[i].Items[j].InventoryId {
-									findItem = true
-
-									// create new subpackages which contains new items along
-									// with new quantity and recalculated related invoice
-									if actionItem.Quantity < pkgItem.Subpackages[i].Items[j].Quantity {
-										if newSubPkg == nil {
-											newSubPkg = pkgItem.Subpackages[i].DeepCopy()
-											newSubPkg.SId = 0
-											newSubPkg.Items = make([]*entities.Item, 0, len(eventSubPkg.Items))
-
-											requestAction = &entities.Action{
-												Name:      actionState.ActionEnum().ActionName(),
-												Type:      "",
-												UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
-												UTP:       actionState.ActionType().ActionName(),
-												Perm:      "",
-												Priv:      "",
-												Policy:    "",
-												Result:    string(states.ActionSuccess),
-												Reasons:   actionItem.Reasons,
-												Data:      nil,
-												CreatedAt: time.Now().UTC(),
-												Extended:  nil,
-											}
-										}
-
-										unit, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Unit.Amount)
-										if err != nil {
-											logger.Err("Process() => decimal.NewFromString failed, Unit.Amount invalid, unit: %s, orderId: %d, pid: %d, sid: %d, state: %s, event: %v",
-												pkgItem.Subpackages[i].Items[j].Invoice.Unit.Amount, pkgItem.Subpackages[i].OrderId, pkgItem.Subpackages[i].PId, pkgItem.Subpackages[i].SId, state.Name(), event)
-											future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-												SetError(future.InternalError, "Unknown Err", errors.New("Subpackage Unit invalid")).Send()
-											return
-										}
-
-										pkgItem.Subpackages[i].Items[j].Quantity -= actionItem.Quantity
-										pkgItem.Subpackages[i].Items[j].Invoice.Total.Amount = strconv.Itoa(int(unit.IntPart() * int64(pkgItem.Subpackages[i].Items[j].Quantity)))
-
-										// create new item from requested action item
-										newItem := pkgItem.Subpackages[i].Items[j].DeepCopy()
-										newItem.Quantity = actionItem.Quantity
-										newItem.Reasons = actionItem.Reasons
-										newItem.Invoice.Total.Amount = strconv.Itoa(int(unit.IntPart() * int64(newItem.Quantity)))
-										newSubPkg.Items = append(newSubPkg.Items, newItem)
-
-									} else if actionItem.Quantity > pkgItem.Subpackages[i].Items[j].Quantity {
-										logger.Err("Process() => received action not acceptable, Requested quantity greater than item quantity, state: %s, event: %v", state.String(), event)
-										future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-											SetError(future.NotAccepted, "Requested quantity greater than item quantity", errors.New("Action Not Accepted")).Send()
-										return
-
-									} else {
-										if fullItems == nil {
-											fullItems = make([]*entities.Item, 0, len(pkgItem.Subpackages[i].Items))
-											requestAction = &entities.Action{
-												Name:      actionState.ActionEnum().ActionName(),
-												Type:      "",
-												UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
-												UTP:       actionState.ActionType().ActionName(),
-												Perm:      "",
-												Priv:      "",
-												Policy:    "",
-												Result:    string(states.ActionSuccess),
-												Reasons:   actionItem.Reasons,
-												Data:      nil,
-												CreatedAt: time.Now().UTC(),
-												Extended:  nil,
-											}
-										}
-										fullItems = append(fullItems, pkgItem.Subpackages[i].Items[j])
-										pkgItem.Subpackages[i].Items[len(pkgItem.Subpackages[i].Items)-1], pkgItem.Subpackages[i].Items[j] =
-											pkgItem.Subpackages[i].Items[j], pkgItem.Subpackages[i].Items[len(pkgItem.Subpackages[i].Items)-1]
-										pkgItem.Subpackages[i].Items = pkgItem.Subpackages[i].Items[:len(pkgItem.Subpackages[i].Items)-1]
-									}
-								}
+			var findFlag = false
+			for i := 0; i < len(order.Packages); i++ {
+				for j := 0; j < len(order.Packages[i].Subpackages); j++ {
+					schedulerDataList := order.Packages[i].Subpackages[j].Tracking.State.Data["scheduler"].(primitive.A)
+					for _, data := range schedulerDataList {
+						schedulerData := data.(map[string]interface{})
+						if schedulerData["name"] == "expireAt" {
+							retry := schedulerData["retry"].(int32)
+							if retry > 0 {
+								findFlag = true
+								schedulerData["retry"] = retry - 1
+								schedulerData["value"] = expireTime
 							}
-							if !findItem {
-								logger.Err("Process() => received action item inventory not found, Requested action item inventory not found in requested subpackage, inventoryId: %s, state: %s, event: %v", actionItem.InventoryId, state.String(), event)
-								future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-									SetError(future.NotFound, "Request action item not found", errors.New("Action Item Not Found")).Send()
-								return
-							}
-						}
-
-						newSubPackages = make([]*entities.Subpackage, 0, len(actionData.SubPackages))
-						if newSubPkg != nil {
-							if fullItems != nil {
-								for z := 0; z < len(fullItems); z++ {
-									newSubPkg.Items = append(newSubPkg.Items, fullItems[z])
-								}
-							}
-							newSubPackages = append(newSubPackages, newSubPkg)
-						} else {
-							for z := 0; z < len(fullItems); z++ {
-								pkgItem.Subpackages[i].Items = append(pkgItem.Subpackages[i].Items, fullItems[z])
-							}
-							newSubPackages = append(newSubPackages, pkgItem.Subpackages[i])
 						}
 					}
 				}
 			}
 
-			if newSubPackages != nil {
-				var sids = make([]uint64, 0, 32)
-				for i := 0; i < len(newSubPackages); i++ {
-					if newSubPackages[i].SId == 0 {
-						pkgItem.Subpackages = append(pkgItem.Subpackages, newSubPackages[i])
-					} else {
-						sids = append(sids, newSubPackages[i].SId)
+			if findFlag {
+				iFuture := app.Globals.PaymentService.GetPaymentResult(ctx, order.OrderId)
+				futureData := iFuture.Get()
+				if futureData.Error() != nil {
+					logger.Err("Process() => PaymentService.GetPaymentResult failed, state: %s, orderId: %d, event: %v", state.String(), order.OrderId, event)
+					_, err := app.Globals.OrderRepository.Save(ctx, *order)
+					if err != nil {
+						logger.Err("Process() => OrderRepository.Save of update scheduler data failed,  state: %s, orderId: %d, event: %v", state.String(), order.OrderId, event)
 					}
-					state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
-				}
-
-				pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
-				if err != nil {
-					logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, event: %v, error: %v", state.Name(),
-						pkgItem.OrderId, pkgItem.PId, sids, event, err)
 					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-						SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).Send()
+						SetError(future.InternalError, "Unknown Err", futureData.Error().Reason()).Send()
 					return
 				}
 
-				pkgItem = pkgItemUpdated
+				paymentResult := futureData.Data().(payment_service.PaymentQueryResult)
+				if paymentResult.Status != payment_service.PaymentRequestPending {
+					order.OrderPayment[0].PaymentResult = &entities.PaymentResult{
+						Result:    paymentResult.Status == payment_service.PaymentRequestSuccess,
+						Reason:    "",
+						PaymentId: paymentResult.PaymentId,
+						InvoiceId: paymentResult.InvoiceId,
+						Price: &entities.Money{
+							Amount:   strconv.Itoa(int(paymentResult.Amount)),
+							Currency: "IRR",
+						},
+						CardNumMask: paymentResult.CardMask,
+						CreatedAt:   time.Now().UTC(),
+						Extended:    nil,
+					}
 
-				response := events.ActionResponse{
-					OrderId: pkgItem.OrderId,
-					SIds:    sids,
+					if !order.OrderPayment[0].PaymentResult.Result {
+						logger.Audit("Process() => PaymentQueryResult failed, orderId: %d, result: %v", order.OrderId, paymentResult)
+						paymentAction := &entities.Action{
+							Name:      system_action.PaymentFail.ActionName(),
+							Type:      "",
+							UId:       order.BuyerInfo.BuyerId,
+							UTP:       actions.System.ActionName(),
+							Perm:      "",
+							Priv:      "",
+							Policy:    "",
+							Result:    string(states.ActionFail),
+							Reasons:   nil,
+							Data:      nil,
+							CreatedAt: time.Now().UTC(),
+						}
+
+						state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
+						response := events.ActionResponse{
+							OrderId: order.OrderId,
+							SIds:    nil,
+						}
+						future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).SetData(response).Send()
+						failAction := state.GetAction(system_action.PaymentFail.ActionName())
+						state.StatesMap()[failAction].Process(ctx, frame.FactoryOf(iFrame).SetOrderId(order.OrderId).SetBody(order).Build())
+					} else {
+						var voucherAction *entities.Action
+						var voucherAmount = 0
+						if order.Invoice.Voucher != nil && order.Invoice.Voucher.Price != nil {
+							voucherAmount, _ = strconv.Atoi(order.Invoice.Voucher.Price.Amount)
+						}
+
+						if order.Invoice.Voucher != nil && (order.Invoice.Voucher.Percent > 0 || voucherAmount > 0) {
+							iFuture := app.Globals.VoucherService.VoucherSettlement(ctx, order.Invoice.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
+							futureData := iFuture.Get()
+							if futureData.Error() != nil {
+								logger.Err("Process() => VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Invoice.Voucher.Code, futureData.Error().Reason())
+								voucherAction = &entities.Action{
+									Name:      system_action.VoucherSettlement.ActionName(),
+									Type:      "",
+									UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+									UTP:       actions.System.ActionName(),
+									Perm:      "",
+									Priv:      "",
+									Policy:    "",
+									Result:    string(states.ActionFail),
+									Reasons:   nil,
+									Data:      nil,
+									CreatedAt: time.Now().UTC(),
+									Extended:  nil,
+								}
+							} else {
+								if order.Invoice.Voucher.Percent > 0 {
+									logger.Audit("Process() => Invoice paid by voucher order success, orderId: %d, voucherAmount: %v, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Percent, order.Invoice.Voucher.Code)
+								} else {
+									logger.Audit("Process() => Invoice paid by voucher order success, orderId: %d, voucherAmount: %v, voucherCode: %s", order.OrderId, voucherAmount, order.Invoice.Voucher.Code)
+								}
+
+								voucherAction = &entities.Action{
+									Name:      system_action.VoucherSettlement.ActionName(),
+									Type:      "",
+									UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+									UTP:       actions.System.ActionName(),
+									Perm:      "",
+									Priv:      "",
+									Policy:    "",
+									Result:    string(states.ActionSuccess),
+									Reasons:   nil,
+									Data:      nil,
+									CreatedAt: time.Now().UTC(),
+									Extended:  nil,
+								}
+							}
+
+							if order.Invoice.Voucher.Percent > 0 {
+								logger.Audit("Process() => VoucherSettlement success, orderId: %d, voucher Percent: %v, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Percent, order.Invoice.Voucher.Code)
+							} else {
+								logger.Audit("Process() => VoucherSettlement success, orderId: %d, voucher Amount: %v, voucherCode: %s", order.OrderId, voucherAmount, order.Invoice.Voucher.Code)
+							}
+						}
+
+						paymentAction := &entities.Action{
+							Name:      system_action.PaymentSuccess.ActionName(),
+							Type:      "",
+							UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+							UTP:       actions.System.ActionName(),
+							Perm:      "",
+							Priv:      "",
+							Policy:    "",
+							Result:    string(states.ActionSuccess),
+							Reasons:   nil,
+							Data:      nil,
+							CreatedAt: time.Now().UTC(),
+							Extended:  nil,
+						}
+
+						logger.Audit("Process() => PaymentQueryResult success, orderId: %d, result: %v", order.OrderId, paymentResult)
+						state.UpdateOrderAllSubPkg(ctx, order, paymentAction, voucherAction)
+						response := events.ActionResponse{
+							OrderId: order.OrderId,
+							SIds:    nil,
+						}
+						future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).SetData(response).Send()
+						successAction := state.GetAction(system_action.PaymentSuccess.ActionName())
+						state.StatesMap()[successAction].Process(ctx, frame.FactoryOf(iFrame).SetOrderId(order.OrderId).SetBody(order).Build())
+					}
+				} else {
+					logger.Audit("Process() => PaymentQueryResult is Pending status, orderId: %d, result: %v", order.OrderId, paymentResult)
+					_, err := app.Globals.OrderRepository.Save(ctx, *order)
+					if err != nil {
+						logger.Err("Process() => OrderRepository.Save of update scheduler data failed,  state: %s, orderId: %d, event: %v", state.String(), order.OrderId, event)
+						future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+							SetError(future.InternalError, "Unknown Err", futureData.Error().Reason()).Send()
+						return
+					}
+
+					response := events.ActionResponse{
+						OrderId: order.OrderId,
+						SIds:    nil,
+					}
+
+					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).SetData(response).Send()
+					logger.Audit("Process() => update scheduler data of order success, state: %s, orderId: %d", state.Name(), order.OrderId)
+				}
+			} else {
+				order.OrderPayment[0].PaymentResult = &entities.PaymentResult{
+					Result:      false,
+					Reason:      "PaymentService Down",
+					PaymentId:   "",
+					InvoiceId:   0,
+					Price:       nil,
+					CardNumMask: "",
+					CreatedAt:   time.Now().UTC(),
+					Extended:    nil,
 				}
 
-				logger.Audit("Process() => Status of subpackages update success, state: %s, action: %s, orderId: %d, pid: %d, sids: %d",
-					state.Name(), event.Action().ActionEnum().ActionName(), pkgItem.OrderId, pkgItem.PId, sids)
+				logger.Audit("Process() => Get PaymentQueryResult from PaymentService failed, orderId: %d", order.OrderId)
+				paymentAction := &entities.Action{
+					Name:      system_action.PaymentFail.ActionName(),
+					Type:      "",
+					UId:       order.BuyerInfo.BuyerId,
+					UTP:       actions.System.ActionName(),
+					Perm:      "",
+					Priv:      "",
+					Policy:    "",
+					Result:    string(states.ActionFail),
+					Reasons:   nil,
+					Data:      nil,
+					CreatedAt: time.Now().UTC(),
+				}
+
+				state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
+				response := events.ActionResponse{
+					OrderId: order.OrderId,
+					SIds:    nil,
+				}
 
 				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).SetData(response).Send()
-				nextActionState.Process(ctx, frame.Factory().SetEvent(event).SetSIds(sids).SetBody(pkgItem).Build())
-			} else {
-				logger.Err("Process() => event action data invalid, state: %s, event: %v, frame: %v", state.String(), event, iFrame)
-				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-					SetError(future.BadRequest, "Event Action Data Invalid", errors.New("event action data invalid")).Send()
+				failAction := state.GetAction(system_action.PaymentFail.ActionName())
+				state.StatesMap()[failAction].Process(ctx, frame.FactoryOf(iFrame).SetOrderId(order.OrderId).SetBody(order).Build())
 			}
 		} else {
 			logger.Err("Process() => event type not supported, state: %s, event: %v, frame: %v", state.String(), event, iFrame)

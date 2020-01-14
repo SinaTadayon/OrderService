@@ -39,6 +39,7 @@ const (
 	FlowManagerSchedulerStateTimeUintConfig              string = "SchedulerStateTimeUint"
 	FlowManagerSchedulerSellerReactionTimeConfig         string = "SchedulerSellerReactionTime"
 	FlowManagerSchedulerPaymentPendingStateConfig        string = "SchedulerPaymentPendingState"
+	FlowManagerSchedulerRetryPaymentPendingStateConfig   string = "SchedulerRetryPaymentPendingState"
 	FlowManagerSchedulerApprovalPendingStateConfig       string = "SchedulerApprovalPendingState"
 	FlowManagerSchedulerShipmentPendingStateConfig       string = "SchedulerShipmentPendingState"
 	FlowManagerSchedulerShippedStateConfig               string = "SchedulerShippedState"

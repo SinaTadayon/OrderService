@@ -43,11 +43,17 @@ type Subpackage struct {
 }
 
 type Scheduler struct {
-	Name    string
-	Value   time.Time
-	Action  string
-	Index   int32
-	Enabled bool
+	Name     string                 `bson:"name"`
+	Value    time.Time              `bson:"value"`
+	Action   string                 `bson:"action"`
+	Index    int32                  `bson:"index"`
+	Retry    int32                  `bson:"retry"`
+	Cron     string                 `bson:"cron"`
+	Start    *time.Time             `bson:"start"`
+	Finish   *time.Time             `bson:"finish"`
+	Type     string                 `bson:"type"`
+	Enabled  bool                   `bson:"enabled"`
+	Extended map[string]interface{} `bson:"ext"`
 }
 
 type Item struct {

@@ -107,6 +107,30 @@ func TestMain(m *testing.M) {
 		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig] = temp
 	}
 
+	if app.Globals.Config.App.SchedulerPaymentPendingState == "" {
+		logger.Err("SchedulerPaymentPendingState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerPaymentPendingState)
+		if err != nil {
+			logger.Err("SchedulerPaymentPendingState invalid, SchedulerPaymentPendingState: %s, error: %v ", app.Globals.Config.App.SchedulerApprovalPendingState, err)
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerPaymentPendingStateConfig] = temp
+	}
+
+	if app.Globals.Config.App.SchedulerRetryPaymentPendingState == "" {
+		logger.Err("SchedulerPaymentRetryPendingState is empty")
+		os.Exit(1)
+	} else {
+		temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerRetryPaymentPendingState)
+		if err != nil {
+			logger.Err("SchedulerPaymentPendingState invalid, SchedulerRetryPaymentPendingState: %s, error: %v ", app.Globals.Config.App.SchedulerApprovalPendingState, err)
+			os.Exit(1)
+		}
+		app.Globals.FlowManagerConfig[app.FlowManagerSchedulerRetryPaymentPendingStateConfig] = int32(temp)
+	}
+
 	if app.Globals.Config.App.SchedulerApprovalPendingState == "" {
 		logger.Err("SchedulerApprovalPendingState is empty")
 		os.Exit(1)
@@ -2319,6 +2343,114 @@ func TestNewOrderRequestWithZeroAmountAndVoucher(t *testing.T) {
 	require.NotEmpty(t, resOrder.CallbackUrl, "CallbackUrl is empty")
 }
 
+func TestPaymentPending_PaymentGatewayNotRespond(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err, "DialContext failed")
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	err = addStock(ctx, requestNewOrder)
+	require.Nil(t, err)
+
+	err = reservedStock(ctx, requestNewOrder)
+	require.Nil(t, err)
+
+	defer releaseStock(ctx, requestNewOrder)
+
+	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	newOrder.OrderPayment = []entities.PaymentService{{
+		PaymentRequest: &entities.PaymentRequest{
+			Price: &entities.Money{
+				Amount:   newOrder.Invoice.GrandTotal.Amount,
+				Currency: "IRR",
+			},
+			Gateway:   "APP",
+			CreatedAt: time.Now().UTC(),
+		},
+	}}
+
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	for i := 0; i < len(newOrder.Packages); i++ {
+		newOrder.Packages[i].UpdatedAt = time.Now().UTC()
+		for j := 0; j < len(newOrder.Packages[i].Subpackages); j++ {
+			newOrder.Packages[i].Subpackages[j].Tracking.State.Data = map[string]interface{}{
+				"scheduler": []entities.SchedulerData{
+					{
+						"expireAt",
+						time.Now().UTC(),
+						scheduler_action.PaymentFail.ActionName(),
+						0,
+						app.Globals.FlowManagerConfig[app.FlowManagerSchedulerRetryPaymentPendingStateConfig].(int32),
+						"",
+						nil,
+						nil,
+						"",
+						true,
+						nil,
+					},
+				},
+			}
+		}
+	}
+
+	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	request := &pb.SchedulerActionRequest{
+		Orders: []*pb.SchedulerActionRequest_Order{
+			{
+				OID:         order.OrderId,
+				ActionType:  "",
+				ActionState: scheduler_action.PaymentFail.ActionName(),
+				StateIndex:  int32(states.PaymentPending.StateIndex()),
+				Packages:    nil,
+			},
+		},
+	}
+
+	serializedData, err := proto.Marshal(request)
+	require.Nil(t, err)
+
+	msgReq := &pb.MessageRequest{
+		Name:   "",
+		Type:   "Action",
+		ADT:    "List",
+		Method: "",
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:     0,
+			UTP:     "Scheduler",
+			OID:     0,
+			PID:     0,
+			SIDs:    nil,
+			Page:    0,
+			PerPage: 0,
+			//IpAddress: ipAddress,
+			Action:  nil,
+			Sorts:   nil,
+			Filters: nil,
+		},
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(request),
+			Value:   serializedData,
+		},
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	_, err = OrderService.SchedulerMessageHandler(ctx, msgReq)
+
+	require.Nil(t, err)
+	//require.True(t, resOrder., "payment result false")
+}
+
 func TestPaymentGateway_Success(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
@@ -4185,14 +4317,26 @@ func TestDeliveryPending_SchedulerNotification_All(t *testing.T) {
 				time.Now().UTC(),
 				scheduler_action.Notification.ActionName(),
 				0,
+				0,
+				"",
+				nil,
+				nil,
+				"",
 				true,
+				nil,
 			},
 			{
 				"expireAt",
 				time.Now().UTC().Add(1 * time.Minute),
 				scheduler_action.Deliver.ActionName(),
 				1,
+				0,
+				"",
+				nil,
+				nil,
+				"",
 				true,
+				nil,
 			},
 		},
 	}

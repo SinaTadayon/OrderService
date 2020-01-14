@@ -5,8 +5,17 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 )
 
+type PaymentRequestStatus int32
+
+const (
+	PaymentRequestPending PaymentRequestStatus = 0
+	PaymentRequestSuccess PaymentRequestStatus = 1
+	PaymentRequestFail    PaymentRequestStatus = 2
+)
+
 type IPaymentService interface {
 	OrderPayment(ctx context.Context, request PaymentRequest) future.IFuture
+	GetPaymentResult(ctx context.Context, orderId uint64) future.IFuture
 }
 
 type PaymentRequest struct {
@@ -24,7 +33,7 @@ type PaymentResponse struct {
 }
 
 type PaymentResult struct {
-	OrderId   string
+	OrderId   uint64
 	PaymentId string
 	InvoiceId int64
 	Amount    int64
@@ -32,4 +41,13 @@ type PaymentResult struct {
 	ResBody   string
 	CardMask  string
 	Result    bool
+}
+
+type PaymentQueryResult struct {
+	OrderId   uint64
+	PaymentId string
+	InvoiceId int64
+	Amount    int64
+	CardMask  string
+	Status    PaymentRequestStatus
 }

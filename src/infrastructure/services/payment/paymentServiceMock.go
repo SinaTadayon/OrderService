@@ -21,3 +21,17 @@ func (payment iPaymentServiceMock) OrderPayment(ctx context.Context, request Pay
 
 	return future.Factory().SetCapacity(1).SetData(paymentResponse).BuildAndSend()
 }
+
+func (payment iPaymentServiceMock) GetPaymentResult(ctx context.Context, orderId uint64) future.IFuture {
+
+	//return future.Factory().SetCapacity(1).SetError(404, "", errors.New("")).BuildAndSend()
+	resut := PaymentQueryResult{
+		OrderId:   orderId,
+		PaymentId: "",
+		InvoiceId: 0,
+		Amount:    0,
+		CardMask:  "",
+		Status:    PaymentRequestSuccess,
+	}
+	return future.Factory().SetCapacity(1).SetData(resut).BuildAndSend()
+}

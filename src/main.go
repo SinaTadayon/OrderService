@@ -102,6 +102,18 @@ func main() {
 			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerPaymentPendingStateConfig] = temp
 		}
 
+		if app.Globals.Config.App.SchedulerRetryPaymentPendingState == "" {
+			logger.Err("SchedulerPaymentRetryPendingState is empty")
+			os.Exit(1)
+		} else {
+			temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerRetryPaymentPendingState)
+			if err != nil {
+				logger.Err("SchedulerPaymentPendingState invalid, SchedulerRetryPaymentPendingState: %s, error: %v ", app.Globals.Config.App.SchedulerApprovalPendingState, err)
+				os.Exit(1)
+			}
+			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerRetryPaymentPendingStateConfig] = int32(temp)
+		}
+
 		if app.Globals.Config.App.SchedulerApprovalPendingState == "" {
 			logger.Err("SchedulerApprovalPendingState is empty")
 			os.Exit(1)

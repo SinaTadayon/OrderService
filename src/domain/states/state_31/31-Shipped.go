@@ -114,7 +114,13 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 								expireTime,
 								scheduler_action.DeliveryPending.ActionName(),
 								0,
+								0,
+								"",
+								nil,
+								nil,
+								"",
 								true,
+								nil,
 							},
 						},
 					}

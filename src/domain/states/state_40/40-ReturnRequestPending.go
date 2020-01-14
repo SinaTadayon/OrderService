@@ -259,7 +259,13 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 								expireTime,
 								scheduler_action.Accept.ActionName(),
 								0,
+								0,
+								"",
+								nil,
+								nil,
+								"",
 								true,
+								nil,
 							},
 						},
 					}

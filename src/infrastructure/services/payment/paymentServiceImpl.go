@@ -68,6 +68,8 @@ func (payment iPaymentServiceImpl) OrderPayment(ctx context.Context, request Pay
 			BuildAndSend()
 	}
 
+	logger.Audit("OrderPayment() => request: %v, response: %v", request, response)
+
 	paymentResponse := PaymentResponse{
 		CallbackUrl: response.CallbackUrl,
 		InvoiceId:   response.InvoiceId,
@@ -76,5 +78,54 @@ func (payment iPaymentServiceImpl) OrderPayment(ctx context.Context, request Pay
 
 	return future.Factory().SetCapacity(1).
 		SetData(paymentResponse).
+		BuildAndSend()
+}
+
+func (payment iPaymentServiceImpl) GetPaymentResult(ctx context.Context, orderId uint64) future.IFuture {
+	if err := payment.ConnectToPaymentService(); err != nil {
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "ConnectToPaymentService failed")).
+			BuildAndSend()
+	}
+
+	ctx, _ = context.WithTimeout(ctx, 5*time.Second)
+	payRequest := &payment_gateway.GetPaymentResultByOrderIdRequest{
+		OrderID: strconv.Itoa(int(orderId)),
+	}
+
+	// TODO decode err code
+	response, err := payment.paymentService.GetPaymentResultByOrderID(ctx, payRequest)
+	if err != nil {
+		logger.Err("request to GetPaymentResultByOrderID grpc failed, orderId: %d, error: %s",
+			orderId, err)
+
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "GenerateRedirectURL failed")).
+			BuildAndSend()
+	}
+
+	logger.Audit("GetPaymentResult() => orderId: %d, response: %v", orderId, response)
+
+	oid, err := strconv.Atoi(response.OrderID)
+	if err != nil {
+		logger.Err("request to GetPaymentResultByOrderID grpc failed, orderId: %d, error: %s",
+			orderId, err)
+
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "GenerateRedirectURL failed")).
+			BuildAndSend()
+	}
+
+	payQueryResult := PaymentQueryResult{
+		OrderId:   uint64(oid),
+		PaymentId: response.PaymentId,
+		InvoiceId: response.InvoiceId,
+		Amount:    response.Amount,
+		CardMask:  response.CardMask,
+		Status:    PaymentRequestStatus(response.Status),
+	}
+
+	return future.Factory().SetCapacity(1).
+		SetData(payQueryResult).
 		BuildAndSend()
 }

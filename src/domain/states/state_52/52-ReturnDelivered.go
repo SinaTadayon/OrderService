@@ -201,7 +201,13 @@ func (state returnDeliveredState) Process(ctx context.Context, iFrame frame.IFra
 								expireTime,
 								scheduler_action.Accept.ActionName(),
 								0,
+								0,
+								"",
+								nil,
+								nil,
+								"",
 								true,
+								nil,
 							},
 						},
 					}
