@@ -8,7 +8,7 @@ var userTypeStrings = []string{
 	"Operator",
 	"Seller",
 	"Buyer",
-	"Scheduler",
+	"Schedulers",
 }
 
 const (
@@ -49,7 +49,7 @@ func FromUserString(userType string) (UserType, error) {
 		return Seller, nil
 	case "Buyer":
 		return Buyer, nil
-	case "Scheduler":
+	case "Schedulers":
 		return Scheduler, nil
 	default:
 		return -1, errors.New("invalid UserType string")

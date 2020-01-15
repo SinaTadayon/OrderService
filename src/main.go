@@ -367,7 +367,7 @@ func main() {
 			}
 		}
 
-		logger.Audit("Order Service Run in Scheduler Mode . . . ")
+		logger.Audit("Order Service Run in Schedulers Mode . . . ")
 
 		schedulerService := scheduler_service.NewScheduler(mongoDriver,
 			app.Globals.Config.GRPCServer.Address,

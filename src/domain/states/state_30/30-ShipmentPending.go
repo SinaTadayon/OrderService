@@ -180,24 +180,23 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 		for i := 0; i < len(sids); i++ {
 			for j := 0; j < len(pkgItem.Subpackages); j++ {
 				if pkgItem.Subpackages[j].SId == sids[i] {
-					data := map[string]interface{}{
-						"scheduler": []entities.SchedulerData{
-							{
-								"expireAt",
-								expireTime,
-								scheduler_action.Cancel.ActionName(),
-								0,
-								0,
-								"",
-								nil,
-								nil,
-								"",
-								true,
-								nil,
-							},
+					schedulers := []*entities.SchedulerData{
+						{
+							"expireAt",
+							expireTime,
+							scheduler_action.Cancel.ActionName(),
+							0,
+							0,
+							"",
+							nil,
+							nil,
+							"",
+							true,
+							nil,
+							nil,
 						},
 					}
-					state.UpdateSubPackageWithData(ctx, pkgItem.Subpackages[j], data, buyerNotificationAction)
+					state.UpdateSubPackageWithScheduler(ctx, pkgItem.Subpackages[j], schedulers, buyerNotificationAction)
 				}
 			}
 		}

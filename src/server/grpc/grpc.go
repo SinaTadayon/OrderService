@@ -137,7 +137,7 @@ const (
 	OperatorUser  UserType = "Operator"
 	SellerUser    UserType = "Seller"
 	BuyerUser     UserType = "Buyer"
-	SchedulerUser UserType = "Scheduler"
+	SchedulerUser UserType = "Schedulers"
 )
 
 const (

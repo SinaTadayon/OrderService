@@ -16,7 +16,6 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"strconv"
 	"time"
 )
@@ -309,21 +308,20 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				for i := 0; i < len(order.Packages); i++ {
 					order.Packages[i].UpdatedAt = time.Now().UTC()
 					for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-						order.Packages[i].Subpackages[j].Tracking.State.Data = map[string]interface{}{
-							"scheduler": []entities.SchedulerData{
-								{
-									"expireAt",
-									expireTime,
-									scheduler_action.PaymentFail.ActionName(),
-									0,
-									app.Globals.FlowManagerConfig[app.FlowManagerSchedulerRetryPaymentPendingStateConfig].(int32),
-									"",
-									nil,
-									nil,
-									"",
-									true,
-									nil,
-								},
+						order.Packages[i].Subpackages[j].Tracking.State.Schedulers = []*entities.SchedulerData{
+							{
+								"expireAt",
+								expireTime,
+								scheduler_action.PaymentFail.ActionName(),
+								0,
+								app.Globals.FlowManagerConfig[app.FlowManagerSchedulerRetryPaymentPendingStateConfig].(int32),
+								"",
+								nil,
+								nil,
+								"",
+								true,
+								nil,
+								nil,
 							},
 						}
 					}
@@ -573,15 +571,12 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			var findFlag = false
 			for i := 0; i < len(order.Packages); i++ {
 				for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-					schedulerDataList := order.Packages[i].Subpackages[j].Tracking.State.Data["scheduler"].(primitive.A)
-					for _, data := range schedulerDataList {
-						schedulerData := data.(map[string]interface{})
-						if schedulerData["name"] == "expireAt" {
-							retry := schedulerData["retry"].(int32)
-							if retry > 0 {
+					for _, schedulerData := range order.Packages[i].Subpackages[j].Tracking.State.Schedulers {
+						if schedulerData.Name == "expireAt" {
+							if schedulerData.Retry > 0 {
 								findFlag = true
-								schedulerData["retry"] = retry - 1
-								schedulerData["value"] = expireTime
+								schedulerData.Retry -= 1
+								schedulerData.Value = expireTime
 							}
 						}
 					}

@@ -948,7 +948,7 @@ func TestSchedulerDeliveryPending_Notification(t *testing.T) {
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000001,
-			UTP:       "Scheduler",
+			UTP:       "Schedulers",
 			OID:       order.OrderId,
 			PID:       order.Packages[0].PId,
 			SIDs:      nil,
@@ -1061,7 +1061,7 @@ func TestSchedulerDeliveryPending_Delivered(t *testing.T) {
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:       1000001,
-			UTP:       "Scheduler",
+			UTP:       "Schedulers",
 			OID:       order.OrderId,
 			PID:       order.Packages[0].PId,
 			SIDs:      nil,

@@ -88,25 +88,28 @@ type Progress struct {
 }
 
 type State struct {
-	Name      string                 `bson:"name"`
-	Index     int                    `bson:"index"`
-	Data      map[string]interface{} `bson:"data"`
-	Actions   []Action               `bson:"actions"`
-	CreatedAt time.Time              `bson:"createdAt"`
-	Extended  map[string]interface{} `bson:"ext"`
+	Name       string                 `bson:"name"`
+	Index      int                    `bson:"index"`
+	Schedulers []*SchedulerData       `bson:"schedulers"`
+	Data       map[string]interface{} `bson:"data"`
+	Actions    []Action               `bson:"actions"`
+	CreatedAt  time.Time              `bson:"createdAt"`
+	Extended   map[string]interface{} `bson:"ext"`
 }
 
 type SchedulerData struct {
 	Name     string                 `bson:"name"`
+	Group    string                 `bson:"group"`
 	Value    time.Time              `bson:"value"`
 	Action   string                 `bson:"action"`
 	Index    int32                  `bson:"index"`
 	Retry    int32                  `bson:"retry"`
 	Cron     string                 `bson:"cron"`
 	Start    *time.Time             `bson:"start"`
-	Finish   *time.Time             `bson:"finish"`
+	End      *time.Time             `bson:"end"`
 	Type     string                 `bson:"type"`
 	Enabled  bool                   `bson:"enabled"`
+	Data     interface{}            `bson:"data"`
 	Extended map[string]interface{} `bson:"ext"`
 }
 
@@ -266,16 +269,39 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 
 	if subpackage.Tracking.State != nil {
 		subPkg.Tracking.State = &State{
-			Name:      subpackage.Tracking.State.Name,
-			Index:     subpackage.Tracking.State.Index,
-			Data:      subpackage.Tracking.State.Data,
-			Actions:   nil,
-			CreatedAt: subpackage.Tracking.State.CreatedAt,
-			Extended:  subpackage.Tracking.Extended,
+			Name:       subpackage.Tracking.State.Name,
+			Index:      subpackage.Tracking.State.Index,
+			Data:       subpackage.Tracking.State.Data,
+			Schedulers: subpackage.Tracking.State.Schedulers,
+			Actions:    nil,
+			CreatedAt:  subpackage.Tracking.State.CreatedAt,
+			Extended:   subpackage.Tracking.Extended,
 		}
 	}
 
-	if subPkg.Tracking.Action != nil {
+	if subpackage.Tracking.State.Schedulers != nil {
+		subPkg.Tracking.State.Schedulers = make([]*SchedulerData, 0, len(subpackage.Tracking.State.Schedulers))
+		for _, schedulerData := range subpackage.Tracking.State.Schedulers {
+			newSchedulerData := &SchedulerData{
+				Name:     schedulerData.Name,
+				Value:    schedulerData.Value,
+				Action:   schedulerData.Action,
+				Index:    schedulerData.Index,
+				Retry:    schedulerData.Retry,
+				Cron:     schedulerData.Cron,
+				Start:    schedulerData.Start,
+				End:      schedulerData.End,
+				Type:     schedulerData.Type,
+				Enabled:  schedulerData.Enabled,
+				Data:     schedulerData.Data,
+				Extended: schedulerData.Extended,
+			}
+
+			subPkg.Tracking.State.Schedulers = append(subPkg.Tracking.State.Schedulers, newSchedulerData)
+		}
+	}
+
+	if subpackage.Tracking.Action != nil {
 		subPkg.Tracking.Action = &Action{
 			Name:      subpackage.Tracking.Action.Name,
 			Type:      subpackage.Tracking.Action.Type,
@@ -286,6 +312,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 			Policy:    subpackage.Tracking.Action.Policy,
 			Result:    subpackage.Tracking.Action.Result,
 			Reasons:   subpackage.Tracking.Action.Reasons,
+			Note:      subpackage.Tracking.Action.Note,
 			Data:      subpackage.Tracking.Action.Data,
 			CreatedAt: subpackage.Tracking.Action.CreatedAt,
 			Extended:  subpackage.Tracking.Action.Extended,
@@ -298,7 +325,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 		}
 	}
 
-	if subPkg.Tracking.State.Actions != nil {
+	if subpackage.Tracking.State.Actions != nil {
 		subPkg.Tracking.State.Actions = make([]Action, 0, len(subpackage.Tracking.State.Actions))
 		for _, action := range subpackage.Tracking.State.Actions {
 			newAction := Action{

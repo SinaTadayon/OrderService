@@ -2379,21 +2379,19 @@ func TestPaymentPending_PaymentGatewayNotRespond(t *testing.T) {
 	for i := 0; i < len(newOrder.Packages); i++ {
 		newOrder.Packages[i].UpdatedAt = time.Now().UTC()
 		for j := 0; j < len(newOrder.Packages[i].Subpackages); j++ {
-			newOrder.Packages[i].Subpackages[j].Tracking.State.Data = map[string]interface{}{
-				"scheduler": []entities.SchedulerData{
-					{
-						"expireAt",
-						time.Now().UTC(),
-						scheduler_action.PaymentFail.ActionName(),
-						0,
-						app.Globals.FlowManagerConfig[app.FlowManagerSchedulerRetryPaymentPendingStateConfig].(int32),
-						"",
-						nil,
-						nil,
-						"",
-						true,
-						nil,
-					},
+			newOrder.Packages[i].Subpackages[j].Tracking.State.Schedulers = []*entities.SchedulerData{
+				{
+					"expireAt",
+					time.Now().UTC(),
+					scheduler_action.PaymentFail.ActionName(),
+					0,
+					app.Globals.FlowManagerConfig[app.FlowManagerSchedulerRetryPaymentPendingStateConfig].(int32),
+					"",
+					nil,
+					nil,
+					"",
+					true,
+					nil,
 				},
 			}
 		}
@@ -2427,7 +2425,7 @@ func TestPaymentPending_PaymentGatewayNotRespond(t *testing.T) {
 		Time:   ptypes.TimestampNow(),
 		Meta: &pb.RequestMetadata{
 			UID:     0,
-			UTP:     "Scheduler",
+			UTP:     "Schedulers",
 			OID:     0,
 			PID:     0,
 			SIDs:    nil,

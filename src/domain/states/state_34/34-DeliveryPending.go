@@ -17,7 +17,6 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"strconv"
 	"text/template"
 	"time"
@@ -290,12 +289,10 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 				for _, eventSubPkg := range actionData.SubPackages {
 					for i := 0; i < len(pkgItem.Subpackages); i++ {
 						if eventSubPkg.SId == pkgItem.Subpackages[i].SId && pkgItem.Subpackages[i].Status == state.Name() {
-							if pkgItem.Subpackages[i].Tracking.State.Data != nil && pkgItem.Subpackages[i].Tracking.State.Data["scheduler"] != nil {
-								schedulerDataList := pkgItem.Subpackages[i].Tracking.State.Data["scheduler"].(primitive.A)
-								for _, data := range schedulerDataList {
-									schedulerData := data.(map[string]interface{})
-									if schedulerData["name"] == "notifyAt" && schedulerData["enabled"].(bool) {
-										schedulerData["enabled"] = false
+							if pkgItem.Subpackages[i].Tracking.State.Schedulers != nil {
+								for _, schedulerData := range pkgItem.Subpackages[i].Tracking.State.Schedulers {
+									if schedulerData.Name == "notifyAt" && schedulerData.Enabled {
+										schedulerData.Enabled = false
 										sids = append(sids, pkgItem.Subpackages[i].SId)
 										var buyerNotify notify_service.SMSRequest
 

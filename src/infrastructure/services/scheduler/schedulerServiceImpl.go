@@ -351,7 +351,7 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 			Time:   ptypes.TimestampNow(),
 			Meta: &protoOrder.RequestMetadata{
 				UID:     0,
-				UTP:     "Scheduler",
+				UTP:     "Schedulers",
 				OID:     0,
 				PID:     0,
 				SIDs:    nil,

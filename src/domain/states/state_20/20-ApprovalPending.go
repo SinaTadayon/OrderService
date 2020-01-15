@@ -174,21 +174,20 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 		for i := 0; i < len(order.Packages); i++ {
 			order.Packages[i].UpdatedAt = time.Now().UTC()
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-				order.Packages[i].Subpackages[j].Tracking.State.Data = map[string]interface{}{
-					"scheduler": []entities.SchedulerData{
-						{
-							"expireAt",
-							expireTime,
-							scheduler_action.Cancel.ActionName(),
-							0,
-							0,
-							"",
-							nil,
-							nil,
-							"",
-							true,
-							nil,
-						},
+				order.Packages[i].Subpackages[j].Tracking.State.Schedulers = []*entities.SchedulerData{
+					{
+						"expireAt",
+						expireTime,
+						scheduler_action.Cancel.ActionName(),
+						0,
+						0,
+						"",
+						nil,
+						nil,
+						"",
+						true,
+						nil,
+						nil,
 					},
 				}
 				state.UpdateSubPackage(ctx, order.Packages[i].Subpackages[j], sellerNotificationAction)
