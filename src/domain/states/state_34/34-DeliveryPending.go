@@ -138,37 +138,41 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 		for i := 0; i < len(sids); i++ {
 			for j := 0; j < len(pkgItem.Subpackages); j++ {
 				if pkgItem.Subpackages[j].SId == sids[i] {
-					data := map[string]interface{}{
-						"scheduler": []entities.SchedulerData{
-							{
-								"notifyAt",
-								notifyAt,
-								scheduler_action.Notification.ActionName(),
-								0,
-								0,
-								"",
-								nil,
-								nil,
-								"",
-								true,
-								nil,
-							},
-							{
-								"expireAt",
-								deliveredAt,
-								scheduler_action.Deliver.ActionName(),
-								1,
-								0,
-								"",
-								nil,
-								nil,
-								"",
-								true,
-								nil,
-							},
+					schedulers := []*entities.SchedulerData{
+						{
+							states.SchedulerJobName,
+							states.SchedulerGroupName,
+							scheduler_action.Notification.ActionName(),
+							0,
+							0,
+							"",
+							nil,
+							nil,
+							string(states.SchedulerSubpackageStateNotify),
+							"",
+							nil,
+							true,
+							notifyAt,
+							nil,
+						},
+						{
+							states.SchedulerJobName,
+							states.SchedulerGroupName,
+							scheduler_action.Deliver.ActionName(),
+							1,
+							0,
+							"",
+							nil,
+							nil,
+							string(states.SchedulerSubpackageStateExpire),
+							"",
+							nil,
+							true,
+							deliveredAt,
+							nil,
 						},
 					}
-					state.UpdateSubPackageWithData(ctx, pkgItem.Subpackages[j], data, nil)
+					state.UpdateSubPackageWithScheduler(ctx, pkgItem.Subpackages[j], schedulers, nil)
 				}
 			}
 		}
@@ -291,7 +295,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 						if eventSubPkg.SId == pkgItem.Subpackages[i].SId && pkgItem.Subpackages[i].Status == state.Name() {
 							if pkgItem.Subpackages[i].Tracking.State.Schedulers != nil {
 								for _, schedulerData := range pkgItem.Subpackages[i].Tracking.State.Schedulers {
-									if schedulerData.Name == "notifyAt" && schedulerData.Enabled {
+									if schedulerData.Type == string(states.SchedulerSubpackageStateNotify) && schedulerData.Enabled {
 										schedulerData.Enabled = false
 										sids = append(sids, pkgItem.Subpackages[i].SId)
 										var buyerNotify notify_service.SMSRequest

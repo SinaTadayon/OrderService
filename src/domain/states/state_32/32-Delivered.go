@@ -92,24 +92,25 @@ func (state shipmentDeliveredState) Process(ctx context.Context, iFrame frame.IF
 		for i := 0; i < len(sids); i++ {
 			for j := 0; j < len(pkgItem.Subpackages); j++ {
 				if pkgItem.Subpackages[j].SId == sids[i] {
-					data := map[string]interface{}{
-						"scheduler": []entities.SchedulerData{
-							{
-								"expireAt",
-								expireTime,
-								scheduler_action.Close.ActionName(),
-								0,
-								0,
-								"",
-								nil,
-								nil,
-								"",
-								true,
-								nil,
-							},
+					schedulers := []*entities.SchedulerData{
+						{
+							states.SchedulerJobName,
+							states.SchedulerGroupName,
+							scheduler_action.Close.ActionName(),
+							0,
+							0,
+							"",
+							nil,
+							nil,
+							string(states.SchedulerSubpackageStateExpire),
+							"",
+							nil,
+							true,
+							expireTime,
+							nil,
 						},
 					}
-					state.UpdateSubPackageWithData(ctx, pkgItem.Subpackages[j], data, nil)
+					state.UpdateSubPackageWithScheduler(ctx, pkgItem.Subpackages[j], schedulers, nil)
 				}
 			}
 		}

@@ -100,7 +100,6 @@ type State struct {
 type SchedulerData struct {
 	Name     string                 `bson:"name"`
 	Group    string                 `bson:"group"`
-	Value    time.Time              `bson:"value"`
 	Action   string                 `bson:"action"`
 	Index    int32                  `bson:"index"`
 	Retry    int32                  `bson:"retry"`
@@ -108,6 +107,8 @@ type SchedulerData struct {
 	Start    *time.Time             `bson:"start"`
 	End      *time.Time             `bson:"end"`
 	Type     string                 `bson:"type"`
+	Mode     string                 `bson:"mode"`
+	Policy   interface{}            `bson:"policy"`
 	Enabled  bool                   `bson:"enabled"`
 	Data     interface{}            `bson:"data"`
 	Extended map[string]interface{} `bson:"ext"`
@@ -284,7 +285,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 		for _, schedulerData := range subpackage.Tracking.State.Schedulers {
 			newSchedulerData := &SchedulerData{
 				Name:     schedulerData.Name,
-				Value:    schedulerData.Value,
+				Group:    schedulerData.Group,
 				Action:   schedulerData.Action,
 				Index:    schedulerData.Index,
 				Retry:    schedulerData.Retry,
@@ -292,6 +293,8 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 				Start:    schedulerData.Start,
 				End:      schedulerData.End,
 				Type:     schedulerData.Type,
+				Mode:     schedulerData.Mode,
+				Policy:   schedulerData.Policy,
 				Enabled:  schedulerData.Enabled,
 				Data:     schedulerData.Data,
 				Extended: schedulerData.Extended,

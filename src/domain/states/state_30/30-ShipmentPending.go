@@ -182,17 +182,19 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 				if pkgItem.Subpackages[j].SId == sids[i] {
 					schedulers := []*entities.SchedulerData{
 						{
-							"expireAt",
-							expireTime,
+							states.SchedulerJobName,
+							states.SchedulerGroupName,
 							scheduler_action.Cancel.ActionName(),
 							0,
 							0,
 							"",
 							nil,
 							nil,
+							string(states.SchedulerSubpackageStateExpire),
 							"",
-							true,
 							nil,
+							true,
+							expireTime,
 							nil,
 						},
 					}

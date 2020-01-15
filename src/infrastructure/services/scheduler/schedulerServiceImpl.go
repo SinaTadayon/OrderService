@@ -13,6 +13,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	protoOrder "gitlab.faza.io/protos/order"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -44,15 +45,18 @@ type Subpackage struct {
 
 type Scheduler struct {
 	Name     string                 `bson:"name"`
-	Value    time.Time              `bson:"value"`
+	Group    string                 `bson:"group"`
 	Action   string                 `bson:"action"`
 	Index    int32                  `bson:"index"`
 	Retry    int32                  `bson:"retry"`
 	Cron     string                 `bson:"cron"`
 	Start    *time.Time             `bson:"start"`
-	Finish   *time.Time             `bson:"finish"`
+	End      *time.Time             `bson:"end"`
 	Type     string                 `bson:"type"`
+	Mode     string                 `bson:"mode"`
+	Policy   interface{}            `bson:"policy"`
 	Enabled  bool                   `bson:"enabled"`
+	Data     interface{}            `bson:"data"`
 	Extended map[string]interface{} `bson:"ext"`
 }
 
@@ -62,7 +66,6 @@ type Item struct {
 }
 
 type startWardFn func(ctx context.Context, pulseInterval time.Duration, scheduleInterval time.Duration, state states.IEnumState) (heartbeat <-chan interface{})
-
 type startStewardFn func(ctx context.Context, pulseInterval time.Duration) (heartbeat <-chan interface{})
 
 type SchedulerService struct {
@@ -397,11 +400,11 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 
 func (scheduler *SchedulerService) checkExpiredTime(subpackage Subpackage) *Scheduler {
 	if len(subpackage.Scheduler) == 1 {
-		if subpackage.Scheduler[0].Value.Before(time.Now().UTC()) && subpackage.Scheduler[0].Enabled {
+		if subpackage.Scheduler[0].Data.(primitive.DateTime).Time().Before(time.Now().UTC()) && subpackage.Scheduler[0].Enabled {
 			logger.Audit("action expired, "+
 				"orderId: %d, sid: %d, stateName: %s, stateIndex: %d, actionName: %s, expiredTime: %s ",
 				subpackage.OrderId, subpackage.SId, states.FromIndex(int32(subpackage.Sidx)).StateName(),
-				subpackage.Sidx, subpackage.Scheduler[0].Action, subpackage.Scheduler[0].Value)
+				subpackage.Sidx, subpackage.Scheduler[0].Action, subpackage.Scheduler[0].Data)
 			return &subpackage.Scheduler[0]
 		}
 	} else {
@@ -417,7 +420,7 @@ func (scheduler *SchedulerService) checkExpiredTime(subpackage Subpackage) *Sche
 
 		var sche *Scheduler = nil
 		for i := 0; i < len(sortedScheduler); i++ {
-			if sortedScheduler[i].Value.Before(time.Now().UTC()) && sortedScheduler[i].Enabled {
+			if sortedScheduler[i].Data.(primitive.DateTime).Time().Before(time.Now().UTC()) && sortedScheduler[i].Enabled {
 				sche = sortedScheduler[i]
 			}
 		}
@@ -473,17 +476,17 @@ func (scheduler *SchedulerService) findAllWithPage(ctx context.Context, state st
 		{"$unwind": "$packages.subpackages"},
 		{"$match": bson.M{"packages.subpackages.status": state.StateName()}},
 		{"$project": bson.M{
-			"packages.subpackages.pid":                           1,
-			"packages.subpackages.orderId":                       1,
-			"packages.subpackages.sid":                           1,
-			"packages.subpackages.items":                         1,
-			"packages.subpackages.tracking.state.index":          1,
-			"packages.subpackages.tracking.state.data.scheduler": 1,
+			"packages.subpackages.pid":                       1,
+			"packages.subpackages.orderId":                   1,
+			"packages.subpackages.sid":                       1,
+			"packages.subpackages.items":                     1,
+			"packages.subpackages.tracking.state.index":      1,
+			"packages.subpackages.tracking.state.schedulers": 1,
 		}},
 		{"$replaceRoot": bson.M{"newRoot": "$packages.subpackages"}},
 		{"$project": bson.M{
 			"sidx":      "$tracking.state.index",
-			"scheduler": "$tracking.state.data.scheduler",
+			"scheduler": "$tracking.state.schedulers",
 			"items":     1,
 			"sid":       1,
 			"pid":       1,

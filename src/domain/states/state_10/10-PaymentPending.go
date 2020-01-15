@@ -310,17 +310,19 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 					for j := 0; j < len(order.Packages[i].Subpackages); j++ {
 						order.Packages[i].Subpackages[j].Tracking.State.Schedulers = []*entities.SchedulerData{
 							{
-								"expireAt",
-								expireTime,
+								states.SchedulerJobName,
+								states.SchedulerGroupName,
 								scheduler_action.PaymentFail.ActionName(),
 								0,
 								app.Globals.FlowManagerConfig[app.FlowManagerSchedulerRetryPaymentPendingStateConfig].(int32),
 								"",
 								nil,
 								nil,
+								string(states.SchedulerSubpackageStateExpire),
 								"",
-								true,
 								nil,
+								true,
+								expireTime,
 								nil,
 							},
 						}
@@ -572,11 +574,11 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			for i := 0; i < len(order.Packages); i++ {
 				for j := 0; j < len(order.Packages[i].Subpackages); j++ {
 					for _, schedulerData := range order.Packages[i].Subpackages[j].Tracking.State.Schedulers {
-						if schedulerData.Name == "expireAt" {
+						if schedulerData.Type == string(states.SchedulerSubpackageStateExpire) {
 							if schedulerData.Retry > 0 {
 								findFlag = true
 								schedulerData.Retry -= 1
-								schedulerData.Value = expireTime
+								schedulerData.Data = expireTime
 							}
 						}
 					}

@@ -176,17 +176,19 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
 				order.Packages[i].Subpackages[j].Tracking.State.Schedulers = []*entities.SchedulerData{
 					{
-						"expireAt",
-						expireTime,
+						states.SchedulerJobName,
+						states.SchedulerGroupName,
 						scheduler_action.Cancel.ActionName(),
 						0,
 						0,
 						"",
 						nil,
 						nil,
+						string(states.SchedulerSubpackageStateExpire),
 						"",
-						true,
 						nil,
+						true,
+						expireTime,
 						nil,
 					},
 				}

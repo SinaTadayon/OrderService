@@ -293,7 +293,7 @@ func checkTcpPort(host string, port string) bool {
 }
 
 func createAuthenticatedContext() (context.Context, error) {
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, _ := context.WithTimeout(context.Background(), 120*time.Second)
 	futureData := app.Globals.UserService.UserLogin(ctx, "989100000002", "123456").Get()
 
 	if futureData.Error() != nil {
@@ -2381,16 +2381,19 @@ func TestPaymentPending_PaymentGatewayNotRespond(t *testing.T) {
 		for j := 0; j < len(newOrder.Packages[i].Subpackages); j++ {
 			newOrder.Packages[i].Subpackages[j].Tracking.State.Schedulers = []*entities.SchedulerData{
 				{
-					"expireAt",
-					time.Now().UTC(),
+					states.SchedulerJobName,
+					states.SchedulerGroupName,
 					scheduler_action.PaymentFail.ActionName(),
 					0,
 					app.Globals.FlowManagerConfig[app.FlowManagerSchedulerRetryPaymentPendingStateConfig].(int32),
 					"",
 					nil,
 					nil,
+					string(states.SchedulerSubpackageStateExpire),
 					"",
+					nil,
 					true,
+					time.Now().UTC(),
 					nil,
 				},
 			}
@@ -4308,34 +4311,38 @@ func TestDeliveryPending_SchedulerNotification_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
-	newOrder.Packages[0].Subpackages[0].Tracking.State.Data = map[string]interface{}{
-		"scheduler": []entities.SchedulerData{
-			{
-				"notifyAt",
-				time.Now().UTC(),
-				scheduler_action.Notification.ActionName(),
-				0,
-				0,
-				"",
-				nil,
-				nil,
-				"",
-				true,
-				nil,
-			},
-			{
-				"expireAt",
-				time.Now().UTC().Add(1 * time.Minute),
-				scheduler_action.Deliver.ActionName(),
-				1,
-				0,
-				"",
-				nil,
-				nil,
-				"",
-				true,
-				nil,
-			},
+	newOrder.Packages[0].Subpackages[0].Tracking.State.Schedulers = []*entities.SchedulerData{
+		{
+			states.SchedulerJobName,
+			states.SchedulerGroupName,
+			scheduler_action.Notification.ActionName(),
+			0,
+			0,
+			"",
+			nil,
+			nil,
+			string(states.SchedulerSubpackageStateNotify),
+			"",
+			nil,
+			true,
+			time.Now().UTC(),
+			nil,
+		},
+		{
+			states.SchedulerJobName,
+			states.SchedulerGroupName,
+			scheduler_action.Deliver.ActionName(),
+			1,
+			0,
+			"",
+			nil,
+			nil,
+			string(states.SchedulerSubpackageStateExpire),
+			"",
+			nil,
+			true,
+			time.Now().UTC().Add(1 * time.Minute),
+			nil,
 		},
 	}
 	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)

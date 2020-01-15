@@ -772,9 +772,10 @@ func createOrder() *entities.Order {
 						},
 						Tracking: entities.Progress{
 							State: &entities.State{
-								Name:  "1.New",
-								Index: 1,
-								Data:  nil,
+								Name:       "1.New",
+								Index:      1,
+								Schedulers: nil,
+								Data:       nil,
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
@@ -785,6 +786,7 @@ func createOrder() *entities.Order {
 									},
 								},
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
@@ -946,9 +948,10 @@ func createOrder() *entities.Order {
 						},
 						Tracking: entities.Progress{
 							State: &entities.State{
-								Name:  "1.New",
-								Index: 1,
-								Data:  nil,
+								Name:       "1.New",
+								Index:      1,
+								Schedulers: nil,
+								Data:       nil,
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
@@ -959,6 +962,7 @@ func createOrder() *entities.Order {
 									},
 								},
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
@@ -1224,9 +1228,10 @@ func createOrder() *entities.Order {
 						},
 						Tracking: entities.Progress{
 							State: &entities.State{
-								Name:  "1.New",
-								Index: 1,
-								Data:  nil,
+								Name:       "1.New",
+								Index:      1,
+								Schedulers: nil,
+								Data:       nil,
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
@@ -1237,6 +1242,7 @@ func createOrder() *entities.Order {
 									},
 								},
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
@@ -1398,9 +1404,10 @@ func createOrder() *entities.Order {
 						},
 						Tracking: entities.Progress{
 							State: &entities.State{
-								Name:  "1.New",
-								Index: 1,
-								Data:  nil,
+								Name:       "1.New",
+								Index:      1,
+								Schedulers: nil,
+								Data:       nil,
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
@@ -1411,6 +1418,7 @@ func createOrder() *entities.Order {
 									},
 								},
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
