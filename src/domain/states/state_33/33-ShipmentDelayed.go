@@ -523,11 +523,10 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 					}
 
 				} else if event.Action().ActionEnum() == seller_action.EnterShipmentDetail {
-					actionData, ok := event.Data().(events.ActionData)
-					if !ok || actionData.TrackingNumber == "" || actionData.Carrier == "" {
+					if actionData.TrackingNumber == "" || actionData.Carrier == "" {
 						logger.Err("Process() => event data is not a events.ActionData type , TrackingNumber, Carrier invalid, event: %v, orderId: %d, pid:%d, sids: %v", event, pkgItem.OrderId, pkgItem.PId, sids)
 						future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-							SetError(future.InternalError, "Unknown Error", errors.New("Event Action Data Invalid")).Send()
+							SetError(future.BadRequest, "TrackingNumber or Carrier invalid", errors.New("Event Action Data Invalid")).Send()
 						return
 					}
 
