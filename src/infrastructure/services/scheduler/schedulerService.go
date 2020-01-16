@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-type StateInterval struct {
-	State    states.IEnumState
-	Interval time.Duration
+type StateConfig struct {
+	State            states.IEnumState
+	ScheduleInterval time.Duration
 }
 
 type ISchedulerService interface {

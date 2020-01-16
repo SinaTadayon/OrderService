@@ -99,13 +99,52 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	var stateList = make([]states.IEnumState, 0, 16)
-	for _, strState := range strings.Split(app.Globals.Config.App.SchedulerStates, ";") {
-		state := states.FromString(strState)
-		if state != nil {
-			stateList = append(stateList, state)
+	if app.Globals.Config.App.SchedulerTimeUint != "hour" &&
+		app.Globals.Config.App.SchedulerTimeUint != "minute" {
+		logger.Err("main() => SchedulerTimeUint env is invalid, %s ", app.Globals.Config.App.SchedulerTimeUint)
+		os.Exit(1)
+	}
+
+	var stateList = make([]StateConfig, 0, 16)
+	for _, stateConfig := range strings.Split(app.Globals.Config.App.SchedulerStates, ";") {
+		values := strings.Split(stateConfig, ":")
+		if len(values) == 1 {
+			state := states.FromString(values[0])
+			if state != nil {
+				config := StateConfig{
+					State:            state,
+					ScheduleInterval: 0,
+				}
+				stateList = append(stateList, config)
+			} else {
+				logger.Err("main() => state string SchedulerStates env is invalid, state: %s", stateConfig)
+				os.Exit(1)
+			}
+		} else if len(values) == 2 {
+			state := states.FromString(values[0])
+			temp, err := strconv.Atoi(values[1])
+			var scheduleInterval time.Duration
+			if err != nil {
+				logger.Err("main() => scheduleInterval of SchedulerStates env is invalid, state: %s, err: %v", stateConfig, err)
+				os.Exit(1)
+			}
+			if app.Globals.Config.App.SchedulerTimeUint == "hour" {
+				scheduleInterval = time.Duration(temp) * time.Hour
+			} else {
+				scheduleInterval = time.Duration(temp) * time.Minute
+			}
+			if state != nil {
+				config := StateConfig{
+					State:            state,
+					ScheduleInterval: scheduleInterval,
+				}
+				stateList = append(stateList, config)
+			} else {
+				logger.Err("main() => state string SchedulerStates env is invalid, state: %s", stateConfig)
+				os.Exit(1)
+			}
 		} else {
-			logger.Err("main() => state string SchedulerStates env is invalid, state: %s", strState)
+			logger.Err("main() => state string SchedulerStates env is invalid, state: %s", stateConfig)
 			os.Exit(1)
 		}
 	}

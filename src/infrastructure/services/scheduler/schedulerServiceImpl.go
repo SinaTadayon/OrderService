@@ -74,7 +74,7 @@ type SchedulerService struct {
 	grpcConnection          *grpc.ClientConn
 	serverAddress           string
 	serverPort              int
-	states                  []states.IEnumState
+	states                  []StateConfig
 	schedulerInterval       time.Duration
 	schedulerStewardTimeout time.Duration
 	schedulerWorkerTimeout  time.Duration
@@ -83,7 +83,12 @@ type SchedulerService struct {
 
 func NewScheduler(mongoAdapter *mongoadapter.Mongo, address string, port int,
 	schedulerInterval time.Duration, schedulerStewardTimeout time.Duration, schedulerWorkerTimeout time.Duration,
-	states ...states.IEnumState) *SchedulerService {
+	states ...StateConfig) *SchedulerService {
+	for i := 0; i < len(states); i++ {
+		if states[i].ScheduleInterval == 0 {
+			states[i].ScheduleInterval = schedulerInterval
+		}
+	}
 	return &SchedulerService{mongoAdapter: mongoAdapter, serverAddress: address, serverPort: port,
 		schedulerInterval: schedulerInterval, schedulerStewardTimeout: schedulerStewardTimeout, schedulerWorkerTimeout: schedulerWorkerTimeout,
 		states: states}
@@ -113,26 +118,26 @@ func (scheduler *SchedulerService) Scheduler(ctx context.Context) {
 	scheduler.waitGroup.Wait()
 }
 
-func (scheduler *SchedulerService) scheduleProcess(ctx context.Context, state states.IEnumState) {
+func (scheduler *SchedulerService) scheduleProcess(ctx context.Context, config StateConfig) {
 
 	stewardCtx, stewardCtxCancel := context.WithCancel(context.Background())
-	stewardWorkerFn := scheduler.stewardFn(utils.ORContext(ctx, stewardCtx), scheduler.schedulerWorkerTimeout, scheduler.schedulerInterval, state, scheduler.worker)
+	stewardWorkerFn := scheduler.stewardFn(utils.ORContext(ctx, stewardCtx), scheduler.schedulerWorkerTimeout, config.ScheduleInterval, config.State, scheduler.worker)
 	heartbeat := stewardWorkerFn(ctx, scheduler.schedulerStewardTimeout)
 	stewardTimer := time.NewTimer(scheduler.schedulerStewardTimeout * 2)
 
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Audit("scheduleProcess() => stewardWorkerFn goroutine context down!, state: %s", state.StateName())
+			logger.Audit("scheduleProcess() => stewardWorkerFn goroutine context down!, state: %s", config.State.StateName())
 			stewardTimer.Stop()
 			scheduler.waitGroup.Done()
 			return
 		case _, ok := <-heartbeat:
 			if ok == false {
-				logger.Audit("scheduleProcess() => heartbeat of stewardWorkerFn closed, state: %s", state.StateName())
+				logger.Audit("scheduleProcess() => heartbeat of stewardWorkerFn closed, state: %s", config.State.StateName())
 				stewardCtxCancel()
 				stewardCtx, stewardCtxCancel = context.WithCancel(context.Background())
-				stewardWorkerFn := scheduler.stewardFn(utils.ORContext(ctx, stewardCtx), scheduler.schedulerWorkerTimeout, scheduler.schedulerInterval, state, scheduler.worker)
+				stewardWorkerFn := scheduler.stewardFn(utils.ORContext(ctx, stewardCtx), scheduler.schedulerWorkerTimeout, config.ScheduleInterval, config.State, scheduler.worker)
 				heartbeat = stewardWorkerFn(ctx, scheduler.schedulerStewardTimeout)
 				stewardTimer.Reset(scheduler.schedulerStewardTimeout * 2)
 			} else {
@@ -142,10 +147,10 @@ func (scheduler *SchedulerService) scheduleProcess(ctx context.Context, state st
 			}
 
 		case <-stewardTimer.C:
-			logger.Audit("scheduleProcess() => stewardWorkerFn goroutine is not healthy!, state: %s", state.StateName())
+			logger.Audit("scheduleProcess() => stewardWorkerFn goroutine is not healthy!, state: %s", config.State.StateName())
 			stewardCtxCancel()
 			stewardCtx, stewardCtxCancel = context.WithCancel(context.Background())
-			stewardWorkerFn := scheduler.stewardFn(utils.ORContext(ctx, stewardCtx), scheduler.schedulerWorkerTimeout, scheduler.schedulerInterval, state, scheduler.worker)
+			stewardWorkerFn := scheduler.stewardFn(utils.ORContext(ctx, stewardCtx), scheduler.schedulerWorkerTimeout, config.ScheduleInterval, config.State, scheduler.worker)
 			heartbeat = stewardWorkerFn(ctx, scheduler.schedulerStewardTimeout)
 			stewardTimer.Reset(scheduler.schedulerStewardTimeout * 2)
 		}
