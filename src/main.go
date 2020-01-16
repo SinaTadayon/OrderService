@@ -10,6 +10,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain"
 	"gitlab.faza.io/order-project/order-service/domain/converter"
+	"gitlab.faza.io/order-project/order-service/domain/converter/documents/v100To102"
 	order_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/order"
 	pkg_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/pkg"
 	"gitlab.faza.io/order-project/order-service/domain/models/repository/subpackage"
@@ -424,5 +425,7 @@ func main() {
 
 		schedulerService.Scheduler(context.Background())
 
+	} else if app.Globals.Config.App.ServiceMode == "converter" {
+		_ = v100To102.SchedulerConvert()
 	}
 }
