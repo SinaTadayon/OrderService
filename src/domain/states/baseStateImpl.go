@@ -184,11 +184,14 @@ func (base BaseStateImpl) UpdateSubPackage(ctx context.Context, subpackage *enti
 	subpackage.Tracking.Action = action
 	if subpackage.Tracking.State == nil {
 		state := entities.State{
-			Name:      base.Name(),
-			Index:     base.Index(),
-			Data:      nil,
-			Actions:   nil,
-			CreatedAt: time.Now().UTC(),
+			Name:       base.Name(),
+			Index:      base.Index(),
+			Schedulers: nil,
+			Data:       nil,
+			Actions:    nil,
+			CreatedAt:  time.Now().UTC(),
+			UpdatedAt:  time.Now().UTC(),
+			Extended:   nil,
 		}
 		if action != nil {
 			state.Actions = make([]entities.Action, 0, 8)
@@ -203,11 +206,14 @@ func (base BaseStateImpl) UpdateSubPackage(ctx context.Context, subpackage *enti
 	} else {
 		if subpackage.Tracking.State.Index != base.Index() {
 			newState := entities.State{
-				Name:      base.Name(),
-				Index:     base.Index(),
-				Data:      nil,
-				Actions:   nil,
-				CreatedAt: time.Now().UTC(),
+				Name:       base.Name(),
+				Index:      base.Index(),
+				Schedulers: nil,
+				Data:       nil,
+				Actions:    nil,
+				CreatedAt:  time.Now().UTC(),
+				UpdatedAt:  time.Now().UTC(),
+				Extended:   nil,
 			}
 			if action != nil {
 				newState.Actions = make([]entities.Action, 0, 8)
@@ -219,6 +225,7 @@ func (base BaseStateImpl) UpdateSubPackage(ctx context.Context, subpackage *enti
 			subpackage.Tracking.State = &newState
 			subpackage.Tracking.History = append(subpackage.Tracking.History, newState)
 		} else {
+			subpackage.Tracking.State.UpdatedAt = time.Now().UTC()
 			if action != nil {
 				subpackage.Tracking.State.Actions = append(subpackage.Tracking.State.Actions, *action)
 				subpackage.Tracking.Action = action
@@ -240,6 +247,7 @@ func (base BaseStateImpl) UpdateSubPackageWithScheduler(ctx context.Context, sub
 			Data:       nil,
 			Actions:    nil,
 			CreatedAt:  time.Now().UTC(),
+			UpdatedAt:  time.Now().UTC(),
 			Extended:   nil,
 		}
 		if action != nil {
@@ -261,6 +269,7 @@ func (base BaseStateImpl) UpdateSubPackageWithScheduler(ctx context.Context, sub
 				Data:       nil,
 				Actions:    nil,
 				CreatedAt:  time.Now().UTC(),
+				UpdatedAt:  time.Now().UTC(),
 				Extended:   nil,
 			}
 			if action != nil {
@@ -273,6 +282,7 @@ func (base BaseStateImpl) UpdateSubPackageWithScheduler(ctx context.Context, sub
 			subpackage.Tracking.State = &newState
 			subpackage.Tracking.History = append(subpackage.Tracking.History, newState)
 		} else {
+			subpackage.Tracking.State.UpdatedAt = time.Now().UTC()
 			if action != nil {
 				subpackage.Tracking.State.Actions = append(subpackage.Tracking.State.Actions, *action)
 				subpackage.Tracking.Action = action
@@ -294,6 +304,7 @@ func (base BaseStateImpl) UpdateSubPackageWithData(ctx context.Context, subpacka
 			Data:       data,
 			Actions:    nil,
 			CreatedAt:  time.Now().UTC(),
+			UpdatedAt:  time.Now().UTC(),
 			Extended:   nil,
 		}
 		if action != nil {
@@ -315,6 +326,7 @@ func (base BaseStateImpl) UpdateSubPackageWithData(ctx context.Context, subpacka
 				Data:       data,
 				Actions:    nil,
 				CreatedAt:  time.Now().UTC(),
+				UpdatedAt:  time.Now().UTC(),
 				Extended:   nil,
 			}
 			if action != nil {
@@ -327,6 +339,7 @@ func (base BaseStateImpl) UpdateSubPackageWithData(ctx context.Context, subpacka
 			subpackage.Tracking.State = &newState
 			subpackage.Tracking.History = append(subpackage.Tracking.History, newState)
 		} else {
+			subpackage.Tracking.State.UpdatedAt = time.Now().UTC()
 			if action != nil {
 				subpackage.Tracking.State.Actions = append(subpackage.Tracking.State.Actions, *action)
 				subpackage.Tracking.Action = action

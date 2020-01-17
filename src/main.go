@@ -13,7 +13,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/converter/documents/v100To102"
 	order_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/order"
 	pkg_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/pkg"
-	"gitlab.faza.io/order-project/order-service/domain/models/repository/subpackage"
+	subpkg_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/subpackage"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	payment_service "gitlab.faza.io/order-project/order-service/infrastructure/services/payment"
@@ -57,6 +57,10 @@ func main() {
 	if err != nil {
 		logger.Err("main SetupMongoDriver failed, configs: %v, error: %v ", app.Globals.Config.Mongo, err)
 	}
+
+	app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver)
+	app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver)
+	app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver)
 
 	if app.Globals.Config.App.ServiceMode == "server" {
 		logger.Audit("Order Service Run in Server Mode . . . ")
@@ -246,10 +250,6 @@ func main() {
 			}
 			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnDeliveredStateConfig] = temp
 		}
-
-		app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver)
-		app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver)
-		app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver)
 
 		MainApp.flowManager, err = domain.NewFlowManager()
 		if err != nil {

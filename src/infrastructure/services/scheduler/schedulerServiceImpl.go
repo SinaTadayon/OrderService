@@ -44,20 +44,28 @@ type Subpackage struct {
 }
 
 type Scheduler struct {
-	Name     string                 `bson:"name"`
-	Group    string                 `bson:"group"`
-	Action   string                 `bson:"action"`
-	Index    int32                  `bson:"index"`
-	Retry    int32                  `bson:"retry"`
-	Cron     string                 `bson:"cron"`
-	Start    *time.Time             `bson:"start"`
-	End      *time.Time             `bson:"end"`
-	Type     string                 `bson:"type"`
-	Mode     string                 `bson:"mode"`
-	Policy   interface{}            `bson:"policy"`
-	Enabled  bool                   `bson:"enabled"`
-	Data     interface{}            `bson:"data"`
-	Extended map[string]interface{} `bson:"ext"`
+	OId        uint64                 `bson:"oid"`
+	PId        uint64                 `bson:"pid"`
+	SId        uint64                 `bson:"sid"`
+	StateName  string                 `bson:"stateName"`
+	StateIndex int                    `bson:"stateIndex"`
+	Name       string                 `bson:"name"`
+	Group      string                 `bson:"group"`
+	Action     string                 `bson:"action"`
+	Index      int32                  `bson:"index"`
+	Retry      int32                  `bson:"retry"`
+	Cron       string                 `bson:"cron"`
+	Start      *time.Time             `bson:"start"`
+	End        *time.Time             `bson:"end"`
+	Type       string                 `bson:"type"`
+	Mode       string                 `bson:"mode"`
+	Policy     interface{}            `bson:"policy"`
+	Enabled    bool                   `bson:"enabled"`
+	Data       interface{}            `bson:"data"`
+	CreatedAt  time.Time              `bson:"createdAt"`
+	UpdatedAt  time.Time              `bson:"updatedAt"`
+	DeletedAt  *time.Time             `bson:"deletedAt"`
+	Extended   map[string]interface{} `bson:"ext"`
 }
 
 type Item struct {

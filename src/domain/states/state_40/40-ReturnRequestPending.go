@@ -254,6 +254,11 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 				if pkgItem.Subpackages[j].SId == sids[i] {
 					schedulers := []*entities.SchedulerData{
 						{
+							pkgItem.Subpackages[j].OrderId,
+							pkgItem.Subpackages[j].PId,
+							pkgItem.Subpackages[j].SId,
+							pkgItem.Subpackages[j].Tracking.State.Name,
+							pkgItem.Subpackages[j].Tracking.State.Index,
 							states.SchedulerJobName,
 							states.SchedulerGroupName,
 							scheduler_action.Accept.ActionName(),
@@ -267,6 +272,9 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 							nil,
 							true,
 							expireTime,
+							time.Now().UTC(),
+							time.Now().UTC(),
+							nil,
 							nil,
 						},
 					}

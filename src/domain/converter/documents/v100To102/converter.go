@@ -61,7 +61,7 @@ func SchedulerConvert() error {
 				Extended:        orders[i].Packages[j].Extended,
 			}
 
-			newOrder.Packages[j].Subpackages = make([]*entities.Subpackage, 0, len(orders[i].Packages[j].Subpackages))
+			newPackageItem.Subpackages = make([]*entities.Subpackage, 0, len(orders[i].Packages[j].Subpackages))
 			for t := 0; t < len(orders[i].Packages[j].Subpackages); t++ {
 				newSubpackage := &entities.Subpackage{
 					SId:       orders[i].Packages[j].Subpackages[t].SId,
@@ -91,6 +91,7 @@ func SchedulerConvert() error {
 						Data:       nil,
 						Actions:    orders[i].Packages[j].Subpackages[t].Tracking.State.Actions,
 						CreatedAt:  orders[i].Packages[j].Subpackages[t].Tracking.State.CreatedAt,
+						UpdatedAt:  orders[i].Packages[j].Subpackages[t].Tracking.State.CreatedAt,
 						Extended:   orders[i].Packages[j].Subpackages[t].Tracking.State.Extended,
 					}
 
@@ -101,20 +102,28 @@ func SchedulerConvert() error {
 						for _, data := range schedulerData {
 							scheduler := data.(map[string]interface{})
 							schData := &entities.SchedulerData{
-								Name:     states.SchedulerJobName,
-								Group:    states.SchedulerGroupName,
-								Action:   scheduler["action"].(string),
-								Index:    scheduler["index"].(int32),
-								Retry:    0,
-								Cron:     "",
-								Start:    nil,
-								End:      nil,
-								Type:     "",
-								Mode:     "",
-								Policy:   nil,
-								Enabled:  scheduler["enabled"].(bool),
-								Data:     scheduler["value"],
-								Extended: nil,
+								OId:        orders[i].OrderId,
+								PId:        orders[i].Packages[j].PId,
+								SId:        orders[i].Packages[j].Subpackages[t].SId,
+								StateName:  orders[i].Packages[j].Subpackages[t].Tracking.State.Name,
+								StateIndex: orders[i].Packages[j].Subpackages[t].Tracking.State.Index,
+								Name:       states.SchedulerJobName,
+								Group:      states.SchedulerGroupName,
+								Action:     scheduler["action"].(string),
+								Index:      scheduler["index"].(int32),
+								Retry:      0,
+								Cron:       "",
+								Start:      nil,
+								End:        nil,
+								Type:       "",
+								Mode:       "",
+								Policy:     nil,
+								Enabled:    scheduler["enabled"].(bool),
+								Data:       scheduler["value"],
+								CreatedAt:  orders[i].Packages[j].Subpackages[t].Tracking.State.CreatedAt,
+								UpdatedAt:  orders[i].Packages[j].Subpackages[t].Tracking.State.CreatedAt,
+								DeletedAt:  nil,
+								Extended:   nil,
 							}
 
 							if scheduler["name"].(string) == "expireAt" {
@@ -130,13 +139,14 @@ func SchedulerConvert() error {
 
 				newSubpackage.Tracking.History = make([]entities.State, 0, len(orders[i].Packages[j].Subpackages[t].Tracking.History))
 				for z := 0; z < len(orders[i].Packages[j].Subpackages[t].Tracking.History); z++ {
-					newState := &entities.State{
+					newState := entities.State{
 						Name:       orders[i].Packages[j].Subpackages[t].Tracking.History[z].Name,
 						Index:      orders[i].Packages[j].Subpackages[t].Tracking.History[z].Index,
 						Schedulers: nil,
 						Data:       nil,
 						Actions:    orders[i].Packages[j].Subpackages[t].Tracking.History[z].Actions,
 						CreatedAt:  orders[i].Packages[j].Subpackages[t].Tracking.History[z].CreatedAt,
+						UpdatedAt:  orders[i].Packages[j].Subpackages[t].Tracking.History[z].CreatedAt,
 						Extended:   orders[i].Packages[j].Subpackages[t].Tracking.History[z].Extended,
 					}
 
@@ -147,20 +157,28 @@ func SchedulerConvert() error {
 						for _, data := range schedulerData {
 							scheduler := data.(map[string]interface{})
 							schData := &entities.SchedulerData{
-								Name:     states.SchedulerJobName,
-								Group:    states.SchedulerGroupName,
-								Action:   scheduler["action"].(string),
-								Index:    scheduler["index"].(int32),
-								Retry:    0,
-								Cron:     "",
-								Start:    nil,
-								End:      nil,
-								Type:     "",
-								Mode:     "",
-								Policy:   nil,
-								Enabled:  scheduler["enabled"].(bool),
-								Data:     scheduler["value"],
-								Extended: nil,
+								OId:        orders[i].OrderId,
+								PId:        orders[i].Packages[j].PId,
+								SId:        orders[i].Packages[j].Subpackages[t].SId,
+								StateName:  orders[i].Packages[j].Subpackages[t].Tracking.State.Name,
+								StateIndex: orders[i].Packages[j].Subpackages[t].Tracking.State.Index,
+								Name:       states.SchedulerJobName,
+								Group:      states.SchedulerGroupName,
+								Action:     scheduler["action"].(string),
+								Index:      scheduler["index"].(int32),
+								Retry:      0,
+								Cron:       "",
+								Start:      nil,
+								End:        nil,
+								Type:       "",
+								Mode:       "",
+								Policy:     nil,
+								Enabled:    scheduler["enabled"].(bool),
+								Data:       scheduler["value"],
+								CreatedAt:  orders[i].Packages[j].Subpackages[t].Tracking.State.CreatedAt,
+								UpdatedAt:  orders[i].Packages[j].Subpackages[t].Tracking.State.CreatedAt,
+								DeletedAt:  nil,
+								Extended:   nil,
 							}
 
 							if scheduler["name"].(string) == "expireAt" {
@@ -172,9 +190,11 @@ func SchedulerConvert() error {
 							newState.Schedulers = append(newState.Schedulers, schData)
 						}
 					}
+
+					newSubpackage.Tracking.History = append(newSubpackage.Tracking.History, newState)
 				}
 
-				newOrder.Packages[j].Subpackages = append(newOrder.Packages[j].Subpackages, newSubpackage)
+				newPackageItem.Subpackages = append(newPackageItem.Subpackages, newSubpackage)
 			}
 
 			newOrder.Packages = append(newOrder.Packages, newPackageItem)
@@ -190,7 +210,7 @@ func SchedulerConvert() error {
 	}
 
 	for _, newOrder := range convertedOrders {
-		_, err = app.Globals.OrderRepository.Save(context.Background(), newOrder)
+		_, err = app.Globals.OrderRepository.Insert(context.Background(), newOrder)
 		if err != nil {
 			logger.Err("convert() => app.Globals.OrderRepository.RemoveAll failed, err: %v", err)
 			return err
@@ -199,33 +219,3 @@ func SchedulerConvert() error {
 
 	return nil
 }
-
-//func FindAll(ctx context.Context, mongoAdapter *mongoadapter.Mongo) ([]*model_v100.Order, error) {
-//
-//	cursor, e := mongoAdapter.FindMany(databaseName, collectionName, bson.D{{"deletedAt", nil}})
-//	if e != nil {
-//		return nil, errors.Wrap(e, "FindMany Orders Failed")
-//	}
-//
-//	defer closeCursor(ctx, cursor)
-//	orders := make([]*model_v100.Order, 0, 1000)
-//
-//	// iterate through all documents
-//	for cursor.Next(ctx) {
-//		var order model_v100.Order
-//		// decode the document
-//		if err := cursor.Decode(&order); err != nil {
-//			return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Decode Order Failed"))
-//		}
-//		orders = append(orders, &order)
-//	}
-//
-//	return orders, nil
-//}
-//
-//func closeCursor(context context.Context, cursor *mongo.Cursor) {
-//	err := cursor.Close(context)
-//	if err != nil {
-//		logger.Err("closeCursor() failed, err: %s", err)
-//	}
-//}

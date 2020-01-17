@@ -94,24 +94,33 @@ type State struct {
 	Data       map[string]interface{} `bson:"data"`
 	Actions    []Action               `bson:"actions"`
 	CreatedAt  time.Time              `bson:"createdAt"`
+	UpdatedAt  time.Time              `bson:"updatedAt"`
 	Extended   map[string]interface{} `bson:"ext"`
 }
 
 type SchedulerData struct {
-	Name     string                 `bson:"name"`
-	Group    string                 `bson:"group"`
-	Action   string                 `bson:"action"`
-	Index    int32                  `bson:"index"`
-	Retry    int32                  `bson:"retry"`
-	Cron     string                 `bson:"cron"`
-	Start    *time.Time             `bson:"start"`
-	End      *time.Time             `bson:"end"`
-	Type     string                 `bson:"type"`
-	Mode     string                 `bson:"mode"`
-	Policy   interface{}            `bson:"policy"`
-	Enabled  bool                   `bson:"enabled"`
-	Data     interface{}            `bson:"data"`
-	Extended map[string]interface{} `bson:"ext"`
+	OId        uint64                 `bson:"oid"`
+	PId        uint64                 `bson:"pid"`
+	SId        uint64                 `bson:"sid"`
+	StateName  string                 `bson:"stateName"`
+	StateIndex int                    `bson:"stateIndex"`
+	Name       string                 `bson:"name"`
+	Group      string                 `bson:"group"`
+	Action     string                 `bson:"action"`
+	Index      int32                  `bson:"index"`
+	Retry      int32                  `bson:"retry"`
+	Cron       string                 `bson:"cron"`
+	Start      *time.Time             `bson:"start"`
+	End        *time.Time             `bson:"end"`
+	Type       string                 `bson:"type"`
+	Mode       string                 `bson:"mode"`
+	Policy     interface{}            `bson:"policy"`
+	Enabled    bool                   `bson:"enabled"`
+	Data       interface{}            `bson:"data"`
+	CreatedAt  time.Time              `bson:"createdAt"`
+	UpdatedAt  time.Time              `bson:"updatedAt"`
+	DeletedAt  *time.Time             `bson:"deletedAt"`
+	Extended   map[string]interface{} `bson:"ext"`
 }
 
 /*
@@ -284,20 +293,28 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 		subPkg.Tracking.State.Schedulers = make([]*SchedulerData, 0, len(subpackage.Tracking.State.Schedulers))
 		for _, schedulerData := range subpackage.Tracking.State.Schedulers {
 			newSchedulerData := &SchedulerData{
-				Name:     schedulerData.Name,
-				Group:    schedulerData.Group,
-				Action:   schedulerData.Action,
-				Index:    schedulerData.Index,
-				Retry:    schedulerData.Retry,
-				Cron:     schedulerData.Cron,
-				Start:    schedulerData.Start,
-				End:      schedulerData.End,
-				Type:     schedulerData.Type,
-				Mode:     schedulerData.Mode,
-				Policy:   schedulerData.Policy,
-				Enabled:  schedulerData.Enabled,
-				Data:     schedulerData.Data,
-				Extended: schedulerData.Extended,
+				OId:        schedulerData.OId,
+				PId:        schedulerData.PId,
+				SId:        schedulerData.SId,
+				StateName:  schedulerData.StateName,
+				StateIndex: schedulerData.StateIndex,
+				Name:       schedulerData.Name,
+				Group:      schedulerData.Group,
+				Action:     schedulerData.Action,
+				Index:      schedulerData.Index,
+				Retry:      schedulerData.Retry,
+				Cron:       schedulerData.Cron,
+				Start:      schedulerData.Start,
+				End:        schedulerData.End,
+				Type:       schedulerData.Type,
+				Mode:       schedulerData.Mode,
+				Policy:     schedulerData.Policy,
+				Enabled:    schedulerData.Enabled,
+				Data:       schedulerData.Data,
+				CreatedAt:  schedulerData.CreatedAt,
+				UpdatedAt:  schedulerData.UpdatedAt,
+				DeletedAt:  schedulerData.DeletedAt,
+				Extended:   schedulerData.Extended,
 			}
 
 			subPkg.Tracking.State.Schedulers = append(subPkg.Tracking.State.Schedulers, newSchedulerData)

@@ -680,7 +680,10 @@ func (repo iOrderRepositoryImpl) RemoveAllWithOrders(ctx context.Context, orders
 
 func (repo iOrderRepositoryImpl) RemoveAll(ctx context.Context) repository.IRepoError {
 	_, err := repo.mongoAdapter.DeleteMany(databaseName, collectionName, bson.M{})
-	return repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "DeleteMany Order Failed"))
+	if err != nil {
+		return repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "DeleteMany Order Failed"))
+	}
+	return nil
 }
 
 func closeCursor(context context.Context, cursor *mongo.Cursor) {

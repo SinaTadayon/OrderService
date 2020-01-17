@@ -140,6 +140,11 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 				if pkgItem.Subpackages[j].SId == sids[i] {
 					schedulers := []*entities.SchedulerData{
 						{
+							pkgItem.Subpackages[j].OrderId,
+							pkgItem.Subpackages[j].PId,
+							pkgItem.Subpackages[j].SId,
+							pkgItem.Subpackages[j].Tracking.State.Name,
+							pkgItem.Subpackages[j].Tracking.State.Index,
 							states.SchedulerJobName,
 							states.SchedulerGroupName,
 							scheduler_action.Notification.ActionName(),
@@ -153,9 +158,17 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 							nil,
 							true,
 							notifyAt,
+							time.Now().UTC(),
+							time.Now().UTC(),
+							nil,
 							nil,
 						},
 						{
+							pkgItem.Subpackages[j].OrderId,
+							pkgItem.Subpackages[j].PId,
+							pkgItem.Subpackages[j].SId,
+							pkgItem.Subpackages[j].Tracking.State.Name,
+							pkgItem.Subpackages[j].Tracking.State.Index,
 							states.SchedulerJobName,
 							states.SchedulerGroupName,
 							scheduler_action.Deliver.ActionName(),
@@ -169,6 +182,9 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 							nil,
 							true,
 							deliveredAt,
+							time.Now().UTC(),
+							time.Now().UTC(),
+							nil,
 							nil,
 						},
 					}

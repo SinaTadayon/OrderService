@@ -310,6 +310,11 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 					for j := 0; j < len(order.Packages[i].Subpackages); j++ {
 						order.Packages[i].Subpackages[j].Tracking.State.Schedulers = []*entities.SchedulerData{
 							{
+								order.OrderId,
+								order.Packages[i].PId,
+								order.Packages[i].Subpackages[j].SId,
+								order.Packages[i].Subpackages[j].Tracking.State.Name,
+								order.Packages[i].Subpackages[j].Tracking.State.Index,
 								states.SchedulerJobName,
 								states.SchedulerGroupName,
 								scheduler_action.PaymentFail.ActionName(),
@@ -323,6 +328,9 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 								nil,
 								true,
 								expireTime,
+								time.Now().UTC(),
+								time.Now().UTC(),
+								nil,
 								nil,
 							},
 						}

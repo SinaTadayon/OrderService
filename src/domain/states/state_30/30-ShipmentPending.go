@@ -182,6 +182,11 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 				if pkgItem.Subpackages[j].SId == sids[i] {
 					schedulers := []*entities.SchedulerData{
 						{
+							pkgItem.Subpackages[j].OrderId,
+							pkgItem.Subpackages[j].PId,
+							pkgItem.Subpackages[j].SId,
+							pkgItem.Subpackages[j].Tracking.State.Name,
+							pkgItem.Subpackages[j].Tracking.State.Index,
 							states.SchedulerJobName,
 							states.SchedulerGroupName,
 							scheduler_action.Cancel.ActionName(),
@@ -195,6 +200,9 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 							nil,
 							true,
 							expireTime,
+							time.Now().UTC(),
+							time.Now().UTC(),
+							nil,
 							nil,
 						},
 					}

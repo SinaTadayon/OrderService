@@ -2381,6 +2381,11 @@ func TestPaymentPending_PaymentGatewayNotRespond(t *testing.T) {
 		for j := 0; j < len(newOrder.Packages[i].Subpackages); j++ {
 			newOrder.Packages[i].Subpackages[j].Tracking.State.Schedulers = []*entities.SchedulerData{
 				{
+					newOrder.Packages[i].Subpackages[j].OrderId,
+					newOrder.Packages[i].Subpackages[j].PId,
+					newOrder.Packages[i].Subpackages[j].SId,
+					newOrder.Packages[i].Subpackages[j].Tracking.State.Name,
+					newOrder.Packages[i].Subpackages[j].Tracking.State.Index,
 					states.SchedulerJobName,
 					states.SchedulerGroupName,
 					scheduler_action.PaymentFail.ActionName(),
@@ -2394,6 +2399,9 @@ func TestPaymentPending_PaymentGatewayNotRespond(t *testing.T) {
 					nil,
 					true,
 					time.Now().UTC(),
+					time.Now().UTC(),
+					time.Now().UTC(),
+					nil,
 					nil,
 				},
 			}
@@ -4313,6 +4321,11 @@ func TestDeliveryPending_SchedulerNotification_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
 	newOrder.Packages[0].Subpackages[0].Tracking.State.Schedulers = []*entities.SchedulerData{
 		{
+			newOrder.Packages[0].Subpackages[0].OrderId,
+			newOrder.Packages[0].Subpackages[0].PId,
+			newOrder.Packages[0].Subpackages[0].SId,
+			newOrder.Packages[0].Subpackages[0].Tracking.State.Name,
+			newOrder.Packages[0].Subpackages[0].Tracking.State.Index,
 			states.SchedulerJobName,
 			states.SchedulerGroupName,
 			scheduler_action.Notification.ActionName(),
@@ -4326,9 +4339,17 @@ func TestDeliveryPending_SchedulerNotification_All(t *testing.T) {
 			nil,
 			true,
 			time.Now().UTC(),
+			time.Now().UTC(),
+			time.Now().UTC(),
+			nil,
 			nil,
 		},
 		{
+			newOrder.Packages[0].Subpackages[0].OrderId,
+			newOrder.Packages[0].Subpackages[0].PId,
+			newOrder.Packages[0].Subpackages[0].SId,
+			newOrder.Packages[0].Subpackages[0].Tracking.State.Name,
+			newOrder.Packages[0].Subpackages[0].Tracking.State.Index,
 			states.SchedulerJobName,
 			states.SchedulerGroupName,
 			scheduler_action.Deliver.ActionName(),
@@ -4342,6 +4363,9 @@ func TestDeliveryPending_SchedulerNotification_All(t *testing.T) {
 			nil,
 			true,
 			time.Now().UTC().Add(1 * time.Minute),
+			time.Now().UTC(),
+			time.Now().UTC(),
+			nil,
 			nil,
 		},
 	}
