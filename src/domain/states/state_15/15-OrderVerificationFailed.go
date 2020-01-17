@@ -57,6 +57,7 @@ func (state orderVerificationFailed) Process(ctx context.Context, iFrame frame.I
 			Policy:    "",
 			Result:    string(states.ActionSuccess),
 			Reasons:   nil,
+			Note:      "",
 			Data:      nil,
 			CreatedAt: time.Now().UTC(),
 			Extended:  nil,

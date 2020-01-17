@@ -266,6 +266,7 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 												Policy:    "",
 												Result:    string(states.ActionSuccess),
 												Reasons:   actionItem.Reasons,
+												Note:      "",
 												Data:      nil,
 												CreatedAt: time.Now().UTC(),
 												Extended:  nil,
