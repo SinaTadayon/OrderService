@@ -78,6 +78,7 @@ func (state returnCanceledState) Process(ctx context.Context, iFrame frame.IFram
 			Result:    string(states.ActionFail),
 			Reasons:   nil,
 			Data:      nil,
+			Note:      "",
 			CreatedAt: time.Now().UTC(),
 			Extended:  nil,
 		}
@@ -114,6 +115,7 @@ func (state returnCanceledState) Process(ctx context.Context, iFrame frame.IFram
 						Result:    string(states.ActionFail),
 						Reasons:   nil,
 						Data:      nil,
+						Note:      "",
 						CreatedAt: time.Now().UTC(),
 						Extended:  nil,
 					}
@@ -131,6 +133,7 @@ func (state returnCanceledState) Process(ctx context.Context, iFrame frame.IFram
 						Result:    string(states.ActionSuccess),
 						Reasons:   nil,
 						Data:      nil,
+						Note:      "",
 						CreatedAt: time.Now().UTC(),
 						Extended:  nil,
 					}
@@ -149,6 +152,7 @@ func (state returnCanceledState) Process(ctx context.Context, iFrame frame.IFram
 			Result:    string(states.ActionSuccess),
 			Reasons:   nil,
 			Data:      nil,
+			Note:      "",
 			CreatedAt: time.Now().UTC(),
 			Extended:  nil,
 		}

@@ -73,6 +73,7 @@ func (state returnDeliveryFailedState) Process(ctx context.Context, iFrame frame
 			Policy:    "",
 			Result:    string(states.ActionSuccess),
 			Reasons:   nil,
+			Note:      "",
 			Data:      nil,
 			CreatedAt: time.Now().UTC(),
 			Extended:  nil,
