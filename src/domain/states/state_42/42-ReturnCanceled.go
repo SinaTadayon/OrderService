@@ -98,6 +98,7 @@ func (state returnCanceledState) Process(ctx context.Context, iFrame frame.IFram
 				buyerNotify := notify_service.SMSRequest{
 					Phone: pkgItem.ShippingAddress.Mobile,
 					Body:  newBuf.String(),
+					User:  notify_service.BuyerUser,
 				}
 
 				buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()

@@ -76,8 +76,10 @@ type Config struct {
 	}
 
 	NotifyService struct {
-		Address string `env:"NOTIFY_SERVICE_ADDRESS"`
-		Port    int    `env:"NOTIFY_SERVICE_PORT"`
+		Address      string `env:"NOTIFY_SERVICE_ADDRESS"`
+		Port         int    `env:"NOTIFY_SERVICE_PORT"`
+		NotifySeller bool   `env:"ORDER_NOTIFY_SELLER"`
+		NotifyBuyer  bool   `env:"ORDER_NOTIFY_BUYER"`
 	}
 
 	VoucherService struct {

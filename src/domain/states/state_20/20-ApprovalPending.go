@@ -103,6 +103,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 							sellerNotify := notify_service.SMSRequest{
 								Phone: sellerProfile.GeneralInfo.MobilePhone,
 								Body:  newBuf.String(),
+								User:  notify_service.SellerUser,
 							}
 							sellerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, sellerNotify).Get()
 							if sellerFutureData.Error() != nil {

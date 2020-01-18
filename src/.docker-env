@@ -2,13 +2,13 @@ ORDER_SERVICE_MODE=server
 ORDER_SERVER_ADDRESS=
 ORDER_SERVER_PORT=9095
 
-ORDER_PAYMENT_CALLBACK_URL_SUCCESS=http://staging.faza.io/callback-success?orderid=
-ORDER_PAYMENT_CALLBACK_URL_FAIL=http://staging.faza.io/callback-failed?orderid=
-ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT_SUCCESS=http://staging.faza.io/callback-success?orderid=
-ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT_FAIL=http://staging.faza.io/callback-fail?orderid=
+ORDER_PAYMENT_CALLBACK_URL_SUCCESS=http://staging.faza.io/callback-success?orderId=
+ORDER_PAYMENT_CALLBACK_URL_FAIL=http://staging.faza.io/callback-failed?orderId=
+ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT_SUCCESS=http://staging.faza.io/callback-success?orderId=
+ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT_FAIL=http://staging.faza.io/callback-fail?orderId=
 
 ORDER_SCHEDULER_TIME_UNIT=minute
-ORDER_SCHEDULER_STATES=Approval_Pending;Shipment_Pending;Shipment_Delayed;Shipped;Delivery_Pending;Delivered;Return_Shipment_Pending;Return_Shipped;Return_Delivered
+ORDER_SCHEDULER_STATES=Payment_Pending;Approval_Pending;Shipment_Pending;Shipment_Delayed;Shipped;Delivery_Pending;Delivered;Return_Shipment_Pending;Return_Shipped;Return_Delivered
 ORDER_SCHEDULER_INTERVAL=60
 ORDER_SCHEDULER_TIMEOUT=25
 ORDER_SCHEDULER_WORKER_TIMEOUT=20
@@ -27,6 +27,9 @@ ORDER_SCHEDULER_RETURN_SHIPPED_STATE=72
 ORDER_SCHEDULER_RETURN_REQUEST_PENDING_STATE=72
 ORDER_SCHEDULER_RETURN_SHIPMENT_PENDING_STATE=96
 ORDER_SCHEDULER_RETURN_DELIVERED_STATE=96
+
+ORDER_NOTIFY_SELLER=true
+ORDER_NOTIFY_BUYER=true
 
 ORDER_SERVICE_MONGO_HOST=mongo
 ORDER_SERVICE_MONGO_PORT=27017
