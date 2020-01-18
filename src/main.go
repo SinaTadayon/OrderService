@@ -282,7 +282,7 @@ func main() {
 		app.Globals.VoucherService = voucher_service.NewVoucherService(app.Globals.Config.VoucherService.Address, app.Globals.Config.VoucherService.Port)
 		//}
 
-		app.Globals.NotifyService = notify_service.NewNotificationService(app.Globals.Config.NotifyService.Address, app.Globals.Config.NotifyService.Port)
+		app.Globals.NotifyService = notify_service.NewNotificationService(app.Globals.Config.NotifyService.Address, app.Globals.Config.NotifyService.Port, app.Globals.Config.NotifyService.NotifySeller, app.Globals.Config.NotifyService.NotifyBuyer)
 		app.Globals.UserService = user_service.NewUserService(app.Globals.Config.UserService.Address, app.Globals.Config.UserService.Port)
 
 		// listen and serve prometheus scraper

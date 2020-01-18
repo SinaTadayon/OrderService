@@ -119,6 +119,7 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 				buyerNotify := notify_service.SMSRequest{
 					Phone: pkgItem.ShippingAddress.Mobile,
 					Body:  newBuf.String(),
+					User:  notify_service.BuyerUser,
 				}
 
 				buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
@@ -183,6 +184,7 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 						sellerNotify := notify_service.SMSRequest{
 							Phone: sellerProfile.GeneralInfo.MobilePhone,
 							Body:  newBuf.String(),
+							User:  notify_service.SellerUser,
 						}
 						sellerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, sellerNotify).Get()
 						if sellerFutureData.Error() != nil {
@@ -257,8 +259,8 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 							pkgItem.Subpackages[j].OrderId,
 							pkgItem.Subpackages[j].PId,
 							pkgItem.Subpackages[j].SId,
-							pkgItem.Subpackages[j].Tracking.State.Name,
-							pkgItem.Subpackages[j].Tracking.State.Index,
+							state.Name(),
+							state.Index(),
 							states.SchedulerJobName,
 							states.SchedulerGroupName,
 							scheduler_action.Accept.ActionName(),

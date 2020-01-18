@@ -107,6 +107,7 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 				buyerNotify := notify_service.SMSRequest{
 					Phone: pkgItem.ShippingAddress.Mobile,
 					Body:  newBuf.String(),
+					User:  notify_service.BuyerUser,
 				}
 
 				buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
@@ -171,6 +172,7 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 						sellerNotify := notify_service.SMSRequest{
 							Phone: sellerProfile.GeneralInfo.MobilePhone,
 							Body:  newBuf.String(),
+							User:  notify_service.SellerUser,
 						}
 						sellerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, sellerNotify).Get()
 						if sellerFutureData.Error() != nil {

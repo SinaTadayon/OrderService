@@ -17,6 +17,8 @@ type iNotificationServiceImpl struct {
 	grpcConnection *grpc.ClientConn
 	serverAddress  string
 	serverPort     int
+	notifySeller   bool
+	notifyBuyer    bool
 }
 
 func (notification *iNotificationServiceImpl) ConnectToNotifyService() error {
@@ -40,8 +42,8 @@ func (notification *iNotificationServiceImpl) CloseConnection() {
 	}
 }
 
-func NewNotificationService(address string, port int) INotificationService {
-	return &iNotificationServiceImpl{serverAddress: address, serverPort: port}
+func NewNotificationService(address string, port int, notifySeller, notifyBuyer bool) INotificationService {
+	return &iNotificationServiceImpl{serverAddress: address, serverPort: port, notifySeller: notifySeller, notifyBuyer: notifyBuyer}
 }
 
 func (notification iNotificationServiceImpl) NotifyBySMS(ctx context.Context, request SMSRequest) future.IFuture {
@@ -51,27 +53,33 @@ func (notification iNotificationServiceImpl) NotifyBySMS(ctx context.Context, re
 			BuildAndSend()
 	}
 
-	req := &NotificationService.Sms{
-		To:   request.Phone,
-		Body: request.Body,
+	if (notification.notifySeller && request.User == SellerUser) ||
+		(notification.notifyBuyer && request.User == BuyerUser) {
+		req := &NotificationService.Sms{
+			To:   request.Phone,
+			Body: request.Body,
+		}
+
+		result, err := notification.notifyService.SendSms(ctx, req)
+		if err != nil {
+			logger.Err("NotifyBySMS() => failed, request: %v, error: %s ", request, err.Error())
+			return future.Factory().SetCapacity(1).
+				SetError(future.InternalError, "UnknownError", errors.Wrap(err, "NotifyBySMS Failed")).
+				BuildAndSend()
+		}
+
+		if result.Status != 200 {
+			logger.Err("NotifyBySMS() => failed, request: %v, status: %d, error: %s", request, result.Status, result.Message)
+			return future.Factory().SetCapacity(1).
+				SetError(future.ErrorCode(result.Status), result.Message, errors.Wrap(err, "NotifyBySMS Failed")).
+				BuildAndSend()
+		}
+
+		return future.Factory().SetCapacity(1).BuildAndSend()
 	}
 
-	result, err := notification.notifyService.SendSms(ctx, req)
-	if err != nil {
-		logger.Err("NotifyBySMS() => failed, request: %v, error: %s ", request, err.Error())
-		return future.Factory().SetCapacity(1).
-			SetError(future.InternalError, "UnknownError", errors.Wrap(err, "NotifyBySMS Failed")).
-			BuildAndSend()
-	}
-
-	if result.Status != 200 {
-		logger.Err("NotifyBySMS() => failed, request: %v, status: %d, error: %s", request, result.Status, result.Message)
-		return future.Factory().SetCapacity(1).
-			SetError(future.ErrorCode(result.Status), result.Message, errors.Wrap(err, "NotifyBySMS Failed")).
-			BuildAndSend()
-	}
-
-	return future.Factory().SetCapacity(1).BuildAndSend()
+	return future.Factory().SetCapacity(1).
+		SetError(future.NotAccepted, "Notification Not Enabled", errors.New("Notification Not Enabled")).BuildAndSend()
 }
 
 func (notification iNotificationServiceImpl) NotifyByMail(ctx context.Context, request EmailRequest) future.IFuture {

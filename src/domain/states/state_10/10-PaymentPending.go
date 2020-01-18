@@ -318,8 +318,8 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 								order.OrderId,
 								order.Packages[i].PId,
 								order.Packages[i].Subpackages[j].SId,
-								order.Packages[i].Subpackages[j].Tracking.State.Name,
-								order.Packages[i].Subpackages[j].Tracking.State.Index,
+								state.Name(),
+								state.Index(),
 								states.SchedulerJobName,
 								states.SchedulerGroupName,
 								scheduler_action.PaymentFail.ActionName(),
@@ -448,12 +448,16 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			return
 		} else {
 			var voucherAction *entities.Action
-			var voucherAmount = 0
+			var voucherAmount decimal.Decimal
 			if order.Invoice.Voucher != nil && order.Invoice.Voucher.Price != nil {
-				voucherAmount, _ = strconv.Atoi(order.Invoice.Voucher.Price.Amount)
+				var e error
+				voucherAmount, e = decimal.NewFromString(order.Invoice.Voucher.Price.Amount)
+				if e != nil {
+					logger.Err("Process() => order.Invoice.Voucher.Price.Amount invalid, price: %s, orderId: %d, error: %s", order.Invoice.Voucher.Price.Amount, order.OrderId, err)
+				}
 			}
 
-			if order.Invoice.Voucher != nil && (order.Invoice.Voucher.Percent > 0 || voucherAmount > 0) {
+			if order.Invoice.Voucher != nil && (order.Invoice.Voucher.Percent > 0 || !voucherAmount.IsZero()) {
 				iFuture := app.Globals.VoucherService.VoucherSettlement(ctx, order.Invoice.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
 				futureData := iFuture.Get()
 				if futureData.Error() != nil {

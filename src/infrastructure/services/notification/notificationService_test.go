@@ -28,7 +28,7 @@ func TestMain(m *testing.M) {
 	}
 
 	notify = iNotificationServiceImpl{nil, nil,
-		config.NotifyService.Address, config.NotifyService.Port}
+		config.NotifyService.Address, config.NotifyService.Port, config.NotifyService.NotifySeller, config.NotifyService.NotifyBuyer}
 
 	// Running Tests
 	code := m.Run()
@@ -41,6 +41,7 @@ func TestNotifySMS(t *testing.T) {
 		//Phone: "09373969041",
 		Phone: "09128085965",
 		Body:  "سلام، این اس ام اس تستی هست",
+		User:  SellerUser,
 	}
 	iFuture := notify.NotifyBySMS(ctx, request)
 	futureData := iFuture.Get()

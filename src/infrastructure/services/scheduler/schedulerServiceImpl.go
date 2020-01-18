@@ -26,6 +26,11 @@ const (
 	collectionName string = "orders"
 )
 
+const (
+	// ISO8601 standard time format
+	ISO8601 = "2006-01-02T15:04:05-0700"
+)
+
 type Order struct {
 	Packages []Package
 }
@@ -413,12 +418,30 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 
 func (scheduler *SchedulerService) checkExpiredTime(subpackage Subpackage) *Scheduler {
 	if len(subpackage.Scheduler) == 1 {
-		if subpackage.Scheduler[0].Data.(primitive.DateTime).Time().Before(time.Now().UTC()) && subpackage.Scheduler[0].Enabled {
-			logger.Audit("action expired, "+
-				"orderId: %d, sid: %d, stateName: %s, stateIndex: %d, actionName: %s, expiredTime: %s ",
-				subpackage.OrderId, subpackage.SId, states.FromIndex(int32(subpackage.Sidx)).StateName(),
-				subpackage.Sidx, subpackage.Scheduler[0].Action, subpackage.Scheduler[0].Data)
-			return &subpackage.Scheduler[0]
+		if dateTime, ok := subpackage.Scheduler[0].Data.(primitive.DateTime); ok {
+			if dateTime.Time().Before(time.Now().UTC()) && subpackage.Scheduler[0].Enabled {
+				logger.Audit("action expired, "+
+					"orderId: %d, sid: %d, stateName: %s, stateIndex: %d, actionName: %s, expiredTime: %v ",
+					subpackage.OrderId, subpackage.SId, states.FromIndex(int32(subpackage.Sidx)).StateName(),
+					subpackage.Sidx, subpackage.Scheduler[0].Action, subpackage.Scheduler[0].Data)
+				return &subpackage.Scheduler[0]
+			}
+		} else if dateTime, ok := subpackage.Scheduler[0].Data.(string); ok {
+			timestamp, err := time.Parse(time.RFC3339, dateTime)
+			if err != nil {
+				logger.Err("subpackage.Scheduler[0].Data invalid, data: %v "+
+					"orderId: %d, sid: %d, stateName: %s, stateIndex: %d, actionName: %s",
+					subpackage.Scheduler[0].Data, subpackage.OrderId, subpackage.SId, states.FromIndex(int32(subpackage.Sidx)).StateName(),
+					subpackage.Sidx, subpackage.Scheduler[0].Action, subpackage.Scheduler[0].Data)
+				return nil
+			}
+			if timestamp.Before(time.Now().UTC()) && subpackage.Scheduler[0].Enabled {
+				logger.Audit("action expired, "+
+					"orderId: %d, sid: %d, stateName: %s, stateIndex: %d, actionName: %s, expiredTime: %s ",
+					subpackage.OrderId, subpackage.SId, states.FromIndex(int32(subpackage.Sidx)).StateName(),
+					subpackage.Sidx, subpackage.Scheduler[0].Action, subpackage.Scheduler[0].Data)
+				return &subpackage.Scheduler[0]
+			}
 		}
 	} else {
 		sortedScheduler := make([]*Scheduler, 0, len(subpackage.Scheduler))
@@ -433,11 +456,36 @@ func (scheduler *SchedulerService) checkExpiredTime(subpackage Subpackage) *Sche
 
 		var sche *Scheduler = nil
 		for i := 0; i < len(sortedScheduler); i++ {
-			if sortedScheduler[i].Data.(primitive.DateTime).Time().Before(time.Now().UTC()) && sortedScheduler[i].Enabled {
-				sche = sortedScheduler[i]
+			//if sortedScheduler[i].Data.(primitive.DateTime).Time().Before(time.Now().UTC()) && sortedScheduler[i].Enabled {
+			//	sche = sortedScheduler[i]
+			//}
+
+			if dateTime, ok := subpackage.Scheduler[i].Data.(primitive.DateTime); ok {
+				if dateTime.Time().Before(time.Now().UTC()) && subpackage.Scheduler[i].Enabled {
+					logger.Audit("action expired, "+
+						"orderId: %d, sid: %d, stateName: %s, stateIndex: %d, actionName: %s, expiredTime: %v ",
+						subpackage.OrderId, subpackage.SId, states.FromIndex(int32(subpackage.Sidx)).StateName(),
+						subpackage.Sidx, subpackage.Scheduler[i].Action, subpackage.Scheduler[i].Data)
+					sche = sortedScheduler[i]
+				}
+			} else if dateTime, ok := subpackage.Scheduler[i].Data.(string); ok {
+				timestamp, err := time.Parse(time.RFC3339, dateTime)
+				if err != nil {
+					logger.Err("subpackage.Scheduler[0].Data invalid, data: %v "+
+						"orderId: %d, sid: %d, stateName: %s, stateIndex: %d, actionName: %s",
+						subpackage.Scheduler[i].Data, subpackage.OrderId, subpackage.SId, states.FromIndex(int32(subpackage.Sidx)).StateName(),
+						subpackage.Sidx, subpackage.Scheduler[i].Action, subpackage.Scheduler[i].Data)
+					return nil
+				}
+				if timestamp.Before(time.Now().UTC()) && subpackage.Scheduler[i].Enabled {
+					logger.Audit("action expired, "+
+						"orderId: %d, sid: %d, stateName: %s, stateIndex: %d, actionName: %s, expiredTime: %s ",
+						subpackage.OrderId, subpackage.SId, states.FromIndex(int32(subpackage.Sidx)).StateName(),
+						subpackage.Sidx, subpackage.Scheduler[i].Action, subpackage.Scheduler[i].Data)
+					sche = sortedScheduler[i]
+				}
 			}
 		}
-
 		return sche
 	}
 

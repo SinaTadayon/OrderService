@@ -80,31 +80,16 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 			deliveredAt = time.Now().UTC().Add(value)
 		} else {
 			value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerDeliveryPendingStateConfig].(int)
-			shippedTime := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShippedStateConfig].(int)
-			if sellerReactionTime, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig]; ok {
-				if timeUnit == string(app.HourTimeUnit) {
-					deliveredAt = time.Now().UTC().Add(
-						time.Hour*time.Duration(sellerReactionTime.(int)+int(shippedTime)+int(value)) +
-							time.Minute*time.Duration(0) +
-							time.Second*time.Duration(0))
-				} else {
-					deliveredAt = time.Now().UTC().Add(
-						time.Hour*time.Duration(0) +
-							time.Minute*time.Duration(sellerReactionTime.(int)+int(shippedTime)+int(value)) +
-							time.Second*time.Duration(0))
-				}
+			if timeUnit == string(app.HourTimeUnit) {
+				deliveredAt = time.Now().UTC().Add(
+					time.Hour*time.Duration(value) +
+						time.Minute*time.Duration(0) +
+						time.Second*time.Duration(0))
 			} else {
-				if timeUnit == string(app.HourTimeUnit) {
-					deliveredAt = time.Now().UTC().Add(
-						time.Hour*time.Duration(pkgItem.ShipmentSpec.ReactionTime+int32(shippedTime)+int32(value)) +
-							time.Minute*time.Duration(0) +
-							time.Second*time.Duration(0))
-				} else {
-					deliveredAt = time.Now().UTC().Add(
-						time.Hour*time.Duration(0) +
-							time.Minute*time.Duration((pkgItem.ShipmentSpec.ReactionTime*60)+int32(shippedTime)+int32(value)) +
-							time.Second*time.Duration(0))
-				}
+				deliveredAt = time.Now().UTC().Add(
+					time.Hour*time.Duration(0) +
+						time.Minute*time.Duration(value) +
+						time.Second*time.Duration(0))
 			}
 		}
 
@@ -114,23 +99,15 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 			notifyAt = time.Now().UTC().Add(value)
 		} else {
 			notifyValue := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerNotifyDeliveryPendingStateConfig].(int)
-			shippedTime := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShippedStateConfig].(int)
-			if sellerReactionTime, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig]; ok {
-				if timeUnit == string(app.HourTimeUnit) {
-					notifyAt = time.Now().UTC().Add(
-						time.Hour*time.Duration(sellerReactionTime.(int)+int(shippedTime)+int(notifyValue)) +
-							time.Minute*time.Duration(0) +
-							time.Second*time.Duration(0))
-				} else {
-					notifyAt = time.Now().UTC().Add(
-						time.Hour*time.Duration(0) +
-							time.Minute*time.Duration(sellerReactionTime.(int)+int(shippedTime)+int(notifyValue)) +
-							time.Second*time.Duration(0))
-				}
+			if timeUnit == string(app.HourTimeUnit) {
+				notifyAt = time.Now().UTC().Add(
+					time.Hour*time.Duration(notifyValue) +
+						time.Minute*time.Duration(0) +
+						time.Second*time.Duration(0))
 			} else {
 				notifyAt = time.Now().UTC().Add(
-					time.Hour*time.Duration(pkgItem.ShipmentSpec.ReactionTime+int32(shippedTime)+int32(notifyValue)) +
-						time.Minute*time.Duration(0) +
+					time.Hour*time.Duration(0) +
+						time.Minute*time.Duration(notifyValue) +
 						time.Second*time.Duration(0))
 			}
 		}
@@ -143,8 +120,8 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 							pkgItem.Subpackages[j].OrderId,
 							pkgItem.Subpackages[j].PId,
 							pkgItem.Subpackages[j].SId,
-							pkgItem.Subpackages[j].Tracking.State.Name,
-							pkgItem.Subpackages[j].Tracking.State.Index,
+							state.Name(),
+							state.Index(),
 							states.SchedulerJobName,
 							states.SchedulerGroupName,
 							scheduler_action.Notification.ActionName(),
@@ -335,6 +312,7 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 													buyerNotify = notify_service.SMSRequest{
 														Phone: pkgItem.ShippingAddress.Mobile,
 														Body:  newBuf.String(),
+														User:  notify_service.BuyerUser,
 													}
 
 													futureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()

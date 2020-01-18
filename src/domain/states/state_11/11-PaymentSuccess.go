@@ -66,6 +66,7 @@ func (state paymentSuccessState) Process(ctx context.Context, iFrame frame.IFram
 				buyerNotify := notify_service.SMSRequest{
 					Phone: order.BuyerInfo.ShippingAddress.Mobile,
 					Body:  newBuf.String(),
+					User:  notify_service.BuyerUser,
 				}
 
 				buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
