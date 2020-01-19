@@ -427,5 +427,49 @@ func main() {
 
 	} else if app.Globals.Config.App.ServiceMode == "converter" {
 		_ = v100To102.SchedulerConvert()
+
+	} else if app.Globals.Config.App.ServiceMode == "voucherSettlement" {
+		app.Globals.VoucherService = voucher_service.NewVoucherService(app.Globals.Config.VoucherService.Address, app.Globals.Config.VoucherService.Port)
+
+		// store in mongo
+		//mongoConf := &mongoadapter.MongoConfig{
+		//	Host:     app.Globals.Config.Mongo.Host,
+		//	Port:     app.Globals.Config.Mongo.Port,
+		//	Username: app.Globals.Config.Mongo.User,
+		//	//Password:     App.Cfg.Mongo.Pass,
+		//	ConnTimeout:     time.Duration(app.Globals.Config.Mongo.ConnectionTimeout) * time.Second,
+		//	ReadTimeout:     time.Duration(app.Globals.Config.Mongo.ReadTimeout) * time.Second,
+		//	WriteTimeout:    time.Duration(app.Globals.Config.Mongo.WriteTimeout) * time.Second,
+		//	MaxConnIdleTime: time.Duration(app.Globals.Config.Mongo.MaxConnIdleTime) * time.Second,
+		//	MaxPoolSize:     uint64(app.Globals.Config.Mongo.MaxPoolSize),
+		//	MinPoolSize:     uint64(app.Globals.Config.Mongo.MinPoolSize),
+		//}
+		//
+		//mongoDriver, err := mongoadapter.NewMongo(mongoConf)
+		//if err != nil {
+		//	logger.Err("IPkgItemRepository Mongo: %v", err.Error())
+		//	os.Exit(1)
+		//}
+		//
+		//app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver)
+		//app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver)
+		//app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver)
+
+		orders, err := app.Globals.OrderRepository.FindAll(context.Background())
+		if err != nil {
+			logger.Err("app.Globals.OrderRepository.FindAll failed, err: %v", err)
+			os.Exit(1)
+		}
+
+		for _, order := range orders {
+			if order.Invoice.Voucher != nil {
+				iFutureData := app.Globals.VoucherService.VoucherSettlement(context.Background(), order.Invoice.Voucher.Code, order.BuyerInfo.BuyerId, order.OrderId).Get()
+				if err := iFutureData.Error(); err != nil {
+					logger.Err("voucher settlement failed, orderId: %d, buyerId: %d, buyer Mobile: %d, voucherCode: %s, err: %v", order.OrderId, order.BuyerInfo.BuyerId, order.BuyerInfo.Mobile, order.Invoice.Voucher.Code, err)
+				} else {
+					logger.Err("voucher settlement success, orderId: %d, buyerId: %d, buyer Mobile: %d, voucherCode: %s", order.OrderId, order.BuyerInfo.BuyerId, order.BuyerInfo.Mobile, order.Invoice.Voucher.Code)
+				}
+			}
+		}
 	}
 }
