@@ -432,7 +432,7 @@ func (scheduler *SchedulerService) checkExpiredTime(subpackage Subpackage) *Sche
 				logger.Err("subpackage.Scheduler[0].Data invalid, data: %v "+
 					"orderId: %d, sid: %d, stateName: %s, stateIndex: %d, actionName: %s",
 					subpackage.Scheduler[0].Data, subpackage.OrderId, subpackage.SId, states.FromIndex(int32(subpackage.Sidx)).StateName(),
-					subpackage.Sidx, subpackage.Scheduler[0].Action, subpackage.Scheduler[0].Data)
+					subpackage.Sidx, subpackage.Scheduler[0].Action)
 				return nil
 			}
 			if timestamp.Before(time.Now().UTC()) && subpackage.Scheduler[0].Enabled {
@@ -474,7 +474,7 @@ func (scheduler *SchedulerService) checkExpiredTime(subpackage Subpackage) *Sche
 					logger.Err("subpackage.Scheduler[0].Data invalid, data: %v "+
 						"orderId: %d, sid: %d, stateName: %s, stateIndex: %d, actionName: %s",
 						subpackage.Scheduler[i].Data, subpackage.OrderId, subpackage.SId, states.FromIndex(int32(subpackage.Sidx)).StateName(),
-						subpackage.Sidx, subpackage.Scheduler[i].Action, subpackage.Scheduler[i].Data)
+						subpackage.Sidx, subpackage.Scheduler[i].Action)
 					return nil
 				}
 				if timestamp.Before(time.Now().UTC()) && subpackage.Scheduler[i].Enabled {

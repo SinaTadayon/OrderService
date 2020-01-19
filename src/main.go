@@ -465,9 +465,9 @@ func main() {
 			if order.Invoice.Voucher != nil {
 				iFutureData := app.Globals.VoucherService.VoucherSettlement(context.Background(), order.Invoice.Voucher.Code, order.BuyerInfo.BuyerId, order.OrderId).Get()
 				if err := iFutureData.Error(); err != nil {
-					logger.Err("voucher settlement failed, orderId: %d, buyerId: %d, buyer Mobile: %d, voucherCode: %s, err: %v", order.OrderId, order.BuyerInfo.BuyerId, order.BuyerInfo.Mobile, order.Invoice.Voucher.Code, err)
+					logger.Err("voucher settlement failed, orderId: %d, buyerId: %d, buyer Mobile: %s, voucherCode: %s, err: %v", order.OrderId, order.BuyerInfo.BuyerId, order.BuyerInfo.Mobile, order.Invoice.Voucher.Code, err)
 				} else {
-					logger.Err("voucher settlement success, orderId: %d, buyerId: %d, buyer Mobile: %d, voucherCode: %s", order.OrderId, order.BuyerInfo.BuyerId, order.BuyerInfo.Mobile, order.Invoice.Voucher.Code)
+					logger.Err("voucher settlement success, orderId: %d, buyerId: %d, buyer Mobile: %s, voucherCode: %s", order.OrderId, order.BuyerInfo.BuyerId, order.BuyerInfo.Mobile, order.Invoice.Voucher.Code)
 				}
 			}
 		}
