@@ -91,11 +91,15 @@ type PaymentOption struct {
 }
 
 type Voucher struct {
-	Percent  float64                `bson:"percent"`
-	Price    *Money                 `bson:"price"`
-	Code     string                 `bson:"code"`
-	Details  *VoucherDetails        `bson:"details"`
-	Extended map[string]interface{} `bson:"ext"`
+	Percent      float64                `bson:"percent"`
+	Price        *Money                 `bson:"price"`
+	Code         string                 `bson:"code"`
+	Details      *VoucherDetails        `bson:"details"`
+	Settlement   string                 `bson:"settlement"`
+	SettlementAt *time.Time             `bson:"settlementAt"`
+	Reserved     string                 `bson:"reserved"`
+	ReservedAt   *time.Time             `bson:"reservedAt"`
+	Extended     map[string]interface{} `bson:"ext"`
 }
 
 type CartRule struct {

@@ -142,10 +142,15 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 
 	if newOrderDto.Invoice.Voucher != nil {
 		order.Invoice.Voucher = &entities.Voucher{
-			Percent: float64(newOrderDto.Invoice.Voucher.Percent),
-			Price:   nil,
-			Code:    newOrderDto.Invoice.Voucher.Code,
-			Details: nil,
+			Percent:      float64(newOrderDto.Invoice.Voucher.Percent),
+			Price:        nil,
+			Code:         newOrderDto.Invoice.Voucher.Code,
+			Details:      nil,
+			Settlement:   "",
+			SettlementAt: nil,
+			Reserved:     "",
+			ReservedAt:   nil,
+			Extended:     nil,
 		}
 
 		if newOrderDto.Invoice.Voucher.Price != nil {

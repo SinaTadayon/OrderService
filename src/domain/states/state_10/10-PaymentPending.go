@@ -156,6 +156,9 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			futureData := iFuture.Get()
 			if futureData.Error() != nil {
 				logger.Err("Process() => VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Invoice.Voucher.Code, futureData.Error().Reason())
+				timestamp := time.Now().UTC()
+				order.Invoice.Voucher.Settlement = string(states.ActionFail)
+				order.Invoice.Voucher.SettlementAt = &timestamp
 				voucherAction = &entities.Action{
 					Name:      system_action.VoucherSettlement.ActionName(),
 					Type:      "",
@@ -168,15 +171,18 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 					Reasons:   nil,
 					Note:      "",
 					Data:      nil,
-					CreatedAt: time.Now().UTC(),
+					CreatedAt: timestamp,
 					Extended:  nil,
 				}
 			} else {
 				if order.Invoice.Voucher.Percent > 0 {
-					logger.Audit("Process() => Invoice paid by voucher order success, orderId: %d, voucherAmount: %v, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Percent, order.Invoice.Voucher.Code)
+					logger.Audit("Process() => voucher applied in invoice of order success, orderId: %d, voucherAmount: %v, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Percent, order.Invoice.Voucher.Code)
 				} else {
-					logger.Audit("Process() => Invoice paid by voucher order success, orderId: %d, voucherAmount: %v, voucherCode: %s", order.OrderId, voucherAmount, order.Invoice.Voucher.Code)
+					logger.Audit("Process() => voucher applied in invoice of order success, orderId: %d, voucherAmount: %v, voucherCode: %s", order.OrderId, voucherAmount, order.Invoice.Voucher.Code)
 				}
+				timestamp := time.Now().UTC()
+				order.Invoice.Voucher.Settlement = string(states.ActionSuccess)
+				order.Invoice.Voucher.SettlementAt = &timestamp
 				voucherAction = &entities.Action{
 					Name:      system_action.VoucherSettlement.ActionName(),
 					Type:      "",
@@ -189,7 +195,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 					Reasons:   nil,
 					Note:      "",
 					Data:      nil,
-					CreatedAt: time.Now().UTC(),
+					CreatedAt: timestamp,
 					Extended:  nil,
 				}
 			}
@@ -211,6 +217,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			state.StatesMap()[successAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
 			//}
 		} else {
+			logger.Audit("Process() => invoice order without voucher, state: %s, orderId: %d", state.Name(), order.OrderId)
 			paymentRequest := payment_service.PaymentRequest{
 				Amount:   int64(grandTotal.IntPart()),
 				Currency: order.Invoice.GrandTotal.Currency,
@@ -433,8 +440,10 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				Policy:    "",
 				Result:    string(states.ActionFail),
 				Reasons:   nil,
+				Note:      "",
 				Data:      nil,
 				CreatedAt: time.Now().UTC(),
+				Extended:  nil,
 			}
 
 			state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
@@ -462,6 +471,9 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				futureData := iFuture.Get()
 				if futureData.Error() != nil {
 					logger.Err("Process() => VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Invoice.Voucher.Code, futureData.Error().Reason())
+					timestamp := time.Now().UTC()
+					order.Invoice.Voucher.Settlement = string(states.ActionFail)
+					order.Invoice.Voucher.SettlementAt = &timestamp
 					voucherAction = &entities.Action{
 						Name:      system_action.VoucherSettlement.ActionName(),
 						Type:      "",
@@ -471,18 +483,22 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 						Priv:      "",
 						Policy:    "",
 						Result:    string(states.ActionFail),
+						Note:      "",
 						Reasons:   nil,
 						Data:      nil,
-						CreatedAt: time.Now().UTC(),
+						CreatedAt: timestamp,
 						Extended:  nil,
 					}
 				} else {
 					if order.Invoice.Voucher.Percent > 0 {
-						logger.Audit("Process() => Invoice paid by voucher order success, orderId: %d, voucherAmount: %v, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Percent, order.Invoice.Voucher.Code)
+						logger.Audit("Process() => voucher applied in invoice of order success, orderId: %d, voucherAmount: %v, voucherCode: %s", order.OrderId, order.Invoice.Voucher.Percent, order.Invoice.Voucher.Code)
 					} else {
-						logger.Audit("Process() => Invoice paid by voucher order success, orderId: %d, voucherAmount: %v, voucherCode: %s", order.OrderId, voucherAmount, order.Invoice.Voucher.Code)
+						logger.Audit("Process() => voucher applied in invoice of order success, orderId: %d, voucherAmount: %v, voucherCode: %s", order.OrderId, voucherAmount, order.Invoice.Voucher.Code)
 					}
 
+					timestamp := time.Now().UTC()
+					order.Invoice.Voucher.Settlement = string(states.ActionSuccess)
+					order.Invoice.Voucher.SettlementAt = &timestamp
 					voucherAction = &entities.Action{
 						Name:      system_action.VoucherSettlement.ActionName(),
 						Type:      "",
@@ -492,9 +508,10 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 						Priv:      "",
 						Policy:    "",
 						Result:    string(states.ActionSuccess),
+						Note:      "",
 						Reasons:   nil,
 						Data:      nil,
-						CreatedAt: time.Now().UTC(),
+						CreatedAt: timestamp,
 						Extended:  nil,
 					}
 				}
@@ -504,6 +521,8 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				} else {
 					logger.Audit("Process() => VoucherSettlement success, orderId: %d, voucher Amount: %v, voucherCode: %s", order.OrderId, voucherAmount, order.Invoice.Voucher.Code)
 				}
+			} else {
+				logger.Audit("Process() => Order Invoice hasn't voucher , state: %s, orderId: %d", state.Name(), order.OrderId)
 			}
 
 			paymentAction := &entities.Action{
@@ -515,6 +534,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				Priv:      "",
 				Policy:    "",
 				Result:    string(states.ActionSuccess),
+				Note:      "",
 				Reasons:   nil,
 				Data:      nil,
 				CreatedAt: time.Now().UTC(),
@@ -646,8 +666,10 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 							Policy:    "",
 							Result:    string(states.ActionFail),
 							Reasons:   nil,
+							Note:      "",
 							Data:      nil,
 							CreatedAt: time.Now().UTC(),
+							Extended:  nil,
 						}
 
 						state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
@@ -670,6 +692,9 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 							futureData := iFuture.Get()
 							if futureData.Error() != nil {
 								logger.Err("Process() => VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Invoice.Voucher.Code, futureData.Error().Reason())
+								timestamp := time.Now().UTC()
+								order.Invoice.Voucher.Settlement = string(states.ActionFail)
+								order.Invoice.Voucher.SettlementAt = &timestamp
 								voucherAction = &entities.Action{
 									Name:      system_action.VoucherSettlement.ActionName(),
 									Type:      "",
@@ -679,9 +704,10 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 									Priv:      "",
 									Policy:    "",
 									Result:    string(states.ActionFail),
+									Note:      "",
 									Reasons:   nil,
 									Data:      nil,
-									CreatedAt: time.Now().UTC(),
+									CreatedAt: timestamp,
 									Extended:  nil,
 								}
 							} else {
@@ -691,6 +717,9 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 									logger.Audit("Process() => Invoice paid by voucher order success, orderId: %d, voucherAmount: %v, voucherCode: %s", order.OrderId, voucherAmount, order.Invoice.Voucher.Code)
 								}
 
+								timestamp := time.Now().UTC()
+								order.Invoice.Voucher.Settlement = string(states.ActionSuccess)
+								order.Invoice.Voucher.SettlementAt = &timestamp
 								voucherAction = &entities.Action{
 									Name:      system_action.VoucherSettlement.ActionName(),
 									Type:      "",
@@ -700,9 +729,10 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 									Priv:      "",
 									Policy:    "",
 									Result:    string(states.ActionSuccess),
+									Note:      "",
 									Reasons:   nil,
 									Data:      nil,
-									CreatedAt: time.Now().UTC(),
+									CreatedAt: timestamp,
 									Extended:  nil,
 								}
 							}
@@ -712,6 +742,8 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 							} else {
 								logger.Audit("Process() => VoucherSettlement success, orderId: %d, voucher Amount: %v, voucherCode: %s", order.OrderId, voucherAmount, order.Invoice.Voucher.Code)
 							}
+						} else {
+							logger.Audit("Process() => Order Invoice hasn't voucher , state: %s, orderId: %d", state.Name(), order.OrderId)
 						}
 
 						paymentAction := &entities.Action{
@@ -723,6 +755,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 							Priv:      "",
 							Policy:    "",
 							Result:    string(states.ActionSuccess),
+							Note:      "",
 							Reasons:   nil,
 							Data:      nil,
 							CreatedAt: time.Now().UTC(),
@@ -780,8 +813,10 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 					Policy:    "",
 					Result:    string(states.ActionFail),
 					Reasons:   nil,
+					Note:      "",
 					Data:      nil,
 					CreatedAt: time.Now().UTC(),
+					Extended:  nil,
 				}
 
 				state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
