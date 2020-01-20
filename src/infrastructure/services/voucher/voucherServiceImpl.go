@@ -91,6 +91,6 @@ func (voucherService iVoucherServiceImpl) VoucherSettlement(ctx context.Context,
 	}
 
 	logger.Audit("VoucherSettlement() => voucherClient.CouponUsed success, "+
-		"voucherCode: %s, orderId: %d, buyerId: %d, error: %s", voucherCode, orderId, buyerId, result)
+		"voucherCode: %s, orderId: %d, buyerId: %d", voucherCode, orderId, buyerId)
 	return future.Factory().SetCapacity(1).BuildAndSend()
 }
