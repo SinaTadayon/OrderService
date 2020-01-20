@@ -774,7 +774,7 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 
 	var reqActionData pb.ActionData
 	if err := ptypes.UnmarshalAny(req.Data, &reqActionData); err != nil {
-		logger.Err("Could not unmarshal reqActionData from request anything field, request: %v, error %s", req, err)
+		logger.Err("requestActionHandler() => Could not unmarshal reqActionData from request anything field, request: %v, error %s", req, err)
 		return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
 	}
 
@@ -785,6 +785,12 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 		}
 		subpackage.Items = make([]events.ActionItem, 0, len(reqSubpackage.Items))
 		for _, item := range reqSubpackage.Items {
+
+			if item.Quantity <= 0 {
+				logger.Err("requestActionHandler() => %s action invalid, request: %v", req.Meta.Action.ActionState, req)
+				return nil, status.Error(codes.Code(future.BadRequest), "Action Quantity Invalid")
+			}
+
 			actionItem := events.ActionItem{
 				InventoryId: item.InventoryId,
 				Quantity:    item.Quantity,
