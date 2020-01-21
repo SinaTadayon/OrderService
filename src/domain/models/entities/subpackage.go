@@ -145,6 +145,12 @@ type Action struct {
 	Extended  map[string]interface{} `bson:"ext"`
 }
 
+type StockActionData struct {
+	InventoryId string `bson:"inventoryId"`
+	Quantity    int    `bson:"quantity"`
+	Result      bool   `bson:"result"`
+}
+
 func (item Item) DeepCopy() *Item {
 	newItem := Item{
 		SKU:         item.SKU,

@@ -73,30 +73,35 @@ type Config struct {
 	UserService struct {
 		Address string `env:"USER_SERVICE_ADDRESS"`
 		Port    int    `env:"USER_SERVICE_PORT"`
+		Timeout int    `env:"USER_SERVICE_TIMEOUT"`
 	}
 
 	NotifyService struct {
 		Address      string `env:"NOTIFY_SERVICE_ADDRESS"`
 		Port         int    `env:"NOTIFY_SERVICE_PORT"`
-		NotifySeller bool   `env:"ORDER_NOTIFY_SELLER"`
-		NotifyBuyer  bool   `env:"ORDER_NOTIFY_BUYER"`
+		Timeout      int    `env:"NOTIFY_SERVICE_TIMEOUT"`
+		NotifySeller bool   `env:"NOTIFY_SERVICE_SELLER_ENABLED"`
+		NotifyBuyer  bool   `env:"NOTIFY_SERVICE_BUYER_ENABLED"`
 	}
 
 	VoucherService struct {
 		Address     string `env:"VOUCHER_SERVICE_ADDRESS"`
 		Port        int    `env:"VOUCHER_SERVICE_PORT"`
+		Timeout     int    `env:"VOUCHER_SERVICE_TIMEOUT"`
 		MockEnabled bool   `env:"VOUCHER_SERVICE_MOCK_ENABLED"`
 	}
 
 	PaymentGatewayService struct {
-		Address     string `env:"PAYMENT_GATEWAY_ADDRESS"`
-		Port        int    `env:"PAYMENT_GATEWAY_PORT"`
+		Address     string `env:"PAYMENT_SERVICE_ADDRESS"`
+		Port        int    `env:"PAYMENT_SERVICE_PORT"`
+		Timeout     int    `env:"PAYMENT_SERVICE_TIMEOUT"`
 		MockEnabled bool   `env:"PAYMENT_SERVICE_MOCK_ENABLED"`
 	}
 
 	StockService struct {
 		Address     string `env:"STOCK_SERVICE_ADDRESS"`
 		Port        int    `env:"STOCK_SERVICE_PORT"`
+		Timeout     int    `env:"STOCK_SERVICE_TIMEOUT"`
 		MockEnabled bool   `env:"STOCK_SERVICE_MOCK_ENABLED"`
 	}
 

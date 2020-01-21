@@ -36,6 +36,7 @@ func TestMain(m *testing.M) {
 		client:        nil,
 		serverAddress: config.UserService.Address,
 		serverPort:    config.UserService.Port,
+		timeout:       config.UserService.Timeout,
 	}
 
 	// Running Tests

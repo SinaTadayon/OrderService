@@ -43,6 +43,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states/state_80"
 	"gitlab.faza.io/order-project/order-service/domain/states/state_90"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
+	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	"strconv"
 	"time"
 
@@ -487,10 +488,9 @@ func (flowManager iFlowManagerImpl) MessageHandler(ctx context.Context, iFrame f
 func (flowManager iFlowManagerImpl) newOrderHandler(ctx context.Context, iFrame frame.IFrame) {
 
 	requestNewOrder := iFrame.Header().Value(string(frame.HeaderNewOrder))
-
 	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
 	if err != nil {
-		logger.Err("Converter.Map requestNewOrder to order object failed, error: %s, requestNewOrder: %v", err, requestNewOrder)
+		logger.Err("newOrderHandler() => Converter.Map requestNewOrder to order object failed, error: %v, requestNewOrder: %v", err, requestNewOrder)
 		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 			SetError(future.BadRequest, "Received requestNewOrder invalid", err).
 			Send()
@@ -499,22 +499,57 @@ func (flowManager iFlowManagerImpl) newOrderHandler(ctx context.Context, iFrame 
 
 	newOrder := value.(*entities.Order)
 
-	var inventories = make(map[string]int, 32)
+	var requestStockList = make([]stock_service.RequestStock, 0, 32)
 	for i := 0; i < len(newOrder.Packages); i++ {
 		for j := 0; j < len(newOrder.Packages[i].Subpackages); j++ {
 			for z := 0; z < len(newOrder.Packages[i].Subpackages[j].Items); z++ {
 				item := newOrder.Packages[i].Subpackages[j].Items[z]
-				inventories[item.InventoryId] = int(item.Quantity)
+				requestStock := stock_service.RequestStock{
+					InventoryId: item.InventoryId,
+					Count:       int(item.Quantity),
+				}
+				requestStockList = append(requestStockList, requestStock)
 			}
 		}
 	}
 
-	iFuture := app.Globals.StockService.BatchStockActions(ctx, inventories,
+	iFuture := app.Globals.StockService.BatchStockActions(ctx, requestStockList, 0,
 		system_action.New(system_action.StockReserve))
 	futureData := iFuture.Get()
 	if futureData.Error() != nil {
-		logger.Err("Reserved stock from stockService failed, newOrder: %v, error: %s",
+		logger.Err("newOrderHandler() => Reserved stock from stockService failed, newOrder: %v, error: %s",
 			newOrder, futureData.Error())
+
+		if responseStockList, ok := futureData.Data().([]stock_service.ResponseStock); ok {
+			requestStockList = make([]stock_service.RequestStock, 0, 32)
+			for _, response := range responseStockList {
+				if response.Result {
+					requestStock := stock_service.RequestStock{
+						InventoryId: response.InventoryId,
+						Count:       response.Count,
+					}
+					requestStockList = append(requestStockList, requestStock)
+				}
+			}
+			iFuture := app.Globals.StockService.BatchStockActions(ctx, requestStockList, 0,
+				system_action.New(system_action.StockRelease))
+			futureData := iFuture.Get()
+			if futureData.Error() != nil {
+				responseList, ok := futureData.Data().([]stock_service.ResponseStock)
+				if ok {
+					logger.Err("newOrderHandler() => Rollback reserved stock from stockService failed, newOrder: %v, response: %v, error: %v",
+						newOrder, responseList, futureData.Error())
+				} else {
+					logger.Err("newOrderHandler() => Rollback reserved stock from stockService failed, newOrder: %v, error: %v",
+						newOrder, futureData.Error())
+				}
+			} else {
+				responseList := futureData.Data().([]stock_service.ResponseStock)
+				logger.Audit("newOrderHandler() => Rollback reserved stock from stockService success, newOrder: %v, response: %v",
+					newOrder, responseList)
+			}
+		}
+
 		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 			SetError(future.NotAccepted, "Received requestNewOrder invalid", err).
 			Send()

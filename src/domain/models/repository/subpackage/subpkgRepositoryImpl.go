@@ -402,7 +402,7 @@ func (repo iSubPkgRepositoryImpl) FindByFilter(ctx context.Context, totalSupplie
 	filter := supplier()
 	total, err := repo.CountWithFilter(ctx, totalSupplier)
 	if err != nil {
-		logger.Err("repo.Count() failed, %s", err)
+		logger.Err("repo.Quantity() failed, %s", err)
 		total = int64(defaultDocCount)
 	}
 

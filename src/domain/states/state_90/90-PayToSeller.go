@@ -13,6 +13,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
+	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"text/template"
 	"time"
@@ -149,47 +150,49 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 			}
 		}
 
-		var settlementStockAction *entities.Action
-		if err := state.settlementStock(ctx, sids, pkgItem); err != nil {
-			settlementStockAction = &entities.Action{
-				Name:      system_action.StockSettlement.ActionName(),
-				Type:      "",
-				UId:       0,
-				UTP:       actions.System.ActionName(),
-				Perm:      "",
-				Priv:      "",
-				Policy:    "",
-				Result:    string(states.ActionFail),
-				Reasons:   nil,
-				Data:      nil,
-				CreatedAt: time.Now().UTC(),
-				Extended:  nil,
-			}
-		} else {
-			settlementStockAction = &entities.Action{
-				Name:      system_action.StockSettlement.ActionName(),
-				Type:      "",
-				UId:       0,
-				UTP:       actions.System.ActionName(),
-				Perm:      "",
-				Priv:      "",
-				Policy:    "",
-				Result:    string(states.ActionSuccess),
-				Reasons:   nil,
-				Data:      nil,
-				CreatedAt: time.Now().UTC(),
-				Extended:  nil,
-			}
-		}
+		//var settlementStockAction *entities.Action
+		//if err := state.settlementStock(ctx, sids, pkgItem); err != nil {
+		//	settlementStockAction = &entities.Action{
+		//		Name:      system_action.StockSettlement.ActionName(),
+		//		Type:      "",
+		//		UId:       0,
+		//		UTP:       actions.System.ActionName(),
+		//		Perm:      "",
+		//		Priv:      "",
+		//		Policy:    "",
+		//		Result:    string(states.ActionFail),
+		//		Reasons:   nil,
+		//		Data:      nil,
+		//		CreatedAt: time.Now().UTC(),
+		//		Extended:  nil,
+		//	}
+		//} else {
+		//	settlementStockAction = &entities.Action{
+		//		Name:      system_action.StockSettlement.ActionName(),
+		//		Type:      "",
+		//		UId:       0,
+		//		UTP:       actions.System.ActionName(),
+		//		Perm:      "",
+		//		Priv:      "",
+		//		Policy:    "",
+		//		Result:    string(states.ActionSuccess),
+		//		Reasons:   nil,
+		//		Data:      nil,
+		//		CreatedAt: time.Now().UTC(),
+		//		Extended:  nil,
+		//	}
+		//}
 
 		for i := 0; i < len(sids); i++ {
 			for j := 0; j < len(pkgItem.Subpackages); j++ {
 				if pkgItem.Subpackages[j].SId == sids[i] {
 					state.UpdateSubPackage(ctx, pkgItem.Subpackages[j], buyerNotificationAction)
-					state.UpdateSubPackage(ctx, pkgItem.Subpackages[j], settlementStockAction)
+					//state.UpdateSubPackage(ctx, pkgItem.Subpackages[j], settlementStockAction)
 				}
 			}
 		}
+
+		state.settlementStock(ctx, sids, pkgItem)
 
 		order, err := app.Globals.OrderRepository.FindById(ctx, pkgItem.OrderId)
 		if err != nil {
@@ -260,26 +263,97 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 	}
 }
 
-func (state payToSellerState) settlementStock(ctx context.Context, sids []uint64, pkgItem *entities.PackageItem) error {
+func (state payToSellerState) settlementStock(ctx context.Context, sids []uint64, pkgItem *entities.PackageItem) {
 
-	var inventories = make(map[string]int, 32)
-	for i := 0; i < len(pkgItem.Subpackages); i++ {
-		for z := 0; z < len(pkgItem.Subpackages[i].Items); z++ {
-			item := pkgItem.Subpackages[i].Items[z]
-			inventories[item.InventoryId] = int(item.Quantity)
+	for _, sid := range sids {
+		for i := 0; i < len(pkgItem.Subpackages); i++ {
+			if sid != pkgItem.Subpackages[i].SId {
+				continue
+			}
+
+			result := true
+			stockActionDataList := make([]entities.StockActionData, 0, 32)
+			for z := 0; z < len(pkgItem.Subpackages[i].Items); z++ {
+				item := pkgItem.Subpackages[i].Items[z]
+				requestStock := stock_service.RequestStock{
+					InventoryId: item.InventoryId,
+					Count:       int(item.Quantity),
+				}
+
+				iFuture := app.Globals.StockService.SingleStockAction(ctx, requestStock, pkgItem.Subpackages[i].OrderId,
+					system_action.New(system_action.StockSettlement))
+
+				futureData := iFuture.Get()
+				if futureData.Error() != nil {
+					result = false
+					if futureData.Data() != nil {
+						response := futureData.Data().(stock_service.ResponseStock)
+						actionData := entities.StockActionData{
+							InventoryId: response.InventoryId,
+							Quantity:    response.Count,
+							Result:      response.Result,
+						}
+						stockActionDataList = append(stockActionDataList, actionData)
+						logger.Err("settlementStock() => Settlement stock from stockService failed, state: %s, orderId: %d, pid: %d, sid: %v, actionData: %v, error: %s",
+							state.Name(), pkgItem.OrderId, pkgItem.PId, sid, actionData, futureData.Error())
+
+					} else {
+						actionData := entities.StockActionData{
+							InventoryId: requestStock.InventoryId,
+							Quantity:    requestStock.Count,
+							Result:      false,
+						}
+						stockActionDataList = append(stockActionDataList, actionData)
+						logger.Err("settlementStock() => Settlement stock from stockService failed, state: %s, orderId: %d, pid: %d, sid: %v, stockAction: %v, error: %s",
+							state.Name(), pkgItem.OrderId, pkgItem.PId, sid, actionData, futureData.Error())
+
+					}
+				} else {
+					response := futureData.Data().(stock_service.ResponseStock)
+					actionData := entities.StockActionData{
+						InventoryId: response.InventoryId,
+						Quantity:    response.Count,
+						Result:      response.Result,
+					}
+					stockActionDataList = append(stockActionDataList, actionData)
+					logger.Audit("settlementStock() => Settlement stock success, state: %s, orderId: %d, pid: %d, sid: %v, stockAction: %v",
+						state.Name(), pkgItem.OrderId, pkgItem.PId, sid, actionData)
+				}
+			}
+			var stockAction *entities.Action
+			if !result {
+				stockAction = &entities.Action{
+					Name:      system_action.StockSettlement.ActionName(),
+					Type:      "",
+					UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+					UTP:       actions.System.ActionName(),
+					Perm:      "",
+					Priv:      "",
+					Policy:    "",
+					Result:    string(states.ActionFail),
+					Reasons:   nil,
+					Data:      map[string]interface{}{"stockActionData": stockActionDataList},
+					CreatedAt: time.Now().UTC(),
+					Extended:  nil,
+				}
+			} else {
+				stockAction = &entities.Action{
+					Name:      system_action.StockSettlement.ActionName(),
+					Type:      "",
+					UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+					UTP:       actions.System.ActionName(),
+					Perm:      "",
+					Priv:      "",
+					Policy:    "",
+					Result:    string(states.ActionSuccess),
+					Reasons:   nil,
+					Data:      map[string]interface{}{"stockActionData": stockActionDataList},
+					CreatedAt: time.Now().UTC(),
+					Extended:  nil,
+				}
+			}
+
+			state.UpdateSubPackage(ctx, pkgItem.Subpackages[i], stockAction)
 		}
 	}
-
-	iFuture := app.Globals.StockService.BatchStockActions(ctx, inventories,
-		system_action.New(system_action.StockSettlement))
-	futureData := iFuture.Get()
-	if futureData.Error() != nil {
-		logger.Err("Settlement stock from stockService failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
-			state.Name(), pkgItem.OrderId, pkgItem.PId, sids, futureData.Error())
-		return futureData.Error().Reason()
-	}
-
-	logger.Audit("Settlement stock success, state: %s, orderId: %d, pid: %d, sids: %v",
-		state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
-	return nil
 }

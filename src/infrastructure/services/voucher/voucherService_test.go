@@ -59,13 +59,14 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	userService = user_service.NewUserService(config.UserService.Address, config.UserService.Port)
+	userService = user_service.NewUserService(config.UserService.Address, config.UserService.Port, config.UserService.Timeout)
 
 	voucherSrv = iVoucherServiceImpl{
 		voucherClient:  nil,
 		grpcConnection: nil,
 		serverAddress:  config.VoucherService.Address,
 		serverPort:     config.VoucherService.Port,
+		timeout:        config.VoucherService.Timeout,
 	}
 
 	// Running Tests

@@ -7,9 +7,20 @@ import (
 	stockProto "gitlab.faza.io/protos/stock-proto.git"
 )
 
+type RequestStock struct {
+	InventoryId string
+	Count       int
+}
+
+type ResponseStock struct {
+	InventoryId string
+	Count       int
+	Result      bool
+}
+
 type IStockService interface {
-	SingleStockAction(ctx context.Context, inventoryId string, count int, action actions.IAction) future.IFuture
-	BatchStockActions(ctx context.Context, inventories map[string]int, action actions.IAction) future.IFuture
+	SingleStockAction(ctx context.Context, request RequestStock, orderId uint64, action actions.IAction) future.IFuture
+	BatchStockActions(ctx context.Context, requests []RequestStock, orderId uint64, action actions.IAction) future.IFuture
 
 	GetStockClient() stockProto.StockClient
 	ConnectToStockService() error

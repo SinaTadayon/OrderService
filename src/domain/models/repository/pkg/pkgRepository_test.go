@@ -305,7 +305,7 @@ func TestCount(t *testing.T) {
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
 	ctx, _ := context.WithCancel(context.Background())
 	result, err := pkgItemRepo.Count(ctx, order.Packages[0].PId)
-	require.Nil(t, err, "pkgItemRepo.Count failed")
+	require.Nil(t, err, "pkgItemRepo.Quantity failed")
 	require.Equal(t, int64(1), result)
 }
 

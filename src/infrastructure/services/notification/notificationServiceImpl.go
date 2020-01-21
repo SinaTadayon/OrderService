@@ -9,6 +9,7 @@ import (
 	"gitlab.faza.io/protos/notification"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
+	"google.golang.org/grpc/metadata"
 	"time"
 )
 
@@ -19,6 +20,7 @@ type iNotificationServiceImpl struct {
 	serverPort     int
 	notifySeller   bool
 	notifyBuyer    bool
+	timeout        int
 }
 
 func (notification *iNotificationServiceImpl) ConnectToNotifyService() error {
@@ -28,7 +30,7 @@ func (notification *iNotificationServiceImpl) ConnectToNotifyService() error {
 		notification.grpcConnection, err = grpc.DialContext(ctx, notification.serverAddress+":"+fmt.Sprint(notification.serverPort),
 			grpc.WithBlock(), grpc.WithInsecure())
 		if err != nil {
-			logger.Err("GRPC connect dial to notification service failed, err: %s", err.Error())
+			logger.Err("ConnectToNotifyService() => GRPC connect dial to notification service failed, err: %s", err.Error())
 			return err
 		}
 		notification.notifyService = NotificationService.NewNotificationServiceClient(notification.grpcConnection)
@@ -42,8 +44,12 @@ func (notification *iNotificationServiceImpl) CloseConnection() {
 	}
 }
 
-func NewNotificationService(address string, port int, notifySeller, notifyBuyer bool) INotificationService {
-	return &iNotificationServiceImpl{serverAddress: address, serverPort: port, notifySeller: notifySeller, notifyBuyer: notifyBuyer}
+func NewNotificationService(address string, port int, notifySeller, notifyBuyer bool, timeout int) INotificationService {
+	return &iNotificationServiceImpl{serverAddress: address,
+		serverPort:   port,
+		timeout:      timeout,
+		notifySeller: notifySeller,
+		notifyBuyer:  notifyBuyer}
 }
 
 func (notification iNotificationServiceImpl) NotifyBySMS(ctx context.Context, request SMSRequest) future.IFuture {
@@ -55,23 +61,65 @@ func (notification iNotificationServiceImpl) NotifyBySMS(ctx context.Context, re
 
 	if (notification.notifySeller && request.User == SellerUser) ||
 		(notification.notifyBuyer && request.User == BuyerUser) {
+
+		var outCtx context.Context
+		md, ok := metadata.FromIncomingContext(ctx)
+		if ok {
+			outCtx = metadata.NewOutgoingContext(ctx, md)
+		} else {
+			outCtx = metadata.NewOutgoingContext(ctx, metadata.New(nil))
+		}
+
+		timeoutTimer := time.NewTimer(time.Duration(notification.timeout) * time.Second)
+
 		req := &NotificationService.Sms{
 			To:   request.Phone,
 			Body: request.Body,
 		}
 
-		result, err := notification.notifyService.SendSms(ctx, req)
-		if err != nil {
-			logger.Err("NotifyBySMS() => failed, request: %v, error: %s ", request, err.Error())
+		notifyFn := func() <-chan interface{} {
+			notifyChan := make(chan interface{}, 0)
+			go func() {
+				result, err := notification.notifyService.SendSms(outCtx, req)
+				if err != nil {
+					notifyChan <- err
+				} else {
+					notifyChan <- result
+				}
+			}()
+			return notifyChan
+		}
+
+		var obj interface{} = nil
+		select {
+		case obj = <-notifyFn():
+			timeoutTimer.Stop()
+			break
+		case <-timeoutTimer.C:
+			logger.Err("NotifyBySMS() => notifyService.SendSms timeout, request: %v", request)
 			return future.Factory().SetCapacity(1).
-				SetError(future.InternalError, "UnknownError", errors.Wrap(err, "NotifyBySMS Failed")).
+				SetError(future.InternalError, "UnknownError", errors.New("NotifyBySMS Timeout")).
 				BuildAndSend()
 		}
 
-		if result.Status != 200 {
-			logger.Err("NotifyBySMS() => failed, request: %v, status: %d, error: %s", request, result.Status, result.Message)
+		if err, ok := obj.(error); ok {
+			if err != nil {
+				logger.Err("NotifyBySMS() => notifyService.SendSms failed, request: %v, error: %s ", request, err.Error())
+				return future.Factory().SetCapacity(1).
+					SetError(future.InternalError, "UnknownError", errors.Wrap(err, "NotifyBySMS Failed")).
+					BuildAndSend()
+			}
+		} else if result, ok := obj.(*NotificationService.Result); ok {
+			if result.Status != 200 {
+				logger.Err("NotifyBySMS() => notifyService.SendSms failed, request: %v, status: %d, error: %s", request, result.Status, result.Message)
+				return future.Factory().SetCapacity(1).
+					SetError(future.ErrorCode(result.Status), result.Message, errors.Wrap(err, "NotifyBySMS Failed")).
+					BuildAndSend()
+			}
+		} else {
+			logger.Err("NotifyBySMS() => notifyService.SendSms failed, result invalid, request: %v, result: %v", request, obj)
 			return future.Factory().SetCapacity(1).
-				SetError(future.ErrorCode(result.Status), result.Message, errors.Wrap(err, "NotifyBySMS Failed")).
+				SetError(future.InternalError, "UnknownError", errors.Wrap(err, "NotifyBySMS Failed")).
 				BuildAndSend()
 		}
 

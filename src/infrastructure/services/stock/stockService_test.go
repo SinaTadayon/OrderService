@@ -32,7 +32,9 @@ func TestMain(m *testing.M) {
 	}
 
 	stock = &iStockServiceImpl{nil, nil,
-		config.StockService.Address, config.StockService.Port}
+		config.StockService.Address,
+		config.StockService.Port, config.StockService.Timeout,
+	}
 
 	// Running Tests
 	code := m.Run()
@@ -1111,8 +1113,15 @@ func TestStockService_ReservedSuccess(t *testing.T) {
 	_, err := stock.stockService.StockAllocate(ctx, &request)
 	require.Nil(t, err)
 
-	inventories := map[string]int{request.InventoryId: int(request.Quantity)}
-	iFuture := stock.BatchStockActions(ctx, inventories, system_action.New(system_action.StockReserve))
+	requestStock := RequestStock{
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+		Count:       5,
+	}
+
+	requestsStock := make([]RequestStock, 0, 1)
+	requestsStock = append(requestsStock, requestStock)
+
+	iFuture := stock.BatchStockActions(ctx, requestsStock, 0, system_action.New(system_action.StockReserve))
 	futureData := iFuture.Get()
 	require.Nil(t, futureData.Error())
 
@@ -1145,12 +1154,19 @@ func TestStockService_SettlementSuccess(t *testing.T) {
 	_, err = stock.stockService.StockAllocate(ctx, &request)
 	require.Nil(t, err)
 
-	inventories := map[string]int{request.InventoryId: int(request.Quantity)}
-	iFuture := stock.BatchStockActions(ctx, inventories, system_action.New(system_action.StockReserve))
+	requestStock := RequestStock{
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+		Count:       5,
+	}
+
+	requestsStock := make([]RequestStock, 0, 1)
+	requestsStock = append(requestsStock, requestStock)
+
+	iFuture := stock.BatchStockActions(ctx, requestsStock, 0, system_action.New(system_action.StockReserve))
 	futureData := iFuture.Get()
 	require.Nil(t, futureData.Error())
 
-	iFuture = stock.BatchStockActions(ctx, inventories, system_action.New(system_action.StockSettlement))
+	iFuture = stock.BatchStockActions(ctx, requestsStock, 0, system_action.New(system_action.StockSettlement))
 	futureData = iFuture.Get()
 	require.Nil(t, futureData.Error())
 
@@ -1181,12 +1197,136 @@ func TestStockService_ReleaseSuccess(t *testing.T) {
 	_, err = stock.stockService.StockAllocate(ctx, &request)
 	require.Nil(t, err)
 
-	inventories := map[string]int{request.InventoryId: int(request.Quantity)}
-	iFuture := stock.BatchStockActions(ctx, inventories, system_action.New(system_action.StockReserve))
+	requestStock := RequestStock{
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+		Count:       5,
+	}
+
+	requestsStock := make([]RequestStock, 0, 1)
+	requestsStock = append(requestsStock, requestStock)
+
+	iFuture := stock.BatchStockActions(ctx, requestsStock, 0, system_action.New(system_action.StockReserve))
 	futureData := iFuture.Get()
 	require.Nil(t, futureData.Error())
 
-	iFuture = stock.BatchStockActions(ctx, inventories, system_action.New(system_action.StockRelease))
+	iFuture = stock.BatchStockActions(ctx, requestsStock, 0, system_action.New(system_action.StockRelease))
+	futureData = iFuture.Get()
+	require.Nil(t, futureData.Error())
+
+	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId})
+	require.Nil(t, err)
+	logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
+	require.Equal(t, response.Available, int32(5))
+	require.Equal(t, response.Reserved, int32(0))
+}
+
+func TestStockService_SingleReservedSuccess(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+
+	if err := stock.ConnectToStockService(); err != nil {
+		logger.Err(err.Error())
+		panic("stockService.ConnectToPaymentService() failed")
+	}
+
+	defer stock.CloseConnection()
+
+	order := createOrder()
+
+	request := stockProto.StockRequest{
+		Quantity:    5,
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+	}
+	_, err := stock.stockService.StockAllocate(ctx, &request)
+	require.Nil(t, err)
+
+	requestStock := RequestStock{
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+		Count:       5,
+	}
+
+	iFuture := stock.SingleStockAction(ctx, requestStock, 0, system_action.New(system_action.StockReserve))
+	futureData := iFuture.Get()
+	require.Nil(t, futureData.Error())
+
+	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId})
+	require.Nil(t, err)
+	logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
+	require.Equal(t, response.Available, int32(0))
+	require.Equal(t, response.Reserved, int32(5))
+	_, err = stock.stockService.StockRelease(ctx, &request)
+	require.Nil(t, err)
+}
+
+func TestStockService_SingleSettlementSuccess(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+
+	err := stock.ConnectToStockService()
+	require.Nil(t, err)
+
+	defer func() {
+		if err := stock.grpcConnection.Close(); err != nil {
+		}
+	}()
+
+	order := createOrder()
+
+	request := stockProto.StockRequest{
+		Quantity:    5,
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+	}
+	_, err = stock.stockService.StockAllocate(ctx, &request)
+	require.Nil(t, err)
+
+	requestStock := RequestStock{
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+		Count:       5,
+	}
+
+	iFuture := stock.SingleStockAction(ctx, requestStock, 0, system_action.New(system_action.StockReserve))
+	futureData := iFuture.Get()
+	require.Nil(t, futureData.Error())
+
+	iFuture = stock.SingleStockAction(ctx, requestStock, 0, system_action.New(system_action.StockSettlement))
+	futureData = iFuture.Get()
+	require.Nil(t, futureData.Error())
+
+	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId})
+	require.Nil(t, err)
+	logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
+	require.Equal(t, response.Available, int32(0))
+	require.Equal(t, response.Reserved, int32(0))
+}
+
+func TestStockService_SingleReleaseSuccess(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+
+	err := stock.ConnectToStockService()
+	require.Nil(t, err)
+
+	defer func() {
+		if err := stock.grpcConnection.Close(); err != nil {
+		}
+	}()
+
+	order := createOrder()
+
+	request := stockProto.StockRequest{
+		Quantity:    5,
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+	}
+	_, err = stock.stockService.StockAllocate(ctx, &request)
+	require.Nil(t, err)
+
+	requestStock := RequestStock{
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+		Count:       5,
+	}
+
+	iFuture := stock.SingleStockAction(ctx, requestStock, 0, system_action.New(system_action.StockReserve))
+	futureData := iFuture.Get()
+	require.Nil(t, futureData.Error())
+
+	iFuture = stock.SingleStockAction(ctx, requestStock, 0, system_action.New(system_action.StockRelease))
 	futureData = iFuture.Get()
 	require.Nil(t, futureData.Error())
 

@@ -158,7 +158,7 @@ func (repo iOrderRepositoryImpl) FindAll(ctx context.Context) ([]*entities.Order
 	total, err := repo.Count(ctx)
 
 	if err != nil {
-		logger.Err("repo.Count() failed, %s", err)
+		logger.Err("repo.Quantity() failed, %s", err)
 		total = int64(defaultDocCount)
 	}
 
@@ -190,7 +190,7 @@ func (repo iOrderRepositoryImpl) FindAll(ctx context.Context) ([]*entities.Order
 func (repo iOrderRepositoryImpl) FindAllWithSort(ctx context.Context, fieldName string, direction int) ([]*entities.Order, repository.IRepoError) {
 	total, err := repo.Count(ctx)
 	if err != nil {
-		logger.Err("repo.Count() failed, %s", err)
+		logger.Err("repo.Quantity() failed, %s", err)
 		total = int64(defaultDocCount)
 	}
 
@@ -383,7 +383,7 @@ func (repo iOrderRepositoryImpl) FindByFilter(ctx context.Context, supplier func
 	filter := supplier()
 	total, err := repo.CountWithFilter(ctx, supplier)
 	if err != nil {
-		logger.Err("repo.Count() failed, %s", err)
+		logger.Err("repo.Quantity() failed, %s", err)
 		total = int64(defaultDocCount)
 	}
 
@@ -417,7 +417,7 @@ func (repo iOrderRepositoryImpl) FindByFilterWithSort(ctx context.Context, suppl
 	filter, fieldName, direction := supplier()
 	total, err := repo.CountWithFilter(ctx, func() interface{} { return filter })
 	if err != nil {
-		logger.Err("repo.Count() failed, %s", err)
+		logger.Err("repo.Quantity() failed, %s", err)
 		total = int64(defaultDocCount)
 	}
 
@@ -602,7 +602,7 @@ func (repo iOrderRepositoryImpl) ExistsById(ctx context.Context, orderId uint64)
 func (repo iOrderRepositoryImpl) Count(ctx context.Context) (int64, repository.IRepoError) {
 	total, err := repo.mongoAdapter.Count(databaseName, collectionName, bson.D{{"deletedAt", nil}})
 	if err != nil {
-		return 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Count Orders Failed"))
+		return 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Quantity Orders Failed"))
 	}
 	return total, nil
 }

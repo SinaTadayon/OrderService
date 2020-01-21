@@ -267,23 +267,23 @@ func main() {
 		//if app.Globals.Config.StockService.MockEnabled {
 		//	app.Globals.StockService = stock_service.NewStockServiceMock()
 		//} else {
-		app.Globals.StockService = stock_service.NewStockService(app.Globals.Config.StockService.Address, app.Globals.Config.StockService.Port)
+		app.Globals.StockService = stock_service.NewStockService(app.Globals.Config.StockService.Address, app.Globals.Config.StockService.Port, app.Globals.Config.StockService.Timeout)
 		//}
 
 		if app.Globals.Config.PaymentGatewayService.MockEnabled {
 			app.Globals.PaymentService = payment_service.NewPaymentServiceMock()
 		} else {
-			app.Globals.PaymentService = payment_service.NewPaymentService(app.Globals.Config.PaymentGatewayService.Address, app.Globals.Config.PaymentGatewayService.Port)
+			app.Globals.PaymentService = payment_service.NewPaymentService(app.Globals.Config.PaymentGatewayService.Address, app.Globals.Config.PaymentGatewayService.Port, app.Globals.Config.PaymentGatewayService.Timeout)
 		}
 
 		//if app.Globals.Config.VoucherService.MockEnabled {
 		//	app.Globals.VoucherService = voucher_service.NewVoucherServiceMock()
 		//} else {
-		app.Globals.VoucherService = voucher_service.NewVoucherService(app.Globals.Config.VoucherService.Address, app.Globals.Config.VoucherService.Port)
+		app.Globals.VoucherService = voucher_service.NewVoucherService(app.Globals.Config.VoucherService.Address, app.Globals.Config.VoucherService.Port, app.Globals.Config.VoucherService.Timeout)
 		//}
 
-		app.Globals.NotifyService = notify_service.NewNotificationService(app.Globals.Config.NotifyService.Address, app.Globals.Config.NotifyService.Port, app.Globals.Config.NotifyService.NotifySeller, app.Globals.Config.NotifyService.NotifyBuyer)
-		app.Globals.UserService = user_service.NewUserService(app.Globals.Config.UserService.Address, app.Globals.Config.UserService.Port)
+		app.Globals.NotifyService = notify_service.NewNotificationService(app.Globals.Config.NotifyService.Address, app.Globals.Config.NotifyService.Port, app.Globals.Config.NotifyService.NotifySeller, app.Globals.Config.NotifyService.NotifyBuyer, app.Globals.Config.NotifyService.Timeout)
+		app.Globals.UserService = user_service.NewUserService(app.Globals.Config.UserService.Address, app.Globals.Config.UserService.Port, app.Globals.Config.UserService.Timeout)
 
 		// listen and serve prometheus scraper
 		go func() {
@@ -429,7 +429,7 @@ func main() {
 		_ = v100To102.SchedulerConvert()
 
 	} else if app.Globals.Config.App.ServiceMode == "voucherSettlement" {
-		app.Globals.VoucherService = voucher_service.NewVoucherService(app.Globals.Config.VoucherService.Address, app.Globals.Config.VoucherService.Port)
+		app.Globals.VoucherService = voucher_service.NewVoucherService(app.Globals.Config.VoucherService.Address, app.Globals.Config.VoucherService.Port, app.Globals.Config.VoucherService.Timeout)
 
 		// store in mongo
 		//mongoConf := &mongoadapter.MongoConfig{

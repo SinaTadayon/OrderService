@@ -28,7 +28,9 @@ func TestMain(m *testing.M) {
 	}
 
 	notify = iNotificationServiceImpl{nil, nil,
-		config.NotifyService.Address, config.NotifyService.Port, config.NotifyService.NotifySeller, config.NotifyService.NotifyBuyer}
+		config.NotifyService.Address, config.NotifyService.Port,
+		config.NotifyService.NotifySeller, config.NotifyService.NotifyBuyer,
+		config.NotifyService.Timeout}
 
 	// Running Tests
 	code := m.Run()
