@@ -41,7 +41,7 @@ func (userService *iUserServiceImpl) getUserService(ctx context.Context) error {
 	config := &userclient.Config{
 		Host:    userService.serverAddress,
 		Port:    userService.serverPort,
-		Timeout: 5 * time.Second,
+		Timeout: 10 * time.Second,
 	}
 	userService.client, err = userclient.NewClient(ctx, config, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {

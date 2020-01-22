@@ -30,11 +30,11 @@ func NewStockService(address string, port int, timeout int) IStockService {
 func (stock *iStockServiceImpl) ConnectToStockService() error {
 	if stock.grpcConnection == nil || stock.grpcConnection.GetState() != connectivity.Ready {
 		var err error
-		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		stock.grpcConnection, err = grpc.DialContext(ctx, stock.serverAddress+":"+fmt.Sprint(stock.serverPort),
 			grpc.WithBlock(), grpc.WithInsecure())
 		if err != nil {
-			logger.Err("ConnectToStockService() => GRPC connect dial to stock service failed, err: %s", err.Error())
+			logger.Err("ConnectToStockService() => GRPC connect dial to stock service failed, address: %s, port: %d, err: %s", stock.serverAddress, stock.serverPort, err.Error())
 			return err
 		}
 		stock.stockService = stockProto.NewStockClient(stock.grpcConnection)

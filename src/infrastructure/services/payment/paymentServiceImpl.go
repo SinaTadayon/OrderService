@@ -32,11 +32,11 @@ func NewPaymentService(address string, port int, callbackTimeout, paymentResultT
 func (payment *iPaymentServiceImpl) ConnectToPaymentService() error {
 	if payment.grpcConnection == nil || payment.grpcConnection.GetState() != connectivity.Ready {
 		var err error
-		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		payment.grpcConnection, err = grpc.DialContext(ctx, payment.serverAddress+":"+fmt.Sprint(payment.serverPort),
 			grpc.WithBlock(), grpc.WithInsecure())
 		if err != nil {
-			logger.Err("ConnectToPaymentService() => GRPC connect dial to payment service failed, err: %s", err.Error())
+			logger.Err("ConnectToPaymentService() => GRPC connect dial to payment service failed, address: %s, port: %d, err: %s", payment.serverAddress, payment.serverPort, err.Error())
 			return err
 		}
 		payment.paymentService = payment_gateway.NewPaymentGatewayClient(payment.grpcConnection)
