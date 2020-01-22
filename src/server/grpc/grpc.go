@@ -463,14 +463,14 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
 		logger.Err("RequestHandler() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+		//return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
 	}
 
 	// TODO check acl
-	if uint64(userAcl.User().UserID) != req.Meta.UID {
-		logger.Err("RequestHandler() => request userId %d mismatch with token userId: %d", req.Meta.UID, userAcl.User().UserID)
-		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
-	}
+	//if uint64(userAcl.User().UserID) != req.Meta.UID {
+	//	logger.Err("RequestHandler() => request userId %d mismatch with token userId: %d", req.Meta.UID, userAcl.User().UserID)
+	//	return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+	//}
 
 	if ctx.Value(string(utils.CtxUserID)) == nil {
 		ctx = context.WithValue(ctx, string(utils.CtxUserID), uint64(req.Meta.UID))
@@ -869,14 +869,13 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
 		logger.Err("NewOrder() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		//return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
 	}
 
-	//// TODO check acl
-	//if uint64(userAcl.User().UserID) != req.Meta.UID {
-	//	logger.Err("RequestHandler() => request userId %d mismatch with token userId: %d", req.Meta.UID, userAcl.User().UserID)
-	//	return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
-	//}
+	if uint64(userAcl.User().UserID) != req.Buyer.BuyerId {
+		logger.Err("RequestHandler() => request userId %d mismatch with token userId: %d", req.Buyer.BuyerId, userAcl.User().UserID)
+		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+	}
 
 	if ctx.Value(string(utils.CtxUserID)) == nil {
 		if userAcl != nil {

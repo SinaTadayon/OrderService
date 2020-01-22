@@ -212,6 +212,7 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 			var requestAction *entities.Action
 			var newSubPkg *entities.Subpackage
 			var fullItems []*entities.Item
+			var fullSubPackages []*entities.Subpackage
 			var nextActionState states.IState
 			var actionState actions.IAction
 
@@ -231,6 +232,7 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 				return
 			}
 
+		loop:
 			// iterate subpackages
 			for _, eventSubPkg := range actionData.SubPackages {
 				for i := 0; i < len(pkgItem.Subpackages); i++ {
@@ -246,33 +248,33 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 								if actionItem.InventoryId == pkgItem.Subpackages[i].Items[j].InventoryId {
 									findItem = true
 
+									if newSubPkg == nil {
+										newSubPkg = pkgItem.Subpackages[i].DeepCopy()
+										newSubPkg.SId = 0
+										newSubPkg.Items = make([]*entities.Item, 0, len(eventSubPkg.Items))
+										newSubPkg.CreatedAt = time.Now().UTC()
+										newSubPkg.UpdatedAt = time.Now().UTC()
+
+										requestAction = &entities.Action{
+											Name:      actionState.ActionEnum().ActionName(),
+											Type:      "",
+											UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+											UTP:       actionState.ActionType().ActionName(),
+											Perm:      "",
+											Priv:      "",
+											Policy:    "",
+											Result:    string(states.ActionSuccess),
+											Reasons:   actionItem.Reasons,
+											Note:      "",
+											Data:      nil,
+											CreatedAt: time.Now().UTC(),
+											Extended:  nil,
+										}
+									}
+
 									// create new subpackages which contains new items along
 									// with new quantity and recalculated related invoice
 									if actionItem.Quantity < pkgItem.Subpackages[i].Items[j].Quantity {
-										if newSubPkg == nil {
-											newSubPkg = pkgItem.Subpackages[i].DeepCopy()
-											newSubPkg.SId = 0
-											newSubPkg.Items = make([]*entities.Item, 0, len(eventSubPkg.Items))
-											newSubPkg.CreatedAt = time.Now().UTC()
-											newSubPkg.UpdatedAt = time.Now().UTC()
-
-											requestAction = &entities.Action{
-												Name:      actionState.ActionEnum().ActionName(),
-												Type:      "",
-												UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
-												UTP:       actionState.ActionType().ActionName(),
-												Perm:      "",
-												Priv:      "",
-												Policy:    "",
-												Result:    string(states.ActionSuccess),
-												Reasons:   actionItem.Reasons,
-												Note:      "",
-												Data:      nil,
-												CreatedAt: time.Now().UTC(),
-												Extended:  nil,
-											}
-										}
-
 										unit, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Unit.Amount)
 										if err != nil {
 											logger.Err("Process() => decimal.NewFromString failed, Unit.Amount invalid, unit: %s, orderId: %d, pid: %d, sid: %d, state: %s, event: %v",
@@ -301,25 +303,27 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 									} else {
 										if fullItems == nil {
 											fullItems = make([]*entities.Item, 0, len(pkgItem.Subpackages[i].Items))
-											requestAction = &entities.Action{
-												Name:      actionState.ActionEnum().ActionName(),
-												Type:      "",
-												UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
-												UTP:       actionState.ActionType().ActionName(),
-												Perm:      "",
-												Priv:      "",
-												Policy:    "",
-												Result:    string(states.ActionSuccess),
-												Reasons:   actionItem.Reasons,
-												Data:      nil,
-												CreatedAt: time.Now().UTC(),
-												Extended:  nil,
-											}
 										}
 										fullItems = append(fullItems, pkgItem.Subpackages[i].Items[j])
 										pkgItem.Subpackages[i].Items[len(pkgItem.Subpackages[i].Items)-1], pkgItem.Subpackages[i].Items[j] =
 											pkgItem.Subpackages[i].Items[j], pkgItem.Subpackages[i].Items[len(pkgItem.Subpackages[i].Items)-1]
 										pkgItem.Subpackages[i].Items = pkgItem.Subpackages[i].Items[:len(pkgItem.Subpackages[i].Items)-1]
+
+										// calculate subpackages diff
+										if len(pkgItem.Subpackages[i].Items) == 0 {
+
+											if fullSubPackages == nil {
+												fullSubPackages = make([]*entities.Subpackage, 0, len(pkgItem.Subpackages))
+											}
+
+											if newSubPackages == nil {
+												newSubPackages = make([]*entities.Subpackage, 0, len(actionData.SubPackages))
+											}
+
+											pkgItem.Subpackages[i].Items = fullItems
+											fullSubPackages = append(fullSubPackages, pkgItem.Subpackages[i])
+											continue loop
+										}
 									}
 								}
 							}
@@ -331,7 +335,10 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 							}
 						}
 
-						newSubPackages = make([]*entities.Subpackage, 0, len(actionData.SubPackages))
+						if newSubPackages == nil {
+							newSubPackages = make([]*entities.Subpackage, 0, len(actionData.SubPackages))
+						}
+
 						if newSubPkg != nil {
 							if fullItems != nil {
 								for z := 0; z < len(fullItems); z++ {
@@ -339,17 +346,15 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 								}
 							}
 							newSubPackages = append(newSubPackages, newSubPkg)
-						} else {
-							for z := 0; z < len(fullItems); z++ {
-								pkgItem.Subpackages[i].Items = append(pkgItem.Subpackages[i].Items, fullItems[z])
-							}
-							newSubPackages = append(newSubPackages, pkgItem.Subpackages[i])
 						}
 					}
 				}
 			}
 
 			if newSubPackages != nil {
+				if fullSubPackages != nil {
+					newSubPackages = append(newSubPackages, fullSubPackages...)
+				}
 				var sids = make([]uint64, 0, 32)
 				for i := 0; i < len(newSubPackages); i++ {
 					if newSubPackages[i].SId == 0 {
