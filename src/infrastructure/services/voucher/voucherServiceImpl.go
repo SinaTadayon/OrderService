@@ -33,7 +33,7 @@ func NewVoucherService(serverAddress string, serverPort int, timeout int) IVouch
 func (voucherService *iVoucherServiceImpl) Connect() error {
 	if voucherService.grpcConnection == nil || voucherService.grpcConnection.GetState() != connectivity.Ready {
 		var err error
-		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		voucherService.grpcConnection, err = grpc.DialContext(ctx, voucherService.serverAddress+":"+fmt.Sprint(voucherService.serverPort),
 			grpc.WithBlock(), grpc.WithInsecure())
 		if err != nil {

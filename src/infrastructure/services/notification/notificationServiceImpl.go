@@ -26,11 +26,11 @@ type iNotificationServiceImpl struct {
 func (notification *iNotificationServiceImpl) ConnectToNotifyService() error {
 	if notification.grpcConnection == nil || notification.grpcConnection.GetState() != connectivity.Ready {
 		var err error
-		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		notification.grpcConnection, err = grpc.DialContext(ctx, notification.serverAddress+":"+fmt.Sprint(notification.serverPort),
 			grpc.WithBlock(), grpc.WithInsecure())
 		if err != nil {
-			logger.Err("ConnectToNotifyService() => GRPC connect dial to notification service failed, err: %s", err.Error())
+			logger.Err("ConnectToStockService() => GRPC connect dial to stock service failed, address: %s, port: %d, err: %s", notification.serverAddress, notification.serverPort, err.Error())
 			return err
 		}
 		notification.notifyService = NotificationService.NewNotificationServiceClient(notification.grpcConnection)

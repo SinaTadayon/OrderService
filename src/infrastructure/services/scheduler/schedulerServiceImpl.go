@@ -110,7 +110,7 @@ func NewScheduler(mongoAdapter *mongoadapter.Mongo, address string, port int,
 func (scheduler *SchedulerService) ConnectToOrderService() error {
 	if scheduler.grpcConnection == nil || scheduler.grpcConnection.GetState() != connectivity.Ready {
 		var err error
-		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 		scheduler.grpcConnection, err = grpc.DialContext(ctx, scheduler.serverAddress+":"+fmt.Sprint(scheduler.serverPort),
 			grpc.WithBlock(), grpc.WithInsecure())
 		if err != nil {
