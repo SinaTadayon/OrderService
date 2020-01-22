@@ -15,16 +15,17 @@ import (
 )
 
 type iPaymentServiceImpl struct {
-	paymentService payment_gateway.PaymentGatewayClient
-	grpcConnection *grpc.ClientConn
-	serverAddress  string
-	serverPort     int
-	timeout        int
+	paymentService       payment_gateway.PaymentGatewayClient
+	grpcConnection       *grpc.ClientConn
+	serverAddress        string
+	serverPort           int
+	callbackTimeout      int
+	paymentResultTimeout int
 }
 
-func NewPaymentService(address string, port int, timeout int) IPaymentService {
+func NewPaymentService(address string, port int, callbackTimeout, paymentResultTimeout int) IPaymentService {
 	return &iPaymentServiceImpl{nil, nil, address,
-		port, timeout,
+		port, callbackTimeout, paymentResultTimeout,
 	}
 }
 
@@ -60,7 +61,7 @@ func (payment iPaymentServiceImpl) OrderPayment(ctx context.Context, request Pay
 		outCtx = metadata.NewOutgoingContext(ctx, metadata.New(nil))
 	}
 
-	timeoutTimer := time.NewTimer(time.Duration(payment.timeout) * time.Second)
+	timeoutTimer := time.NewTimer(time.Duration(payment.callbackTimeout) * time.Second)
 
 	gatewayRequest := &payment_gateway.GenerateRedirRequest{
 		Gateway:  request.Gateway,
@@ -139,7 +140,7 @@ func (payment iPaymentServiceImpl) GetPaymentResult(ctx context.Context, orderId
 		outCtx = metadata.NewOutgoingContext(ctx, metadata.New(nil))
 	}
 
-	timeoutTimer := time.NewTimer(time.Duration(payment.timeout) * time.Second)
+	timeoutTimer := time.NewTimer(time.Duration(payment.paymentResultTimeout) * time.Second)
 
 	payRequest := &payment_gateway.GetPaymentResultByOrderIdRequest{
 		OrderID: strconv.Itoa(int(orderId)),

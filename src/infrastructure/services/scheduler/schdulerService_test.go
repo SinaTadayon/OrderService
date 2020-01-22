@@ -87,9 +87,9 @@ func TestMain(m *testing.M) {
 	app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver)
 	app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver)
 	app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver)
-	app.Globals.StockService = stock_service.NewStockService(app.Globals.Config.StockService.Address, app.Globals.Config.StockService.Port)
-	app.Globals.UserService = user_service.NewUserService(app.Globals.Config.UserService.Address, app.Globals.Config.UserService.Port)
-	app.Globals.NotifyService = notify_service.NewNotificationService(app.Globals.Config.NotifyService.Address, app.Globals.Config.NotifyService.Port, app.Globals.Config.NotifyService.NotifySeller, app.Globals.Config.NotifyService.NotifyBuyer)
+	app.Globals.StockService = stock_service.NewStockService(app.Globals.Config.StockService.Address, app.Globals.Config.StockService.Port, app.Globals.Config.StockService.Timeout)
+	app.Globals.UserService = user_service.NewUserService(app.Globals.Config.UserService.Address, app.Globals.Config.UserService.Port, app.Globals.Config.UserService.Timeout)
+	app.Globals.NotifyService = notify_service.NewNotificationService(app.Globals.Config.NotifyService.Address, app.Globals.Config.NotifyService.Port, app.Globals.Config.NotifyService.NotifySeller, app.Globals.Config.NotifyService.NotifyBuyer, app.Globals.Config.NotifyService.Timeout)
 	app.Globals.Converter = converter.NewConverter()
 
 	if app.Globals.Config.App.SchedulerInterval == "" ||

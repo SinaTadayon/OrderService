@@ -320,7 +320,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				for i := 0; i < len(order.Packages); i++ {
 					order.Packages[i].UpdatedAt = time.Now().UTC()
 					for j := 0; j < len(order.Packages[i].Subpackages); j++ {
-						order.Packages[i].Subpackages[j].Tracking.State.Schedulers = []*entities.SchedulerData{
+						schedulers := []*entities.SchedulerData{
 							{
 								order.OrderId,
 								order.Packages[i].PId,
@@ -346,10 +346,11 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 								nil,
 							},
 						}
+						state.UpdateSubPackageWithScheduler(ctx, order.Packages[i].Subpackages[j], schedulers, nil)
 					}
 				}
 
-				state.UpdateOrderAllSubPkg(ctx, order, nil)
+				//state.UpdateOrderAllSubPkg(ctx, order, nil)
 				_, err := app.Globals.OrderRepository.Save(ctx, *order)
 				if err != nil {
 					logger.Err("Process() => OrderRepository.Save failed, orderId: %d, error: %s", order.OrderId, err)
@@ -625,6 +626,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 			}
 
 			if findFlag {
+				logger.Audit("Process() => try get result from PaymentService.GetPaymentResult, state: %s, orderId: %d", state.Name(), order.OrderId)
 				iFuture := app.Globals.PaymentService.GetPaymentResult(ctx, order.OrderId)
 				futureData := iFuture.Get()
 				if futureData.Error() != nil {
@@ -655,7 +657,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 					}
 
 					if !order.OrderPayment[0].PaymentResult.Result {
-						logger.Audit("Process() => PaymentQueryResult failed, orderId: %d, result: %v", order.OrderId, paymentResult)
+						logger.Err("Process() => retry get PaymentQueryResult failed, state: %s, orderId: %d, result: %v", state.Name(), order.OrderId, paymentResult)
 						paymentAction := &entities.Action{
 							Name:      system_action.PaymentFail.ActionName(),
 							Type:      "",
@@ -691,7 +693,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 							iFuture := app.Globals.VoucherService.VoucherSettlement(ctx, order.Invoice.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
 							futureData := iFuture.Get()
 							if futureData.Error() != nil {
-								logger.Err("Process() => VoucherService.VoucherSettlement failed, orderId: %d, voucherCode: %s, error: %s", order.OrderId, order.Invoice.Voucher.Code, futureData.Error().Reason())
+								logger.Err("Process() => VoucherService.VoucherSettlement failed, state: %s, orderId: %d, voucherCode: %s, error: %s", state.Name(), order.OrderId, order.Invoice.Voucher.Code, futureData.Error().Reason())
 								timestamp := time.Now().UTC()
 								order.Invoice.Voucher.Settlement = string(states.ActionFail)
 								order.Invoice.Voucher.SettlementAt = &timestamp

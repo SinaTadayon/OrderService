@@ -273,7 +273,7 @@ func main() {
 		if app.Globals.Config.PaymentGatewayService.MockEnabled {
 			app.Globals.PaymentService = payment_service.NewPaymentServiceMock()
 		} else {
-			app.Globals.PaymentService = payment_service.NewPaymentService(app.Globals.Config.PaymentGatewayService.Address, app.Globals.Config.PaymentGatewayService.Port, app.Globals.Config.PaymentGatewayService.Timeout)
+			app.Globals.PaymentService = payment_service.NewPaymentService(app.Globals.Config.PaymentGatewayService.Address, app.Globals.Config.PaymentGatewayService.Port, app.Globals.Config.PaymentGatewayService.CallbackTimeout, app.Globals.Config.PaymentGatewayService.PaymentResultTimeout)
 		}
 
 		//if app.Globals.Config.VoucherService.MockEnabled {

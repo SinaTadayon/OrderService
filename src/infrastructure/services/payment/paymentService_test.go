@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 
 	payment = iPaymentServiceImpl{nil, nil,
 		config.PaymentGatewayService.Address,
-		config.PaymentGatewayService.Port, config.PaymentGatewayService.Timeout}
+		config.PaymentGatewayService.Port, config.PaymentGatewayService.CallbackTimeout, config.PaymentGatewayService.PaymentResultTimeout}
 
 	// Running Tests
 	code := m.Run()

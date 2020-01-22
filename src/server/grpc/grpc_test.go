@@ -78,7 +78,7 @@ func TestMain(m *testing.M) {
 	if app.Globals.Config.PaymentGatewayService.MockEnabled {
 		app.Globals.PaymentService = payment_service.NewPaymentServiceMock()
 	} else {
-		app.Globals.PaymentService = payment_service.NewPaymentService(app.Globals.Config.PaymentGatewayService.Address, app.Globals.Config.PaymentGatewayService.Port, app.Globals.Config.PaymentGatewayService.Timeout)
+		app.Globals.PaymentService = payment_service.NewPaymentService(app.Globals.Config.PaymentGatewayService.Address, app.Globals.Config.PaymentGatewayService.Port, app.Globals.Config.PaymentGatewayService.CallbackTimeout, app.Globals.Config.PaymentGatewayService.PaymentResultTimeout)
 	}
 
 	app.Globals.VoucherService = voucher_service.NewVoucherService(app.Globals.Config.VoucherService.Address, app.Globals.Config.VoucherService.Port, app.Globals.Config.VoucherService.Timeout)

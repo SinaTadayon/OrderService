@@ -92,10 +92,11 @@ type Config struct {
 	}
 
 	PaymentGatewayService struct {
-		Address     string `env:"PAYMENT_SERVICE_ADDRESS"`
-		Port        int    `env:"PAYMENT_SERVICE_PORT"`
-		Timeout     int    `env:"PAYMENT_SERVICE_TIMEOUT"`
-		MockEnabled bool   `env:"PAYMENT_SERVICE_MOCK_ENABLED"`
+		Address              string `env:"PAYMENT_SERVICE_ADDRESS"`
+		Port                 int    `env:"PAYMENT_SERVICE_PORT"`
+		CallbackTimeout      int    `env:"PAYMENT_SERVICE_PAYMENT_CALLBACK_TIMEOUT"`
+		PaymentResultTimeout int    `env:"PAYMENT_SERVICE_PAYMENT_RESULT_TIMEOUT"`
+		MockEnabled          bool   `env:"PAYMENT_SERVICE_MOCK_ENABLED"`
 	}
 
 	StockService struct {
