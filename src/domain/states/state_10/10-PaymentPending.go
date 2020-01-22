@@ -303,17 +303,17 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 					expireTime = time.Now().UTC().Add(value)
 				} else {
 					value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerPaymentPendingStateConfig].(int)
-					if timeUnit == string(app.HourTimeUnit) {
-						expireTime = time.Now().UTC().Add(
-							time.Hour*time.Duration(value) +
-								time.Minute*time.Duration(0) +
-								time.Second*time.Duration(0))
-					} else {
-						expireTime = time.Now().UTC().Add(
-							time.Hour*time.Duration(0) +
-								time.Minute*time.Duration(value) +
-								time.Second*time.Duration(0))
-					}
+					//if timeUnit == string(app.HourTimeUnit) {
+					//	expireTime = time.Now().UTC().Add(
+					//		time.Hour*time.Duration(value) +
+					//			time.Minute*time.Duration(0) +
+					//			time.Second*time.Duration(0))
+					//} else {
+					expireTime = time.Now().UTC().Add(
+						time.Hour*time.Duration(0) +
+							time.Minute*time.Duration(value) +
+							time.Second*time.Duration(0))
+					//}
 				}
 
 				order.UpdatedAt = time.Now().UTC()
@@ -597,17 +597,17 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				expireTime = time.Now().UTC().Add(value)
 			} else {
 				value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerPaymentPendingStateConfig].(int)
-				if timeUnit == string(app.HourTimeUnit) {
-					expireTime = time.Now().UTC().Add(
-						time.Hour*time.Duration(value) +
-							time.Minute*time.Duration(0) +
-							time.Second*time.Duration(0))
-				} else {
-					expireTime = time.Now().UTC().Add(
-						time.Hour*time.Duration(0) +
-							time.Minute*time.Duration(value) +
-							time.Second*time.Duration(0))
-				}
+				//if timeUnit == string(app.HourTimeUnit) {
+				//	expireTime = time.Now().UTC().Add(
+				//		time.Hour*time.Duration(value) +
+				//			time.Minute*time.Duration(0) +
+				//			time.Second*time.Duration(0))
+				//} else {
+				expireTime = time.Now().UTC().Add(
+					time.Hour*time.Duration(0) +
+						time.Minute*time.Duration(value) +
+						time.Second*time.Duration(0))
+				//}
 			}
 
 			var findFlag = false
