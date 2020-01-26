@@ -415,77 +415,178 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, orderId
 
 	sellerOrderDetailItems := make([]*pb.SellerOrderDetail_ItemDetail, 0, 32)
 	for i := 0; i < len(pkgItem.Subpackages); i++ {
-		for _, filterState := range server.sellerFilterStates[filter] {
-			if pkgItem.Subpackages[i].Status == filterState.actualState.StateName() {
-				for j := 0; j < len(pkgItem.Subpackages[i].Items); j++ {
-					itemDetail := &pb.SellerOrderDetail_ItemDetail{
-						SID:         pkgItem.Subpackages[i].SId,
-						Sku:         pkgItem.Subpackages[i].Items[j].SKU,
-						Status:      filterState.expectedState.StateName(),
-						SIdx:        int32(states.FromString(pkgItem.Subpackages[i].Status).StateIndex()),
-						InventoryId: pkgItem.Subpackages[i].Items[j].InventoryId,
-						Title:       pkgItem.Subpackages[i].Items[j].Title,
-						Brand:       pkgItem.Subpackages[i].Items[j].Brand,
-						Category:    pkgItem.Subpackages[i].Items[j].Category,
-						Guaranty:    pkgItem.Subpackages[i].Items[j].Guaranty,
-						Image:       pkgItem.Subpackages[i].Items[j].Image,
-						Returnable:  pkgItem.Subpackages[i].Items[j].Returnable,
-						Quantity:    pkgItem.Subpackages[i].Items[j].Quantity,
-						Attributes:  pkgItem.Subpackages[i].Items[j].Attributes,
-						Invoice: &pb.SellerOrderDetail_ItemDetail_Invoice{
-							Unit:             0,
-							Total:            0,
-							Original:         0,
-							Special:          0,
-							Discount:         0,
-							SellerCommission: pkgItem.Subpackages[i].Items[j].Invoice.SellerCommission,
-						},
+		if filter == AllOrdersFilter {
+			for j := 0; j < len(pkgItem.Subpackages[i].Items); j++ {
+				var statusName string
+				if stateList, ok := server.sellerStatesMap[pkgItem.Subpackages[i].Status]; ok {
+					if len(stateList) == 1 {
+						statusName = stateList[0].StateName()
+					} else {
+						length := len(pkgItem.Subpackages[i].Tracking.History)
+						for _, state := range stateList {
+							if pkgItem.Subpackages[i].Tracking.History[length-2].Name == state.StateName() {
+								statusName = state.StateName()
+								break
+							}
+						}
+					}
+				}
+				itemDetail := &pb.SellerOrderDetail_ItemDetail{
+					SID:         pkgItem.Subpackages[i].SId,
+					Sku:         pkgItem.Subpackages[i].Items[j].SKU,
+					Status:      statusName,
+					SIdx:        int32(states.FromString(pkgItem.Subpackages[i].Status).StateIndex()),
+					InventoryId: pkgItem.Subpackages[i].Items[j].InventoryId,
+					Title:       pkgItem.Subpackages[i].Items[j].Title,
+					Brand:       pkgItem.Subpackages[i].Items[j].Brand,
+					Category:    pkgItem.Subpackages[i].Items[j].Category,
+					Guaranty:    pkgItem.Subpackages[i].Items[j].Guaranty,
+					Image:       pkgItem.Subpackages[i].Items[j].Image,
+					Returnable:  pkgItem.Subpackages[i].Items[j].Returnable,
+					Quantity:    pkgItem.Subpackages[i].Items[j].Quantity,
+					Attributes:  pkgItem.Subpackages[i].Items[j].Attributes,
+					Invoice: &pb.SellerOrderDetail_ItemDetail_Invoice{
+						Unit:             0,
+						Total:            0,
+						Original:         0,
+						Special:          0,
+						Discount:         0,
+						SellerCommission: pkgItem.Subpackages[i].Items[j].Invoice.SellerCommission,
+					},
+				}
+
+				unit, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Unit.Amount)
+				if err != nil {
+					logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Unit invalid, unit: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+						pkgItem.Subpackages[i].Items[j].Invoice.Unit.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+				}
+				itemDetail.Invoice.Unit = uint64(unit.IntPart())
+
+				total, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Total.Amount)
+				if err != nil {
+					logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Total invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+						pkgItem.Subpackages[i].Items[j].Invoice.Total.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+				}
+				itemDetail.Invoice.Total = uint64(total.IntPart())
+
+				original, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Original.Amount)
+				if err != nil {
+					logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+						pkgItem.Subpackages[i].Items[j].Invoice.Original.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+				}
+				itemDetail.Invoice.Original = uint64(original.IntPart())
+
+				special, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Special.Amount)
+				if err != nil {
+					logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Special invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+						pkgItem.Subpackages[i].Items[j].Invoice.Special.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+				}
+				itemDetail.Invoice.Special = uint64(special.IntPart())
+
+				discount, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Discount.Amount)
+				if err != nil {
+					logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Discount invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+						pkgItem.Subpackages[i].Items[j].Invoice.Discount.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+				}
+				itemDetail.Invoice.Discount = uint64(discount.IntPart())
+
+				sellerOrderDetailItems = append(sellerOrderDetailItems, itemDetail)
+			}
+		} else {
+			for _, filterState := range server.sellerFilterStates[filter] {
+				if pkgItem.Subpackages[i].Status == filterState.actualState.StateName() {
+					var statusName string
+					if len(filterState.expectedState) == 1 {
+						statusName = filterState.expectedState[0].StateName()
+					} else {
+						length := len(pkgItem.Subpackages[i].Tracking.History)
+						for _, state := range filterState.expectedState {
+							if pkgItem.Subpackages[i].Tracking.History[length-2].Name == state.StateName() {
+								statusName = state.StateName()
+								break
+							}
+						}
 					}
 
-					unit, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Unit.Amount)
-					if err != nil {
-						logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Unit invalid, unit: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							pkgItem.Subpackages[i].Items[j].Invoice.Unit.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
-						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-					}
-					itemDetail.Invoice.Unit = uint64(unit.IntPart())
+					for j := 0; j < len(pkgItem.Subpackages[i].Items); j++ {
+						itemDetail := &pb.SellerOrderDetail_ItemDetail{
+							SID:         pkgItem.Subpackages[i].SId,
+							Sku:         pkgItem.Subpackages[i].Items[j].SKU,
+							Status:      statusName,
+							SIdx:        int32(states.FromString(pkgItem.Subpackages[i].Status).StateIndex()),
+							InventoryId: pkgItem.Subpackages[i].Items[j].InventoryId,
+							Title:       pkgItem.Subpackages[i].Items[j].Title,
+							Brand:       pkgItem.Subpackages[i].Items[j].Brand,
+							Category:    pkgItem.Subpackages[i].Items[j].Category,
+							Guaranty:    pkgItem.Subpackages[i].Items[j].Guaranty,
+							Image:       pkgItem.Subpackages[i].Items[j].Image,
+							Returnable:  pkgItem.Subpackages[i].Items[j].Returnable,
+							Quantity:    pkgItem.Subpackages[i].Items[j].Quantity,
+							Attributes:  pkgItem.Subpackages[i].Items[j].Attributes,
+							Invoice: &pb.SellerOrderDetail_ItemDetail_Invoice{
+								Unit:             0,
+								Total:            0,
+								Original:         0,
+								Special:          0,
+								Discount:         0,
+								SellerCommission: pkgItem.Subpackages[i].Items[j].Invoice.SellerCommission,
+							},
+						}
 
-					total, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Total.Amount)
-					if err != nil {
-						logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Total invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							pkgItem.Subpackages[i].Items[j].Invoice.Total.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
-						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-					}
-					itemDetail.Invoice.Total = uint64(total.IntPart())
+						unit, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Unit.Amount)
+						if err != nil {
+							logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Unit invalid, unit: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+								pkgItem.Subpackages[i].Items[j].Invoice.Unit.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
+							return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+						}
+						itemDetail.Invoice.Unit = uint64(unit.IntPart())
 
-					original, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Original.Amount)
-					if err != nil {
-						logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							pkgItem.Subpackages[i].Items[j].Invoice.Original.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
-						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-					}
-					itemDetail.Invoice.Original = uint64(original.IntPart())
+						total, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Total.Amount)
+						if err != nil {
+							logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Total invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+								pkgItem.Subpackages[i].Items[j].Invoice.Total.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
+							return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+						}
+						itemDetail.Invoice.Total = uint64(total.IntPart())
 
-					special, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Special.Amount)
-					if err != nil {
-						logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Special invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							pkgItem.Subpackages[i].Items[j].Invoice.Special.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
-						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-					}
-					itemDetail.Invoice.Special = uint64(special.IntPart())
+						original, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Original.Amount)
+						if err != nil {
+							logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+								pkgItem.Subpackages[i].Items[j].Invoice.Original.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
+							return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+						}
+						itemDetail.Invoice.Original = uint64(original.IntPart())
 
-					discount, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Discount.Amount)
-					if err != nil {
-						logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Discount invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							pkgItem.Subpackages[i].Items[j].Invoice.Discount.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
-						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-					}
-					itemDetail.Invoice.Discount = uint64(discount.IntPart())
+						special, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Special.Amount)
+						if err != nil {
+							logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Special invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+								pkgItem.Subpackages[i].Items[j].Invoice.Special.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
+							return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+						}
+						itemDetail.Invoice.Special = uint64(special.IntPart())
 
-					sellerOrderDetailItems = append(sellerOrderDetailItems, itemDetail)
+						discount, err := decimal.NewFromString(pkgItem.Subpackages[i].Items[j].Invoice.Discount.Amount)
+						if err != nil {
+							logger.Err("sellerOrderDetailHandler() => decimal.NewFromString failed, subpackage Invoice.Discount invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
+								pkgItem.Subpackages[i].Items[j].Invoice.Discount.Amount, pkgItem.OrderId, pkgItem.PId, pkgItem.Subpackages[i].SId, err)
+							return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+						}
+						itemDetail.Invoice.Discount = uint64(discount.IntPart())
+
+						sellerOrderDetailItems = append(sellerOrderDetailItems, itemDetail)
+					}
 				}
 			}
 		}
+	}
+
+	if len(sellerOrderDetailItems) == 0 {
+		return nil, status.Error(codes.Code(future.NotFound), "Order Item Not Found")
 	}
 
 	sellerOrderDetail := &pb.SellerOrderDetail{
@@ -633,12 +734,23 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 		for j := 0; j < len(pkgList[i].Subpackages); j++ {
 			for _, filterState := range server.sellerFilterStates[filter] {
 				if pkgList[i].Subpackages[i].Status == filterState.actualState.StateName() {
+					var statusName string
+					if len(filterState.expectedState) == 1 {
+						statusName = filterState.expectedState[0].StateName()
+					} else {
+						length := len(pkgList[i].Subpackages[i].Tracking.History)
+						for _, state := range filterState.expectedState {
+							if pkgList[i].Subpackages[i].Tracking.History[length-2].Name == state.StateName() {
+								statusName = state.StateName()
+							}
+						}
+					}
 					itemDetailList = make([]*pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item, 0, len(pkgList[i].Subpackages[j].Items))
 					for z := 0; z < len(pkgList[i].Subpackages[j].Items); z++ {
 						itemOrder := &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item{
 							SID:    pkgList[i].Subpackages[j].SId,
 							Sku:    pkgList[i].Subpackages[j].Items[z].SKU,
-							Status: filterState.expectedState.StateName(),
+							Status: statusName,
 							SIdx:   int32(states.FromString(pkgList[i].Subpackages[j].Status).StateIndex()),
 							Detail: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item_Detail{
 								InventoryId:     pkgList[i].Subpackages[j].Items[z].InventoryId,
@@ -1137,16 +1249,27 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 func (server *Server) sellerOrderDeliveredReportsHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
 
 	queryPathDeliveryPendingState := server.queryPathStates[DeliveryPendingFilter]
-	queryPathDeliveryDelayedState := server.queryPathStates[DeliveryDelayedFilter]
-	deliveryPendingAndDelayedFilter := func() interface{} {
+	deliveryPendingFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()},
+				bson.M{queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()}}}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
+				bson.M{queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()}}}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathDeliveryDelayedState := server.queryPathStates[DeliveryDelayedFilter]
+	deliveryDelayedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
 				bson.M{queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}}}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()},
 				bson.M{queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}}}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
@@ -1177,9 +1300,15 @@ func (server *Server) sellerOrderDeliveredReportsHandler(ctx context.Context, us
 		}
 	}
 
-	deliveryPendingAndDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveryPendingAndDelayedFilter)
+	deliveryPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveryPendingFilter)
 	if err != nil {
-		logger.Err("sellerOrderDeliverReportsHandler() => CountWithFilter for deliveryPendingAndDelayedFilter failed, userId: %d, error: %v", userId, err)
+		logger.Err("sellerOrderDeliverReportsHandler() => CountWithFilter for deliveryPendingFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	deliveryDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveryDelayedFilter)
+	if err != nil {
+		logger.Err("sellerOrderDeliverReportsHandler() => CountWithFilter for deliveryDelayedFilter failed, userId: %d, error: %v", userId, err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
@@ -1196,10 +1325,11 @@ func (server *Server) sellerOrderDeliveredReportsHandler(ctx context.Context, us
 	}
 
 	sellerOrderDeliveredReports := &pb.SellerOrderDeliveredReports{
-		SellerId:                  userId,
-		DeliveryPendingAndDelayed: uint32(deliveryPendingAndDelayedCount),
-		Delivered:                 uint32(deliveredCount),
-		DeliveryFailed:            uint32(deliveryFailedCount),
+		SellerId:        userId,
+		DeliveryPending: uint32(deliveryPendingCount),
+		DeliveryDelayed: uint32(deliveryDelayedCount),
+		Delivered:       uint32(deliveredCount),
+		DeliveryFailed:  uint32(deliveryFailedCount),
 	}
 
 	serializedData, e := proto.Marshal(sellerOrderDeliveredReports)
@@ -1260,9 +1390,9 @@ func (server *Server) sellerOrderCancelReportsHandler(ctx context.Context, userI
 	}
 
 	sellerOrderCancelReports := &pb.SellerOrderCancelReports{
-		SellerId:       userId,
-		CancelBySeller: uint32(cancelBySellerCount),
-		CancelByBuyer:  uint32(cancelByBuyerCount),
+		SellerId:         userId,
+		CanceledBySeller: uint32(cancelBySellerCount),
+		CanceledByBuyer:  uint32(cancelByBuyerCount),
 	}
 
 	serializedData, e := proto.Marshal(sellerOrderCancelReports)
@@ -1277,6 +1407,425 @@ func (server *Server) sellerOrderCancelReportsHandler(ctx context.Context, userI
 		Meta:   nil,
 		Data: &any.Any{
 			TypeUrl: "baman.io/" + proto.MessageName(sellerOrderCancelReports),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
+func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
+
+	queryPathApprovalPendingFilterState := server.queryPathStates[ApprovalPendingFilter]
+	approvalPendingFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathApprovalPendingFilterState.queryPath: queryPathApprovalPendingFilterState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathApprovalPendingFilterState.queryPath: queryPathApprovalPendingFilterState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathShipmentPendingState := server.queryPathStates[ShipmentPendingFilter]
+	shipmentPendingFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "packages.deletedAt": nil, queryPathShipmentPendingState.queryPath: queryPathShipmentPendingState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "packages.deletedAt": nil, queryPathShipmentPendingState.queryPath: queryPathShipmentPendingState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathShipmentDelayedState := server.queryPathStates[ShipmentDelayedFilter]
+	shipmentDelayedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShipmentDelayedState.queryPath: queryPathShipmentDelayedState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShipmentDelayedState.queryPath: queryPathShipmentDelayedState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathShippedState := server.queryPathStates[ShippedFilter]
+	shippedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShippedState.queryPath: queryPathShippedState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShippedState.queryPath: queryPathShippedState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathRequestPendingState := server.queryPathStates[ReturnRequestPendingFilter]
+	returnRequestPendingFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestPendingState.queryPath: queryPathRequestPendingState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestPendingState.queryPath: queryPathRequestPendingState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathRequestRejectedState := server.queryPathStates[ReturnRequestRejectedFilter]
+	returnRequestRejectedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestRejectedState.queryPath: queryPathRequestRejectedState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestRejectedState.queryPath: queryPathRequestRejectedState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathReturnShipmentPendingState := server.queryPathStates[ReturnShipmentPendingFilter]
+	returnShipmentPendingFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShipmentPendingState.queryPath: queryPathReturnShipmentPendingState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShipmentPendingState.queryPath: queryPathReturnShipmentPendingState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathReturnShippedState := server.queryPathStates[ReturnShippedFilter]
+	returnShippedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShippedState.queryPath: queryPathReturnShippedState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShippedState.queryPath: queryPathReturnShippedState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathReturnDeliveredState := server.queryPathStates[ReturnDeliveredFilter]
+	returnDeliveredFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveredState.queryPath: queryPathReturnDeliveredState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveredState.queryPath: queryPathReturnDeliveredState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathReturnDeliveryPendingState := server.queryPathStates[ReturnDeliveryPendingFilter]
+	returnDeliveryPendingFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryPendingState.queryPath: queryPathReturnDeliveryPendingState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryPendingState.queryPath: queryPathReturnDeliveryPendingState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathReturnDeliveryDelayedState := server.queryPathStates[ReturnDeliveryDelayedFilter]
+	returnDeliveryDelayedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryDelayedState.queryPath: queryPathReturnDeliveryDelayedState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryDelayedState.queryPath: queryPathReturnDeliveryDelayedState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathReturnDeliveryFailedState := server.queryPathStates[ReturnDeliveryFailedFilter]
+	returnDeliveryFailedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryFailedState.queryPath: queryPathReturnDeliveryFailedState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryFailedState.queryPath: queryPathReturnDeliveryFailedState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathDeliveryPendingState := server.queryPathStates[DeliveryPendingFilter]
+	deliveryPendingFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathDeliveryDelayedState := server.queryPathStates[DeliveryDelayedFilter]
+	deliveryDelayedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathDeliveredState := server.queryPathStates[DeliveredFilter]
+	deliveredFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveredState.queryPath: queryPathDeliveredState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveredState.queryPath: queryPathDeliveredState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathDeliveryFailedState := server.queryPathStates[DeliveryFailedFilter]
+	deliveryFailedFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryFailedState.queryPath: queryPathDeliveryFailedState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryFailedState.queryPath: queryPathDeliveryFailedState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathCanceledByBuyerState := server.queryPathStates[CanceledByBuyerFilter]
+	cancelByBuyerFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledByBuyerState.queryPath: queryPathCanceledByBuyerState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledByBuyerState.queryPath: queryPathCanceledByBuyerState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	queryPathCanceledBySellerState := server.queryPathStates[CanceledBySellerFilter]
+	cancelBySellerFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledBySellerState.queryPath: queryPathCanceledBySellerState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledBySellerState.queryPath: queryPathCanceledBySellerState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	approvalPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, approvalPendingFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for cancelByBuyerFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	shipmentPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shipmentPendingFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for shipmentPendingFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	shipmentDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shipmentDelayedFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for shipmentDelayedFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	shippedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shippedFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for shippedFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	returnRequestPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnRequestPendingFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for returnRequestPendingFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	returnShipmentPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnShipmentPendingFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for returnShipmentPendingFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	returnShippedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnShippedFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for returnShippedFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	returnDeliveredCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveredFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for returnDeliveredFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	returnDeliveryFailedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveryFailedFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for returnDeliveryFailedFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	returnRequestRejectedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnRequestRejectedFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for returnRequestRejectedFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	returnDeliveryPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveryPendingFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for returnDeliveryPendingFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	returnDeliveryDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveryDelayedFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for returnDeliveryDelayedFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	deliveryPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveryPendingFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for deliveryPendingFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	deliveryDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveryDelayedFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for deliveryDelayedFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	deliveredCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveredFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for deliveredFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	deliveryFailedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveryFailedFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for deliveryFailedFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	canceledByBuyerCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, cancelByBuyerFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for cancelByBuyerFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	canceledBySellerCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, cancelBySellerFilter)
+	if err != nil {
+		logger.Err("sellerAllOrderHandler() => CountWithFilter for cancelBySellerFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	sellerAllOrderReports := &pb.SellerAllOrderReports{
+		SellerId:        userId,
+		ApprovalPending: uint32(approvalPendingCount),
+		ShipmentReports: &pb.SellerAllOrderReports_ShipmentReport{
+			ShipmentPending: uint32(shipmentPendingCount),
+			ShipmentDelayed: uint32(shipmentDelayedCount),
+			Shipped:         uint32(shippedCount),
+		},
+		DeliverReports: &pb.SellerAllOrderReports_DeliverReport{
+			DeliveryPending: uint32(deliveryPendingCount),
+			DeliveryDelayed: uint32(deliveryDelayedCount),
+			Delivered:       uint32(deliveredCount),
+			DeliveryFailed:  uint32(deliveryFailedCount),
+		},
+		ReturnReports: &pb.SellerAllOrderReports_ReturnReport{
+			ReturnRequestPending:  uint32(returnRequestPendingCount),
+			ReturnShipmentPending: uint32(returnShipmentPendingCount),
+			ReturnShipped:         uint32(returnShippedCount),
+			ReturnDeliveryPending: uint32(returnDeliveryPendingCount),
+			ReturnDeliveryDelayed: uint32(returnDeliveryDelayedCount),
+			ReturnDelivered:       uint32(returnDeliveredCount),
+			ReturnRequestRejected: uint32(returnRequestRejectedCount),
+			ReturnDeliveryFailed:  uint32(returnDeliveryFailedCount),
+		},
+		CancelReport: &pb.SellerAllOrderReports_CancelReport{
+			CanceledBySeller: uint32(canceledBySellerCount),
+			CanceledByBuyer:  uint32(canceledByBuyerCount),
+		},
+	}
+
+	serializedData, e := proto.Marshal(sellerAllOrderReports)
+	if e != nil {
+		logger.Err("sellerAllOrderHandler() => could not serialize sellerAllOrderReports, userId: %d, error:%s", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "SellerAllOrderReports",
+		Meta:   nil,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(sellerAllOrderReports),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
+func (server *Server) sellerApprovalPendingOrderReportsHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
+
+	queryPathApprovalPendingFilterState := server.queryPathStates[ApprovalPendingFilter]
+	approvalPendingFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathApprovalPendingFilterState.queryPath: queryPathApprovalPendingFilterState.state.StateName()}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathApprovalPendingFilterState.queryPath: queryPathApprovalPendingFilterState.state.StateName()}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	approvalPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, approvalPendingFilter)
+	if err != nil {
+		logger.Err("sellerApprovalPendingOrderReportsHandler() => CountWithFilter for cancelByBuyerFilter failed, userId: %d, error: %v", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	sellerApprovalPendingReports := &pb.SellerApprovalPendingReports{
+		SellerId:        userId,
+		ApprovalPending: uint32(approvalPendingCount),
+	}
+
+	serializedData, e := proto.Marshal(sellerApprovalPendingReports)
+	if e != nil {
+		logger.Err("sellerApprovalPendingOrderReportsHandler() => could not serialize sellerApprovalPendingReports, userId: %d, error:%s", userId, err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "SellerApprovalPendingReports",
+		Meta:   nil,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(sellerApprovalPendingReports),
 			Value:   serializedData,
 		},
 	}
