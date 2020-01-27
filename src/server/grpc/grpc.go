@@ -490,14 +490,23 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
 		logger.Err("RequestHandler() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		//return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
 	}
 
-	// TODO check acl
-	//if uint64(userAcl.User().UserID) != req.Meta.UID {
-	//	logger.Err("RequestHandler() => request userId %d mismatch with token userId: %d", req.Meta.UID, userAcl.User().UserID)
-	//	return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
-	//}
+	if uint64(userAcl.User().UserID) != req.Meta.UID {
+		logger.Err("RequestHandler() => request userId %d mismatch with token userId: %d", req.Meta.UID, userAcl.User().UserID)
+		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+	}
+
+	if req.Meta.UTP == string(OperatorUser) {
+		if !userAcl.UserPerm().Has("order.state.all.view") && RequestType(req.Type) == DataReqType {
+			return nil, status.Error(codes.Code(future.Forbidden), "User Not Permitted")
+		}
+
+		if !userAcl.UserPerm().Has("order.state.all.action") && RequestType(req.Type) == ActionReqType {
+			return nil, status.Error(codes.Code(future.Forbidden), "User Not Permitted")
+		}
+	}
 
 	if ctx.Value(string(utils.CtxUserID)) == nil {
 		ctx = context.WithValue(ctx, string(utils.CtxUserID), uint64(req.Meta.UID))
@@ -656,17 +665,13 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 		reqName != SellerAllOrderReports {
 		logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
 		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
-	}
-
-	if userType == BuyerUser &&
+	} else if userType == BuyerUser &&
 		reqName != BuyerOrderDetailList &&
 		reqName != BuyerReturnOrderReports &&
 		reqName != BuyerReturnOrderDetailList {
 		logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
 		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
-	}
-
-	if userType == OperatorUser &&
+	} else if userType == OperatorUser &&
 		reqName != OperatorOrderList &&
 		reqName != OperatorOrderDetail {
 		logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)

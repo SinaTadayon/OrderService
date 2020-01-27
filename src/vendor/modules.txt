@@ -86,7 +86,7 @@ gitlab.faza.io/protos/order
 gitlab.faza.io/protos/payment-gateway
 # gitlab.faza.io/protos/stock-proto.git v0.0.8
 gitlab.faza.io/protos/stock-proto.git
-# gitlab.faza.io/protos/user v0.0.38
+# gitlab.faza.io/protos/user v0.0.41
 gitlab.faza.io/protos/user
 # gitlab.faza.io/services/user-app-client v0.0.20
 gitlab.faza.io/services/user-app-client
