@@ -202,18 +202,13 @@ message UserSellerData {
     // @inject_tag: validate:"required"
     ReturnInfo              returnInfo      = 5;
     SellerContactPerson     contactPerson   = 6;
-    // @inject_tag: validate:"required"
     SellerShipmentInfo      shipmentInfo    = 7;
-    // @inject_tag: validate:"required"
     SellerFinanceData       financeData     = 8;
 }
 
 message SellerFinanceData {
-    // @inject_tag: validate:"required"
     string iban                     = 1;
-    // @inject_tag: validate:"required"
     string accountHolderFirstName   = 2;
-    // @inject_tag: validate:"required"
     string accountHolderFamilyName  = 3;
 }
 
@@ -222,7 +217,6 @@ message GeneralSellerInfo {
     string	shopDisplayName = 2;
     // @inject_tag: validate:"required"
     string	type = 3;
-    // @inject_tag: validate:"required"
     string	email = 4;
     string	landPhone = 5;
     // @inject_tag: validate:"required"
@@ -237,7 +231,6 @@ message GeneralSellerInfo {
     NameIdPair	neighborhood = 11;
     // @inject_tag: validate:"required"
     string 	postalAddress = 12;
-    // @inject_tag: validate:"required"
     string	postalCode = 13;
 
     bool	isVATObliged = 14;
@@ -245,26 +238,17 @@ message GeneralSellerInfo {
 }
 
 message CorporateSellerInfo {
-    // @inject_tag: validate:"required"
     string	companyRegisteredName       = 1;
-    // @inject_tag: validate:"required"
     string	companyRegistrationNumber   = 2;
-    // @inject_tag: validate:"required"
     string	companyRationalID           = 3;
-    // @inject_tag: validate:"required"
     string	tradeNumber                 = 4;
 }
 
 message IndividualSellerInfo{
-    // @inject_tag: validate:"required"
     string	firstName           = 1;
-    // @inject_tag: validate:"required"
     string	familyName          = 2;
-    // @inject_tag: validate:"required"
     string	nationalID          = 3;
-    // @inject_tag: validate:"required"
     string	nationalIDfrontURL  = 4;
-    // @inject_tag: validate:"required"
     string	nationalIDbackURL   = 5;
 }
 
@@ -283,28 +267,19 @@ message ReturnInfo{
 }
 
 message SellerContactPerson {
-    // @inject_tag: validate:"required"
     string	firstName       = 1;
-    // @inject_tag: validate:"required"
     string	familyName      = 2;
-    // @inject_tag: validate:"required"
     string	mobilePhone     = 3;
-    // @inject_tag: validate:"required"
     string	email           = 4;
 }
 
 message SellerShipmentInfo{
    message PricePlan {
-    // @inject_tag: validate:"required"
        int64 threshold          = 1;
-    // @inject_tag: validate:"required"
        int64 belowPrice         = 3;
-    // @inject_tag: validate:"required"
        int64 reactionTimeDays   = 4;
    } 
-    // @inject_tag: validate:"required"
    PricePlan sameCity       = 1;
-    // @inject_tag: validate:"required"
    PricePlan differentCity  = 2;
 }
 

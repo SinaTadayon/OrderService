@@ -21,15 +21,16 @@ func (server *Server) sellerGeneratePipelineFilter(ctx context.Context, filter F
 
 	newFilter := make([]interface{}, 2)
 
-	if filter == DeliveryPendingFilter {
-		queryPathDeliveryPendingState := server.queryPathStates[DeliveryPendingFilter]
-		queryPathDeliveryDelayedState := server.queryPathStates[DeliveryDelayedFilter]
-		newFilter[0] = "$or"
-		newFilter[1] = bson.A{
-			bson.M{queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()},
-			bson.M{queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}}
-
-	} else if filter == AllCanceledFilter {
+	//if filter == DeliveryPendingFilter {
+	//	queryPathDeliveryPendingState := server.queryPathStates[DeliveryPendingFilter]
+	//	queryPathDeliveryDelayedState := server.queryPathStates[DeliveryDelayedFilter]
+	//	newFilter[0] = "$or"
+	//	newFilter[1] = bson.A{
+	//		bson.M{queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()},
+	//		bson.M{queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}}
+	//
+	//} else
+	if filter == AllCanceledFilter {
 		queryPathCanceledBySellerState := server.queryPathStates[CanceledBySellerFilter]
 		queryPathCanceledByBuyerState := server.queryPathStates[CanceledByBuyerFilter]
 		newFilter[0] = "$or"
@@ -271,14 +272,15 @@ func (server *Server) sellerAllOrdersHandler(ctx context.Context, pid uint64, pa
 
 	var criteria = make([]interface{}, 0, len(server.sellerFilterStates))
 	for filter, _ := range server.sellerFilterStates {
-		if filter == DeliveryPendingFilter {
-			criteria = append(criteria, map[string]string{
-				server.queryPathStates[DeliveryPendingFilter].queryPath: server.queryPathStates[DeliveryPendingFilter].state.StateName(),
-			})
-			criteria = append(criteria, map[string]string{
-				server.queryPathStates[DeliveryDelayedFilter].queryPath: server.queryPathStates[DeliveryDelayedFilter].state.StateName(),
-			})
-		} else if filter != AllCanceledFilter {
+		//if filter == DeliveryPendingFilter {
+		//	criteria = append(criteria, map[string]string{
+		//		server.queryPathStates[DeliveryPendingFilter].queryPath: server.queryPathStates[DeliveryPendingFilter].state.StateName(),
+		//	})
+		//	criteria = append(criteria, map[string]string{
+		//		server.queryPathStates[DeliveryDelayedFilter].queryPath: server.queryPathStates[DeliveryDelayedFilter].state.StateName(),
+		//	})
+		//} else if filter != AllCanceledFilter {
+		if filter != AllCanceledFilter {
 			criteria = append(criteria, map[string]string{
 				server.queryPathStates[filter].queryPath: server.queryPathStates[filter].state.StateName(),
 			})
@@ -994,9 +996,9 @@ func (server *Server) sellerOrderShipmentReportsHandler(ctx context.Context, use
 	shipmentPendingFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "packages.deletedAt": nil, queryPathShipmentPendingState.queryPath: queryPathShipmentPendingState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "packages.deletedAt": nil, queryPathShipmentPendingState.queryPath: queryPathShipmentPendingState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "packages.deletedAt": nil, queryPathShipmentPendingState.queryPath: queryPathShipmentPendingState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1006,9 +1008,9 @@ func (server *Server) sellerOrderShipmentReportsHandler(ctx context.Context, use
 	shipmentDelayedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShipmentDelayedState.queryPath: queryPathShipmentDelayedState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShipmentDelayedState.queryPath: queryPathShipmentDelayedState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShipmentDelayedState.queryPath: queryPathShipmentDelayedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1018,9 +1020,9 @@ func (server *Server) sellerOrderShipmentReportsHandler(ctx context.Context, use
 	shippedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShippedState.queryPath: queryPathShippedState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShippedState.queryPath: queryPathShippedState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShippedState.queryPath: queryPathShippedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1076,9 +1078,9 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 	returnRequestPendingFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestPendingState.queryPath: queryPathRequestPendingState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestPendingState.queryPath: queryPathRequestPendingState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestPendingState.queryPath: queryPathRequestPendingState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1088,9 +1090,9 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 	returnRequestRejectedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestRejectedState.queryPath: queryPathRequestRejectedState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestRejectedState.queryPath: queryPathRequestRejectedState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestRejectedState.queryPath: queryPathRequestRejectedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1100,9 +1102,9 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 	returnShipmentPendingFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShipmentPendingState.queryPath: queryPathReturnShipmentPendingState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShipmentPendingState.queryPath: queryPathReturnShipmentPendingState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShipmentPendingState.queryPath: queryPathReturnShipmentPendingState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1112,9 +1114,9 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 	returnShippedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShippedState.queryPath: queryPathReturnShippedState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShippedState.queryPath: queryPathReturnShippedState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShippedState.queryPath: queryPathReturnShippedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1124,9 +1126,9 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 	returnDeliveredFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveredState.queryPath: queryPathReturnDeliveredState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveredState.queryPath: queryPathReturnDeliveredState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveredState.queryPath: queryPathReturnDeliveredState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1136,9 +1138,9 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 	returnDeliveryPendingFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryPendingState.queryPath: queryPathReturnDeliveryPendingState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryPendingState.queryPath: queryPathReturnDeliveryPendingState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryPendingState.queryPath: queryPathReturnDeliveryPendingState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1148,9 +1150,9 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 	returnDeliveryDelayedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryDelayedState.queryPath: queryPathReturnDeliveryDelayedState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryDelayedState.queryPath: queryPathReturnDeliveryDelayedState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryDelayedState.queryPath: queryPathReturnDeliveryDelayedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1160,9 +1162,9 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 	returnDeliveryFailedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryFailedState.queryPath: queryPathReturnDeliveryFailedState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryFailedState.queryPath: queryPathReturnDeliveryFailedState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryFailedState.queryPath: queryPathReturnDeliveryFailedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1251,12 +1253,10 @@ func (server *Server) sellerOrderDeliveredReportsHandler(ctx context.Context, us
 	queryPathDeliveryPendingState := server.queryPathStates[DeliveryPendingFilter]
 	deliveryPendingFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()}}}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()}}}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1265,12 +1265,10 @@ func (server *Server) sellerOrderDeliveredReportsHandler(ctx context.Context, us
 	queryPathDeliveryDelayedState := server.queryPathStates[DeliveryDelayedFilter]
 	deliveryDelayedFilter := func() interface{} {
 		return []bson.M{
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}}}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, "$or": bson.A{
-				bson.M{queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}}}},
+			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1280,9 +1278,9 @@ func (server *Server) sellerOrderDeliveredReportsHandler(ctx context.Context, us
 	deliveredFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveredState.queryPath: queryPathDeliveredState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveredState.queryPath: queryPathDeliveredState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveredState.queryPath: queryPathDeliveredState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1292,9 +1290,9 @@ func (server *Server) sellerOrderDeliveredReportsHandler(ctx context.Context, us
 	deliveryFailedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryFailedState.queryPath: queryPathDeliveryFailedState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryFailedState.queryPath: queryPathDeliveryFailedState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryFailedState.queryPath: queryPathDeliveryFailedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1357,9 +1355,9 @@ func (server *Server) sellerOrderCancelReportsHandler(ctx context.Context, userI
 	cancelByBuyerFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledByBuyerState.queryPath: queryPathCanceledByBuyerState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledByBuyerState.queryPath: queryPathCanceledByBuyerState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledByBuyerState.queryPath: queryPathCanceledByBuyerState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1369,9 +1367,9 @@ func (server *Server) sellerOrderCancelReportsHandler(ctx context.Context, userI
 	cancelBySellerFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledBySellerState.queryPath: queryPathCanceledBySellerState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledBySellerState.queryPath: queryPathCanceledBySellerState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledBySellerState.queryPath: queryPathCanceledBySellerState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1420,9 +1418,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	approvalPendingFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathApprovalPendingFilterState.queryPath: queryPathApprovalPendingFilterState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathApprovalPendingFilterState.queryPath: queryPathApprovalPendingFilterState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathApprovalPendingFilterState.queryPath: queryPathApprovalPendingFilterState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1432,9 +1430,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	shipmentPendingFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "packages.deletedAt": nil, queryPathShipmentPendingState.queryPath: queryPathShipmentPendingState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "packages.deletedAt": nil, queryPathShipmentPendingState.queryPath: queryPathShipmentPendingState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "packages.deletedAt": nil, queryPathShipmentPendingState.queryPath: queryPathShipmentPendingState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1444,9 +1442,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	shipmentDelayedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShipmentDelayedState.queryPath: queryPathShipmentDelayedState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShipmentDelayedState.queryPath: queryPathShipmentDelayedState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShipmentDelayedState.queryPath: queryPathShipmentDelayedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1456,9 +1454,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	shippedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShippedState.queryPath: queryPathShippedState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShippedState.queryPath: queryPathShippedState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathShippedState.queryPath: queryPathShippedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1468,9 +1466,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	returnRequestPendingFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestPendingState.queryPath: queryPathRequestPendingState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestPendingState.queryPath: queryPathRequestPendingState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestPendingState.queryPath: queryPathRequestPendingState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1480,9 +1478,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	returnRequestRejectedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestRejectedState.queryPath: queryPathRequestRejectedState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestRejectedState.queryPath: queryPathRequestRejectedState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathRequestRejectedState.queryPath: queryPathRequestRejectedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1492,9 +1490,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	returnShipmentPendingFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShipmentPendingState.queryPath: queryPathReturnShipmentPendingState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShipmentPendingState.queryPath: queryPathReturnShipmentPendingState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShipmentPendingState.queryPath: queryPathReturnShipmentPendingState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1504,9 +1502,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	returnShippedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShippedState.queryPath: queryPathReturnShippedState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShippedState.queryPath: queryPathReturnShippedState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnShippedState.queryPath: queryPathReturnShippedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1516,9 +1514,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	returnDeliveredFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveredState.queryPath: queryPathReturnDeliveredState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveredState.queryPath: queryPathReturnDeliveredState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveredState.queryPath: queryPathReturnDeliveredState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1528,9 +1526,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	returnDeliveryPendingFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryPendingState.queryPath: queryPathReturnDeliveryPendingState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryPendingState.queryPath: queryPathReturnDeliveryPendingState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryPendingState.queryPath: queryPathReturnDeliveryPendingState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1540,9 +1538,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	returnDeliveryDelayedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryDelayedState.queryPath: queryPathReturnDeliveryDelayedState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryDelayedState.queryPath: queryPathReturnDeliveryDelayedState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryDelayedState.queryPath: queryPathReturnDeliveryDelayedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1552,9 +1550,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	returnDeliveryFailedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryFailedState.queryPath: queryPathReturnDeliveryFailedState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryFailedState.queryPath: queryPathReturnDeliveryFailedState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathReturnDeliveryFailedState.queryPath: queryPathReturnDeliveryFailedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1564,9 +1562,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	deliveryPendingFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1576,9 +1574,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	deliveryDelayedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1588,9 +1586,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	deliveredFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveredState.queryPath: queryPathDeliveredState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveredState.queryPath: queryPathDeliveredState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveredState.queryPath: queryPathDeliveredState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1600,9 +1598,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	deliveryFailedFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryFailedState.queryPath: queryPathDeliveryFailedState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryFailedState.queryPath: queryPathDeliveryFailedState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathDeliveryFailedState.queryPath: queryPathDeliveryFailedState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1612,9 +1610,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	cancelByBuyerFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledByBuyerState.queryPath: queryPathCanceledByBuyerState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledByBuyerState.queryPath: queryPathCanceledByBuyerState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledByBuyerState.queryPath: queryPathCanceledByBuyerState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1624,9 +1622,9 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	cancelBySellerFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledBySellerState.queryPath: queryPathCanceledBySellerState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledBySellerState.queryPath: queryPathCanceledBySellerState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathCanceledBySellerState.queryPath: queryPathCanceledBySellerState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
@@ -1795,9 +1793,9 @@ func (server *Server) sellerApprovalPendingOrderReportsHandler(ctx context.Conte
 	approvalPendingFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathApprovalPendingFilterState.queryPath: queryPathApprovalPendingFilterState.state.StateName()}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathApprovalPendingFilterState.queryPath: queryPathApprovalPendingFilterState.state.StateName()}},
+			//{"$unwind": "$packages"},
+			//{"$unwind": "$packages.subpackages"},
+			//{"$match": bson.M{"packages.pid": userId, "deletedAt": nil, queryPathApprovalPendingFilterState.queryPath: queryPathApprovalPendingFilterState.state.StateName()}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}

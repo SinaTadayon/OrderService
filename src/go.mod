@@ -22,7 +22,7 @@ require (
 	gitlab.faza.io/protos/order v0.0.54
 	gitlab.faza.io/protos/payment-gateway v0.0.13
 	gitlab.faza.io/protos/stock-proto.git v0.0.8
-	gitlab.faza.io/protos/user v0.0.38
+	gitlab.faza.io/protos/user v0.0.41
 	gitlab.faza.io/services/user-app-client v0.0.20
 	go.mongodb.org/mongo-driver v1.2.0
 	go.uber.org/zap v1.13.0

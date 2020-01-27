@@ -145,6 +145,8 @@ gitlab.faza.io/protos/stock-proto.git v0.0.8 h1:TA9/sMQe+acPsu7LmM8zdKV02/0VJUCQ
 gitlab.faza.io/protos/stock-proto.git v0.0.8/go.mod h1:Gda0ineygX49cKhrjrUyHZv6Q3/lwFU3dU50BEWYCmo=
 gitlab.faza.io/protos/user v0.0.38 h1:9F0brRsFIuSHM/h8lXbp0iJckcToF4C2yOrS2hS/ECo=
 gitlab.faza.io/protos/user v0.0.38/go.mod h1:w6omD0TOMlJfOKcNTne7hlKN5FUOBPJzexzFCZmoyQY=
+gitlab.faza.io/protos/user v0.0.41 h1:vaqqken0a5ubIkKuEWnMiWu9ij4IUrzJJp2Pdbte41s=
+gitlab.faza.io/protos/user v0.0.41/go.mod h1:w6omD0TOMlJfOKcNTne7hlKN5FUOBPJzexzFCZmoyQY=
 gitlab.faza.io/services/user-app-client v0.0.20 h1:oBCQzRw3xWsypH+1HrBQfV532dSU/n95zMiPNmo5wuM=
 gitlab.faza.io/services/user-app-client v0.0.20/go.mod h1:f9kkas/2NAKns0oyTbfx86VohdkTN4RU0FJp0hlD4gw=
 go.mongodb.org/mongo-driver v1.1.2 h1:jxcFYjlkl8xaERsgLo+RNquI0epW6zuy/ZRQs6jnrFA=
