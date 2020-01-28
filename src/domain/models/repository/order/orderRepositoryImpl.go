@@ -3,10 +3,10 @@ package order_repository
 import (
 	"context"
 	"github.com/pkg/errors"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/models/repository"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -158,8 +158,7 @@ func (repo iOrderRepositoryImpl) FindAll(ctx context.Context) ([]*entities.Order
 	total, err := repo.Count(ctx)
 
 	if err != nil {
-		logger.Err("repo.Quantity() failed, %s", err)
-		total = int64(defaultDocCount)
+		return nil, err
 	}
 
 	if total == 0 {
@@ -190,8 +189,7 @@ func (repo iOrderRepositoryImpl) FindAll(ctx context.Context) ([]*entities.Order
 func (repo iOrderRepositoryImpl) FindAllWithSort(ctx context.Context, fieldName string, direction int) ([]*entities.Order, repository.IRepoError) {
 	total, err := repo.Count(ctx)
 	if err != nil {
-		logger.Err("repo.Quantity() failed, %s", err)
-		total = int64(defaultDocCount)
+		return nil, err
 	}
 
 	if total == 0 {
@@ -383,8 +381,7 @@ func (repo iOrderRepositoryImpl) FindByFilter(ctx context.Context, supplier func
 	filter := supplier()
 	total, err := repo.CountWithFilter(ctx, supplier)
 	if err != nil {
-		logger.Err("repo.Quantity() failed, %s", err)
-		total = int64(defaultDocCount)
+		return nil, err
 	}
 
 	if total == 0 {
@@ -410,15 +407,13 @@ func (repo iOrderRepositoryImpl) FindByFilter(ctx context.Context, supplier func
 	}
 
 	return orders, nil
-
 }
 
 func (repo iOrderRepositoryImpl) FindByFilterWithSort(ctx context.Context, supplier func() (interface{}, string, int)) ([]*entities.Order, repository.IRepoError) {
 	filter, fieldName, direction := supplier()
 	total, err := repo.CountWithFilter(ctx, func() interface{} { return filter })
 	if err != nil {
-		logger.Err("repo.Quantity() failed, %s", err)
-		total = int64(defaultDocCount)
+		return nil, err
 	}
 
 	if total == 0 {
@@ -689,6 +684,6 @@ func (repo iOrderRepositoryImpl) RemoveAll(ctx context.Context) repository.IRepo
 func closeCursor(context context.Context, cursor *mongo.Cursor) {
 	err := cursor.Close(context)
 	if err != nil {
-		logger.Err("closeCursor() failed, err: %s", err)
+		applog.GLog.Logger.Error("cursor.Close failed", "error", err)
 	}
 }

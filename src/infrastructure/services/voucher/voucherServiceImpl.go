@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/pkg/errors"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	voucherProto "gitlab.faza.io/protos/cart"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -37,8 +37,11 @@ func (voucherService *iVoucherServiceImpl) Connect() error {
 		voucherService.grpcConnection, err = grpc.DialContext(ctx, voucherService.serverAddress+":"+fmt.Sprint(voucherService.serverPort),
 			grpc.WithBlock(), grpc.WithInsecure())
 		if err != nil {
-			logger.Err("Connect() => GRPC connect dial to voucher service failed, address: %s, port: %d, err: %s",
-				voucherService.serverAddress, voucherService.serverPort, err.Error())
+			applog.GLog.Logger.Error("GRPC connect dial to voucher service failed",
+				"fn", "connect",
+				"address", voucherService.serverAddress,
+				"port", voucherService.serverPort,
+				"err", err.Error())
 			return err
 		}
 		voucherService.voucherClient = voucherProto.NewCouponServiceClient(voucherService.grpcConnection)
@@ -50,7 +53,9 @@ func (voucherService *iVoucherServiceImpl) Disconnect() error {
 	if voucherService.grpcConnection != nil {
 		err := voucherService.grpcConnection.Close()
 		if err != nil {
-			logger.Err("Disconnect() => voucherService Disconnect() failed, error: %s ", err)
+			applog.GLog.Logger.Error("voucherService Disconnect failed",
+				"fn", "Disconnect",
+				"error", err)
 			return nil
 		}
 	}
@@ -63,8 +68,12 @@ func (voucherService *iVoucherServiceImpl) Disconnect() error {
 func (voucherService iVoucherServiceImpl) VoucherSettlement(ctx context.Context,
 	voucherCode string, orderId uint64, buyerId uint64) future.IFuture {
 	if err := voucherService.Connect(); err != nil {
-		logger.Err("VoucherSettlement() => voucherClient.CouponUsed internal error, "+
-			"voucherCode: %s, orderId: %d, buyerId: %d, error: %s", voucherCode, orderId, buyerId, err)
+		applog.GLog.Logger.FromContext(ctx).Error("voucherClient.CouponUsed internal error",
+			"fn", "VoucherSettlement",
+			"voucherCode", voucherCode,
+			"oid", orderId,
+			"buyerId", buyerId,
+			"error", err)
 		return future.Factory().SetCapacity(1).
 			SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "voucherService.Connect() Failed")).
 			BuildAndSend()
@@ -105,7 +114,9 @@ func (voucherService iVoucherServiceImpl) VoucherSettlement(ctx context.Context,
 		timeoutTimer.Stop()
 		break
 	case <-timeoutTimer.C:
-		logger.Err("VoucherSettlement() => voucherService.voucherClient.CouponUsed grpc timeout, request: %v", couponReq)
+		applog.GLog.Logger.FromContext(ctx).Error("voucherService.voucherClient.CouponUsed grpc timeout",
+			"fn", "VoucherSettlement",
+			"request", couponReq)
 		return future.Factory().SetCapacity(1).
 			SetError(future.InternalError, "Unknown Error", errors.New("CouponUsed Timeout")).
 			BuildAndSend()
@@ -114,23 +125,34 @@ func (voucherService iVoucherServiceImpl) VoucherSettlement(ctx context.Context,
 	// TODO decode err code
 	if err, ok := obj.(error); ok {
 		if err != nil {
-			logger.Err("VoucherSettlement() => voucherClient.CouponUsed internal error, "+
-				"voucherCode: %s, orderId: %d, buyerId: %d, error: %v", voucherCode, orderId, buyerId, err)
+			applog.GLog.Logger.FromContext(ctx).Error("voucherClient.CouponUsed internal error",
+				"fn", "VoucherSettlement",
+				"voucherCode", voucherCode,
+				"orderId", orderId,
+				"buyerId", buyerId,
+				"error", err)
 			return future.Factory().SetCapacity(1).
 				SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "CouponUsed Failed")).
 				BuildAndSend()
 		}
 	} else if result, ok := obj.(*voucherProto.Result); ok {
 		if result.Code != 200 {
-			logger.Err("VoucherSettlement() => voucherClient.CouponUsed failed, "+
-				"voucherCode: %s, orderId: %d, buyerId: %d, error: %v", voucherCode, orderId, buyerId, result)
+			applog.GLog.Logger.FromContext(ctx).Error("voucherClient.CouponUsed failed",
+				"fn", "VoucherSettlement",
+				"voucherCode", voucherCode,
+				"oid", orderId,
+				"buyerId", buyerId,
+				"error", result)
 			return future.Factory().SetCapacity(1).
 				SetError(future.ErrorCode(result.Code), result.Message, errors.New("CouponUsed Failed")).
 				BuildAndSend()
 		}
 	}
 
-	logger.Audit("VoucherSettlement() => voucherClient.CouponUsed success, "+
-		"voucherCode: %s, orderId: %d, buyerId: %d", voucherCode, orderId, buyerId)
+	applog.GLog.Logger.FromContext(ctx).Info("voucherClient.CouponUsed success",
+		"fn", "VoucherSettlement",
+		"voucherCode", voucherCode,
+		"oid", orderId,
+		"buyerId", buyerId)
 	return future.Factory().SetCapacity(1).BuildAndSend()
 }

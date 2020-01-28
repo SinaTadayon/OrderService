@@ -20,6 +20,7 @@ import (
 	pkg_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/pkg"
 	subpkg_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/subpackage"
 	"gitlab.faza.io/order-project/order-service/domain/states"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	user_service "gitlab.faza.io/order-project/order-service/infrastructure/services/user"
@@ -48,9 +49,16 @@ func TestMain(m *testing.M) {
 		path = ""
 	}
 
+	applog.GLog.ZapLogger = applog.InitZap()
+	applog.GLog.Logger = logger.NewZapLogger(applog.GLog.ZapLogger)
+
+	app.Globals.ZapLogger = applog.GLog.ZapLogger
+	app.Globals.Logger = applog.GLog.Logger
+
 	app.Globals.Config, app.Globals.SMSTemplate, err = configs.LoadConfigs(path, "../../../testdata/notification/sms/smsTemplate.txt")
 	if err != nil {
-		logger.Err(err.Error())
+		applog.GLog.Logger.Error("configs.LoadConfig failed",
+			"error", err)
 		os.Exit(1)
 	}
 
@@ -73,15 +81,17 @@ func TestMain(m *testing.M) {
 
 	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
 	if err != nil {
-		logger.Err("mongoadapter.NewMongo Mongo: %v", err.Error())
-		panic("mongo adapter creation failed, " + err.Error())
+		applog.GLog.Logger.Error("mongoadapter.NewMongo Mongo failed",
+			"error", err.Error())
+		os.Exit(1)
 	}
 
 	// TODO create item repository
 	flowManager, err := domain.NewFlowManager()
 	if err != nil {
-		logger.Err("flowManager creation failed, %s ", err.Error())
-		panic("flowManager creation failed, " + err.Error())
+		applog.GLog.Logger.Error("flowManager creation failed",
+			"error", err.Error())
+		os.Exit(1)
 	}
 
 	app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver)
@@ -95,13 +105,13 @@ func TestMain(m *testing.M) {
 	if app.Globals.Config.App.SchedulerInterval == "" ||
 		app.Globals.Config.App.SchedulerParentWorkerTimeout == "" ||
 		app.Globals.Config.App.SchedulerWorkerTimeout == "" {
-		logger.Err("main() => SchedulerInterval or SchedulerParentWorkerTimeout or SchedulerWorkerTimeout env is empty ")
+		applog.GLog.Logger.Error("SchedulerInterval or SchedulerParentWorkerTimeout or SchedulerWorkerTimeout env is empty ")
 		os.Exit(1)
 	}
 
 	if app.Globals.Config.App.SchedulerTimeUint != "hour" &&
 		app.Globals.Config.App.SchedulerTimeUint != "minute" {
-		logger.Err("main() => SchedulerTimeUint env is invalid, %s ", app.Globals.Config.App.SchedulerTimeUint)
+		applog.GLog.Logger.Error("SchedulerTimeUint env is invalid")
 		os.Exit(1)
 	}
 
@@ -117,7 +127,7 @@ func TestMain(m *testing.M) {
 				}
 				stateList = append(stateList, config)
 			} else {
-				logger.Err("main() => state string SchedulerStates env is invalid, state: %s", stateConfig)
+				applog.GLog.Logger.Error("state string SchedulerStates env is invalid")
 				os.Exit(1)
 			}
 		} else if len(values) == 2 {
@@ -125,7 +135,8 @@ func TestMain(m *testing.M) {
 			temp, err := strconv.Atoi(values[1])
 			var scheduleInterval time.Duration
 			if err != nil {
-				logger.Err("main() => scheduleInterval of SchedulerStates env is invalid, state: %s, err: %v", stateConfig, err)
+				applog.GLog.Logger.Error("scheduleInterval of SchedulerStates env is invalid",
+					"error", err)
 				os.Exit(1)
 			}
 			if app.Globals.Config.App.SchedulerTimeUint == "hour" {
@@ -140,11 +151,11 @@ func TestMain(m *testing.M) {
 				}
 				stateList = append(stateList, config)
 			} else {
-				logger.Err("main() => state string SchedulerStates env is invalid, state: %s", stateConfig)
+				applog.GLog.Logger.Error("state string SchedulerStates env is invalid")
 				os.Exit(1)
 			}
 		} else {
-			logger.Err("main() => state string SchedulerStates env is invalid, state: %s", stateConfig)
+			applog.GLog.Logger.Error("state string SchedulerStates env is invalid")
 			os.Exit(1)
 		}
 	}
@@ -175,7 +186,7 @@ func TestMain(m *testing.M) {
 	grpcServer := grpc_server.NewServer(app.Globals.Config.GRPCServer.Address, uint16(app.Globals.Config.GRPCServer.Port), flowManager)
 
 	if !checkTcpPort(app.Globals.Config.GRPCServer.Address, strconv.Itoa(app.Globals.Config.GRPCServer.Port)) {
-		logger.Audit("Start GRPC Server for testing . . . ")
+		applog.GLog.Logger.Debug("Start GRPC Server for testing . . . ")
 		go grpcServer.StartTest()
 	}
 
@@ -656,7 +667,9 @@ func addStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) error {
 	if _, err := app.Globals.StockService.GetStockClient().StockAllocate(ctx, &request); err != nil {
 		return err
 	} else {
-		logger.Audit("Add Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+		applog.GLog.Logger.Debug("Add Stock success",
+			"inventoryId", request.InventoryId,
+			"quantity", request.Quantity)
 	}
 
 	request = stockProto.StockRequest{
@@ -667,7 +680,9 @@ func addStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) error {
 	if _, err := app.Globals.StockService.GetStockClient().StockAllocate(ctx, &request); err != nil {
 		return err
 	} else {
-		logger.Audit("Add Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+		applog.GLog.Logger.Debug("Add Stock success",
+			"inventoryId", request.InventoryId,
+			"quantity", request.Quantity)
 	}
 
 	request = stockProto.StockRequest{
@@ -678,7 +693,9 @@ func addStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) error {
 	if _, err := app.Globals.StockService.GetStockClient().StockAllocate(ctx, &request); err != nil {
 		return err
 	} else {
-		logger.Audit("Add Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+		applog.GLog.Logger.Debug("Add Stock success",
+			"inventoryId", request.InventoryId,
+			"quantity", request.Quantity)
 	}
 
 	request = stockProto.StockRequest{
@@ -689,7 +706,9 @@ func addStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) error {
 	if _, err := app.Globals.StockService.GetStockClient().StockAllocate(ctx, &request); err != nil {
 		return err
 	} else {
-		logger.Audit("Add Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+		applog.GLog.Logger.Debug("Add Stock success",
+			"inventoryId", request.InventoryId,
+			"quantity", request.Quantity)
 	}
 
 	return nil
@@ -708,7 +727,9 @@ func reservedStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) err
 	if _, err := app.Globals.StockService.GetStockClient().StockReserve(ctx, &request); err != nil {
 		return err
 	} else {
-		logger.Audit("Reserve Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+		applog.GLog.Logger.Debug("Reserve Stock success",
+			"inventoryId", request.InventoryId,
+			"quantity", request.Quantity)
 	}
 
 	request = stockProto.StockRequest{
@@ -719,7 +740,9 @@ func reservedStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) err
 	if _, err := app.Globals.StockService.GetStockClient().StockReserve(ctx, &request); err != nil {
 		return err
 	} else {
-		logger.Audit("Reserve Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+		applog.GLog.Logger.Debug("Reserve Stock success",
+			"inventoryId", request.InventoryId,
+			"quantity", request.Quantity)
 	}
 
 	request = stockProto.StockRequest{
@@ -730,7 +753,9 @@ func reservedStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) err
 	if _, err := app.Globals.StockService.GetStockClient().StockReserve(ctx, &request); err != nil {
 		return err
 	} else {
-		logger.Audit("Reserve success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+		applog.GLog.Logger.Debug("Reserve success",
+			"inventoryId", request.InventoryId,
+			"quantity", request.Quantity)
 	}
 
 	request = stockProto.StockRequest{
@@ -741,7 +766,9 @@ func reservedStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) err
 	if _, err := app.Globals.StockService.GetStockClient().StockReserve(ctx, &request); err != nil {
 		return err
 	} else {
-		logger.Audit("Reserve stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+		applog.GLog.Logger.Debug("Reserve stock success",
+			"inventoryId", request.InventoryId,
+			"quantity", request.Quantity)
 	}
 
 	return nil
@@ -760,7 +787,9 @@ func releaseStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) erro
 	if _, err := app.Globals.StockService.GetStockClient().StockRelease(ctx, &request); err != nil {
 		return err
 	} else {
-		logger.Audit("Release Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+		applog.GLog.Logger.Debug("Release Stock success",
+			"inventoryId", request.InventoryId,
+			"quantity", request.Quantity)
 	}
 
 	request = stockProto.StockRequest{
@@ -771,7 +800,9 @@ func releaseStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) erro
 	if _, err := app.Globals.StockService.GetStockClient().StockRelease(ctx, &request); err != nil {
 		return err
 	} else {
-		logger.Audit("Release Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+		applog.GLog.Logger.Debug("Release Stock success",
+			"inventoryId", request.InventoryId,
+			"quantity", request.Quantity)
 	}
 
 	request = stockProto.StockRequest{
@@ -782,7 +813,9 @@ func releaseStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) erro
 	if _, err := app.Globals.StockService.GetStockClient().StockRelease(ctx, &request); err != nil {
 		return err
 	} else {
-		logger.Audit("Release Stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+		applog.GLog.Logger.Debug("Release Stock success",
+			"inventoryId", request.InventoryId,
+			"quantity", request.Quantity)
 	}
 
 	request = stockProto.StockRequest{
@@ -793,7 +826,9 @@ func releaseStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) erro
 	if _, err := app.Globals.StockService.GetStockClient().StockRelease(ctx, &request); err != nil {
 		return err
 	} else {
-		logger.Audit("Release stock success, inventoryId: %s, quantity: %d", request.InventoryId, request.Quantity)
+		applog.GLog.Logger.Debug("Release stock success",
+			"inventoryId", request.InventoryId,
+			"quantity", request.Quantity)
 	}
 
 	return nil

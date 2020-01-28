@@ -7,6 +7,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/configs"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	stockProto "gitlab.faza.io/protos/stock-proto.git"
 	"os"
 	"testing"
@@ -25,9 +26,13 @@ func TestMain(m *testing.M) {
 		path = ""
 	}
 
+	applog.GLog.ZapLogger = applog.InitZap()
+	applog.GLog.Logger = logger.NewZapLogger(applog.GLog.ZapLogger)
+
 	config, _, err = configs.LoadConfigs(path, "")
 	if err != nil {
-		logger.Err(err.Error())
+		applog.GLog.Logger.Error("configs.LoadConfig failed",
+			"error", err)
 		os.Exit(1)
 	}
 
@@ -1097,10 +1102,8 @@ func createOrder() *entities.Order {
 func TestStockService_ReservedSuccess(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 
-	if err := stock.ConnectToStockService(); err != nil {
-		logger.Err(err.Error())
-		panic("stockService.ConnectToPaymentService() failed")
-	}
+	err := stock.ConnectToStockService()
+	require.Nil(t, err)
 
 	defer stock.CloseConnection()
 
@@ -1110,7 +1113,7 @@ func TestStockService_ReservedSuccess(t *testing.T) {
 		Quantity:    5,
 		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
 	}
-	_, err := stock.stockService.StockAllocate(ctx, &request)
+	_, err = stock.stockService.StockAllocate(ctx, &request)
 	require.Nil(t, err)
 
 	requestStock := RequestStock{
@@ -1127,7 +1130,9 @@ func TestStockService_ReservedSuccess(t *testing.T) {
 
 	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId})
 	require.Nil(t, err)
-	logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
+	applog.GLog.Logger.Debug("stockGet response",
+		"available", response.Available,
+		"reserved", response.Reserved)
 	require.Equal(t, response.Available, int32(0))
 	require.Equal(t, response.Reserved, int32(5))
 	_, err = stock.stockService.StockRelease(ctx, &request)
@@ -1172,7 +1177,9 @@ func TestStockService_SettlementSuccess(t *testing.T) {
 
 	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId})
 	require.Nil(t, err)
-	logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
+	applog.GLog.Logger.Debug("stockGet response",
+		"available", response.Available,
+		"reserved", response.Reserved)
 	require.Equal(t, response.Available, int32(0))
 	require.Equal(t, response.Reserved, int32(0))
 }
@@ -1215,7 +1222,9 @@ func TestStockService_ReleaseSuccess(t *testing.T) {
 
 	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId})
 	require.Nil(t, err)
-	logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
+	applog.GLog.Logger.Debug("stockGet response",
+		"available", response.Available,
+		"reserved", response.Reserved)
 	require.Equal(t, response.Available, int32(5))
 	require.Equal(t, response.Reserved, int32(0))
 }
@@ -1223,10 +1232,8 @@ func TestStockService_ReleaseSuccess(t *testing.T) {
 func TestStockService_SingleReservedSuccess(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 
-	if err := stock.ConnectToStockService(); err != nil {
-		logger.Err(err.Error())
-		panic("stockService.ConnectToPaymentService() failed")
-	}
+	err := stock.ConnectToStockService()
+	require.Nil(t, err)
 
 	defer stock.CloseConnection()
 
@@ -1236,7 +1243,7 @@ func TestStockService_SingleReservedSuccess(t *testing.T) {
 		Quantity:    5,
 		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
 	}
-	_, err := stock.stockService.StockAllocate(ctx, &request)
+	_, err = stock.stockService.StockAllocate(ctx, &request)
 	require.Nil(t, err)
 
 	requestStock := RequestStock{
@@ -1250,7 +1257,9 @@ func TestStockService_SingleReservedSuccess(t *testing.T) {
 
 	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId})
 	require.Nil(t, err)
-	logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
+	applog.GLog.Logger.Debug("stockGet response",
+		"available", response.Available,
+		"reserved", response.Reserved)
 	require.Equal(t, response.Available, int32(0))
 	require.Equal(t, response.Reserved, int32(5))
 	_, err = stock.stockService.StockRelease(ctx, &request)
@@ -1292,7 +1301,9 @@ func TestStockService_SingleSettlementSuccess(t *testing.T) {
 
 	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId})
 	require.Nil(t, err)
-	logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
+	applog.GLog.Logger.Debug("stockGet response",
+		"available", response.Available,
+		"reserved", response.Reserved)
 	require.Equal(t, response.Available, int32(0))
 	require.Equal(t, response.Reserved, int32(0))
 }
@@ -1332,7 +1343,9 @@ func TestStockService_SingleReleaseSuccess(t *testing.T) {
 
 	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId})
 	require.Nil(t, err)
-	logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
+	applog.GLog.Logger.Debug("stockGet response",
+		"available", response.Available,
+		"reserved", response.Reserved)
 	require.Equal(t, response.Available, int32(5))
 	require.Equal(t, response.Reserved, int32(0))
 }

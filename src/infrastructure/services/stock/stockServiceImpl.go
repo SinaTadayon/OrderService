@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/pkg/errors"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	stockProto "gitlab.faza.io/protos/stock-proto.git"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -34,7 +34,11 @@ func (stock *iStockServiceImpl) ConnectToStockService() error {
 		stock.grpcConnection, err = grpc.DialContext(ctx, stock.serverAddress+":"+fmt.Sprint(stock.serverPort),
 			grpc.WithBlock(), grpc.WithInsecure())
 		if err != nil {
-			logger.Err("ConnectToStockService() => GRPC connect dial to stock service failed, address: %s, port: %d, err: %s", stock.serverAddress, stock.serverPort, err.Error())
+			applog.GLog.Logger.Error("GRPC connect dial to stock service failed",
+				"fn", "ConnectToStockService",
+				"address", stock.serverAddress,
+				"port", stock.serverPort,
+				"err", err)
 			return err
 		}
 		stock.stockService = stockProto.NewStockClient(stock.grpcConnection)
@@ -44,7 +48,8 @@ func (stock *iStockServiceImpl) ConnectToStockService() error {
 
 func (stock *iStockServiceImpl) CloseConnection() {
 	if err := stock.grpcConnection.Close(); err != nil {
-		logger.Err("CloseConnection() => stock CloseConnection failed, error: %s", err)
+		applog.GLog.Logger.Error("stock CloseConnection failed",
+			"error", err)
 	}
 }
 
@@ -95,7 +100,9 @@ func (stock *iStockServiceImpl) SingleStockAction(ctx context.Context, requestSt
 			timeoutTimer.Stop()
 			break
 		case <-timeoutTimer.C:
-			logger.Err("SingleStockAction() => request to stock service grpc timeout, orderId: %d, request: %v", orderId, request)
+			applog.GLog.Logger.FromContext(ctx).Error("request to stock service grpc timeout",
+				"fn", "SingleStockAction",
+				"oid", orderId, "request", request)
 			response := ResponseStock{
 				InventoryId: requestStock.InventoryId,
 				Count:       requestStock.Count,
@@ -110,7 +117,12 @@ func (stock *iStockServiceImpl) SingleStockAction(ctx context.Context, requestSt
 		if e, ok := obj.(error); ok {
 			if e != nil {
 				err = e
-				logger.Err("SingleStockAction() => stock reserved failed, orderId: %d, inventoryId %s with quantity %d, error: %s", orderId, request.InventoryId, request.Quantity, err)
+				applog.GLog.Logger.FromContext(ctx).Error("stock reserved failed",
+					"fn", "SingleStockAction",
+					"oid", orderId,
+					"inventoryId", request.InventoryId,
+					"quantity", request.Quantity,
+					"error", err)
 				response := ResponseStock{
 					InventoryId: requestStock.InventoryId,
 					Count:       requestStock.Count,
@@ -122,7 +134,12 @@ func (stock *iStockServiceImpl) SingleStockAction(ctx context.Context, requestSt
 					BuildAndSend()
 			}
 		} else if response, ok := obj.(*stockProto.StockResponse); ok {
-			logger.Audit("SingleStockAction() => Stock Reserved success, orderId: %d, inventoryId: %s,  available: %d, reserved: %d", orderId, request.InventoryId, response.Available, response.Reserved)
+			applog.GLog.Logger.FromContext(ctx).Debug("Stock Reserved success",
+				"fn", "SingleStockAction",
+				"orderId", orderId,
+				"inventoryId", request.InventoryId,
+				"available", response.Available,
+				"reserved", response.Reserved)
 			response := ResponseStock{
 				InventoryId: requestStock.InventoryId,
 				Count:       requestStock.Count,
@@ -160,7 +177,10 @@ func (stock *iStockServiceImpl) SingleStockAction(ctx context.Context, requestSt
 			timeoutTimer.Stop()
 			break
 		case <-timeoutTimer.C:
-			logger.Err("SingleStockAction() => request to stock service release grpc timeout, orderId: %d, request: %v", orderId, request)
+			applog.GLog.Logger.FromContext(ctx).Error("request to stock service release grpc timeout",
+				"fn", "SingleStockAction",
+				"oid", orderId,
+				"request", request)
 			response := ResponseStock{
 				InventoryId: requestStock.InventoryId,
 				Count:       requestStock.Count,
@@ -176,7 +196,13 @@ func (stock *iStockServiceImpl) SingleStockAction(ctx context.Context, requestSt
 		if e, ok := obj.(error); ok {
 			if e != nil {
 				err = e
-				logger.Err("SingleStockAction() => Stock Release failed, orderId: %d, inventoryId %s with quantity %d, error: %s", orderId, request.InventoryId, request.Quantity, err)
+				applog.GLog.Logger.FromContext(ctx).Error("Stock Release failed",
+					"fn", "SingleStockAction",
+					"oid", orderId,
+					"inventoryId", request.InventoryId,
+					"quantity", request.Quantity,
+					"error", err)
+
 				response := ResponseStock{
 					InventoryId: requestStock.InventoryId,
 					Count:       requestStock.Count,
@@ -188,7 +214,12 @@ func (stock *iStockServiceImpl) SingleStockAction(ctx context.Context, requestSt
 					BuildAndSend()
 			}
 		} else if response, ok := obj.(*stockProto.StockResponse); ok {
-			logger.Audit("SingleStockAction() => Stock Release success, orderId: %d, inventoryId: %s,  available: %d, reserved: %d", orderId, request.InventoryId, response.Available, response.Reserved)
+			applog.GLog.Logger.FromContext(ctx).Debug("Stock Release success",
+				"fn", "SingleStockAction",
+				"orderId", orderId,
+				"inventoryId", request.InventoryId,
+				"available", response.Available,
+				"reserved", response.Reserved)
 			response := ResponseStock{
 				InventoryId: requestStock.InventoryId,
 				Count:       requestStock.Count,
@@ -225,7 +256,9 @@ func (stock *iStockServiceImpl) SingleStockAction(ctx context.Context, requestSt
 			timeoutTimer.Stop()
 			break
 		case <-timeoutTimer.C:
-			logger.Err("SingleStockAction() => request to stock service settlement grpc timeout, orderId: %d, request: %v", orderId, request)
+			applog.GLog.Logger.FromContext(ctx).Error("request to stock service settlement grpc timeout",
+				"fn", "SingleStockAction",
+				"orderId", orderId, "request", request)
 			response := ResponseStock{
 				InventoryId: requestStock.InventoryId,
 				Count:       requestStock.Count,
@@ -240,8 +273,12 @@ func (stock *iStockServiceImpl) SingleStockAction(ctx context.Context, requestSt
 		if e, ok := obj.(error); ok {
 			if e != nil {
 				err = e
-				logger.Err("SingleStockAction() => stockService.StockSettle failed, orderId: %d ,inventoryId: %s, quantity: %d, error: %s",
-					orderId, request.InventoryId, request.Quantity, err)
+				applog.GLog.Logger.FromContext(ctx).Error("stockService.StockSettle failed",
+					"fn", "SingleStockAction",
+					"orderId", orderId,
+					"inventoryId", request.InventoryId,
+					"quantity", request.Quantity,
+					"error", err)
 				response := ResponseStock{
 					InventoryId: requestStock.InventoryId,
 					Count:       requestStock.Count,
@@ -253,7 +290,12 @@ func (stock *iStockServiceImpl) SingleStockAction(ctx context.Context, requestSt
 					BuildAndSend()
 			}
 		} else if response, ok := obj.(*stockProto.StockResponse); ok {
-			logger.Audit("BatchStockActions() => Stock Settlement success, orderId: %d, inventoryId: %s,  available: %d, reserved: %d", orderId, request.InventoryId, response.Available, response.Reserved)
+			applog.GLog.Logger.FromContext(ctx).Debug("Stock Settlement success",
+				"fn", "SingleStockAction",
+				"orderId", orderId,
+				"inventoryId", request.InventoryId,
+				"available", response.Available,
+				"reserved", response.Reserved)
 			response := ResponseStock{
 				InventoryId: requestStock.InventoryId,
 				Count:       requestStock.Count,
@@ -322,7 +364,9 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, requests 
 				timeoutTimer.Stop()
 				break
 			case <-timeoutTimer.C:
-				logger.Err("BatchStockActions() => request to stock service grpc timeout, orderId: %d, request: %v", orderId, request)
+				applog.GLog.Logger.FromContext(ctx).Error("request to stock service grpc timeout",
+					"fn", "BatchStockActions",
+					"oid", orderId, "request", request)
 				response := ResponseStock{
 					InventoryId: requestStock.InventoryId,
 					Count:       requestStock.Count,
@@ -336,7 +380,12 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, requests 
 			if e, ok := obj.(error); ok {
 				if e != nil {
 					err = e
-					logger.Err("BatchStockActions() => stock reserved failed, orderId: %d, inventoryId %s with quantity %d, error: %s", orderId, request.InventoryId, request.Quantity, err)
+					applog.GLog.Logger.FromContext(ctx).Error("stock reserved failed",
+						"fn", "BatchStockActions",
+						"oid", orderId,
+						"inventoryId", request.InventoryId,
+						"quantity", request.Quantity,
+						"error", err)
 					response := ResponseStock{
 						InventoryId: requestStock.InventoryId,
 						Count:       requestStock.Count,
@@ -345,7 +394,12 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, requests 
 					responses = append(responses, response)
 				}
 			} else if response, ok := obj.(*stockProto.StockResponse); ok {
-				logger.Audit("BatchStockActions() => Stock Reserved success, orderId: %d, inventoryId: %s,  available: %d, reserved: %d", orderId, request.InventoryId, response.Available, response.Reserved)
+				applog.GLog.Logger.FromContext(ctx).Debug("Stock Reserved success",
+					"fn", "BatchStockActions",
+					"oid", orderId,
+					"inventoryId", request.InventoryId,
+					"available", response.Available,
+					"reserved", response.Reserved)
 				response := ResponseStock{
 					InventoryId: requestStock.InventoryId,
 					Count:       requestStock.Count,
@@ -391,7 +445,9 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, requests 
 				timeoutTimer.Stop()
 				break
 			case <-timeoutTimer.C:
-				logger.Err("BatchStockActions() => request to stock service release grpc timeout, orderId: %d, request: %v", orderId, request)
+				applog.GLog.Logger.FromContext(ctx).Error("request to stock service release grpc timeout",
+					"fn", "BatchStockActions",
+					"orderId", orderId, "request", request)
 				response := ResponseStock{
 					InventoryId: requestStock.InventoryId,
 					Count:       requestStock.Count,
@@ -405,7 +461,12 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, requests 
 			if e, ok := obj.(error); ok {
 				if e != nil {
 					err = e
-					logger.Err("BatchStockActions() => Stock Release failed, orderId: %d, inventoryId %s with quantity %d, error: %s", orderId, request.InventoryId, request.Quantity, err)
+					applog.GLog.Logger.FromContext(ctx).Error("Stock Release failed",
+						"fn", "BatchStockActions",
+						"oid", orderId,
+						"inventoryId", request.InventoryId,
+						"quantity", request.Quantity,
+						"error", err)
 					response := ResponseStock{
 						InventoryId: requestStock.InventoryId,
 						Count:       requestStock.Count,
@@ -414,7 +475,12 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, requests 
 					responses = append(responses, response)
 				}
 			} else if response, ok := obj.(*stockProto.StockResponse); ok {
-				logger.Audit("BatchStockActions() => Stock Release success, orderId: %d, inventoryId: %s,  available: %d, reserved: %d", orderId, request.InventoryId, response.Available, response.Reserved)
+				applog.GLog.Logger.FromContext(ctx).Debug("Stock Release success",
+					"fn", "BatchStockActions",
+					"orderId", orderId,
+					"inventoryId", request.InventoryId,
+					"available", response.Available,
+					"reserved", response.Reserved)
 				response := ResponseStock{
 					InventoryId: requestStock.InventoryId,
 					Count:       requestStock.Count,
@@ -460,7 +526,10 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, requests 
 				timeoutTimer.Stop()
 				break
 			case <-timeoutTimer.C:
-				logger.Err("BatchStockActions() => request to stock service settlement grpc timeout, orderId: %d, request: %v", orderId, request)
+				applog.GLog.Logger.FromContext(ctx).Error("request to stock service settlement grpc timeout",
+					"fn", "BatchStockActions",
+					"orderId", orderId,
+					"request", request)
 				response := ResponseStock{
 					InventoryId: requestStock.InventoryId,
 					Count:       requestStock.Count,
@@ -474,8 +543,12 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, requests 
 			if e, ok := obj.(error); ok {
 				if e != nil {
 					err = e
-					logger.Err("BatchStockActions() => stockService.StockSettle failed, orderId: %d ,inventoryId: %s, quantity: %d, error: %s",
-						orderId, request.InventoryId, request.Quantity, err)
+					applog.GLog.Logger.FromContext(ctx).Error("stockService.StockSettle failed",
+						"fn", "BatchStockActions",
+						"orderId", orderId,
+						"inventoryId", request.InventoryId,
+						"quantity", request.Quantity,
+						"error", err)
 					response := ResponseStock{
 						InventoryId: requestStock.InventoryId,
 						Count:       requestStock.Count,
@@ -484,7 +557,12 @@ func (stock *iStockServiceImpl) BatchStockActions(ctx context.Context, requests 
 					responses = append(responses, response)
 				}
 			} else if response, ok := obj.(*stockProto.StockResponse); ok {
-				logger.Audit("BatchStockActions() => Stock Settlement success, orderId: %d, inventoryId: %s,  available: %d, reserved: %d", orderId, request.InventoryId, response.Available, response.Reserved)
+				applog.GLog.Logger.FromContext(ctx).Debug("Stock Settlement success",
+					"fn", "BatchStockActions",
+					"oid", orderId,
+					"inventoryId", request.InventoryId,
+					"available", response.Available,
+					"reserved", response.Reserved)
 				response := ResponseStock{
 					InventoryId: requestStock.InventoryId,
 					Count:       requestStock.Count,

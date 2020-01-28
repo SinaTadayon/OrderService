@@ -2,7 +2,6 @@ package state_01
 
 import (
 	"context"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
@@ -63,7 +62,11 @@ func (state newOrderState) Process(ctx context.Context, iFrame frame.IFrame) {
 	state.UpdateOrderAllStatus(ctx, order, states.OrderNewStatus, states.PackageNewStatus, action)
 	newOrder, err := app.Globals.OrderRepository.Save(ctx, *order)
 	if err != nil {
-		logger.Err("OrderRepository.Save in %s state failed, order: %v, error: %s", state.Name(), order, err)
+		app.Globals.Logger.FromContext(ctx).Error("OrderRepository.Save failed",
+			"fn", "Process",
+			"state", state.Name(),
+			"order", order,
+			"error", err)
 		state.releasedStock(ctx, newOrder)
 		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 			SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).
@@ -105,7 +108,12 @@ func (state newOrderState) releasedStock(ctx context.Context, order *entities.Or
 							Result:      response.Result,
 						}
 						stockActionDataList = append(stockActionDataList, actionData)
-						logger.Err("releasedStock() => Released stock from stockService failed, state: %s, orderId: %d, response: %v, error: %s", state.Name(), order.OrderId, response, futureData.Error())
+						app.Globals.Logger.FromContext(ctx).Error("Released stock from stockService failed",
+							"fn", "releasedStock",
+							"state", state.Name(),
+							"oid", order.OrderId,
+							"response", response,
+							"error", futureData.Error())
 					} else {
 						actionData := entities.StockActionData{
 							InventoryId: requestStock.InventoryId,
@@ -113,7 +121,11 @@ func (state newOrderState) releasedStock(ctx context.Context, order *entities.Or
 							Result:      false,
 						}
 						stockActionDataList = append(stockActionDataList, actionData)
-						logger.Err("releasedStock() => Released stock from stockService failed, state: %s, orderId: %d, error: %s", state.Name(), order.OrderId, futureData.Error())
+						app.Globals.Logger.FromContext(ctx).Error("Released stock from stockService failed",
+							"fn", "releasedStock",
+							"state", state.Name(),
+							"orderId", order.OrderId,
+							"error", futureData.Error())
 					}
 				} else {
 					response := futureData.Data().(stock_service.ResponseStock)
@@ -123,7 +135,10 @@ func (state newOrderState) releasedStock(ctx context.Context, order *entities.Or
 						Result:      response.Result,
 					}
 					stockActionDataList = append(stockActionDataList, actionData)
-					logger.Audit("Release stock success, state: %s, orderId: %d", state.Name(), order.OrderId)
+					app.Globals.Logger.FromContext(ctx).Debug("Release stock success",
+						"fn", "releasedStock",
+						"state", state.Name(),
+						"orderId", order.OrderId)
 				}
 			}
 			var stockAction *entities.Action

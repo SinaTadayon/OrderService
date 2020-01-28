@@ -3,10 +3,10 @@ package pkg_repository
 import (
 	"context"
 	"github.com/pkg/errors"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/models/repository"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -207,6 +207,6 @@ func (repo iPkgItemRepositoryImpl) CountWithFilter(ctx context.Context, supplier
 func closeCursor(context context.Context, cursor *mongo.Cursor) {
 	err := cursor.Close(context)
 	if err != nil {
-		logger.Err("closeCursor() failed, error: %s", err)
+		applog.GLog.Logger.Error("cursor.Close failed", "error", err)
 	}
 }

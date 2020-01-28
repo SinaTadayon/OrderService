@@ -2,7 +2,6 @@ package converter
 
 import (
 	"github.com/pkg/errors"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	ordersrv "gitlab.faza.io/protos/order"
 	"strconv"
@@ -110,7 +109,10 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	order.BuyerInfo.ShippingAddress.Province = newOrderDto.Buyer.ShippingAddress.Province
 	order.BuyerInfo.ShippingAddress.Neighbourhood = newOrderDto.Buyer.ShippingAddress.Neighbourhood
 	order.BuyerInfo.ShippingAddress.ZipCode = newOrderDto.Buyer.ShippingAddress.ZipCode
-	setOrderLocation(newOrderDto.Buyer.ShippingAddress.Lat, newOrderDto.Buyer.ShippingAddress.Long, &order)
+	err := setOrderLocation(newOrderDto.Buyer.ShippingAddress.Lat, newOrderDto.Buyer.ShippingAddress.Long, &order)
+	if err != nil {
+		return nil, errors.New("Lat/Long ShippingAddress Invalid")
+	}
 
 	if newOrderDto.Invoice == nil {
 		return nil, errors.New("invoice of RequestNewOrder invalid")
@@ -369,24 +371,23 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	return &order, nil
 }
 
-func setOrderLocation(lat, long string, order *entities.Order) {
+func setOrderLocation(lat, long string, order *entities.Order) error {
 	var latitude, longitude float64
 	var err error
 	if len(lat) == 0 || len(long) == 0 {
-		return
+		return nil
 	}
 
 	if latitude, err = strconv.ParseFloat(lat, 64); err != nil {
-		logger.Err("shippingAddress.latitude of RequestNewOrder ")
-		return
+		return err
 	}
 
 	if longitude, err = strconv.ParseFloat(long, 64); err != nil {
-		logger.Err("shippingAddress.longitude of RequestNewOrder ")
-		return
+		return err
 	}
 
 	order.BuyerInfo.ShippingAddress.Location = &entities.Location{}
 	order.BuyerInfo.ShippingAddress.Location.Type = "Point"
 	order.BuyerInfo.ShippingAddress.Location.Coordinates = []float64{longitude, latitude}
+	return nil
 }

@@ -4,7 +4,7 @@ import (
 	"flag"
 	"github.com/Netflix/go-env"
 	"github.com/joho/godotenv"
-	"gitlab.faza.io/go-framework/logger"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"os"
 )
 
@@ -136,47 +136,50 @@ func LoadConfig(path string) (*Config, *SmsTemplate, error) {
 	var smsTemplate = &SmsTemplate{}
 	currntPath, err := os.Getwd()
 	if err != nil {
-		logger.Err("get current working directory failed, error %s", err)
+		applog.GLog.Logger.Error("get current working directory failed", "error", err)
 	}
 
 	if os.Getenv("APP_MODE") == "dev" {
 		if path != "" {
 			err := godotenv.Load(path)
 			if err != nil {
-				logger.Err("Error loading testdata .env file, Working Directory: %s  path: %s, error: %s", currntPath, path, err)
+				applog.GLog.Logger.Error("Error loading testdata .env file",
+					"Working Directory", currntPath,
+					"path", path,
+					"error", err)
 			}
 		} else if flag.Lookup("test.v") != nil {
 			// test mode
 			err := godotenv.Load("../testdata/.env")
 			if err != nil {
-				logger.Err("Error loading testdata .env file, error: %s", err)
+				applog.GLog.Logger.Error("Error loading testdata .env file", "error", err)
 			}
 		}
 	} else if os.Getenv("APP_MODE") == "docker" {
 		err := godotenv.Load(path)
 		if err != nil {
-			logger.Err("Error loading .docker-env file, " + path)
+			applog.GLog.Logger.Error("Error loading .docker-env file", "path", path)
 		}
 	}
 
 	// Get environment variables for Config
 	_, err = env.UnmarshalFromEnviron(config)
 	if err != nil {
-		logger.Err("env.UnmarshalFromEnviron config failed")
+		applog.GLog.Logger.Error("env.UnmarshalFromEnviron config failed")
 		return nil, nil, err
 	}
 
 	if config.App.SmsTemplates != "" {
 		err := godotenv.Load(config.App.SmsTemplates)
 		if err != nil {
-			logger.Err("Error loading " + config.App.SmsTemplates + " file")
+			applog.GLog.Logger.Error("Error loading sms template file", "template", config.App.SmsTemplates)
 			return nil, nil, err
 		}
 	}
 
 	_, err = env.UnmarshalFromEnviron(smsTemplate)
 	if err != nil {
-		logger.Err("env.UnmarshalFromEnviron smsTemplate failed")
+		applog.GLog.Logger.Error("env.UnmarshalFromEnviron smsTemplate failed")
 		return nil, nil, err
 	}
 
@@ -188,20 +191,23 @@ func LoadConfigs(configPath string, smsTemplatePath string) (*Config, *SmsTempla
 	var smsTemplate = &SmsTemplate{}
 	currntPath, err := os.Getwd()
 	if err != nil {
-		logger.Err("get current working directory failed, error %s", err)
+		applog.GLog.Logger.Error("get current working directory failed", "error", err)
 	}
 
 	if os.Getenv("APP_MODE") == "dev" {
 		if configPath != "" {
 			err := godotenv.Load(configPath)
 			if err != nil {
-				logger.Err("Error loading testdata .env file, Working Directory: %s  path: %s, error: %s", currntPath, configPath, err)
+				applog.GLog.Logger.Error("Error loading testdata .env file",
+					"Working Directory", currntPath,
+					"path", configPath,
+					"error", err)
 			}
 		} else if flag.Lookup("test.v") != nil {
 			// test mode
 			err := godotenv.Load("../testdata/.env")
 			if err != nil {
-				logger.Err("Error loading testdata .env file, error: %s", err)
+				applog.GLog.Logger.Error("Error loading testdata .env file", "error", err)
 			}
 		}
 	}
@@ -209,20 +215,20 @@ func LoadConfigs(configPath string, smsTemplatePath string) (*Config, *SmsTempla
 	// Get environment variables for Config
 	_, err = env.UnmarshalFromEnviron(config)
 	if err != nil {
-		logger.Err("env.UnmarshalFromEnviron config failed")
+		applog.GLog.Logger.Error("env.UnmarshalFromEnviron config failed")
 		return nil, nil, err
 	}
 
 	if smsTemplatePath != "" {
 		err = godotenv.Load(smsTemplatePath)
 		if err != nil {
-			logger.Err("Error loading " + smsTemplatePath + " file")
+			applog.GLog.Logger.Error("Error loading sms template file", "template", smsTemplatePath)
 			return nil, nil, err
 		}
 
 		_, err = env.UnmarshalFromEnviron(smsTemplate)
 		if err != nil {
-			logger.Err("env.UnmarshalFromEnviron smsTemplate failed")
+			applog.GLog.Logger.Error("env.UnmarshalFromEnviron smsTemplate failed")
 			return nil, nil, err
 		}
 		return config, smsTemplate, nil

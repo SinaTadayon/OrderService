@@ -90,25 +90,33 @@ func SetupMongoDriver(config configs.Config) (*mongoadapter.Mongo, error) {
 
 	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
 	if err != nil {
-		logger.Err("mongoadapter.NewMongo Mongo: %v", err.Error())
+		Globals.Logger.Error("mongoadapter.NewMongo failed",
+			"fn", "SetupMongoDriver",
+			"Mongo", err)
 		return nil, errors.Wrap(err, "mongoadapter.NewMongo init failed")
 	}
 
 	_, err = mongoDriver.AddUniqueIndex(DatabaseName, CollectionName, "orderId")
 	if err != nil {
-		logger.Err("create orderId index failed, error: %s", err.Error())
+		Globals.Logger.Error("create orderId index failed",
+			"fn", "SetupMongoDriver",
+			"error", err)
 		return nil, err
 	}
 
 	_, err = mongoDriver.AddTextV3Index(DatabaseName, CollectionName, "packages.pkgId")
 	if err != nil {
-		logger.Err("create packages.pkgId index failed, error: %s", err.Error())
+		Globals.Logger.Error("create packages.pkgId index failed",
+			"fn", "SetupMongoDriver",
+			"error", err)
 		return nil, err
 	}
 
 	_, err = mongoDriver.AddTextV3Index(DatabaseName, CollectionName, "packages.subpackages.sid")
 	if err != nil {
-		logger.Err("create packages.subpackages.sid index failed, error: %s", err.Error())
+		Globals.Logger.Error("create packages.subpackages.sid index failed",
+			"fn", "SetupMongoDriver",
+			"error", err)
 		return nil, err
 	}
 

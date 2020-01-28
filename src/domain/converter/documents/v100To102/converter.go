@@ -2,10 +2,10 @@ package v100To102
 
 import (
 	"context"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -18,7 +18,7 @@ const (
 func SchedulerConvert() error {
 	orders, err := app.Globals.OrderRepository.FindAll(context.Background())
 	if err != nil {
-		logger.Err("convert() => app.Globals.OrderRepository.FindAll failed, err: %v", err)
+		applog.GLog.Logger.Error("convert() => app.Globals.OrderRepository.FindAll failed", "error", err)
 		return err
 	}
 
@@ -205,14 +205,14 @@ func SchedulerConvert() error {
 
 	err = app.Globals.OrderRepository.RemoveAll(context.Background())
 	if err != nil {
-		logger.Err("convert() => app.Globals.OrderRepository.RemoveAll failed, err: %v", err)
+		applog.GLog.Logger.Error("app.Globals.OrderRepository.RemoveAll failed", "error", err)
 		return err
 	}
 
 	for _, newOrder := range convertedOrders {
 		_, err = app.Globals.OrderRepository.Insert(context.Background(), newOrder)
 		if err != nil {
-			logger.Err("convert() => app.Globals.OrderRepository.RemoveAll failed, err: %v", err)
+			applog.GLog.Logger.Error("app.Globals.OrderRepository.RemoveAll failed", "error", err)
 			return err
 		}
 	}

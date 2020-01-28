@@ -7,8 +7,8 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/pkg/errors"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/go-framework/mongoadapter"
+	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	protoOrder "gitlab.faza.io/protos/order"
@@ -114,7 +114,9 @@ func (scheduler *SchedulerService) ConnectToOrderService() error {
 		scheduler.grpcConnection, err = grpc.DialContext(ctx, scheduler.serverAddress+":"+fmt.Sprint(scheduler.serverPort),
 			grpc.WithBlock(), grpc.WithInsecure())
 		if err != nil {
-			logger.Err("GRPC connect dial to order service failed, err: %s", err.Error())
+			app.Globals.Logger.Error("GRPC connect dial to order service failed",
+				"fn", " ConnectToOrderService",
+				"error", err)
 			return err
 		}
 		scheduler.orderClient = protoOrder.NewOrderServiceClient(scheduler.grpcConnection)
@@ -141,13 +143,17 @@ func (scheduler *SchedulerService) scheduleProcess(ctx context.Context, config S
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Audit("scheduleProcess() => stewardWorkerFn goroutine context down!, state: %s", config.State.StateName())
+			app.Globals.Logger.Debug("stewardWorkerFn goroutine context down!",
+				"fn", "scheduleProcess",
+				"state", config.State.StateName())
 			stewardTimer.Stop()
 			scheduler.waitGroup.Done()
 			return
 		case _, ok := <-heartbeat:
 			if ok == false {
-				logger.Audit("scheduleProcess() => heartbeat of stewardWorkerFn closed, state: %s", config.State.StateName())
+				app.Globals.Logger.Debug("heartbeat of stewardWorkerFn closed",
+					"fn", "scheduleProcess",
+					"state", config.State.StateName())
 				stewardCtxCancel()
 				stewardCtx, stewardCtxCancel = context.WithCancel(context.Background())
 				stewardWorkerFn := scheduler.stewardFn(utils.ORContext(ctx, stewardCtx), scheduler.schedulerWorkerTimeout, config.ScheduleInterval, config.State, scheduler.worker)
@@ -160,7 +166,9 @@ func (scheduler *SchedulerService) scheduleProcess(ctx context.Context, config S
 			}
 
 		case <-stewardTimer.C:
-			logger.Audit("scheduleProcess() => stewardWorkerFn goroutine is not healthy!, state: %s", config.State.StateName())
+			app.Globals.Logger.Debug("stewardWorkerFn goroutine is not healthy!",
+				"fn", "scheduleProcess",
+				"state:", config.State.StateName())
 			stewardCtxCancel()
 			stewardCtx, stewardCtxCancel = context.WithCancel(context.Background())
 			stewardWorkerFn := scheduler.stewardFn(utils.ORContext(ctx, stewardCtx), scheduler.schedulerWorkerTimeout, config.ScheduleInterval, config.State, scheduler.worker)
@@ -202,14 +210,18 @@ func (scheduler *SchedulerService) stewardFn(ctx context.Context, wardPulseInter
 					wardTimer.Reset(wardPulseInterval * 2)
 
 				case <-wardTimer.C:
-					logger.Err("stewardFn() => ward unhealthy; restarting ward, state: %s", state.StateName())
+					app.Globals.Logger.Error("ward unhealthy; restarting ward",
+						"fn", "stewardFn",
+						"state", state.StateName())
 					wardCtxCancel()
 					startWard()
 					wardTimer.Reset(wardPulseInterval * 2)
 
 				case <-ctx.Done():
 					wardTimer.Stop()
-					logger.Audit("stewardFn() => context done . . ., state: %s, cause: %s", state.StateName(), ctx.Err())
+					app.Globals.Logger.Debug("context done . . .",
+						"fn", "stewardFn",
+						"state", state.StateName(), "cause", ctx.Err())
 					return
 				}
 			}
@@ -221,7 +233,11 @@ func (scheduler *SchedulerService) stewardFn(ctx context.Context, wardPulseInter
 func (scheduler *SchedulerService) worker(ctx context.Context, pulseInterval time.Duration,
 	scheduleInterval time.Duration, state states.IEnumState) <-chan interface{} {
 
-	logger.Audit("worker() => pulse: %d, schedule: %d , state: %s,", pulseInterval, scheduleInterval, state.StateName())
+	app.Globals.Logger.Debug("scheduler start worker . . .",
+		"fn", "worker",
+		"pulse", pulseInterval,
+		"schedule", scheduleInterval,
+		"state", state.StateName())
 	var heartbeat = make(chan interface{}, 1)
 	go func() {
 		defer close(heartbeat)
@@ -239,7 +255,10 @@ func (scheduler *SchedulerService) worker(ctx context.Context, pulseInterval tim
 			case <-ctx.Done():
 				pulseTimer.Stop()
 				scheduleTimer.Stop()
-				logger.Audit("worker() => context down, state: %s, cause: %s", state.StateName(), ctx.Err())
+				app.Globals.Logger.Debug("context down",
+					"fn", "worker",
+					"state", state.StateName(),
+					"cause", ctx.Err())
 				return
 			case <-pulseTimer.C:
 				//logger.Audit("worker() => send pulse, state: %s", state.StateName())
@@ -256,19 +275,25 @@ func (scheduler *SchedulerService) worker(ctx context.Context, pulseInterval tim
 }
 
 func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.IEnumState) {
-	logger.Audit("doProcess() => state: %s", state.StateName())
+	app.Globals.Logger.Debug("scheduler doProcess",
+		"fn", "doProcess",
+		"state", state.StateName())
 	var perPage = int64(25)
 
 	totalCount, err := scheduler.getTotalCount(ctx, state)
 	if err != nil {
-		logger.Err("scheduler worker doProcess() => getTotalCount failed, states: %s", state.StateName())
+		app.Globals.Logger.Error("scheduler getTotalCount failed",
+			"fn", "doProcess",
+			"states", state.StateName())
 		return
 	}
 
 	for page := int64(1); page <= (totalCount/perPage)+1; page++ {
 		orderList, _, err := scheduler.findAllWithPage(ctx, state, page, perPage)
 		if err != nil {
-			logger.Err("scheduler worker doProcess() => findAllWithPage failed, states: %s", state.StateName())
+			app.Globals.Logger.Error("scheduler findAllWithPage failed",
+				"fn", "doProcess",
+				"states: %s", state.StateName())
 			return
 		}
 
@@ -360,7 +385,9 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 
 		serializedData, err := proto.Marshal(request)
 		if err != nil {
-			logger.Err("scheduler worker doProcess() => could not serialize protoOrder.SchedulerActionRequest, state: %s error:%s", state.StateName(), err)
+			app.Globals.Logger.FromContext(ctx).Error("marshal serialize protoOrder.SchedulerActionRequest",
+				"fn", "doProcess",
+				"state", state.StateName(), "error", err)
 			return
 		}
 
@@ -391,19 +418,25 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 
 		err = scheduler.ConnectToOrderService()
 		if err != nil {
-			logger.Err("scheduler worker doProcess() => scheduler.ConnectToOrderService failed, error: %s", err)
+			app.Globals.Logger.FromContext(ctx).Error("scheduler.ConnectToOrderService failed",
+				"fn", "doProcess",
+				"error", err)
 			return
 		}
 
 		_, err = scheduler.orderClient.SchedulerMessageHandler(ctx, msgReq)
 		if err != nil {
-			logger.Err("scheduler worker doProcess() => scheduler.orderClient.SchedulerMessageHandler failed, error: %s", err)
+			app.Globals.Logger.FromContext(ctx).Error("scheduler.orderClient.SchedulerMessageHandler failed",
+				"fn", "doProcess",
+				"error", err)
 			return
 		}
 
 		select {
 		case <-ctx.Done():
-			logger.Audit("scheduler worker doProcess() => context down, state: %s, cause: %s", state.StateName(), ctx.Err())
+			app.Globals.Logger.FromContext(ctx).Debug("context down",
+				"fn", "doProcess",
+				"state", state.StateName(), "cause", ctx.Err())
 			return
 		default:
 		}
@@ -420,26 +453,41 @@ func (scheduler *SchedulerService) checkExpiredTime(subpackage Subpackage) *Sche
 	if len(subpackage.Scheduler) == 1 {
 		if dateTime, ok := subpackage.Scheduler[0].Data.(primitive.DateTime); ok {
 			if dateTime.Time().Before(time.Now().UTC()) && subpackage.Scheduler[0].Enabled {
-				logger.Audit("action expired, "+
-					"orderId: %d, sid: %d, stateName: %s, stateIndex: %d, actionName: %s, expiredTime: %v ",
-					subpackage.OrderId, subpackage.SId, states.FromIndex(int32(subpackage.Sidx)).StateName(),
-					subpackage.Sidx, subpackage.Scheduler[0].Action, subpackage.Scheduler[0].Data)
+				app.Globals.Logger.Info("action expired",
+					"fn", "checkExpiredTime",
+					"oid", subpackage.OrderId,
+					"pid", subpackage.Pid,
+					"sid", subpackage.SId,
+					"state", states.FromIndex(int32(subpackage.Sidx)).StateName(),
+					"sIdx", subpackage.Sidx,
+					"actionName", subpackage.Scheduler[0].Action,
+					"expiredTime", subpackage.Scheduler[0].Data)
 				return &subpackage.Scheduler[0]
 			}
 		} else if dateTime, ok := subpackage.Scheduler[0].Data.(string); ok {
 			timestamp, err := time.Parse(time.RFC3339, dateTime)
 			if err != nil {
-				logger.Err("subpackage.Scheduler[0].Data invalid, data: %v "+
-					"orderId: %d, sid: %d, stateName: %s, stateIndex: %d, actionName: %s",
-					subpackage.Scheduler[0].Data, subpackage.OrderId, subpackage.SId, states.FromIndex(int32(subpackage.Sidx)).StateName(),
-					subpackage.Sidx, subpackage.Scheduler[0].Action)
+				app.Globals.Logger.Error("subpackage.Scheduler[0].Data invalid",
+					"fn", "checkExpiredTime",
+					"data", subpackage.Scheduler[0].Data,
+					"oid", subpackage.OrderId,
+					"pid", subpackage.Pid,
+					"sid", subpackage.SId,
+					"state", states.FromIndex(int32(subpackage.Sidx)).StateName(),
+					"sIdx", subpackage.Sidx,
+					"actionName", subpackage.Scheduler[0].Action)
 				return nil
 			}
 			if timestamp.Before(time.Now().UTC()) && subpackage.Scheduler[0].Enabled {
-				logger.Audit("action expired, "+
-					"orderId: %d, sid: %d, stateName: %s, stateIndex: %d, actionName: %s, expiredTime: %s ",
-					subpackage.OrderId, subpackage.SId, states.FromIndex(int32(subpackage.Sidx)).StateName(),
-					subpackage.Sidx, subpackage.Scheduler[0].Action, subpackage.Scheduler[0].Data)
+				app.Globals.Logger.Info("action expired",
+					"fn", "checkExpiredTime",
+					"oid", subpackage.OrderId,
+					"pid", subpackage.Pid,
+					"sid", subpackage.SId,
+					"state", states.FromIndex(int32(subpackage.Sidx)).StateName(),
+					"sIdx", subpackage.Sidx,
+					"actionName", subpackage.Scheduler[0].Action,
+					"expiredTime", subpackage.Scheduler[0].Data)
 				return &subpackage.Scheduler[0]
 			}
 		}
@@ -462,26 +510,41 @@ func (scheduler *SchedulerService) checkExpiredTime(subpackage Subpackage) *Sche
 
 			if dateTime, ok := subpackage.Scheduler[i].Data.(primitive.DateTime); ok {
 				if dateTime.Time().Before(time.Now().UTC()) && subpackage.Scheduler[i].Enabled {
-					logger.Audit("action expired, "+
-						"orderId: %d, sid: %d, stateName: %s, stateIndex: %d, actionName: %s, expiredTime: %v ",
-						subpackage.OrderId, subpackage.SId, states.FromIndex(int32(subpackage.Sidx)).StateName(),
-						subpackage.Sidx, subpackage.Scheduler[i].Action, subpackage.Scheduler[i].Data)
+					app.Globals.Logger.Info("action expired",
+						"fn", "checkExpiredTime",
+						"oid", subpackage.OrderId,
+						"pid", subpackage.Pid,
+						"sid", subpackage.SId,
+						"state", states.FromIndex(int32(subpackage.Sidx)).StateName(),
+						"sIdx", subpackage.Sidx,
+						"actionName", subpackage.Scheduler[i].Action,
+						"expiredTime", subpackage.Scheduler[i].Data)
 					sche = sortedScheduler[i]
 				}
 			} else if dateTime, ok := subpackage.Scheduler[i].Data.(string); ok {
 				timestamp, err := time.Parse(time.RFC3339, dateTime)
 				if err != nil {
-					logger.Err("subpackage.Scheduler[0].Data invalid, data: %v "+
-						"orderId: %d, sid: %d, stateName: %s, stateIndex: %d, actionName: %s",
-						subpackage.Scheduler[i].Data, subpackage.OrderId, subpackage.SId, states.FromIndex(int32(subpackage.Sidx)).StateName(),
-						subpackage.Sidx, subpackage.Scheduler[i].Action)
+					app.Globals.Logger.Error("subpackage.Scheduler[0].Data invalid",
+						"data", subpackage.Scheduler[i].Data,
+						"fn", "checkExpiredTime",
+						"oid", subpackage.OrderId,
+						"pid", subpackage.Pid,
+						"sid", subpackage.SId,
+						"state", states.FromIndex(int32(subpackage.Sidx)).StateName(),
+						"sIdx", subpackage.Sidx,
+						"actionName", subpackage.Scheduler[i].Action)
 					return nil
 				}
 				if timestamp.Before(time.Now().UTC()) && subpackage.Scheduler[i].Enabled {
-					logger.Audit("action expired, "+
-						"orderId: %d, sid: %d, stateName: %s, stateIndex: %d, actionName: %s, expiredTime: %s ",
-						subpackage.OrderId, subpackage.SId, states.FromIndex(int32(subpackage.Sidx)).StateName(),
-						subpackage.Sidx, subpackage.Scheduler[i].Action, subpackage.Scheduler[i].Data)
+					app.Globals.Logger.Info("action expired",
+						"fn", "checkExpiredTime",
+						"oid", subpackage.OrderId,
+						"pid", subpackage.Pid,
+						"sid", subpackage.SId,
+						"state", states.FromIndex(int32(subpackage.Sidx)).StateName(),
+						"sIdx", subpackage.Sidx,
+						"actionName", subpackage.Scheduler[i].Action,
+						"expiredTime", subpackage.Scheduler[i].Data)
 					sche = sortedScheduler[i]
 				}
 			}
@@ -495,7 +558,7 @@ func (scheduler *SchedulerService) checkExpiredTime(subpackage Subpackage) *Sche
 func (scheduler *SchedulerService) findAllWithPage(ctx context.Context, state states.IEnumState, page, perPage int64) ([]*Order, int64, error) {
 
 	if page <= 0 || perPage <= 0 {
-		return nil, 0, errors.New("neither offset nor start can be zero")
+		return nil, 0, errors.New("Page/PerPage Invalid")
 	}
 
 	var totalCount, err = scheduler.getTotalCount(ctx, state)
@@ -628,6 +691,8 @@ func (scheduler *SchedulerService) getTotalCount(ctx context.Context, state stat
 func closeCursor(context context.Context, cursor *mongo.Cursor) {
 	err := cursor.Close(context)
 	if err != nil {
-		logger.Err("closeCursor() failed, error: %s", err)
+		app.Globals.Logger.Error("closeCursor failed",
+			"fn", "closeCursor",
+			"error", err)
 	}
 }

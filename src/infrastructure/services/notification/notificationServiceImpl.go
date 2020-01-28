@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/pkg/errors"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"gitlab.faza.io/protos/notification"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -30,7 +30,11 @@ func (notification *iNotificationServiceImpl) ConnectToNotifyService() error {
 		notification.grpcConnection, err = grpc.DialContext(ctx, notification.serverAddress+":"+fmt.Sprint(notification.serverPort),
 			grpc.WithBlock(), grpc.WithInsecure())
 		if err != nil {
-			logger.Err("ConnectToStockService() => GRPC connect dial to stock service failed, address: %s, port: %d, err: %s", notification.serverAddress, notification.serverPort, err.Error())
+			applog.GLog.Logger.Error("GRPC connect dial to stock service failed",
+				"fn", "ConnectToNotifyService",
+				"address", notification.serverAddress,
+				"port", notification.serverPort,
+				"err", err.Error())
 			return err
 		}
 		notification.notifyService = NotificationService.NewNotificationServiceClient(notification.grpcConnection)
@@ -40,7 +44,9 @@ func (notification *iNotificationServiceImpl) ConnectToNotifyService() error {
 
 func (notification *iNotificationServiceImpl) CloseConnection() {
 	if err := notification.grpcConnection.Close(); err != nil {
-		logger.Err("notification CloseConnection failed, error: %s", err)
+		applog.GLog.Logger.Error("notification CloseConnection failed",
+			"fn", "CloseConnection",
+			"error", err)
 	}
 }
 
@@ -96,7 +102,9 @@ func (notification iNotificationServiceImpl) NotifyBySMS(ctx context.Context, re
 			timeoutTimer.Stop()
 			break
 		case <-timeoutTimer.C:
-			logger.Err("NotifyBySMS() => notifyService.SendSms timeout, request: %v", request)
+			applog.GLog.Logger.FromContext(ctx).Error("notifyService.SendSms timeout",
+				"fn", "NotifyBySMS",
+				"request", request)
 			return future.Factory().SetCapacity(1).
 				SetError(future.InternalError, "UnknownError", errors.New("NotifyBySMS Timeout")).
 				BuildAndSend()
@@ -104,20 +112,28 @@ func (notification iNotificationServiceImpl) NotifyBySMS(ctx context.Context, re
 
 		if err, ok := obj.(error); ok {
 			if err != nil {
-				logger.Err("NotifyBySMS() => notifyService.SendSms failed, request: %v, error: %s ", request, err.Error())
+				applog.GLog.Logger.FromContext(ctx).Error("notifyService.SendSms failed",
+					"fn", "NotifyBySMS",
+					"request", request, "error", err)
 				return future.Factory().SetCapacity(1).
 					SetError(future.InternalError, "UnknownError", errors.Wrap(err, "NotifyBySMS Failed")).
 					BuildAndSend()
 			}
 		} else if result, ok := obj.(*NotificationService.Result); ok {
 			if result.Status != 200 {
-				logger.Err("NotifyBySMS() => notifyService.SendSms failed, request: %v, status: %d, error: %s", request, result.Status, result.Message)
+				applog.GLog.Logger.FromContext(ctx).Error("notifyService.SendSms failed",
+					"fn", "NotifyBySMS",
+					"request", request,
+					"status", result.Status,
+					"error", result.Message)
 				return future.Factory().SetCapacity(1).
 					SetError(future.ErrorCode(result.Status), result.Message, errors.Wrap(err, "NotifyBySMS Failed")).
 					BuildAndSend()
 			}
 		} else {
-			logger.Err("NotifyBySMS() => notifyService.SendSms failed, result invalid, request: %v, result: %v", request, obj)
+			applog.GLog.Logger.FromContext(ctx).Error("notifyService.SendSms failed, result invalid",
+				"fn", "NotifyBySMS",
+				"request", "result", request, obj)
 			return future.Factory().SetCapacity(1).
 				SetError(future.InternalError, "UnknownError", errors.Wrap(err, "NotifyBySMS Failed")).
 				BuildAndSend()
@@ -147,13 +163,19 @@ func (notification iNotificationServiceImpl) NotifyByMail(ctx context.Context, r
 
 	result, err := notification.notifyService.SendEmail(ctx, req)
 	if err != nil {
-		logger.Err("NotifyByMail() =>=> failed, request: %v, error: %s ", request, err.Error())
+		applog.GLog.Logger.FromContext(ctx).Error("send mail failed",
+			"fn", "NotifyByMail",
+			"request", request, "error", err)
 		return future.Factory().SetCapacity(1).
-			SetError(future.InternalError, "UnknownError", errors.Wrap(err, "NotifyByMail => Failed")).
+			SetError(future.InternalError, "UnknownError", errors.Wrap(err, "NotifyByMail Failed")).
 			BuildAndSend()
 	}
 	if result.Status != 200 {
-		logger.Err("NotifyByMail() => failed, request: %v, status: %d, error: %s", request, result.Status, result.Message)
+		applog.GLog.Logger.FromContext(ctx).Error("send mail failed",
+			"fn", "NotifyByMail",
+			"request", request,
+			"status", result.Status,
+			"error", result.Message)
 		return future.Factory().SetCapacity(1).
 			SetError(future.ErrorCode(result.Status), result.Message, errors.Wrap(err, "NotifyByMail Failed")).
 			BuildAndSend()

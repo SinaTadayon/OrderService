@@ -3,7 +3,6 @@ package state_11
 import (
 	"bytes"
 	"context"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
@@ -45,23 +44,34 @@ func (state paymentSuccessState) Process(ctx context.Context, iFrame frame.IFram
 	if iFrame.Header().KeyExists(string(frame.HeaderOrderId)) && iFrame.Body().Content() != nil {
 		order, ok := iFrame.Body().Content().(*entities.Order)
 		if !ok {
-			logger.Err("Process() => iFrame.Body().Content() not a order, orderId: %d, %s state ",
-				iFrame.Header().Value(string(frame.HeaderOrderId)), state.Name())
+			app.Globals.Logger.FromContext(ctx).Error("Content of frame body isn't an order",
+				"fn", "Process",
+				"state", state.Name(),
+				"oid", iFrame.Header().Value(string(frame.HeaderOrderId)),
+				"content", iFrame.Body().Content())
 			return
 		}
 
 		var buyerNotificationAction *entities.Action = nil
 		smsTemplate, err := template.New("SMS").Parse(app.Globals.SMSTemplate.OrderNotifyBuyerPaymentSuccessState)
 		if err != nil {
-			logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
-				state.Name(), order.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerPaymentSuccessState, err)
+			app.Globals.Logger.FromContext(ctx).Error("smsTemplate.Parse failed",
+				"fn", "Process",
+				"state", state.Name(),
+				"oid", order.OrderId,
+				"message", app.Globals.SMSTemplate.OrderNotifyBuyerPaymentSuccessState,
+				"error", err)
 		} else {
 			var buf bytes.Buffer
 			err = smsTemplate.Execute(&buf, order.OrderId)
 			newBuf := bytes.NewBuffer(bytes.Replace(buf.Bytes(), []byte("\\n"), []byte{10}, -1))
 			if err != nil {
-				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-					state.Name(), order.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerPaymentSuccessState, err)
+				app.Globals.Logger.FromContext(ctx).Error("smsTemplate.Execute failed",
+					"fn", "Process",
+					"state", state.Name(),
+					"oid", order.OrderId,
+					"message", app.Globals.SMSTemplate.OrderNotifyBuyerPaymentSuccessState,
+					"error", err)
 			} else {
 				buyerNotify := notify_service.SMSRequest{
 					Phone: order.BuyerInfo.ShippingAddress.Mobile,
@@ -71,8 +81,12 @@ func (state paymentSuccessState) Process(ctx context.Context, iFrame frame.IFram
 
 				buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
 				if buyerFutureData.Error() != nil {
-					logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, error: %s",
-						buyerNotify, state.Name(), order.OrderId, buyerFutureData.Error().Reason())
+					app.Globals.Logger.FromContext(ctx).Error("NotifyService.NotifyBySMS failed",
+						"fn", "Process",
+						"state", state.Name(),
+						"oid", order.OrderId,
+						"request", buyerNotify,
+						"error", buyerFutureData.Error().Reason())
 					buyerNotificationAction = &entities.Action{
 						Name:      system_action.BuyerNotification.ActionName(),
 						Type:      "",
@@ -89,7 +103,10 @@ func (state paymentSuccessState) Process(ctx context.Context, iFrame frame.IFram
 						Extended:  nil,
 					}
 				} else {
-					logger.Audit("Process() => NotifyService.NotifyBySMS success, state: %s, orderId: %d", state.Name(), order.OrderId)
+					app.Globals.Logger.FromContext(ctx).Info("NotifyService.NotifyBySMS success",
+						"fn", "Process",
+						"state", state.Name(),
+						"oid", order.OrderId)
 					buyerNotificationAction = &entities.Action{
 						Name:      system_action.BuyerNotification.ActionName(),
 						Type:      "",
@@ -136,9 +153,15 @@ func (state paymentSuccessState) Process(ctx context.Context, iFrame frame.IFram
 		//	logger.Audit("Order System success, orderId: %d", order.OrderId)
 		//
 		//}
-		logger.Audit("Process() => Order state of all subpackages update to %s state, orderId: %d", state.Name(), order.OrderId)
+		app.Globals.Logger.FromContext(ctx).Debug("Order state of all subpackages update",
+			"fn", "Process",
+			"state", state.Name(),
+			"oid", order.OrderId)
 		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
 	} else {
-		logger.Err("HeaderOrderId of iFrame.Header not found and content of iFrame.Body() not set, state: %s iframe: %v", state.Name(), iFrame)
+		app.Globals.Logger.FromContext(ctx).Error("Frame Header/Body Invalid",
+			"fn", "Process",
+			"state", state.Name(),
+			"iframe", iFrame)
 	}
 }

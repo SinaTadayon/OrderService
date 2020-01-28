@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/pkg/errors"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	payment_gateway "gitlab.faza.io/protos/payment-gateway"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/connectivity"
@@ -36,7 +36,11 @@ func (payment *iPaymentServiceImpl) ConnectToPaymentService() error {
 		payment.grpcConnection, err = grpc.DialContext(ctx, payment.serverAddress+":"+fmt.Sprint(payment.serverPort),
 			grpc.WithBlock(), grpc.WithInsecure())
 		if err != nil {
-			logger.Err("ConnectToPaymentService() => GRPC connect dial to payment service failed, address: %s, port: %d, err: %s", payment.serverAddress, payment.serverPort, err.Error())
+			applog.GLog.Logger.Error("GRPC connect dial to payment service failed",
+				"fn", "ConnectToPaymentService",
+				"address", payment.serverAddress,
+				"port", payment.serverPort,
+				"err", err.Error())
 			return err
 		}
 		payment.paymentService = payment_gateway.NewPaymentGatewayClient(payment.grpcConnection)
@@ -90,8 +94,12 @@ func (payment iPaymentServiceImpl) OrderPayment(ctx context.Context, request Pay
 		timeoutTimer.Stop()
 		break
 	case <-timeoutTimer.C:
-		logger.Err("OrderPayment() => request to payment gateway grpc timeout, orderId: %d, amount: %d, gateway: %s, currency: %s",
-			request.OrderId, request.Amount, request.Gateway, request.Currency)
+		applog.GLog.Logger.FromContext(ctx).Error("request to payment gateway grpc timeout",
+			"fn", "OrderPayment",
+			"oid", request.OrderId,
+			"amount", request.Amount,
+			"gateway", request.Gateway,
+			"currency", request.Currency)
 		return future.Factory().SetCapacity(1).
 			SetError(future.InternalError, "Unknown Error", errors.New("GenerateRedirectURL Timeout")).
 			BuildAndSend()
@@ -99,14 +107,21 @@ func (payment iPaymentServiceImpl) OrderPayment(ctx context.Context, request Pay
 
 	if err, ok := obj.(error); ok {
 		if err != nil {
-			logger.Err("OrderPayment() => request to payment gateway grpc failed, orderId: %d, amount: %d, gateway: %s, currency: %s, error: %s",
-				request.OrderId, request.Amount, request.Gateway, request.Currency, err)
+			applog.GLog.Logger.FromContext(ctx).Error("request to payment gateway grpc failed",
+				"fn", "OrderPayment",
+				"oid", request.OrderId,
+				"amount", request.Amount,
+				"gateway", request.Gateway,
+				"currency", request.Currency,
+				"error", err)
 			return future.Factory().SetCapacity(1).
 				SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "GenerateRedirectURL failed")).
 				BuildAndSend()
 		}
 	} else if response, ok := obj.(*payment_gateway.GenerateRedirResponse); ok {
-		logger.Audit("OrderPayment() => request: %v, response: %v", request, response)
+		applog.GLog.Logger.FromContext(ctx).Debug("received payment service response",
+			"fn", "OrderPayment",
+			"request", request, "response", response)
 		paymentResponse := PaymentResponse{
 			CallbackUrl: response.CallbackUrl,
 			InvoiceId:   response.InvoiceId,
@@ -118,8 +133,13 @@ func (payment iPaymentServiceImpl) OrderPayment(ctx context.Context, request Pay
 			BuildAndSend()
 	}
 
-	logger.Err("OrderPayment() => request to payment gateway grpc failed, response invalid, orderId: %d, amount: %d, gateway: %s, currency: %s, response: %v",
-		request.OrderId, request.Amount, request.Gateway, request.Currency, obj)
+	applog.GLog.Logger.FromContext(ctx).Error("request to payment gateway grpc failed, response invalid",
+		"fn", "OrderPayment",
+		"oid", request.OrderId,
+		"amount", request.Amount,
+		"gateway", request.Gateway,
+		"currency", request.Currency,
+		"response", obj)
 	return future.Factory().SetCapacity(1).
 		SetError(future.InternalError, "Unknown Error", errors.New("GenerateRedirectURL failed")).
 		BuildAndSend()
@@ -165,7 +185,9 @@ func (payment iPaymentServiceImpl) GetPaymentResult(ctx context.Context, orderId
 		timeoutTimer.Stop()
 		break
 	case <-timeoutTimer.C:
-		logger.Err("GetPaymentResult() => request to GetPaymentResultByOrderID grpc timeout, orderId: %d", orderId)
+		applog.GLog.Logger.FromContext(ctx).Error("request to GetPaymentResultByOrderID grpc timeout",
+			"fn", "GetPaymentResult",
+			"oid", orderId)
 		return future.Factory().SetCapacity(1).
 			SetError(future.InternalError, "Unknown Error", errors.New("GetPaymentResultByOrderID Timeout")).
 			BuildAndSend()
@@ -174,19 +196,24 @@ func (payment iPaymentServiceImpl) GetPaymentResult(ctx context.Context, orderId
 	// TODO decode err code
 	if err, ok := obj.(error); ok {
 		if err != nil {
-			logger.Err("GetPaymentResult() => request to GetPaymentResultByOrderID grpc failed, orderId: %d, error: %s",
-				orderId, err)
+			applog.GLog.Logger.FromContext(ctx).Error("request to GetPaymentResultByOrderID grpc failed",
+				"fn", "GetPaymentResult",
+				"oid", orderId,
+				"error", err)
 			return future.Factory().SetCapacity(1).
 				SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "GetPaymentResultByOrderID failed")).
 				BuildAndSend()
 		}
 	} else if response, ok := obj.(*payment_gateway.PaymentRequest); ok {
-		logger.Audit("GetPaymentResult() => orderId: %d, response: %v", orderId, response)
+		applog.GLog.Logger.FromContext(ctx).Debug("received payment gateway result",
+			"fn", "GetPaymentResult",
+			"oid", orderId, "response", response)
 
 		oid, err := strconv.Atoi(response.OrderID)
 		if err != nil {
-			logger.Err("GetPaymentResult() => request to GetPaymentResultByOrderID grpc failed, orderId: %d, error: %s",
-				orderId, err)
+			applog.GLog.Logger.FromContext(ctx).Error("request to GetPaymentResultByOrderID grpc failed",
+				"fn", "GetPaymentResult",
+				"oid", orderId, "error", err)
 			return future.Factory().SetCapacity(1).
 				SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "GetPaymentResultByOrderID failed")).
 				BuildAndSend()
@@ -206,7 +233,9 @@ func (payment iPaymentServiceImpl) GetPaymentResult(ctx context.Context, orderId
 			BuildAndSend()
 	}
 
-	logger.Err("GetPaymentResult() => request to payment gateway grpc failed, response invalid, orderId: %d, response: %v", orderId, obj)
+	applog.GLog.Logger.FromContext(ctx).Error("request to payment gateway grpc failed, response invalid",
+		"fn", "GetPaymentResult",
+		"oid", orderId, "response", obj)
 	return future.Factory().SetCapacity(1).
 		SetError(future.InternalError, "Unknown Error", errors.New("GetPaymentResultByOrderID failed")).
 		BuildAndSend()

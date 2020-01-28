@@ -3,7 +3,6 @@ package state_80
 import (
 	"bytes"
 	"context"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	operator_action "gitlab.faza.io/order-project/order-service/domain/actions/operator"
@@ -48,33 +47,40 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 
 func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 	if iFrame.Header().KeyExists(string(frame.HeaderSIds)) {
-		//subpackages, ok := iFrame.Header().Value(string(frame.HeaderSubpackages)).([]*entities.Subpackage)
-		//if !ok {
-		//	logger.Err("iFrame.Header() not a subpackages, frame: %v, %s state ", iFrame, state.Name())
-		//	return
-		//}
-
 		sids, ok := iFrame.Header().Value(string(frame.HeaderSIds)).([]uint64)
 		if !ok {
-			logger.Err("Process() => iFrame.Header() not a sids, state: %s, frame: %v", state.Name(), iFrame)
+			app.Globals.Logger.FromContext(ctx).Error("iFrame.Header() doesn't have a sids header",
+				"fn", "Process",
+				"state", state.Name(),
+				"iframe", iFrame)
 			return
 		}
 
 		if iFrame.Body().Content() == nil {
-			logger.Err("Process() => iFrame.Body().Content() is nil, state: %s, frame: %v", state.Name(), iFrame)
+			app.Globals.Logger.FromContext(ctx).Error("content of iFrame.Body() is nil",
+				"fn", "Process",
+				"state", state.Name(),
+				"iframe", iFrame)
 			return
 		}
 
 		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
 		if !ok {
-			logger.Err("Process() => pkgItem in iFrame.Body().Content() is not found, %s state, sids: %v, frame: %v",
-				state.Name(), sids, iFrame)
+			app.Globals.Logger.FromContext(ctx).Error("content of iFrame.Body() is not PackageItem",
+				"fn", "Process",
+				"state", state.Name(),
+				"sids", sids,
+				"iframe", iFrame)
 			return
 		}
 
 		event, ok := iFrame.Header().Value(string(frame.HeaderEvent)).(events.IEvent)
 		if !ok {
-			logger.Err("Process() => received frame doesn't have a event, state: %s, frame: %v", state.String(), iFrame)
+			app.Globals.Logger.FromContext(ctx).Error("received frame doesn't have a event",
+				"fn", "Process",
+				"state", state.Name(),
+				"sids", sids,
+				"iframe", iFrame)
 			return
 		}
 
@@ -114,15 +120,27 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 
 			smsTemplate, err := template.New("SMS").Parse(message)
 			if err != nil {
-				logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
-					state.Name(), pkgItem.OrderId, message, err)
+				app.Globals.Logger.FromContext(ctx).Error("smsTemplate.Parse failed",
+					"fn", "Process",
+					"state", state.Name(),
+					"oid", pkgItem.OrderId,
+					"pid", pkgItem.PId,
+					"sids", sids,
+					"message", message,
+					"error", err)
 			} else {
 				var buf bytes.Buffer
 				err = smsTemplate.Execute(&buf, templateData)
 				newBuf := bytes.NewBuffer(bytes.Replace(buf.Bytes(), []byte("\\n"), []byte{10}, -1))
 				if err != nil {
-					logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-						state.Name(), pkgItem.OrderId, message, err)
+					app.Globals.Logger.FromContext(ctx).Error("smsTemplate.Execute failed",
+						"fn", "Process",
+						"state", state.Name(),
+						"oid", pkgItem.OrderId,
+						"pid", pkgItem.PId,
+						"sids", sids,
+						"message", message,
+						"error", err)
 				} else {
 					buyerNotify := notify_service.SMSRequest{
 						Phone: pkgItem.ShippingAddress.Mobile,
@@ -132,8 +150,14 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 
 					buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
 					if buyerFutureData.Error() != nil {
-						logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
-							buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, sids, buyerFutureData.Error().Reason())
+						app.Globals.Logger.FromContext(ctx).Error("NotifyService.NotifyBySMS failed",
+							"fn", "Process",
+							"state", state.Name(),
+							"oid", pkgItem.OrderId,
+							"pid", pkgItem.PId,
+							"sids", sids,
+							"request", buyerNotify,
+							"error", buyerFutureData.Error().Reason())
 						buyerNotificationAction = &entities.Action{
 							Name:      system_action.BuyerNotification.ActionName(),
 							Type:      "",
@@ -150,8 +174,12 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 							Extended:  nil,
 						}
 					} else {
-						logger.Audit("Process() => NotifyService.NotifyBySMS success, state: %s, orderId: %d, pid: %d, sids: %v",
-							state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
+						app.Globals.Logger.FromContext(ctx).Debug("NotifyService.NotifyBySMS success",
+							"fn", "Process",
+							"state", state.Name(),
+							"oid", pkgItem.OrderId,
+							"pid", pkgItem.PId,
+							"sids", sids)
 						buyerNotificationAction = &entities.Action{
 							Name:      system_action.BuyerNotification.ActionName(),
 							Type:      "",
@@ -172,46 +200,10 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			}
 		}
 
-		//var releaseStockAction *entities.Action
-		//if err := state.releasedStock(ctx, sids, pkgItem); err != nil {
-		//	releaseStockAction = &entities.Action{
-		//		Name:      system_action.StockRelease.ActionName(),
-		//		Type:      "",
-		//		UId:       0,
-		//		UTP:       actions.System.ActionName(),
-		//		Perm:      "",
-		//		Priv:      "",
-		//		Policy:    "",
-		//		Result:    string(states.ActionFail),
-		//		Reasons:   nil,
-		//		Note:      "",
-		//		Data:      nil,
-		//		CreatedAt: time.Now().UTC(),
-		//		Extended:  nil,
-		//	}
-		//} else {
-		//	releaseStockAction = &entities.Action{
-		//		Name:      system_action.StockRelease.ActionName(),
-		//		Type:      "",
-		//		UId:       0,
-		//		UTP:       actions.System.ActionName(),
-		//		Perm:      "",
-		//		Priv:      "",
-		//		Policy:    "",
-		//		Result:    string(states.ActionSuccess),
-		//		Reasons:   nil,
-		//		Note:      "",
-		//		Data:      nil,
-		//		CreatedAt: time.Now().UTC(),
-		//		Extended:  nil,
-		//	}
-		//}
-
 		for i := 0; i < len(sids); i++ {
 			for j := 0; j < len(pkgItem.Subpackages); j++ {
 				if pkgItem.Subpackages[j].SId == sids[i] {
 					state.UpdateSubPackage(ctx, pkgItem.Subpackages[j], buyerNotificationAction)
-					//state.UpdateSubPackage(ctx, pkgItem.Subpackages[j], releaseStockAction)
 				}
 			}
 		}
@@ -220,8 +212,13 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 
 		order, err := app.Globals.OrderRepository.FindById(ctx, pkgItem.OrderId)
 		if err != nil {
-			logger.Err("OrderRepository.FindById in %s state failed, orderId: %d, pid: %d, sids: %v, error: %v",
-				state.Name(), pkgItem.OrderId, pkgItem.PId, sids, err)
+			app.Globals.Logger.FromContext(ctx).Error("OrderRepository.FindById failed",
+				"fn", "Process",
+				"state", state.Name(),
+				"oid", pkgItem.OrderId,
+				"pid", pkgItem.PId,
+				"sids", sids,
+				"error", err)
 			return
 		}
 
@@ -242,15 +239,23 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 
 			if findFlag {
 				state.SetPkgStatus(ctx, order.Packages[i], states.PackageClosedStatus)
-				logger.Audit("set pkgItem status to closed, state: %s, orderId: %d, pid: %d",
-					state.Name(), order.Packages[i].OrderId, order.Packages[i].PId)
+				app.Globals.Logger.FromContext(ctx).Debug("set pkgItem status to closed",
+					"fn", "Process",
+					"state", state.Name(),
+					"oid", order.Packages[i].OrderId,
+					"pid", order.Packages[i].PId)
 			}
 		}
 
 		updatePkgItem, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 		if err != nil {
-			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %v",
-				state.Name(), pkgItem.OrderId, pkgItem.PId, sids, err)
+			app.Globals.Logger.FromContext(ctx).Error("PkgItemRepository.Update failed",
+				"fn", "Process",
+				"state", state.Name(),
+				"oid", pkgItem.OrderId,
+				"pid", pkgItem.PId,
+				"sids", sids,
+				"error", err)
 			return
 		}
 
@@ -260,8 +265,12 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 		}
 
 		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).SetData(response).Send()
-		logger.Audit("Process() => Set State of subpackages success, state: %s, orderId: %d, pid: %d, sids: %v",
-			state.Name(), updatePkgItem.OrderId, updatePkgItem.PId, sids)
+		app.Globals.Logger.FromContext(ctx).Debug("set status of subpackages success",
+			"fn", "Process",
+			"state", state.Name(),
+			"oid", updatePkgItem.OrderId,
+			"pid", updatePkgItem.PId,
+			"sids", sids)
 
 		findFlag = true
 		for i := 0; i < len(order.Packages); i++ {
@@ -275,14 +284,23 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			state.SetOrderStatus(ctx, order, states.OrderClosedStatus)
 			err = app.Globals.OrderRepository.UpdateStatus(ctx, order)
 			if err != nil {
-				logger.Err("update order status to closed failed, state: %s, orderId: %d, error: %v",
-					state.Name(), order.OrderId, err)
+				app.Globals.Logger.FromContext(ctx).Error("update order status to closed failed",
+					"fn", "Process",
+					"state", state.Name(),
+					"oid", order.OrderId,
+					"error", err)
 			} else {
-				logger.Audit("update order status to closed success, state: %s, orderId: %d", state.Name(), order.OrderId)
+				app.Globals.Logger.FromContext(ctx).Debug("update order status to closed success",
+					"fn", "Process",
+					"state", state.Name(),
+					"oid", order.OrderId)
 			}
 		}
 	} else {
-		logger.Err("iFrame.Header() not a subpackage or pid not found, state: %s iframe: %v", state.Name(), iFrame)
+		app.Globals.Logger.FromContext(ctx).Error("Frame Header/Body Invalid",
+			"fn", "Process",
+			"state", state.Name(),
+			"iframe", iFrame)
 	}
 }
 
@@ -317,8 +335,14 @@ func (state payToBuyerState) releasedStock(ctx context.Context, sids []uint64, p
 							Result:      response.Result,
 						}
 						stockActionDataList = append(stockActionDataList, actionData)
-						logger.Err("releasedStock() => Release stock from stockService failed, state: %s, orderId: %d, pid: %d, sid: %v, actionData: %v, error: %s",
-							state.Name(), pkgItem.OrderId, pkgItem.PId, sid, actionData, futureData.Error())
+						app.Globals.Logger.FromContext(ctx).Error("Release stock from stockService failed",
+							"fn", "releasedStock",
+							"state", state.Name(),
+							"oid", pkgItem.OrderId,
+							"pid", pkgItem.PId,
+							"sid", sid,
+							"actionData", actionData,
+							"error", futureData.Error())
 
 					} else {
 						actionData := entities.StockActionData{
@@ -327,9 +351,14 @@ func (state payToBuyerState) releasedStock(ctx context.Context, sids []uint64, p
 							Result:      false,
 						}
 						stockActionDataList = append(stockActionDataList, actionData)
-						logger.Err("releasedStock() => Release stock from stockService failed, state: %s, orderId: %d, pid: %d, sid: %v, stockAction: %v, error: %s",
-							state.Name(), pkgItem.OrderId, pkgItem.PId, sid, actionData, futureData.Error())
-
+						app.Globals.Logger.FromContext(ctx).Error("Release stock from stockService failed",
+							"fn", "releasedStock",
+							"state", state.Name(),
+							"oid", pkgItem.OrderId,
+							"pid", pkgItem.PId,
+							"sid", sid,
+							"stockAction", actionData,
+							"error", futureData.Error())
 					}
 				} else {
 					response := futureData.Data().(stock_service.ResponseStock)
@@ -339,8 +368,13 @@ func (state payToBuyerState) releasedStock(ctx context.Context, sids []uint64, p
 						Result:      response.Result,
 					}
 					stockActionDataList = append(stockActionDataList, actionData)
-					logger.Audit("releasedStock() => Release stock success, state: %s, orderId: %d, pid: %d, sid: %v, stockAction: %v",
-						state.Name(), pkgItem.OrderId, pkgItem.PId, sid, actionData)
+					app.Globals.Logger.FromContext(ctx).Info("Release stock success",
+						"fn", "releasedStock",
+						"state", state.Name(),
+						"oid", pkgItem.OrderId,
+						"pid", pkgItem.PId,
+						"sid", sid,
+						"stockAction", actionData)
 				}
 			}
 			var stockAction *entities.Action

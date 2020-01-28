@@ -8,6 +8,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/models/repository"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"os"
 	"testing"
@@ -25,9 +26,13 @@ func TestMain(m *testing.M) {
 		path = ""
 	}
 
+	applog.GLog.ZapLogger = applog.InitZap()
+	applog.GLog.Logger = logger.NewZapLogger(applog.GLog.ZapLogger)
+
 	config, _, err := configs.LoadConfigs(path, "")
 	if err != nil {
-		logger.Err("configs.LoadConfig failed, %s", err.Error())
+		applog.GLog.Logger.Error("configs.LoadConfig failed",
+			"error", err)
 		os.Exit(1)
 	}
 
@@ -50,7 +55,7 @@ func TestMain(m *testing.M) {
 
 	mongoAdapter, err := mongoadapter.NewMongo(mongoConf)
 	if err != nil {
-		logger.Err("IPkgItemRepository Mongo: %v", err.Error())
+		applog.GLog.Logger.Error("mongoadapter.NewMongo failed", "error", err)
 		os.Exit(1)
 	}
 

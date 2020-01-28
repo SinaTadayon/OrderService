@@ -199,10 +199,22 @@ services:
     security_opt:
       - seccomp:unconfined
     environment:
+      - NOTIFICATION_APP_MODE=server
       - PORT=9099
-      - APP_MODE=dev
+      - SMS_PROVIDER=KAVENEGAR
+      - KAVENEGAR_API_KEY=716F5148685365624D4149756C78766A4A692F6F6564372B6776597539716149666E77576C53792F4C50493D
+      - KAVENEGAR_SENDER=1000596446
+      - ATIEPARDAZ_PASS=123654789
+      - ATIEPARDAZ_USER=bamilo101
+      - MONGO_HOST=mongo
+      - MONGO_PORT=27017
+      - TEMPLATE_FOLDER=src/templates
+
     env_file:
       - src/.env
+
+    depends_on:
+      - mongo
 
 
   redis:

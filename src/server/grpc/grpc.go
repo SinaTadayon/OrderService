@@ -13,6 +13,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"path"
 	"runtime/debug"
@@ -489,12 +490,13 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 
 	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
-		logger.Err("RequestHandler() => UserService.AuthenticateContextToken failed, error: %s ", err)
+		app.Globals.Logger.FromContext(ctx).Error("UserService.AuthenticateContextToken failed", "fn", "RequestHandler", "error", err)
 		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
 	}
 
 	if uint64(userAcl.User().UserID) != req.Meta.UID {
-		logger.Err("RequestHandler() => request userId %d mismatch with token userId: %d", req.Meta.UID, userAcl.User().UserID)
+		app.Globals.Logger.FromContext(ctx).Error("request userId mismatch with token userId", "fn", "RequestHandler",
+			"userId", req.Meta.UID, "token", userAcl.User().UserID)
 		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
 	}
 
@@ -532,15 +534,16 @@ func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.Messa
 
 	var schedulerActionRequest pb.SchedulerActionRequest
 	if err := ptypes.UnmarshalAny(req.Data, &schedulerActionRequest); err != nil {
-		logger.Err("Could not unmarshal schedulerActionRequest from request anything field, request: %v, error %s", req, err)
+		app.Globals.Logger.FromContext(ctx).Error("Could not unmarshal schedulerActionRequest from request anything field", "fn", "SchedulerMessageHandler",
+			"request", req, "error", err)
 		return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
 	}
 
 	for _, orderReq := range schedulerActionRequest.Orders {
 		userActions, ok := server.actionStates[userType]
 		if !ok {
-			logger.Err("SchedulerMessageHandler() => action %s user not supported, request: %v", userType, req)
-			return nil, status.Error(codes.Code(future.BadRequest), "User Action Invalid")
+			app.Globals.Logger.FromContext(ctx).Error("requested scheduler action not supported", "fn", "SchedulerMessageHandler", "request", req)
+			return nil, status.Error(codes.Code(future.BadRequest), "Scheduler Action Invalid")
 		}
 
 		for _, action := range userActions {
@@ -551,7 +554,7 @@ func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.Messa
 		}
 
 		if userAction == nil {
-			logger.Err("SchedulerMessageHandler() => %s action invalid, request: %v", req.Meta.Action.ActionState, req)
+			app.Globals.Logger.FromContext(ctx).Error("scheduler action invalid", "fn", "SchedulerMessageHandler", "request", req)
 			return nil, status.Error(codes.Code(future.BadRequest), "Action Invalid")
 		}
 
@@ -565,7 +568,7 @@ func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.Messa
 			server.flowManager.MessageHandler(ctx, iFrame)
 			futureData := iFuture.Get()
 			if futureData.Error() != nil {
-				logger.Err("SchedulerMessageHandler() => flowManager.MessageHandler failed, event: %v, error: %s", event, futureData.Error().Reason())
+				app.Globals.Logger.FromContext(ctx).Error("flowManager.MessageHandler failed", "fn", "SchedulerMessageHandler", "event", event, "error", futureData.Error().Reason())
 			}
 
 			response := &pb.MessageResponse{
@@ -610,7 +613,7 @@ func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.Messa
 			server.flowManager.MessageHandler(ctx, iFrame)
 			futureData := iFuture.Get()
 			if futureData.Error() != nil {
-				logger.Err("SchedulerMessageHandler() => flowManager.MessageHandler failed, event: %v, error: %s", event, futureData.Error().Reason())
+				app.Globals.Logger.FromContext(ctx).Error("flowManager.MessageHandler failed", "fn", "SchedulerMessageHandler", "event", event, "error", futureData.Error().Reason())
 			}
 		}
 	}
@@ -663,19 +666,19 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 		reqName != SellerOrderCancelReports &&
 		reqName != SellerApprovalPendingOrderReports &&
 		reqName != SellerAllOrderReports {
-		logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
-		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
+		app.Globals.Logger.FromContext(ctx).Error("RequestName with userType mismatch", "fn", "requestDataHandler", "rn", reqName, "utp", userType, "request", req)
+		return nil, status.Error(codes.Code(future.BadRequest), "RN UTP Invalid")
 	} else if userType == BuyerUser &&
 		reqName != BuyerOrderDetailList &&
 		reqName != BuyerReturnOrderReports &&
 		reqName != BuyerReturnOrderDetailList {
-		logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
-		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
+		app.Globals.Logger.FromContext(ctx).Error("RequestName with userType mismatch", "fn", "requestDataHandler", "rn", reqName, "utp", userType, "request", req)
+		return nil, status.Error(codes.Code(future.BadRequest), "RN UTP Invalid")
 	} else if userType == OperatorUser &&
 		reqName != OperatorOrderList &&
 		reqName != OperatorOrderDetail {
-		logger.Err("requestDataHandler() => userType %s mismatch with %s requestName, request: %v", userType, reqName, req)
-		return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with RequestName")
+		app.Globals.Logger.FromContext(ctx).Error("RequestName with userType mismatch", "fn", "requestDataHandler", "rn", reqName, "utp", userType, "request", req)
+		return nil, status.Error(codes.Code(future.BadRequest), "RN UTP Invalid")
 	}
 
 	//if req.Meta.OID > 0 && reqADT == ListType {
@@ -700,8 +703,8 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 				}
 
 				if !findFlag && req.Meta.OID <= 0 {
-					logger.Err("requestDataHandler() => %s requestName mismatch with %s Filter, request: %v", reqName, filterValue, req)
-					return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with Filter")
+					app.Globals.Logger.FromContext(ctx).Error("RequestName with filter mismatch", "fn", "requestDataHandler", "rn", reqName, "filter", filterValue, "request", req)
+					return nil, status.Error(codes.Code(future.BadRequest), "RN Filter Invalid")
 				}
 			}
 		} else {
@@ -714,8 +717,8 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 			}
 
 			if !findFlag {
-				logger.Err("requestDataHandler() => %s requestName mismatch with %s Filter, request: %v", reqName, filterValue, req)
-				return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with Filter")
+				app.Globals.Logger.FromContext(ctx).Error("RequestName with filter mismatch", "fn", "requestDataHandler", "rn", reqName, "filter", filterValue, "request", req)
+				return nil, status.Error(codes.Code(future.BadRequest), "RN Filter Invalid")
 			}
 		}
 	} else if userType == SellerUser &&
@@ -735,14 +738,14 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 		}
 
 		if !findFlag {
-			logger.Err("requestDataHandler() => %s requestName mismatch with %s Filter, request: %v", reqName, filterValue, req)
-			return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with Filter")
+			app.Globals.Logger.FromContext(ctx).Error("RequestName with filter mismatch", "fn", "requestDataHandler", "rn", reqName, "filter", filterValue, "request", req)
+			return nil, status.Error(codes.Code(future.BadRequest), "RN Filter Invalid")
 		}
 	}
 
 	if reqName == OperatorOrderDetail && filterValue != "" {
-		logger.Err("requestDataHandler() => %s requestName doesn't need anything filter, %s Filter, request: %v", reqName, filterValue, req)
-		return nil, status.Error(codes.Code(future.BadRequest), "Request Name Filter Invalid")
+		app.Globals.Logger.FromContext(ctx).Error("RequestName doesn't need any filter", "fn", "requestDataHandler", "rn", reqName, "filter", filterValue, "request", req)
+		return nil, status.Error(codes.Code(future.BadRequest), "RN Filter Invalid")
 	}
 
 	//if req.Meta.OID > 0 && reqName == SellerOrderList {
@@ -792,11 +795,11 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 	userType := UserType(req.Meta.UTP)
 	var userAction actions.IAction
 
-	logger.Audit("requestActionHandler() => received request action: %v", req)
+	app.Globals.Logger.FromContext(ctx).Debug("received request action", "fn", "requestActionHandler", "request", req)
 
 	userActions, ok := server.actionStates[userType]
 	if !ok {
-		logger.Err("requestActionHandler() => action %s user not supported, request: %v", userType, req)
+		app.Globals.Logger.FromContext(ctx).Error("action userType not supported", "fn", "requestActionHandler", "utp", userType, "request", req)
 		return nil, status.Error(codes.Code(future.BadRequest), "User Action Invalid")
 	}
 
@@ -808,13 +811,13 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 	}
 
 	if userAction == nil {
-		logger.Err("requestActionHandler() => %s action invalid, request: %v", req.Meta.Action.ActionState, req)
+		app.Globals.Logger.FromContext(ctx).Error("action invalid", "fn", "requestActionHandler", "action", req.Meta.Action.ActionState, "request", req)
 		return nil, status.Error(codes.Code(future.BadRequest), "Action Invalid")
 	}
 
 	var reqActionData pb.ActionData
 	if err := ptypes.UnmarshalAny(req.Data, &reqActionData); err != nil {
-		logger.Err("requestActionHandler() => Could not unmarshal reqActionData from request anything field, request: %v, error %s", req, err)
+		app.Globals.Logger.FromContext(ctx).Error("Could not unmarshal reqActionData from request field", "fn", "requestActionHandler", "request", req, "error", err)
 		return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
 	}
 
@@ -827,7 +830,7 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 		for _, item := range reqSubpackage.Items {
 
 			if item.Quantity <= 0 {
-				logger.Err("requestActionHandler() => %s action invalid, request: %v", req.Meta.Action.ActionState, req)
+				app.Globals.Logger.FromContext(ctx).Error("action quantity invalid", "fn", "requestActionHandler", "action", req.Meta.Action.ActionState, "quantity", item.Quantity, "request", req)
 				return nil, status.Error(codes.Code(future.BadRequest), "Action Quantity Invalid")
 			}
 
@@ -873,7 +876,7 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 
 	serializedResponse, err := proto.Marshal(actionResponse)
 	if err != nil {
-		logger.Err("could not serialize timestamp")
+		app.Globals.Logger.FromContext(ctx).Error("could not marshal actionResponse", "fn", "requestActionHandler", "request", req, "response", actionResponse)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
@@ -891,8 +894,11 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 
 func (server *Server) PaymentGatewayHook(ctx context.Context, req *pg.PaygateHookRequest) (*pg.PaygateHookResponse, error) {
 
-	logger.Audit("PaymentGatewayHook() => received payment response: orderId: %s, PaymentId: %s, InvoiceId: %d, result: %v",
-		req.OrderID, req.PaymentId, req.InvoiceId, req.Result)
+	app.Globals.Logger.FromContext(ctx).Debug("received payment response", "fn", "PaymentGatewayHook",
+		"orderId", req.OrderID,
+		"PaymentId", req.PaymentId,
+		"InvoiceId", req.InvoiceId,
+		"result", req.Result)
 	futureData := server.flowManager.PaymentGatewayResult(ctx, req).Get()
 
 	if futureData.Error() != nil {
@@ -908,12 +914,13 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 
 	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
-		logger.Err("NewOrder() => UserService.AuthenticateContextToken failed, error: %s ", err)
+		app.Globals.Logger.FromContext(ctx).Error("UserService.AuthenticateContextToken failed", "fn", "NewOrder",
+			"error", err)
 		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
 	}
 
 	if uint64(userAcl.User().UserID) != req.Buyer.BuyerId {
-		logger.Err("RequestHandler() => request userId %d mismatch with token userId: %d", req.Buyer.BuyerId, userAcl.User().UserID)
+		app.Globals.Logger.FromContext(ctx).Error("request userId with token userId mismatch", "fn", "NewOrder", "uid", req.Buyer.BuyerId, "token", userAcl.User().UserID)
 		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
 	}
 
@@ -943,8 +950,8 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 
 	callbackUrl, ok := futureData.Data().(string)
 	if ok != true {
-		logger.Err("NewOrder received data of futureData invalid, type: %T, value, %v", futureData.Data(), futureData.Data())
-		return nil, status.Error(500, "Unknown Error")
+		app.Globals.Logger.FromContext(ctx).Error("NewOrder received data of futureData invalid", "fn", "NewOrder", "data", futureData.Data())
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
 	responseNewOrder := pb.ResponseNewOrder{
@@ -1406,12 +1413,13 @@ func (server Server) Start() {
 	port := strconv.Itoa(int(server.port))
 	lis, err := net.Listen("tcp", server.address+":"+port)
 	if err != nil {
-		logger.Err("Failed to listen to TCP on port " + port + err.Error())
+		app.Globals.Logger.Error("Failed to listen to TCP on port", "fn", "Start", "port", port, "error", err)
 	}
-	logger.Audit("app started at %s:%s", server.address, port)
+	app.Globals.Logger.Info("GRPC server started", "fn", "Start", "address", server.address, "port", port)
 
 	customFunc := func(p interface{}) (err error) {
-		logger.Err("rpc panic recovered, panic: %v, stacktrace: %v", p, string(debug.Stack()))
+		app.Globals.Logger.Error("rpc panic recovered", "fn", "Start",
+			"panic", p, "stacktrace", string(debug.Stack()))
 		return grpc.Errorf(codes.Unknown, "panic triggered: %v", p)
 	}
 
@@ -1444,7 +1452,7 @@ func (server Server) Start() {
 	pb.RegisterOrderServiceServer(grpcServer, &server)
 	pg.RegisterBankResultHookServer(grpcServer, &server)
 	if err := grpcServer.Serve(lis); err != nil {
-		logger.Err("GRPC server start field " + err.Error())
+		app.Globals.Logger.Error("GRPC server start field", "fn", "Start", "error", err.Error())
 		panic("GRPC server start field")
 	}
 }
@@ -1453,16 +1461,17 @@ func (server Server) StartTest() {
 	port := strconv.Itoa(int(server.port))
 	lis, err := net.Listen("tcp", server.address+":"+port)
 	if err != nil {
-		logger.Err("Failed to listen to TCP on port " + port + err.Error())
+		applog.GLog.Logger.Error("Failed to listen to TCP",
+			"port", port,
+			"error", err.Error())
 	}
-	logger.Audit("app started at %s:%s", server.address, port)
+	applog.GLog.Logger.Debug("app started", "address", server.address, "port", port)
 
 	// Start GRPC server and register the server
 	grpcServer := grpc.NewServer()
 	pb.RegisterOrderServiceServer(grpcServer, &server)
 	pg.RegisterBankResultHookServer(grpcServer, &server)
 	if err := grpcServer.Serve(lis); err != nil {
-		logger.Err("GRPC server start field " + err.Error())
 		panic("GRPC server start field")
 	}
 }
