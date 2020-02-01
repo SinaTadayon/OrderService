@@ -66,17 +66,12 @@ func (state orderVerificationFailed) Process(ctx context.Context, iFrame frame.I
 		}
 
 		state.UpdateOrderAllStatus(ctx, order, states.OrderClosedStatus, states.PackageClosedStatus, orderVerifyAction)
-		//orderUpdated, err := app.Globals.OrderRepository.Save(ctx, *order)
-		//if err != nil {
-		//	logger.Err("OrderRepository.Save in %s state failed, orderId: %d, error: %v", state.Name(), order.OrderId, err)
-		//} else {
 		app.Globals.Logger.FromContext(ctx).Debug("Order state of all subpackages update",
 			"fn", "Process",
 			"state", state.Name(),
 			"oid", order.OrderId)
 
 		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
-		//}
 	} else {
 		app.Globals.Logger.FromContext(ctx).Error("Frame Header/Body Invalid",
 			"fn", "Process",

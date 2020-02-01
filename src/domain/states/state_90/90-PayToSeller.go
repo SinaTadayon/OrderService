@@ -183,16 +183,18 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 		}
 
 		state.settlementStock(ctx, sids, pkgItem)
-
-		order, err := app.Globals.OrderRepository.FindById(ctx, pkgItem.OrderId)
-		if err != nil {
+		order, e := app.Globals.OrderRepository.FindById(ctx, pkgItem.OrderId)
+		if e != nil {
 			app.Globals.Logger.FromContext(ctx).Error("OrderRepository.FindById failed",
 				"fn", "Process",
 				"state", state.Name(),
 				"oid", pkgItem.OrderId,
 				"pid", pkgItem.PId,
 				"sids", sids,
-				"error", err)
+				"error", e)
+			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+				SetError(future.ErrorCode(e.Code()), e.Message(), e.Reason()).
+				Send()
 			return
 		}
 
@@ -222,15 +224,18 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 		}
 
 		// TODO optimize write performance with journal and w options
-		updatePkgItem, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
-		if err != nil {
+		updatePkgItem, e := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
+		if e != nil {
 			app.Globals.Logger.FromContext(ctx).Error("PkgItemRepository.Update failed",
 				"fn", "Process",
 				"state", state.Name(),
 				"oid", pkgItem.OrderId,
 				"pid", pkgItem.PId,
 				"sids", sids,
-				"error", err)
+				"error", e)
+			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+				SetError(future.ErrorCode(e.Code()), e.Message(), e.Reason()).
+				Send()
 			return
 		}
 
