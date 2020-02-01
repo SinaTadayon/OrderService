@@ -79,15 +79,18 @@ func (state DeliveryDelayedState) Process(ctx context.Context, iFrame frame.IFra
 			}
 		}
 
-		pkgItemUpdated, err := app.Globals.PkgItemRepository.UpdateWithUpsert(ctx, *pkgItem)
-		if err != nil {
+		pkgItemUpdated, e := app.Globals.PkgItemRepository.UpdateWithUpsert(ctx, *pkgItem)
+		if e != nil {
 			app.Globals.Logger.FromContext(ctx).Error("PkgItemRepository.Update failed",
 				"fn", "Process",
 				"state", state.Name(),
 				"oid", pkgItem.OrderId,
 				"pid", pkgItem.PId,
 				"sids", sids,
-				"error", err)
+				"error", e)
+			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+				SetError(future.ErrorCode(e.Code()), e.Message(), e.Reason()).
+				Send()
 			return
 		}
 

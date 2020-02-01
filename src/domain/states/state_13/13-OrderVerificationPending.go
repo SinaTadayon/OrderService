@@ -66,14 +66,6 @@ func (state orderPaymentVerificationState) Process(ctx context.Context, iFrame f
 		}
 
 		state.UpdateOrderAllStatus(ctx, order, states.OrderInProgressStatus, states.PackageInProgressStatus, orderVerifyAction)
-		//orderUpdated, err := app.Globals.OrderRepository.Save(ctx, *order)
-		//if err != nil {
-		//	logger.Err("OrderRepository.Save in %s state failed, orderId: %d, error: %v", state.Name(), order.OrderId, err)
-		//} else {
-		//	logger.Audit("Order Verification success, orderId: %d", order.OrderId)
-		//	successAction := state.GetAction(system_action.Success.ActionName())
-		//	state.StatesMap()[successAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(orderUpdated).Build())
-		//}
 		app.Globals.Logger.FromContext(ctx).Debug("Order state of all subpackages update",
 			"fn", "Process",
 			"state", state.Name(),
