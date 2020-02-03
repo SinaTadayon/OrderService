@@ -13,7 +13,7 @@ const (
 )
 
 const (
-	DocumentVersion string = "1.0.2"
+	DocumentVersion string = "1.0.3"
 )
 
 func init() {
@@ -50,7 +50,7 @@ type PaymentService struct {
 	Extended        map[string]interface{} `bson:"ext"`
 }
 
-// TODO get configs of pay to market from siavash
+// TODO get configs of pay to market from back-office
 type SystemPayment struct {
 	PayToBuyer  []PayToBuyerInfo       `bson:"payToBuyer"`
 	PayToMarket []PayToMarket          `bson:"payToMarket"`
@@ -129,6 +129,7 @@ type PaymentRequest struct {
 	Gateway   string                 `bson:"gateway"`
 	CreatedAt time.Time              `bson:"createdAt"`
 	Mobile    string                 `bson:"mobile"`
+	Data      interface{}            `bson:"data"`
 	Extended  map[string]interface{} `bson:"ext"`
 }
 
@@ -136,11 +137,23 @@ type PaymentResponse struct {
 	Result      bool                   `bson:"result"`
 	Reason      string                 `bson:"reason"`
 	Description string                 `bson:"description"`
+	Response    interface{}            `bson:"response"`
+	CreatedAt   time.Time              `bson:"createdAt"`
+	Extended    map[string]interface{} `bson:"ext"`
+}
+
+type PaymentIPGResponse struct {
 	CallBackUrl string                 `bson:"callbackUrl"`
 	InvoiceId   int64                  `bson:"invoiceId"`
 	PaymentId   string                 `bson:"paymentId"`
-	CreatedAt   time.Time              `bson:"createdAt"`
 	Extended    map[string]interface{} `bson:"ext"`
+}
+
+type PaymentMPGResponse struct {
+	HostRequest     string                 `bson:"hostRequest"`
+	HostRequestSign string                 `bson:"hostRequestSign"`
+	PaymentId       string                 `bson:"paymentId"`
+	Extended        map[string]interface{} `bson:"ext"`
 }
 
 type PaymentResult struct {
@@ -150,6 +163,7 @@ type PaymentResult struct {
 	InvoiceId   int64                  `bson:"invoiceId"`
 	Price       *Money                 `bson:"price"`
 	CardNumMask string                 `bson:"cardNumMask"`
+	Data        interface{}            `bson:"data"`
 	CreatedAt   time.Time              `bson:"createdAt"`
 	Extended    map[string]interface{} `bson:"ext"`
 }

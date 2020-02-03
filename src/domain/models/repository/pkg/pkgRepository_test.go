@@ -423,10 +423,13 @@ func createOrder() *entities.Order {
 		Result:      true,
 		Reason:      "",
 		Description: "",
-		CallBackUrl: "http://baman.io/payment-service",
-		InvoiceId:   12345678946,
-		PaymentId:   "r3r434ef45d",
-		CreatedAt:   time.Now().UTC(),
+		Response: entities.PaymentIPGResponse{
+			CallBackUrl: "http://baman.io/payment-service",
+			InvoiceId:   12345678946,
+			PaymentId:   "r3r434ef45d",
+			Extended:    nil,
+		},
+		CreatedAt: time.Now().UTC(),
 	}
 
 	paymentResult := entities.PaymentResult{

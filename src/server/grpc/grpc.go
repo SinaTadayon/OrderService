@@ -11,6 +11,7 @@ import (
 	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
 	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
 	"gitlab.faza.io/order-project/order-service/domain/events"
+	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
@@ -949,14 +950,31 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 	//	return nil, status.Error(codes.Code(futureErr.Code()), futureErr.Message())
 	//}
 
-	callbackUrl, ok := futureData.Data().(string)
-	if ok != true {
+	var responseNewOrder pb.ResponseNewOrder
+
+	if ipgResponse, ok := futureData.Data().(entities.PaymentIPGResponse); ok {
+		responseNewOrder = pb.ResponseNewOrder{
+			Action: pb.ResponseNewOrder_Redirect,
+			Response: &pb.ResponseNewOrder_Ipg{
+				Ipg: &pb.IPGResponse{
+					CallbackUrl: ipgResponse.CallBackUrl,
+				},
+			},
+		}
+
+	} else if mpgResponse, ok := futureData.Data().(entities.PaymentMPGResponse); ok {
+		responseNewOrder = pb.ResponseNewOrder{
+			Action: pb.ResponseNewOrder_MPG,
+			Response: &pb.ResponseNewOrder_Mpg{
+				Mpg: &pb.MPGResponse{
+					HostRequest:     mpgResponse.HostRequest,
+					HostRequestSign: mpgResponse.HostRequestSign,
+				},
+			},
+		}
+	} else {
 		app.Globals.Logger.FromContext(ctx).Error("NewOrder received data of futureData invalid", "fn", "NewOrder", "data", futureData.Data())
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-	}
-
-	responseNewOrder := pb.ResponseNewOrder{
-		CallbackUrl: callbackUrl,
 	}
 
 	return &responseNewOrder, nil
