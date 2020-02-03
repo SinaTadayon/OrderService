@@ -148,7 +148,7 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 						Image:              orderList[i].Packages[j].Subpackages[z].Items[t].Image,
 						Returnable:         orderList[i].Packages[j].Subpackages[z].Items[t].Returnable,
 						Quantity:           orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
-						Attributes:         orderList[i].Packages[j].Subpackages[z].Items[t].Attributes,
+						Attributes:         nil,
 						Invoice: &pb.BuyerOrderDetailList_OrderDetail_Package_Item_Invoice{
 							Unit:     0,
 							Total:    0,
@@ -252,7 +252,7 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 						DeliveryAt:     "",
 						ShippedAt:      orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601),
 						ShipmentAmount: 0,
-						CarrierName:    orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.CarrierName,
+						CarrierName:    orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.CourierName,
 						TrackingNumber: orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.TrackingNumber,
 					}
 
@@ -420,7 +420,7 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 					Image:              order.Packages[j].Subpackages[z].Items[t].Image,
 					Returnable:         order.Packages[j].Subpackages[z].Items[t].Returnable,
 					Quantity:           order.Packages[j].Subpackages[z].Items[t].Quantity,
-					Attributes:         order.Packages[j].Subpackages[z].Items[t].Attributes,
+					Attributes:         nil,
 					Invoice: &pb.BuyerOrderDetailList_OrderDetail_Package_Item_Invoice{
 						Unit:     0,
 						Total:    0,
@@ -429,6 +429,24 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 						Discount: 0,
 						Currency: "IRR",
 					},
+				}
+
+				if order.Packages[j].Subpackages[z].Items[t].Attributes != nil {
+					itemPackageDetail.Attributes = make(map[string]*pb.BuyerOrderDetailList_OrderDetail_Package_Item_Attribute, len(order.Packages[j].Subpackages[z].Items[t].Attributes))
+					for attrKey, attribute := range order.Packages[j].Subpackages[z].Items[t].Attributes {
+						keyTranslates := make(map[string]string, len(attribute.KeyTranslate))
+						for keyTran, value := range attribute.KeyTranslate {
+							keyTranslates[keyTran] = value
+						}
+						valTranslates := make(map[string]string, len(attribute.ValueTranslate))
+						for valTran, value := range attribute.ValueTranslate {
+							valTranslates[valTran] = value
+						}
+						itemPackageDetail.Attributes[attrKey] = &pb.BuyerOrderDetailList_OrderDetail_Package_Item_Attribute{
+							KeyTranslates:   keyTranslates,
+							ValueTranslates: valTranslates,
+						}
+					}
 				}
 
 				unit, err := decimal.NewFromString(order.Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount)
@@ -524,7 +542,7 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 					DeliveryAt:     "",
 					ShippedAt:      order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601),
 					ShipmentAmount: 0,
-					CarrierName:    order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.CarrierName,
+					CarrierName:    order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.CourierName,
 					TrackingNumber: order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.TrackingNumber,
 				}
 
@@ -849,7 +867,7 @@ func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId ui
 						Image:           orderList[i].Packages[j].Subpackages[z].Items[t].Image,
 						Returnable:      orderList[i].Packages[j].Subpackages[z].Items[t].Returnable,
 						Quantity:        orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
-						Attributes:      orderList[i].Packages[j].Subpackages[z].Items[t].Attributes,
+						Attributes:      nil,
 						Reason:          "",
 						ReturnRequestAt: "",
 						Invoice: &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Invoice{
@@ -860,6 +878,24 @@ func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId ui
 							Discount: 0,
 							Currency: "IRR",
 						},
+					}
+
+					if orderList[i].Packages[j].Subpackages[z].Items[t].Attributes != nil {
+						returnItemPackageDetail.Attributes = make(map[string]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Attribute, len(orderList[i].Packages[j].Subpackages[z].Items[t].Attributes))
+						for attrKey, attribute := range orderList[i].Packages[j].Subpackages[z].Items[t].Attributes {
+							keyTranslates := make(map[string]string, len(attribute.KeyTranslate))
+							for keyTran, value := range attribute.KeyTranslate {
+								keyTranslates[keyTran] = value
+							}
+							valTranslates := make(map[string]string, len(attribute.ValueTranslate))
+							for valTran, value := range attribute.ValueTranslate {
+								valTranslates[valTran] = value
+							}
+							returnItemPackageDetail.Attributes[attrKey] = &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Attribute{
+								KeyTranslates:   keyTranslates,
+								ValueTranslates: valTranslates,
+							}
+						}
 					}
 
 					unit, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount)
@@ -1097,7 +1133,7 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 						Image:           orderList[i].Packages[j].Subpackages[z].Items[t].Image,
 						Returnable:      orderList[i].Packages[j].Subpackages[z].Items[t].Returnable,
 						Quantity:        orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
-						Attributes:      orderList[i].Packages[j].Subpackages[z].Items[t].Attributes,
+						Attributes:      nil,
 						Reason:          "",
 						ReturnRequestAt: "",
 						Invoice: &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Invoice{
@@ -1108,6 +1144,24 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 							Discount: 0,
 							Currency: "IRR",
 						},
+					}
+
+					if orderList[i].Packages[j].Subpackages[z].Items[t].Attributes != nil {
+						returnItemPackageDetail.Attributes = make(map[string]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Attribute, len(orderList[i].Packages[j].Subpackages[z].Items[t].Attributes))
+						for attrKey, attribute := range orderList[i].Packages[j].Subpackages[z].Items[t].Attributes {
+							keyTranslates := make(map[string]string, len(attribute.KeyTranslate))
+							for keyTran, value := range attribute.KeyTranslate {
+								keyTranslates[keyTran] = value
+							}
+							valTranslates := make(map[string]string, len(attribute.ValueTranslate))
+							for valTran, value := range attribute.ValueTranslate {
+								valTranslates[valTran] = value
+							}
+							returnItemPackageDetail.Attributes[attrKey] = &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Attribute{
+								KeyTranslates:   keyTranslates,
+								ValueTranslates: valTranslates,
+							}
+						}
 					}
 
 					unit, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount)

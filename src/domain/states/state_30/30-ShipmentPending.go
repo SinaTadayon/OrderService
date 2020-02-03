@@ -613,7 +613,7 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 					for i := 0; i < len(newSubPackages); i++ {
 						newSubPackages[i].Shipments = &entities.Shipment{
 							ShipmentDetail: &entities.ShippingDetail{
-								CarrierName:    actionData.Carrier,
+								CourierName:    actionData.Carrier,
 								ShippingMethod: "",
 								TrackingNumber: actionData.TrackingNumber,
 								Image:          "",

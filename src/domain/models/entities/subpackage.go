@@ -26,7 +26,7 @@ type Shipment struct {
 }
 
 type ShippingDetail struct {
-	CarrierName    string                 `bson:"carrierName"`
+	CourierName    string                 `bson:"courierName"`
 	ShippingMethod string                 `bson:"shippingMethod"`
 	TrackingNumber string                 `bson:"trackingNumber"`
 	Image          string                 `bson:"image"`
@@ -37,7 +37,7 @@ type ShippingDetail struct {
 }
 
 type ReturnShippingDetail struct {
-	CarrierName    string                 `bson:"carrierName"`
+	CourierName    string                 `bson:"courierName"`
 	ShippingMethod string                 `bson:"shippingMethod"`
 	TrackingNumber string                 `bson:"trackingNumber"`
 	Image          string                 `bson:"image"`
@@ -59,9 +59,14 @@ type Item struct {
 	Returnable  bool                   `bson:"returnable"`
 	Quantity    int32                  `bson:"quantity"`
 	Reasons     []string               `bson:"reasons"`
-	Attributes  map[string]string      `bson:"attributes"`
+	Attributes  map[string]*Attribute  `bson:"attributes"`
 	Invoice     ItemInvoice            `bson:"invoice"`
 	Extended    map[string]interface{} `bson:"ext"`
+}
+
+type Attribute struct {
+	KeyTranslate   map[string]string `bson:"keyTranslate"`
+	ValueTranslate map[string]string `bson:"valueTranslate"`
 }
 
 type ItemInvoice struct {
@@ -163,7 +168,7 @@ func (item Item) DeepCopy() *Item {
 		Returnable:  item.Returnable,
 		Quantity:    item.Quantity,
 		Reasons:     nil,
-		Attributes:  item.Attributes,
+		Attributes:  nil,
 		Extended:    item.Extended,
 		Invoice: ItemInvoice{
 			Unit:              item.Invoice.Unit,
@@ -181,6 +186,25 @@ func (item Item) DeepCopy() *Item {
 			Extended:          item.Extended,
 		},
 	}
+
+	if item.Attributes != nil {
+		newItem.Attributes = make(map[string]*Attribute, len(item.Attributes))
+		for attrKey, attribute := range item.Attributes {
+			keyTranslates := make(map[string]string, len(attribute.KeyTranslate))
+			for keyTran, value := range attribute.KeyTranslate {
+				keyTranslates[keyTran] = value
+			}
+			valTranslates := make(map[string]string, len(attribute.ValueTranslate))
+			for valTran, value := range attribute.ValueTranslate {
+				valTranslates[valTran] = value
+			}
+			newItem.Attributes[attrKey] = &Attribute{
+				KeyTranslate:   keyTranslates,
+				ValueTranslate: valTranslates,
+			}
+		}
+	}
+
 	if item.Reasons != nil {
 		newItem.Reasons = make([]string, 0, len(item.Reasons))
 		for _, reason := range item.Reasons {
@@ -219,7 +243,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 			Image:       item.Image,
 			Returnable:  item.Returnable,
 			Quantity:    item.Quantity,
-			Attributes:  item.Attributes,
+			Attributes:  nil,
 			Extended:    item.Extended,
 			Reasons:     nil,
 			Invoice: ItemInvoice{
@@ -238,6 +262,25 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 				Extended:          item.Invoice.Extended,
 			},
 		}
+
+		if item.Attributes != nil {
+			newItem.Attributes = make(map[string]*Attribute, len(item.Attributes))
+			for attrKey, attribute := range item.Attributes {
+				keyTranslates := make(map[string]string, len(attribute.KeyTranslate))
+				for keyTran, value := range attribute.KeyTranslate {
+					keyTranslates[keyTran] = value
+				}
+				valTranslates := make(map[string]string, len(attribute.ValueTranslate))
+				for valTran, value := range attribute.ValueTranslate {
+					valTranslates[valTran] = value
+				}
+				newItem.Attributes[attrKey] = &Attribute{
+					KeyTranslate:   keyTranslates,
+					ValueTranslate: valTranslates,
+				}
+			}
+		}
+
 		if item.Reasons != nil {
 			newItem.Reasons = make([]string, 0, len(item.Reasons))
 			for _, reason := range item.Reasons {
@@ -251,7 +294,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 		subPkg.Shipments = &Shipment{}
 		if subpackage.Shipments.ShipmentDetail != nil {
 			subPkg.Shipments.ShipmentDetail = &ShippingDetail{
-				CarrierName:    subpackage.Shipments.ShipmentDetail.CarrierName,
+				CourierName:    subpackage.Shipments.ShipmentDetail.CourierName,
 				ShippingMethod: subpackage.Shipments.ShipmentDetail.ShippingMethod,
 				TrackingNumber: subpackage.Shipments.ShipmentDetail.TrackingNumber,
 				Image:          subpackage.Shipments.ShipmentDetail.Image,
@@ -264,7 +307,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 
 		if subpackage.Shipments.ReturnShipmentDetail != nil {
 			subPkg.Shipments.ReturnShipmentDetail = &ReturnShippingDetail{
-				CarrierName:    subpackage.Shipments.ReturnShipmentDetail.CarrierName,
+				CourierName:    subpackage.Shipments.ReturnShipmentDetail.CourierName,
 				ShippingMethod: subpackage.Shipments.ReturnShipmentDetail.ShippingMethod,
 				TrackingNumber: subpackage.Shipments.ReturnShipmentDetail.TrackingNumber,
 				Image:          subpackage.Shipments.ReturnShipmentDetail.Image,

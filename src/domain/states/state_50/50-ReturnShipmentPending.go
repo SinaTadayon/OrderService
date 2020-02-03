@@ -503,7 +503,7 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 					for i := 0; i < len(newSubPackages); i++ {
 						if newSubPackages[i].Shipments != nil && newSubPackages[i].Shipments.ReturnShipmentDetail != nil {
 							newSubPackages[i].Shipments.ReturnShipmentDetail.TrackingNumber = actionData.TrackingNumber
-							newSubPackages[i].Shipments.ReturnShipmentDetail.CarrierName = actionData.Carrier
+							newSubPackages[i].Shipments.ReturnShipmentDetail.CourierName = actionData.Carrier
 							newSubPackages[i].Shipments.ReturnShipmentDetail.ShippedAt = &shipmentTime
 						} else {
 							app.Globals.Logger.FromContext(ctx).Error("subpackage.Shipments is nil",
@@ -515,7 +515,7 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 								"event", event)
 							newSubPackages[i].Shipments = &entities.Shipment{
 								ReturnShipmentDetail: &entities.ReturnShippingDetail{
-									CarrierName:    actionData.Carrier,
+									CourierName:    actionData.Carrier,
 									ShippingMethod: "",
 									TrackingNumber: actionData.TrackingNumber,
 									Image:          "",

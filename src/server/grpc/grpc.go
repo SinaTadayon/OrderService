@@ -1231,7 +1231,7 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 //						Currency: item.Invoice.Currency,
 //					},
 //					Shipment: &pb.BuyerOrderItems_ShipmentSpec{
-//						CarrierName:  item.ShipmentSpec.CarrierName,
+//						CourierName:  item.ShipmentSpec.CourierName,
 //						ShippingCost: item.ShipmentSpec.ShippingCost,
 //					},
 //				}

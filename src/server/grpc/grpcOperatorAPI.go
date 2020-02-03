@@ -317,7 +317,7 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 
 			if order.Packages[i].Subpackages[j].Shipments != nil && order.Packages[i].Subpackages[j].Shipments.ShipmentDetail != nil {
 				subpackage.ShipmentDetail = &pb.OperatorOrderDetail_Subpackage_ShipmentDetail{
-					CarrierName:    order.Packages[i].Subpackages[j].Shipments.ShipmentDetail.CarrierName,
+					CarrierName:    order.Packages[i].Subpackages[j].Shipments.ShipmentDetail.CourierName,
 					ShippingMethod: order.Packages[i].Subpackages[j].Shipments.ShipmentDetail.ShippingMethod,
 					TrackingNumber: order.Packages[i].Subpackages[j].Shipments.ShipmentDetail.TrackingNumber,
 					Image:          order.Packages[i].Subpackages[j].Shipments.ShipmentDetail.Image,
@@ -332,7 +332,7 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 
 			if order.Packages[i].Subpackages[j].Shipments != nil && order.Packages[i].Subpackages[j].Shipments.ReturnShipmentDetail != nil {
 				subpackage.ReturnShipmentDetail = &pb.OperatorOrderDetail_Subpackage_ReturnShipmentDetail{
-					CarrierName:    order.Packages[i].Subpackages[j].Shipments.ReturnShipmentDetail.CarrierName,
+					CarrierName:    order.Packages[i].Subpackages[j].Shipments.ReturnShipmentDetail.CourierName,
 					ShippingMethod: order.Packages[i].Subpackages[j].Shipments.ReturnShipmentDetail.ShippingMethod,
 					TrackingNumber: order.Packages[i].Subpackages[j].Shipments.ReturnShipmentDetail.TrackingNumber,
 					Image:          order.Packages[i].Subpackages[j].Shipments.ReturnShipmentDetail.Image,
@@ -364,7 +364,7 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 					InventoryId: order.Packages[i].Subpackages[j].Items[z].InventoryId,
 					Brand:       order.Packages[i].Subpackages[j].Items[z].Brand,
 					Title:       order.Packages[i].Subpackages[j].Items[z].Title,
-					Attributes:  order.Packages[i].Subpackages[j].Items[z].Attributes,
+					Attributes:  nil,
 					Quantity:    order.Packages[i].Subpackages[j].Items[z].Quantity,
 					Invoice: &pb.OperatorOrderDetail_Subpackage_Item_Invoice{
 						Unit:     0,
@@ -374,6 +374,24 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 						Discount: 0,
 						Currency: "IRR",
 					},
+				}
+
+				if order.Packages[i].Subpackages[j].Items[z].Attributes != nil {
+					item.Attributes = make(map[string]*pb.OperatorOrderDetail_Subpackage_Item_Attribute, len(order.Packages[i].Subpackages[j].Items[z].Attributes))
+					for attrKey, attribute := range order.Packages[i].Subpackages[j].Items[z].Attributes {
+						keyTranslates := make(map[string]string, len(attribute.KeyTranslate))
+						for keyTran, value := range attribute.KeyTranslate {
+							keyTranslates[keyTran] = value
+						}
+						valTranslates := make(map[string]string, len(attribute.ValueTranslate))
+						for valTran, value := range attribute.ValueTranslate {
+							valTranslates[valTran] = value
+						}
+						item.Attributes[attrKey] = &pb.OperatorOrderDetail_Subpackage_Item_Attribute{
+							KeyTranslates:   keyTranslates,
+							ValueTranslates: valTranslates,
+						}
+					}
 				}
 
 				unit, err := decimal.NewFromString(order.Packages[i].Subpackages[j].Items[z].Invoice.Unit.Amount)

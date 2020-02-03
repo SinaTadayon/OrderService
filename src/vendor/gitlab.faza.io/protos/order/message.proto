@@ -172,7 +172,11 @@ message SellerOrderDetail {
         string image = 10;
         bool returnable = 11;
         int32 quantity = 12;
-        map<string, string> attributes = 13;
+        message Attribute {
+            map<string, string> keyTranslates = 1;
+            map<string, string> valueTranslates = 2;
+        }
+        map<string,Attribute> attributes = 13;
         message Invoice {
             uint64 unit = 1;
             uint64 total = 2;
@@ -334,7 +338,11 @@ message SellerReturnOrderDetailList {
                 string image = 6;
                 bool returnable = 7;
                 int32 quantity = 8;
-                map<string, string> attributes = 9;
+                message Attribute {
+                    map<string, string> keyTranslates = 1;
+                    map<string, string> valueTranslates = 2;
+                }
+                map<string,Attribute> attributes = 9;
                 string ReturnRequestAt = 10;
                 string ReturnShippedAt = 11;
                 message Invoice {
@@ -413,7 +421,11 @@ message BuyerOrderDetailList {
                 string image = 10;
                 bool returnable = 11;
                 int32 quantity = 12;
-                map<string, string> attributes = 13;
+                message Attribute {
+                    map<string, string> keyTranslates = 1;
+                    map<string, string> valueTranslates = 2;
+                }
+                map<string,Attribute> attributes = 13;
                 message Invoice {
                     uint64 unit = 1;
                     uint64 total = 2;
@@ -499,7 +511,11 @@ message BuyerReturnOrderDetailList {
                 string image = 9;
                 bool returnable = 10;
                 int32 quantity = 11;
-                map<string, string> attributes = 12;
+                message Attribute {
+                    map<string, string> keyTranslates = 1;
+                    map<string, string> valueTranslates = 2;
+                }
+                map<string,Attribute> attributes = 12;
                 message Invoice {
                     uint64 unit = 1;
                     uint64 total = 2;
@@ -627,7 +643,11 @@ message OperatorOrderDetail {
             string inventoryId = 1;
             string brand = 2;
             string title = 3;
-            map<string,string> Attributes = 4;
+            message Attribute {
+                map<string, string> keyTranslates = 1;
+                map<string, string> valueTranslates = 2;
+            }
+            map<string,Attribute> attributes = 4;
             int32  quantity   = 5;
             message Invoice {
                 uint64 unit = 1;
