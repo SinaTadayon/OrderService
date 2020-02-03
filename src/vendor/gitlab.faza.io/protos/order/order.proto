@@ -95,8 +95,13 @@ message Item {
     string image = 7;
     bool returnable = 8;
     int32 quantity = 9;
-    map<string, string> attributes = 10;
+    map<string,attribute> attributes = 10;
     ItemInvoice invoice = 11;
+}
+
+message attribute {
+    map<string, string> key_trans   = 2;
+    map<string, string> value_trans = 3;
 }
 
 message Buyer {

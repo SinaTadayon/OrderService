@@ -124,15 +124,7 @@ func TestUpdatePkgItemWithNewSubPkgRepository(t *testing.T) {
 				Returnable:  false,
 				Quantity:    5,
 				Reasons:     nil,
-				Attributes: map[string]string{
-					"Quantity":  "0",
-					"Width":     "5cm",
-					"Height":    "7cm",
-					"Length":    "2m",
-					"Weight":    "5kg",
-					"Color":     "Blue",
-					"Materials": "Stone",
-				},
+				Attributes:  nil,
 				Invoice: entities.ItemInvoice{
 					Unit: entities.Money{
 						Amount:   "1270000",
@@ -165,7 +157,7 @@ func TestUpdatePkgItemWithNewSubPkgRepository(t *testing.T) {
 		},
 		Shipments: &entities.Shipment{
 			ShipmentDetail: &entities.ShippingDetail{
-				CarrierName:    "Post",
+				CourierName:    "Post",
 				ShippingMethod: "Normal",
 				TrackingNumber: "545349534958349",
 				Image:          "",
@@ -174,7 +166,7 @@ func TestUpdatePkgItemWithNewSubPkgRepository(t *testing.T) {
 				CreatedAt:      time.Now().UTC(),
 			},
 			ReturnShipmentDetail: &entities.ReturnShippingDetail{
-				CarrierName:    "Post",
+				CourierName:    "Post",
 				ShippingMethod: "Normal",
 				TrackingNumber: "545349534958349",
 				Image:          "",
@@ -658,15 +650,7 @@ func createOrder() *entities.Order {
 								Returnable:  false,
 								Quantity:    5,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "0",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "1270000",
@@ -708,15 +692,7 @@ func createOrder() *entities.Order {
 								Returnable:  false,
 								Quantity:    2,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "2",
-									"Width":     "120cm",
-									"Height":    "110cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "3270000",
@@ -750,7 +726,7 @@ func createOrder() *entities.Order {
 						},
 						Shipments: &entities.Shipment{
 							ShipmentDetail: &entities.ShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -759,7 +735,7 @@ func createOrder() *entities.Order {
 								CreatedAt:      time.Now().UTC(),
 							},
 							ReturnShipmentDetail: &entities.ReturnShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -858,15 +834,7 @@ func createOrder() *entities.Order {
 								Returnable:  true,
 								Quantity:    5,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "0",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "1270000",
@@ -908,15 +876,7 @@ func createOrder() *entities.Order {
 								Returnable:  true,
 								Quantity:    2,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "2",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "3270000",
@@ -950,7 +910,7 @@ func createOrder() *entities.Order {
 						},
 						Shipments: &entities.Shipment{
 							ShipmentDetail: &entities.ShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -959,7 +919,7 @@ func createOrder() *entities.Order {
 								CreatedAt:      time.Now().UTC(),
 							},
 							ReturnShipmentDetail: &entities.ReturnShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -1163,15 +1123,7 @@ func createOrder() *entities.Order {
 								Returnable:  false,
 								Quantity:    5,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "0",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "1270000",
@@ -1212,15 +1164,7 @@ func createOrder() *entities.Order {
 								Returnable:  false,
 								Quantity:    3,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "3",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "2270000",
@@ -1254,7 +1198,7 @@ func createOrder() *entities.Order {
 						},
 						Shipments: &entities.Shipment{
 							ShipmentDetail: &entities.ShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -1263,7 +1207,7 @@ func createOrder() *entities.Order {
 								CreatedAt:      time.Now().UTC(),
 							},
 							ReturnShipmentDetail: &entities.ReturnShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -1338,15 +1282,7 @@ func createOrder() *entities.Order {
 								Returnable:  true,
 								Quantity:    3,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "3",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "1270000",
@@ -1388,15 +1324,7 @@ func createOrder() *entities.Order {
 								Returnable:  true,
 								Quantity:    3,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "3",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "7270000",
@@ -1430,7 +1358,7 @@ func createOrder() *entities.Order {
 						},
 						Shipments: &entities.Shipment{
 							ShipmentDetail: &entities.ShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -1439,7 +1367,7 @@ func createOrder() *entities.Order {
 								CreatedAt:      time.Now().UTC(),
 							},
 							ReturnShipmentDetail: &entities.ReturnShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",

@@ -328,7 +328,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 				Image:       itemDto.Image,
 				Returnable:  itemDto.Returnable,
 				Quantity:    itemDto.Quantity,
-				Attributes:  itemDto.Attributes,
+				Attributes:  nil,
 				Invoice: entities.ItemInvoice{
 					Unit: entities.Money{
 						Amount:   itemDto.Invoice.Unit.Amount,
@@ -361,6 +361,24 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 
 			if newOrderDto.Invoice.Voucher != nil && (newOrderDto.Invoice.Voucher.Price != nil || newOrderDto.Invoice.Voucher.Percent > 0) {
 				item.Invoice.ApplicableVoucher = true
+			}
+
+			if itemDto.Attributes != nil {
+				item.Attributes = make(map[string]*entities.Attribute, len(itemDto.Attributes))
+				for attrKey, attribute := range itemDto.Attributes {
+					keyTranslates := make(map[string]string, len(attribute.KeyTrans))
+					for keyTran, value := range attribute.KeyTrans {
+						keyTranslates[keyTran] = value
+					}
+					valTranslates := make(map[string]string, len(attribute.ValueTrans))
+					for valTran, value := range attribute.ValueTrans {
+						valTranslates[valTran] = value
+					}
+					item.Attributes[attrKey] = &entities.Attribute{
+						KeyTranslate:   keyTranslates,
+						ValueTranslate: valTranslates,
+					}
+				}
 			}
 
 			pkgItem.Subpackages[0].Items = append(pkgItem.Subpackages[0].Items, item)

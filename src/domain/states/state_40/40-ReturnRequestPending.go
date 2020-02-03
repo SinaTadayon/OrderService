@@ -617,7 +617,7 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 					for i := 0; i < len(newSubPackages); i++ {
 						if newSubPackages[i].Shipments != nil {
 							newSubPackages[i].Shipments.ReturnShipmentDetail = &entities.ReturnShippingDetail{
-								CarrierName:    "",
+								CourierName:    "",
 								ShippingMethod: "",
 								TrackingNumber: "",
 								Image:          "",
@@ -636,7 +636,7 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 								"event", event)
 							newSubPackages[i].Shipments = &entities.Shipment{
 								ReturnShipmentDetail: &entities.ReturnShippingDetail{
-									CarrierName:    "",
+									CourierName:    "",
 									ShippingMethod: "",
 									TrackingNumber: "",
 									Image:          "",
