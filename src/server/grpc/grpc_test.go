@@ -2533,10 +2533,10 @@ func TestNewOrderRequest(t *testing.T) {
 	//assert.Nil(t, err)
 
 	OrderService := pb.NewOrderServiceClient(grpcConn)
-	resOrder, err := OrderService.NewOrder(ctx, requestNewOrder)
+	response, err := OrderService.NewOrder(ctx, requestNewOrder)
 
 	require.Nil(t, err)
-	require.NotEmpty(t, resOrder.CallbackUrl, "CallbackUrl is empty")
+	require.NotEmpty(t, response.Response.(*pb.ResponseNewOrder_Ipg).Ipg.CallbackUrl, "CallbackUrl is empty")
 }
 
 func TestNewOrderRequestWithZeroAmountAndVoucher(t *testing.T) {
@@ -2566,10 +2566,10 @@ func TestNewOrderRequestWithZeroAmountAndVoucher(t *testing.T) {
 	defer releaseStock(ctx, requestNewOrder)
 
 	OrderService := pb.NewOrderServiceClient(grpcConn)
-	resOrder, err := OrderService.NewOrder(ctx, requestNewOrder)
+	response, err := OrderService.NewOrder(ctx, requestNewOrder)
 
 	require.Nil(t, err)
-	require.NotEmpty(t, resOrder.CallbackUrl, "CallbackUrl is empty")
+	require.NotEmpty(t, response.Response.(*pb.ResponseNewOrder_Ipg).Ipg.CallbackUrl, "CallbackUrl is empty")
 }
 
 func TestPaymentPending_PaymentGatewayNotRespond(t *testing.T) {

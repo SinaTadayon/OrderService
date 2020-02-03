@@ -66,26 +66,56 @@ func (payment iPaymentServiceImpl) OrderPayment(ctx context.Context, request Pay
 	}
 
 	timeoutTimer := time.NewTimer(time.Duration(payment.callbackTimeout) * time.Second)
+	var paymentFn func() <-chan interface{}
 
-	gatewayRequest := &payment_gateway.GenerateRedirRequest{
-		Gateway:  request.Gateway,
-		Amount:   request.Amount,
-		Currency: request.Currency,
-		OrderID:  strconv.Itoa(int(request.OrderId)),
-		Mobile:   request.Mobile,
-	}
+	if request.Method == IPG {
+		gatewayRequest := &payment_gateway.GenerateRedirRequest{
+			Gateway:  request.Gateway,
+			Amount:   request.Amount,
+			Currency: request.Currency,
+			OrderID:  strconv.Itoa(int(request.OrderId)),
+			Mobile:   request.Mobile,
+		}
 
-	paymentFn := func() <-chan interface{} {
-		paymentChan := make(chan interface{}, 0)
-		go func() {
-			result, err := payment.paymentService.GenerateRedirectURL(outCtx, gatewayRequest)
-			if err != nil {
-				paymentChan <- err
-			} else {
-				paymentChan <- result
-			}
-		}()
-		return paymentChan
+		paymentFn = func() <-chan interface{} {
+			paymentChan := make(chan interface{}, 0)
+			go func() {
+				result, err := payment.paymentService.GenerateRedirectURL(outCtx, gatewayRequest)
+				if err != nil {
+					paymentChan <- err
+				} else {
+					paymentChan <- result
+				}
+			}()
+			return paymentChan
+		}
+	} else if request.Method == MPG {
+		gatewayRequest := &payment_gateway.MPGStartRequest{
+			Amount:   request.Amount,
+			Currency: request.Currency,
+			OrderID:  strconv.Itoa(int(request.OrderId)),
+			Mobile:   request.Mobile,
+		}
+
+		paymentFn = func() <-chan interface{} {
+			paymentChan := make(chan interface{}, 0)
+			go func() {
+				result, err := payment.paymentService.MPGStart(outCtx, gatewayRequest)
+				if err != nil {
+					paymentChan <- err
+				} else {
+					paymentChan <- result
+				}
+			}()
+			return paymentChan
+		}
+	} else {
+		applog.GLog.Logger.Error("Payment Request Invalid",
+			"fn", "OrderPayment",
+			"request", request)
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "Unknown Error", errors.New("Payment Request Invalid")).
+			BuildAndSend()
 	}
 
 	var obj interface{} = nil
@@ -122,12 +152,25 @@ func (payment iPaymentServiceImpl) OrderPayment(ctx context.Context, request Pay
 		applog.GLog.Logger.FromContext(ctx).Debug("received payment service response",
 			"fn", "OrderPayment",
 			"request", request, "response", response)
-		paymentResponse := PaymentResponse{
+		paymentResponse := IPGPaymentResponse{
 			CallbackUrl: response.CallbackUrl,
 			InvoiceId:   response.InvoiceId,
 			PaymentId:   response.PaymentId,
 		}
 
+		return future.Factory().SetCapacity(1).
+			SetData(paymentResponse).
+			BuildAndSend()
+	} else if response, ok := obj.(*payment_gateway.MPGStartResponse); ok {
+		applog.GLog.Logger.FromContext(ctx).Debug("received payment service response",
+			"fn", "OrderPayment",
+			"request", request,
+			"response", response)
+		paymentResponse := MPGPaymentResponse{
+			HostRequest:     response.HostRequest,
+			HostRequestSign: response.HostRequestSign,
+			PaymentId:       response.PaymentId,
+		}
 		return future.Factory().SetCapacity(1).
 			SetData(paymentResponse).
 			BuildAndSend()

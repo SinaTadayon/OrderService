@@ -16,7 +16,24 @@ message Money {
 }
 
 message ResponseNewOrder {
+    enum Action {
+        MPG = 0;
+        Redirect = 1;
+    }
+    Action action = 1;
+    oneof Response {
+        IPGResponse ipg = 2;
+        MPGResponse mpg = 3;
+    }
+}
+
+message IPGResponse {
     string callbackUrl  = 1;
+}
+
+message MPGResponse {
+    string HostRequest  = 1;
+    string HostRequestSign = 2;
 }
 
 message RequestNewOrder {

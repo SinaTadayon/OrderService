@@ -6,6 +6,12 @@ import (
 )
 
 type PaymentRequestStatus int32
+type PaymentMethod string
+
+const (
+	IPG PaymentMethod = "IPG"
+	MPG PaymentMethod = "MPG"
+)
 
 const (
 	PaymentRequestPending PaymentRequestStatus = 0
@@ -19,6 +25,7 @@ type IPaymentService interface {
 }
 
 type PaymentRequest struct {
+	Method   PaymentMethod
 	Amount   int64
 	Gateway  string
 	Currency string
@@ -26,10 +33,16 @@ type PaymentRequest struct {
 	Mobile   string
 }
 
-type PaymentResponse struct {
+type IPGPaymentResponse struct {
 	CallbackUrl string
 	InvoiceId   int64
 	PaymentId   string
+}
+
+type MPGPaymentResponse struct {
+	HostRequest     string
+	HostRequestSign string
+	PaymentId       string
 }
 
 type PaymentResult struct {
