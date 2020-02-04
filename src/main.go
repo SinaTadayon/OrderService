@@ -488,7 +488,7 @@ func main() {
 						"orderId", order.OrderId,
 						"buyerId", order.BuyerInfo.BuyerId,
 						"buyer Mobile", order.BuyerInfo.Mobile,
-						"voucherCode", order.Invoice.Voucher.Code,
+						"voucher Code", order.Invoice.Voucher.Code,
 						"error", err)
 				} else {
 					app.Globals.Logger.Debug("voucher settlement success",
@@ -496,7 +496,7 @@ func main() {
 						"orderId", order.OrderId,
 						"buyerId", order.BuyerInfo.BuyerId,
 						"buyer Mobile", order.BuyerInfo.Mobile,
-						"voucherCode", order.Invoice.Voucher.Code)
+						"voucher Code", order.Invoice.Voucher.Code)
 				}
 			}
 		}

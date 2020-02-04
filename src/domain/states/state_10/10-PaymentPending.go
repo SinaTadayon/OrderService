@@ -587,14 +587,14 @@ func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFram
 					"state", state.Name(),
 					"oid", order.OrderId,
 					"voucher Percent", order.Invoice.Voucher.Percent,
-					"voucherCode", order.Invoice.Voucher.Code)
+					"voucher Code", order.Invoice.Voucher.Code)
 			} else {
 				app.Globals.Logger.FromContext(ctx).Info("VoucherSettlement success",
 					"fn", "Process",
 					"state", state.Name(),
 					"oid", order.OrderId,
 					"voucher Amount", voucherAmount,
-					"voucherCode", order.Invoice.Voucher.Code)
+					"voucher Code", order.Invoice.Voucher.Code)
 			}
 		} else {
 			app.Globals.Logger.FromContext(ctx).Info("Order Invoice hasn't voucher",
@@ -849,7 +849,7 @@ func (state paymentPendingState) eventHandler(ctx context.Context, iFrame frame.
 								"state", state.Name(),
 								"oid", order.OrderId,
 								"voucher Percent", order.Invoice.Voucher.Percent,
-								"voucherCode", order.Invoice.Voucher.Code)
+								"voucher Code", order.Invoice.Voucher.Code)
 						} else {
 							app.Globals.Logger.FromContext(ctx).Info("VoucherSettlement success",
 								"fn", "eventHandler",

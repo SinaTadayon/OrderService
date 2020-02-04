@@ -13,7 +13,7 @@ const (
 )
 
 const (
-	DocumentVersion string = "1.0.4"
+	DocumentVersion string = "1.0.5"
 )
 
 func init() {
@@ -92,6 +92,7 @@ type PaymentOption struct {
 
 type Voucher struct {
 	Percent      float64                `bson:"percent"`
+	AppliedPrice *Money                 `bson:"appliedPrice"`
 	Price        *Money                 `bson:"price"`
 	Code         string                 `bson:"code"`
 	Details      *VoucherDetails        `bson:"details"`
@@ -116,6 +117,16 @@ type TAX struct {
 }
 
 type VoucherDetails struct {
+	Title            string                 `bson:"title"`
+	Prefix           string                 `bson:"prefix"`
+	UseLimit         int32                  `bson:"useLimit"`
+	Count            int32                  `bson:"count"`
+	Length           int32                  `bson:"length"`
+	Categories       []string               `bson:"categories"`
+	Products         []string               `bson:"products"`
+	Users            []string               `bson:"users"`
+	Sellers          []string               `bson:"sellers"`
+	IsFirstPurchase  bool                   `bson:"isFirstPurchase"`
 	StartDate        time.Time              `bson:"startDate"`
 	EndDate          time.Time              `bson:"endDate"`
 	Type             string                 `bson:"type"`

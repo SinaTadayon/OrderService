@@ -145,6 +145,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	if newOrderDto.Invoice.Voucher != nil {
 		order.Invoice.Voucher = &entities.Voucher{
 			Percent:      float64(newOrderDto.Invoice.Voucher.Percent),
+			AppliedPrice: nil,
 			Price:        nil,
 			Code:         newOrderDto.Invoice.Voucher.Code,
 			Details:      nil,
@@ -153,6 +154,13 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 			Reserved:     "",
 			ReservedAt:   nil,
 			Extended:     nil,
+		}
+
+		if newOrderDto.Invoice.Voucher.AppliedPrice != nil {
+			order.Invoice.Voucher.AppliedPrice = &entities.Money{
+				Amount:   newOrderDto.Invoice.Voucher.AppliedPrice.Amount,
+				Currency: newOrderDto.Invoice.Voucher.AppliedPrice.Currency,
+			}
 		}
 
 		if newOrderDto.Invoice.Voucher.Price != nil {
@@ -164,9 +172,20 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 
 		if newOrderDto.Invoice.Voucher.Details != nil {
 			order.Invoice.Voucher.Details = &entities.VoucherDetails{
+				Title:            newOrderDto.Invoice.Voucher.Details.Title,
+				Prefix:           newOrderDto.Invoice.Voucher.Details.Prefix,
+				UseLimit:         newOrderDto.Invoice.Voucher.Details.UseLimit,
+				Count:            newOrderDto.Invoice.Voucher.Details.Count,
+				Length:           newOrderDto.Invoice.Voucher.Details.Length,
+				Categories:       newOrderDto.Invoice.Voucher.Details.Categories,
+				Products:         newOrderDto.Invoice.Voucher.Details.Products,
+				Users:            newOrderDto.Invoice.Voucher.Details.Users,
+				Sellers:          newOrderDto.Invoice.Voucher.Details.Sellers,
+				IsFirstPurchase:  newOrderDto.Invoice.Voucher.Details.IsFirstPurchase,
 				Type:             newOrderDto.Invoice.Voucher.Details.Type,
 				MaxDiscountValue: newOrderDto.Invoice.Voucher.Details.MaxDiscountValue,
 				MinBasketValue:   newOrderDto.Invoice.Voucher.Details.MinBasketValue,
+				Extended:         nil,
 			}
 
 			temp, err := time.Parse(ISO8601, newOrderDto.Invoice.Voucher.Details.StartDate)
@@ -180,6 +199,8 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 				return nil, errors.New("Voucher endDate Invalid")
 			}
 			order.Invoice.Voucher.Details.EndDate = temp
+		} else {
+			return nil, errors.New("voucher detail is nil")
 		}
 	}
 

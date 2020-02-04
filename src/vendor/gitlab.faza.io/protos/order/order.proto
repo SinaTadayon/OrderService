@@ -72,9 +72,10 @@ message PaymentOption {}
 
 message Voucher {
     float   percent = 1;
-    Money   Price   = 2;
-    string  code    = 3;
-    VoucherDetails details = 4;
+    Money   AppliedPrice = 2;
+    Money   Price   = 3;
+    string  code    = 4;
+    VoucherDetails details = 5;
 }
 
 message VoucherDetails {
@@ -83,6 +84,16 @@ message VoucherDetails {
     string type = 3;
     uint64 maxDiscountValue = 4;
     uint64 minBasketValue = 5;
+    string title = 6;
+    string prefix = 7;
+    int32 useLimit = 8;
+    int32 count = 9;
+    int32 length = 10;
+    repeated string categories = 11;
+    repeated string products = 12;
+    repeated string users = 13;
+    repeated string sellers = 14;
+    bool isFirstPurchase = 15;
 }
 
 message Item {

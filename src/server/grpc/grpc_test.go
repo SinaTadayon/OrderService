@@ -351,11 +351,32 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	}
 	order.Invoice.Voucher = &pb.Voucher{
 		Percent: 0,
+		AppliedPrice: &pb.Money{
+			Amount:   "40000",
+			Currency: "IRR",
+		},
 		Price: &pb.Money{
 			Amount:   "40000",
 			Currency: "IRR",
 		},
 		Code: "348",
+		Details: &pb.VoucherDetails{
+			StartDate:        "2019-12-28T14:32:46-0700",
+			EndDate:          "2020-01-20T00:00:00-0000",
+			Type:             "",
+			MaxDiscountValue: 0,
+			MinBasketValue:   0,
+			Title:            "",
+			Prefix:           "",
+			UseLimit:         0,
+			Count:            0,
+			Length:           0,
+			Categories:       nil,
+			Products:         nil,
+			Users:            nil,
+			Sellers:          nil,
+			IsFirstPurchase:  false,
+		},
 	}
 
 	order.Buyer.BuyerId = 1000002
