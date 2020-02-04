@@ -3,9 +3,10 @@ package subpkg_repository
 import (
 	"context"
 	"github.com/pkg/errors"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -19,12 +20,12 @@ const (
 	defaultDocCount int    = 1024
 )
 
-var ErrorTotalCountExceeded = errors.New("total count exceeded")
-var ErrorPageNotAvailable = errors.New("page not available")
-var ErrorDeleteFailed = errors.New("update deletedAt field failed")
-var ErrorRemoveFailed = errors.New("remove subpackage failed")
-var ErrorUpdateFailed = errors.New("update subpackage failed")
-var ErrorVersionUpdateFailed = errors.New("update subpackage version failed")
+//var ErrorTotalCountExceeded = errors.New("total count exceeded")
+//var ErrorPageNotAvailable = errors.New("page not available")
+//var ErrorDeleteFailed = errors.New("update deletedAt field failed")
+//var ErrorRemoveFailed = errors.New("remove subpackage failed")
+//var ErrorUpdateFailed = errors.New("update subpackage failed")
+//var ErrorVersionUpdateFailed = errors.New("update subpackage version failed")
 
 type iSubPkgRepositoryImpl struct {
 	mongoAdapter *mongoadapter.Mongo
@@ -34,7 +35,7 @@ func NewSubPkgRepository(mongoDriver *mongoadapter.Mongo) ISubpackageRepository 
 	return &iSubPkgRepositoryImpl{mongoDriver}
 }
 
-func (repo iSubPkgRepositoryImpl) findAndUpdate(ctx context.Context, subPkg *entities.Subpackage) error {
+func (repo iSubPkgRepositoryImpl) findAndUpdate(ctx context.Context, subPkg *entities.Subpackage) repository.IRepoError {
 	subPkg.UpdatedAt = time.Now().UTC()
 	currentVersion := subPkg.Version
 	subPkg.Version += 1
@@ -52,13 +53,15 @@ func (repo iSubPkgRepositoryImpl) findAndUpdate(ctx context.Context, subPkg *ent
 		bson.D{{"$set", bson.D{{"packages.$[package].subpackages.$[subpackage]", subPkg}}}}, opt)
 
 	if singleResult.Err() != nil {
-		return errors.Wrap(singleResult.Err(), "findAndUpdate failed")
+		if repo.mongoAdapter.NoDocument(singleResult.Err()) {
+			return repository.ErrorFactory(repository.NotFoundErr, "Package Not Found", repository.ErrorUpdateFailed)
+		}
+		return repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(singleResult.Err(), ""))
 	}
-
 	return nil
 }
 
-func (repo iSubPkgRepositoryImpl) Save(ctx context.Context, subPkg *entities.Subpackage) error {
+func (repo iSubPkgRepositoryImpl) Save(ctx context.Context, subPkg *entities.Subpackage) repository.IRepoError {
 	if subPkg.SId == 0 {
 		var err error
 		var updateResult *mongo.UpdateResult
@@ -79,14 +82,14 @@ func (repo iSubPkgRepositoryImpl) Save(ctx context.Context, subPkg *entities.Sub
 				if repo.mongoAdapter.IsDupError(err) {
 					continue
 				}
-				return errors.Wrap(err, "Save Subpackage Failed")
+				return repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Save Subpackage Failed"))
 			}
 
 			break
 		}
 
-		if updateResult.ModifiedCount != 1 {
-			return ErrorUpdateFailed
+		if updateResult.ModifiedCount != 1 || updateResult.MatchedCount != 1 {
+			return repository.ErrorFactory(repository.NotFoundErr, "Subpackage Not Found", repository.ErrorUpdateFailed)
 		}
 	} else {
 		updateResult, err := repo.mongoAdapter.UpdateOne(databaseName, collectionName, bson.D{
@@ -96,28 +99,21 @@ func (repo iSubPkgRepositoryImpl) Save(ctx context.Context, subPkg *entities.Sub
 			bson.D{{"$push", bson.D{{"packages.$.subpackages", subPkg}}}})
 
 		if err != nil {
-			return errors.Wrap(err, "Save Subpackage Failed")
+			return repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "UpdateOne Subpackage Failed"))
 		}
 
 		if updateResult.ModifiedCount != 1 {
-			return ErrorUpdateFailed
+			return repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", repository.ErrorUpdateFailed)
 		}
 	}
 	return nil
 }
 
-func (repo iSubPkgRepositoryImpl) SaveAll(ctx context.Context, subPkgList []*entities.Subpackage) error {
-	//for _, subPkg := range subPkgList {
-	//	if err := repo.Save(ctx, subPkg); err != nil {
-	//		return err
-	//	}
-	//}
-	//
-	//return nil
+func (repo iSubPkgRepositoryImpl) SaveAll(ctx context.Context, subPkgList []*entities.Subpackage) repository.IRepoError {
 	panic("must be implement")
 }
 
-func (repo iSubPkgRepositoryImpl) Update(ctx context.Context, subPkg entities.Subpackage) (*entities.Subpackage, error) {
+func (repo iSubPkgRepositoryImpl) Update(ctx context.Context, subPkg entities.Subpackage) (*entities.Subpackage, repository.IRepoError) {
 	subPkg.UpdatedAt = time.Now().UTC()
 	err := repo.findAndUpdate(ctx, &subPkg)
 	if err != nil {
@@ -127,15 +123,15 @@ func (repo iSubPkgRepositoryImpl) Update(ctx context.Context, subPkg entities.Su
 	return &subPkg, nil
 }
 
-func (repo iSubPkgRepositoryImpl) UpdateAll(ctx context.Context, subPkgList []entities.Subpackage) ([]*entities.Subpackage, error) {
+func (repo iSubPkgRepositoryImpl) UpdateAll(ctx context.Context, subPkgList []entities.Subpackage) ([]*entities.Subpackage, repository.IRepoError) {
 	panic("must be implement")
 }
 
-func (repo iSubPkgRepositoryImpl) FindByItemId(ctx context.Context, sid uint64) (*entities.Subpackage, error) {
+func (repo iSubPkgRepositoryImpl) FindByItemId(ctx context.Context, sid uint64) (*entities.Subpackage, repository.IRepoError) {
 	panic("must be implement")
 }
 
-func (repo iSubPkgRepositoryImpl) FindByOrderAndItemId(ctx context.Context, orderId, sid uint64) (*entities.Subpackage, error) {
+func (repo iSubPkgRepositoryImpl) FindByOrderAndItemId(ctx context.Context, orderId, sid uint64) (*entities.Subpackage, repository.IRepoError) {
 	var subpackage entities.Subpackage
 	pipeline := []bson.M{
 		{"$match": bson.M{"orderId": orderId, "deletedAt": nil}},
@@ -149,22 +145,21 @@ func (repo iSubPkgRepositoryImpl) FindByOrderAndItemId(ctx context.Context, orde
 
 	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
 	if err != nil {
-		return nil, errors.Wrap(err, "Aggregate Failed")
+		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
 	}
 
 	defer closeCursor(ctx, cursor)
 
 	for cursor.Next(ctx) {
 		if err := cursor.Decode(&subpackage); err != nil {
-			return nil, errors.Wrap(err, "cursor.Decode failed")
+			return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "cursor.Decode failed"))
 		}
 	}
 
 	return &subpackage, nil
-
 }
 
-func (repo iSubPkgRepositoryImpl) FindByOrderAndSellerId(ctx context.Context, orderId, pid uint64) ([]*entities.Subpackage, error) {
+func (repo iSubPkgRepositoryImpl) FindByOrderAndSellerId(ctx context.Context, orderId, pid uint64) ([]*entities.Subpackage, repository.IRepoError) {
 
 	pipeline := []bson.M{
 		{"$match": bson.M{"orderId": orderId, "deletedAt": nil}},
@@ -178,7 +173,7 @@ func (repo iSubPkgRepositoryImpl) FindByOrderAndSellerId(ctx context.Context, or
 
 	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
 	if err != nil {
-		return nil, errors.Wrap(err, "Aggregate Failed")
+		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
 	}
 
 	defer closeCursor(ctx, cursor)
@@ -188,7 +183,7 @@ func (repo iSubPkgRepositoryImpl) FindByOrderAndSellerId(ctx context.Context, or
 	for cursor.Next(ctx) {
 		var subpackage entities.Subpackage
 		if err := cursor.Decode(&subpackage); err != nil {
-			return nil, errors.Wrap(err, "cursor.Decode failed")
+			return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "cursor.Decode failed"))
 		}
 
 		subpackages = append(subpackages, &subpackage)
@@ -197,7 +192,7 @@ func (repo iSubPkgRepositoryImpl) FindByOrderAndSellerId(ctx context.Context, or
 	return subpackages, nil
 }
 
-func (repo iSubPkgRepositoryImpl) FindAll(ctx context.Context, pid uint64) ([]*entities.Subpackage, error) {
+func (repo iSubPkgRepositoryImpl) FindAll(ctx context.Context, pid uint64) ([]*entities.Subpackage, repository.IRepoError) {
 	pipeline := []bson.M{
 		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
 		{"$unwind": "$packages"},
@@ -210,7 +205,7 @@ func (repo iSubPkgRepositoryImpl) FindAll(ctx context.Context, pid uint64) ([]*e
 
 	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
 	if err != nil {
-		return nil, errors.Wrap(err, "Aggregate Failed")
+		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
 	}
 
 	defer closeCursor(ctx, cursor)
@@ -220,7 +215,7 @@ func (repo iSubPkgRepositoryImpl) FindAll(ctx context.Context, pid uint64) ([]*e
 	for cursor.Next(ctx) {
 		var subpackage entities.Subpackage
 		if err := cursor.Decode(&subpackage); err != nil {
-			return nil, errors.Wrap(err, "cursor.Decode failed")
+			return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "cursor.Decode failed"))
 		}
 
 		subpackages = append(subpackages, &subpackage)
@@ -229,7 +224,7 @@ func (repo iSubPkgRepositoryImpl) FindAll(ctx context.Context, pid uint64) ([]*e
 	return subpackages, nil
 }
 
-func (repo iSubPkgRepositoryImpl) FindAllWithSort(ctx context.Context, pid uint64, fieldName string, direction int) ([]*entities.Subpackage, error) {
+func (repo iSubPkgRepositoryImpl) FindAllWithSort(ctx context.Context, pid uint64, fieldName string, direction int) ([]*entities.Subpackage, repository.IRepoError) {
 	pipeline := []bson.M{
 		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
 		{"$unwind": "$packages"},
@@ -243,7 +238,7 @@ func (repo iSubPkgRepositoryImpl) FindAllWithSort(ctx context.Context, pid uint6
 
 	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
 	if err != nil {
-		return nil, errors.Wrap(err, "Aggregate Failed")
+		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
 	}
 
 	defer closeCursor(ctx, cursor)
@@ -253,7 +248,7 @@ func (repo iSubPkgRepositoryImpl) FindAllWithSort(ctx context.Context, pid uint6
 	for cursor.Next(ctx) {
 		var subpackage entities.Subpackage
 		if err := cursor.Decode(&subpackage); err != nil {
-			return nil, errors.Wrap(err, "cursor.Decode failed")
+			return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "cursor.Decode failed"))
 		}
 
 		subpackages = append(subpackages, &subpackage)
@@ -262,84 +257,15 @@ func (repo iSubPkgRepositoryImpl) FindAllWithSort(ctx context.Context, pid uint6
 	return subpackages, nil
 }
 
-func (repo iSubPkgRepositoryImpl) FindAllWithPage(ctx context.Context, pid uint64, page, perPage int64) ([]*entities.Subpackage, int64, error) {
+func (repo iSubPkgRepositoryImpl) FindAllWithPage(ctx context.Context, pid uint64, page, perPage int64) ([]*entities.Subpackage, int64, repository.IRepoError) {
 
-	if page < 0 || perPage == 0 {
-		return nil, 0, errors.New("neither offset nor start can be zero")
-	}
-
-	var totalCount, err = repo.Count(ctx, pid)
-	if err != nil {
-		return nil, 0, errors.Wrap(err, "FindAllWithPage Subpackage Failed")
-	}
-
-	if totalCount == 0 {
-		return nil, 0, nil
-	}
-
-	// total 160 page=6 perPage=30
-	var availablePages int64
-
-	if totalCount%perPage != 0 {
-		availablePages = (totalCount / perPage) + 1
-	} else {
-		availablePages = totalCount / perPage
-	}
-
-	if totalCount < perPage {
-		availablePages = 1
-	}
-
-	if availablePages < page {
-		return nil, totalCount, ErrorPageNotAvailable
-	}
-
-	var offset = (page - 1) * perPage
-	if offset >= totalCount {
-		return nil, totalCount, ErrorTotalCountExceeded
-	}
-
-	pipeline := []bson.M{
-		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
-		{"$unwind": "$packages"},
-		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
-		{"$project": bson.M{"_id": 0, "packages.subpackages": 1}},
-		{"$unwind": "$packages.subpackages"},
-		{"$skip": offset},
-		{"$limit": perPage},
-		{"$replaceRoot": bson.M{"newRoot": "$packages"}},
-		{"$replaceRoot": bson.M{"newRoot": "$subpackages"}},
-	}
-
-	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
-	if err != nil {
-		return nil, 0, errors.Wrap(err, "Aggregate Failed")
-	}
-
-	defer closeCursor(ctx, cursor)
-
-	subpackages := make([]*entities.Subpackage, 0, perPage)
-
-	for cursor.Next(ctx) {
-		var subpackage entities.Subpackage
-		if err := cursor.Decode(&subpackage); err != nil {
-			return nil, 0, errors.Wrap(err, "cursor.Decode failed")
-		}
-
-		subpackages = append(subpackages, &subpackage)
-	}
-
-	return subpackages, totalCount, nil
-}
-
-func (repo iSubPkgRepositoryImpl) FindAllWithPageAndSort(ctx context.Context, pid uint64, page, perPage int64, fieldName string, direction int) ([]*entities.Subpackage, int64, error) {
 	if page <= 0 || perPage <= 0 {
-		return nil, 0, errors.New("neither offset nor start can be zero")
+		return nil, 0, repository.ErrorFactory(repository.BadRequestErr, "Request Operation Failed", errors.New("neither offset nor start can be zero"))
 	}
 
 	var totalCount, err = repo.Count(ctx, pid)
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "FindAllWithPageAndSort Subpackage Failed")
+		return nil, 0, err
 	}
 
 	if totalCount == 0 {
@@ -360,12 +286,81 @@ func (repo iSubPkgRepositoryImpl) FindAllWithPageAndSort(ctx context.Context, pi
 	}
 
 	if availablePages < page {
-		return nil, totalCount, ErrorPageNotAvailable
+		return nil, totalCount, repository.ErrorFactory(repository.BadRequestErr, "Request Operation Failed", repository.ErrorPageNotAvailable)
 	}
 
 	var offset = (page - 1) * perPage
 	if offset >= totalCount {
-		return nil, totalCount, ErrorTotalCountExceeded
+		return nil, totalCount, repository.ErrorFactory(repository.BadRequestErr, "Request Operation Failed", repository.ErrorTotalCountExceeded)
+	}
+
+	pipeline := []bson.M{
+		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
+		{"$unwind": "$packages"},
+		{"$match": bson.M{"packages.pid": pid, "packages.deletedAt": nil}},
+		{"$project": bson.M{"_id": 0, "packages.subpackages": 1}},
+		{"$unwind": "$packages.subpackages"},
+		{"$skip": offset},
+		{"$limit": perPage},
+		{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+		{"$replaceRoot": bson.M{"newRoot": "$subpackages"}},
+	}
+
+	cursor, e := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
+	if e != nil {
+		return nil, 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
+	}
+
+	defer closeCursor(ctx, cursor)
+
+	subpackages := make([]*entities.Subpackage, 0, perPage)
+
+	for cursor.Next(ctx) {
+		var subpackage entities.Subpackage
+		if err := cursor.Decode(&subpackage); err != nil {
+			return nil, 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "cursor.Decode failed"))
+		}
+
+		subpackages = append(subpackages, &subpackage)
+	}
+
+	return subpackages, totalCount, nil
+}
+
+func (repo iSubPkgRepositoryImpl) FindAllWithPageAndSort(ctx context.Context, pid uint64, page, perPage int64, fieldName string, direction int) ([]*entities.Subpackage, int64, repository.IRepoError) {
+	if page <= 0 || perPage <= 0 {
+		return nil, 0, repository.ErrorFactory(repository.BadRequestErr, "Request Operation Failed", errors.New("neither offset nor start can be zero"))
+	}
+
+	var totalCount, err = repo.Count(ctx, pid)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	if totalCount == 0 {
+		return nil, 0, nil
+	}
+
+	// total 160 page=6 perPage=30
+	var availablePages int64
+
+	if totalCount%perPage != 0 {
+		availablePages = (totalCount / perPage) + 1
+	} else {
+		availablePages = totalCount / perPage
+	}
+
+	if totalCount < perPage {
+		availablePages = 1
+	}
+
+	if availablePages < page {
+		return nil, totalCount, repository.ErrorFactory(repository.BadRequestErr, "Request Operation Failed", repository.ErrorPageNotAvailable)
+	}
+
+	var offset = (page - 1) * perPage
+	if offset >= totalCount {
+		return nil, totalCount, repository.ErrorFactory(repository.BadRequestErr, "Request Operation Failed", repository.ErrorTotalCountExceeded)
 	}
 
 	pipeline := []bson.M{
@@ -381,9 +376,9 @@ func (repo iSubPkgRepositoryImpl) FindAllWithPageAndSort(ctx context.Context, pi
 		{"$replaceRoot": bson.M{"newRoot": "$subpackages"}},
 	}
 
-	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
-	if err != nil {
-		return nil, 0, errors.Wrap(err, "Aggregate Failed")
+	cursor, e := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
+	if e != nil {
+		return nil, 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(e, "Aggregate Failed"))
 	}
 
 	defer closeCursor(ctx, cursor)
@@ -393,7 +388,7 @@ func (repo iSubPkgRepositoryImpl) FindAllWithPageAndSort(ctx context.Context, pi
 	for cursor.Next(ctx) {
 		var subpackage entities.Subpackage
 		if err := cursor.Decode(&subpackage); err != nil {
-			return nil, 0, errors.Wrap(err, "cursor.Decode failed")
+			return nil, 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "cursor.Decode failed"))
 		}
 
 		subpackages = append(subpackages, &subpackage)
@@ -403,21 +398,20 @@ func (repo iSubPkgRepositoryImpl) FindAllWithPageAndSort(ctx context.Context, pi
 
 }
 
-func (repo iSubPkgRepositoryImpl) FindByFilter(ctx context.Context, totalSupplier, supplier func() (filter interface{})) ([]*entities.Subpackage, error) {
+func (repo iSubPkgRepositoryImpl) FindByFilter(ctx context.Context, totalSupplier, supplier func() (filter interface{})) ([]*entities.Subpackage, repository.IRepoError) {
 	filter := supplier()
 	total, err := repo.CountWithFilter(ctx, totalSupplier)
 	if err != nil {
-		logger.Err("repo.Count() failed, %s", err)
-		total = int64(defaultDocCount)
+		return nil, err
 	}
 
 	if total == 0 {
 		return nil, nil
 	}
 
-	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, filter)
-	if err != nil {
-		return nil, errors.Wrap(err, "FindByFilter Subpackage Failed")
+	cursor, e := repo.mongoAdapter.Aggregate(databaseName, collectionName, filter)
+	if e != nil {
+		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(e, "Aggregate Subpackage Failed"))
 	}
 
 	defer closeCursor(ctx, cursor)
@@ -428,7 +422,7 @@ func (repo iSubPkgRepositoryImpl) FindByFilter(ctx context.Context, totalSupplie
 		var subpackage entities.Subpackage
 		// decode the document
 		if err := cursor.Decode(&subpackage); err != nil {
-			return nil, errors.Wrap(err, "FindByFilter Subpackage Failed")
+			return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Decode Subpackage Failed"))
 		}
 		subpackages = append(subpackages, &subpackage)
 	}
@@ -437,15 +431,15 @@ func (repo iSubPkgRepositoryImpl) FindByFilter(ctx context.Context, totalSupplie
 
 }
 
-func (repo iSubPkgRepositoryImpl) FindByFilterWithPage(ctx context.Context, totalSupplier, supplier func() (filter interface{}), page, perPage int64) ([]*entities.Subpackage, int64, error) {
-	if page <= 0 || perPage == 0 {
-		return nil, 0, errors.New("neither offset nor start can be zero")
+func (repo iSubPkgRepositoryImpl) FindByFilterWithPage(ctx context.Context, totalSupplier, supplier func() (filter interface{}), page, perPage int64) ([]*entities.Subpackage, int64, repository.IRepoError) {
+	if page <= 0 || perPage <= 0 {
+		return nil, 0, repository.ErrorFactory(repository.BadRequestErr, "Request Operation Failed", errors.New("neither offset nor start can be zero"))
 	}
 
 	filter := supplier()
 	var totalCount, err = repo.CountWithFilter(ctx, totalSupplier)
 	if err != nil {
-		return nil, 0, errors.Wrap(err, "FindByFilterWithPage Subpackages Failed")
+		return nil, 0, err
 	}
 
 	if totalCount == 0 {
@@ -466,19 +460,19 @@ func (repo iSubPkgRepositoryImpl) FindByFilterWithPage(ctx context.Context, tota
 	}
 
 	if availablePages < page {
-		return nil, totalCount, ErrorPageNotAvailable
+		return nil, totalCount, repository.ErrorFactory(repository.BadRequestErr, "Request Operation Failed", repository.ErrorPageNotAvailable)
 	}
 
 	var offset = (page - 1) * perPage
 	if offset >= totalCount {
-		return nil, totalCount, ErrorTotalCountExceeded
+		return nil, totalCount, repository.ErrorFactory(repository.BadRequestErr, "Request Operation Failed", repository.ErrorTotalCountExceeded)
 	}
 
-	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, filter)
-	if err != nil {
-		return nil, totalCount, errors.Wrap(err, "FindByFilterWithPage Subpackages Failed")
+	cursor, e := repo.mongoAdapter.Aggregate(databaseName, collectionName, filter)
+	if e != nil {
+		return nil, totalCount, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(e, "Aggregate Subpackages Failed"))
 	} else if cursor.Err() != nil {
-		return nil, totalCount, errors.Wrap(err, "FindByFilterWithPage Subpackages Failed")
+		return nil, totalCount, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(e, "Aggregate Subpackages Failed"))
 	}
 
 	defer closeCursor(ctx, cursor)
@@ -489,7 +483,7 @@ func (repo iSubPkgRepositoryImpl) FindByFilterWithPage(ctx context.Context, tota
 		var subpackage entities.Subpackage
 		// decode the document
 		if err := cursor.Decode(&subpackage); err != nil {
-			return nil, totalCount, errors.Wrap(err, "FindByFilter Subpackage Failed")
+			return nil, totalCount, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Decode Subpackage Failed"))
 		}
 		subpackages = append(subpackages, &subpackage)
 	}
@@ -497,18 +491,18 @@ func (repo iSubPkgRepositoryImpl) FindByFilterWithPage(ctx context.Context, tota
 	return subpackages, totalCount, nil
 }
 
-func (repo iSubPkgRepositoryImpl) ExistsById(ctx context.Context, sid uint64) (bool, error) {
+func (repo iSubPkgRepositoryImpl) ExistsById(ctx context.Context, sid uint64) (bool, repository.IRepoError) {
 	singleResult := repo.mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"packages.subpackages.sid", sid}, {"deletedAt", nil}})
 	if err := singleResult.Err(); err != nil {
 		if repo.mongoAdapter.NoDocument(err) {
 			return false, nil
 		}
-		return false, errors.Wrap(err, "ExistsById failed")
+		return false, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "ExistsById failed"))
 	}
 	return true, nil
 }
 
-func (repo iSubPkgRepositoryImpl) Count(ctx context.Context, pid uint64) (int64, error) {
+func (repo iSubPkgRepositoryImpl) Count(ctx context.Context, pid uint64) (int64, repository.IRepoError) {
 	var total struct {
 		Count int
 	}
@@ -522,44 +516,60 @@ func (repo iSubPkgRepositoryImpl) Count(ctx context.Context, pid uint64) (int64,
 
 	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
 	if err != nil {
-		return 0, errors.Wrap(err, "Aggregate Failed")
+		return 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
 	}
 
 	defer closeCursor(ctx, cursor)
 
 	if cursor.Next(ctx) {
 		if err := cursor.Decode(&total); err != nil {
-			return 0, errors.Wrap(err, "cursor.Decode failed")
+			return 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "cursor.Decode failed"))
 		}
 	}
 
 	return int64(total.Count), nil
 }
 
-func (repo iSubPkgRepositoryImpl) CountWithFilter(ctx context.Context, supplier func() (filter interface{})) (int64, error) {
+func (repo iSubPkgRepositoryImpl) CountWithFilter(ctx context.Context, supplier func() (filter interface{})) (int64, repository.IRepoError) {
 	var total struct {
 		Count int
 	}
 
 	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, supplier())
 	if err != nil {
-		return 0, errors.Wrap(err, "Aggregate Failed")
+		return 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
 	}
 
 	defer closeCursor(ctx, cursor)
 
 	if cursor.Next(ctx) {
 		if err := cursor.Decode(&total); err != nil {
-			return 0, errors.Wrap(err, "cursor.Decode failed")
+			return 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "cursor.Decode failed"))
 		}
 	}
 
 	return int64(total.Count), nil
 }
 
+func (repo iSubPkgRepositoryImpl) GenerateUniqSid(ctx context.Context, oid uint64) (uint64, repository.IRepoError) {
+
+	for {
+		random := strconv.Itoa(int(entities.GenerateRandomNumber()))
+		sid, _ := strconv.Atoi(strconv.Itoa(int(oid)) + random)
+		if result, err := repo.ExistsById(ctx, uint64(sid)); err != nil {
+			return 0, err
+		} else {
+			if !result {
+				return uint64(sid), nil
+			}
+		}
+	}
+
+}
+
 func closeCursor(context context.Context, cursor *mongo.Cursor) {
 	err := cursor.Close(context)
 	if err != nil {
-		logger.Err("closeCursor() failed, error: %s", err)
+		applog.GLog.Logger.Error("cursor.Close failed", "error", err)
 	}
 }

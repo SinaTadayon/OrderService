@@ -7,6 +7,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/configs"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	stockProto "gitlab.faza.io/protos/stock-proto.git"
 	"os"
 	"testing"
@@ -15,6 +16,35 @@ import (
 
 var config *configs.Config
 var stock *iStockServiceImpl
+
+func TestMain(m *testing.M) {
+	var err error
+	var path string
+	if os.Getenv("APP_MODE") == "dev" {
+		path = "../../../testdata/.env"
+	} else {
+		path = ""
+	}
+
+	applog.GLog.ZapLogger = applog.InitZap()
+	applog.GLog.Logger = logger.NewZapLogger(applog.GLog.ZapLogger)
+
+	config, _, err = configs.LoadConfigs(path, "")
+	if err != nil {
+		applog.GLog.Logger.Error("configs.LoadConfig failed",
+			"error", err)
+		os.Exit(1)
+	}
+
+	stock = &iStockServiceImpl{nil, nil,
+		config.StockService.Address,
+		config.StockService.Port, config.StockService.Timeout,
+	}
+
+	// Running Tests
+	code := m.Run()
+	os.Exit(code)
+}
 
 func createOrder() *entities.Order {
 
@@ -31,10 +61,13 @@ func createOrder() *entities.Order {
 		Result:      true,
 		Reason:      "",
 		Description: "",
-		CallBackUrl: "http://baman.io/payment-service",
-		InvoiceId:   12345678946,
-		PaymentId:   "r3r434ef45d",
-		CreatedAt:   time.Now().UTC(),
+		Response: entities.PaymentIPGResponse{
+			CallBackUrl: "http://baman.io/payment-service",
+			InvoiceId:   12345678946,
+			PaymentId:   "r3r434ef45d",
+			Extended:    nil,
+		},
+		CreatedAt: time.Now().UTC(),
 	}
 
 	paymentResult := entities.PaymentResult{
@@ -146,7 +179,7 @@ func createOrder() *entities.Order {
 				},
 			},
 		},
-		Packages: []entities.PackageItem{
+		Packages: []*entities.PackageItem{
 			{
 				PId:      129384234,
 				OrderId:  0,
@@ -263,15 +296,7 @@ func createOrder() *entities.Order {
 								Returnable:  false,
 								Quantity:    5,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "0",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "1270000",
@@ -313,15 +338,7 @@ func createOrder() *entities.Order {
 								Returnable:  false,
 								Quantity:    2,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "2",
-									"Width":     "120cm",
-									"Height":    "110cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "3270000",
@@ -355,7 +372,7 @@ func createOrder() *entities.Order {
 						},
 						Shipments: &entities.Shipment{
 							ShipmentDetail: &entities.ShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -364,7 +381,7 @@ func createOrder() *entities.Order {
 								CreatedAt:      time.Now().UTC(),
 							},
 							ReturnShipmentDetail: &entities.ReturnShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -376,9 +393,10 @@ func createOrder() *entities.Order {
 						},
 						Tracking: entities.Progress{
 							State: &entities.State{
-								Name:  "1.New",
-								Index: 1,
-								Data:  nil,
+								Name:       "1.New",
+								Index:      1,
+								Schedulers: nil,
+								Data:       nil,
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
@@ -389,6 +407,7 @@ func createOrder() *entities.Order {
 									},
 								},
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
@@ -437,15 +456,7 @@ func createOrder() *entities.Order {
 								Returnable:  true,
 								Quantity:    5,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "0",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "1270000",
@@ -487,15 +498,7 @@ func createOrder() *entities.Order {
 								Returnable:  true,
 								Quantity:    2,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "2",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "3270000",
@@ -529,7 +532,7 @@ func createOrder() *entities.Order {
 						},
 						Shipments: &entities.Shipment{
 							ShipmentDetail: &entities.ShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -538,7 +541,7 @@ func createOrder() *entities.Order {
 								CreatedAt:      time.Now().UTC(),
 							},
 							ReturnShipmentDetail: &entities.ReturnShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -550,9 +553,10 @@ func createOrder() *entities.Order {
 						},
 						Tracking: entities.Progress{
 							State: &entities.State{
-								Name:  "1.New",
-								Index: 1,
-								Data:  nil,
+								Name:       "1.New",
+								Index:      1,
+								Schedulers: nil,
+								Data:       nil,
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
@@ -563,6 +567,7 @@ func createOrder() *entities.Order {
 									},
 								},
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
@@ -716,15 +721,7 @@ func createOrder() *entities.Order {
 								Returnable:  false,
 								Quantity:    5,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "0",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "1270000",
@@ -765,15 +762,7 @@ func createOrder() *entities.Order {
 								Returnable:  false,
 								Quantity:    3,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "3",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "2270000",
@@ -807,7 +796,7 @@ func createOrder() *entities.Order {
 						},
 						Shipments: &entities.Shipment{
 							ShipmentDetail: &entities.ShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -816,7 +805,7 @@ func createOrder() *entities.Order {
 								CreatedAt:      time.Now().UTC(),
 							},
 							ReturnShipmentDetail: &entities.ReturnShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -828,9 +817,10 @@ func createOrder() *entities.Order {
 						},
 						Tracking: entities.Progress{
 							State: &entities.State{
-								Name:  "1.New",
-								Index: 1,
-								Data:  nil,
+								Name:       "1.New",
+								Index:      1,
+								Schedulers: nil,
+								Data:       nil,
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
@@ -841,6 +831,7 @@ func createOrder() *entities.Order {
 									},
 								},
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
@@ -889,15 +880,7 @@ func createOrder() *entities.Order {
 								Returnable:  true,
 								Quantity:    3,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "3",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "1270000",
@@ -939,15 +922,7 @@ func createOrder() *entities.Order {
 								Returnable:  true,
 								Quantity:    3,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "3",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "7270000",
@@ -981,7 +956,7 @@ func createOrder() *entities.Order {
 						},
 						Shipments: &entities.Shipment{
 							ShipmentDetail: &entities.ShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -990,7 +965,7 @@ func createOrder() *entities.Order {
 								CreatedAt:      time.Now().UTC(),
 							},
 							ReturnShipmentDetail: &entities.ReturnShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -1002,9 +977,10 @@ func createOrder() *entities.Order {
 						},
 						Tracking: entities.Progress{
 							State: &entities.State{
-								Name:  "1.New",
-								Index: 1,
-								Data:  nil,
+								Name:       "1.New",
+								Index:      1,
+								Schedulers: nil,
+								Data:       nil,
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
@@ -1015,6 +991,7 @@ func createOrder() *entities.Order {
 									},
 								},
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
@@ -1061,36 +1038,11 @@ func createOrder() *entities.Order {
 	return &newOrder
 }
 
-func TestMain(m *testing.M) {
-	var err error
-	var path string
-	if os.Getenv("APP_MODE") == "dev" {
-		path = "../../../testdata/.env"
-	} else {
-		path = ""
-	}
-
-	config, _, err = configs.LoadConfigs(path, "")
-	if err != nil {
-		logger.Err(err.Error())
-		os.Exit(1)
-	}
-
-	stock = &iStockServiceImpl{nil, nil,
-		config.StockService.Address, config.StockService.Port}
-
-	// Running Tests
-	code := m.Run()
-	os.Exit(code)
-}
-
 func TestStockService_ReservedSuccess(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 
-	if err := stock.ConnectToStockService(); err != nil {
-		logger.Err(err.Error())
-		panic("stockService.ConnectToPaymentService() failed")
-	}
+	err := stock.ConnectToStockService()
+	require.Nil(t, err)
 
 	defer stock.CloseConnection()
 
@@ -1100,17 +1052,26 @@ func TestStockService_ReservedSuccess(t *testing.T) {
 		Quantity:    5,
 		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
 	}
-	_, err := stock.stockService.StockAllocate(ctx, &request)
+	_, err = stock.stockService.StockAllocate(ctx, &request)
 	require.Nil(t, err)
 
-	inventories := map[string]int{request.InventoryId: int(request.Quantity)}
-	iFuture := stock.BatchStockActions(ctx, inventories, system_action.New(system_action.StockReserve))
+	requestStock := RequestStock{
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+		Count:       5,
+	}
+
+	requestsStock := make([]RequestStock, 0, 1)
+	requestsStock = append(requestsStock, requestStock)
+
+	iFuture := stock.BatchStockActions(ctx, requestsStock, 0, system_action.New(system_action.StockReserve))
 	futureData := iFuture.Get()
 	require.Nil(t, futureData.Error())
 
 	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId})
 	require.Nil(t, err)
-	logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
+	applog.GLog.Logger.Debug("stockGet response",
+		"available", response.Available,
+		"reserved", response.Reserved)
 	require.Equal(t, response.Available, int32(0))
 	require.Equal(t, response.Reserved, int32(5))
 	_, err = stock.stockService.StockRelease(ctx, &request)
@@ -1137,18 +1098,27 @@ func TestStockService_SettlementSuccess(t *testing.T) {
 	_, err = stock.stockService.StockAllocate(ctx, &request)
 	require.Nil(t, err)
 
-	inventories := map[string]int{request.InventoryId: int(request.Quantity)}
-	iFuture := stock.BatchStockActions(ctx, inventories, system_action.New(system_action.StockReserve))
+	requestStock := RequestStock{
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+		Count:       5,
+	}
+
+	requestsStock := make([]RequestStock, 0, 1)
+	requestsStock = append(requestsStock, requestStock)
+
+	iFuture := stock.BatchStockActions(ctx, requestsStock, 0, system_action.New(system_action.StockReserve))
 	futureData := iFuture.Get()
 	require.Nil(t, futureData.Error())
 
-	iFuture = stock.BatchStockActions(ctx, inventories, system_action.New(system_action.StockSettlement))
+	iFuture = stock.BatchStockActions(ctx, requestsStock, 0, system_action.New(system_action.StockSettlement))
 	futureData = iFuture.Get()
 	require.Nil(t, futureData.Error())
 
 	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId})
 	require.Nil(t, err)
-	logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
+	applog.GLog.Logger.Debug("stockGet response",
+		"available", response.Available,
+		"reserved", response.Reserved)
 	require.Equal(t, response.Available, int32(0))
 	require.Equal(t, response.Reserved, int32(0))
 }
@@ -1173,18 +1143,148 @@ func TestStockService_ReleaseSuccess(t *testing.T) {
 	_, err = stock.stockService.StockAllocate(ctx, &request)
 	require.Nil(t, err)
 
-	inventories := map[string]int{request.InventoryId: int(request.Quantity)}
-	iFuture := stock.BatchStockActions(ctx, inventories, system_action.New(system_action.StockReserve))
+	requestStock := RequestStock{
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+		Count:       5,
+	}
+
+	requestsStock := make([]RequestStock, 0, 1)
+	requestsStock = append(requestsStock, requestStock)
+
+	iFuture := stock.BatchStockActions(ctx, requestsStock, 0, system_action.New(system_action.StockReserve))
 	futureData := iFuture.Get()
 	require.Nil(t, futureData.Error())
 
-	iFuture = stock.BatchStockActions(ctx, inventories, system_action.New(system_action.StockRelease))
+	iFuture = stock.BatchStockActions(ctx, requestsStock, 0, system_action.New(system_action.StockRelease))
 	futureData = iFuture.Get()
 	require.Nil(t, futureData.Error())
 
 	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId})
 	require.Nil(t, err)
-	logger.Audit("stockGet response: available: %d, reserved: %d", response.Available, response.Reserved)
+	applog.GLog.Logger.Debug("stockGet response",
+		"available", response.Available,
+		"reserved", response.Reserved)
+	require.Equal(t, response.Available, int32(5))
+	require.Equal(t, response.Reserved, int32(0))
+}
+
+func TestStockService_SingleReservedSuccess(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+
+	err := stock.ConnectToStockService()
+	require.Nil(t, err)
+
+	defer stock.CloseConnection()
+
+	order := createOrder()
+
+	request := stockProto.StockRequest{
+		Quantity:    5,
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+	}
+	_, err = stock.stockService.StockAllocate(ctx, &request)
+	require.Nil(t, err)
+
+	requestStock := RequestStock{
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+		Count:       5,
+	}
+
+	iFuture := stock.SingleStockAction(ctx, requestStock, 0, system_action.New(system_action.StockReserve))
+	futureData := iFuture.Get()
+	require.Nil(t, futureData.Error())
+
+	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId})
+	require.Nil(t, err)
+	applog.GLog.Logger.Debug("stockGet response",
+		"available", response.Available,
+		"reserved", response.Reserved)
+	require.Equal(t, response.Available, int32(0))
+	require.Equal(t, response.Reserved, int32(5))
+	_, err = stock.stockService.StockRelease(ctx, &request)
+	require.Nil(t, err)
+}
+
+func TestStockService_SingleSettlementSuccess(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+
+	err := stock.ConnectToStockService()
+	require.Nil(t, err)
+
+	defer func() {
+		if err := stock.grpcConnection.Close(); err != nil {
+		}
+	}()
+
+	order := createOrder()
+
+	request := stockProto.StockRequest{
+		Quantity:    5,
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+	}
+	_, err = stock.stockService.StockAllocate(ctx, &request)
+	require.Nil(t, err)
+
+	requestStock := RequestStock{
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+		Count:       5,
+	}
+
+	iFuture := stock.SingleStockAction(ctx, requestStock, 0, system_action.New(system_action.StockReserve))
+	futureData := iFuture.Get()
+	require.Nil(t, futureData.Error())
+
+	iFuture = stock.SingleStockAction(ctx, requestStock, 0, system_action.New(system_action.StockSettlement))
+	futureData = iFuture.Get()
+	require.Nil(t, futureData.Error())
+
+	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId})
+	require.Nil(t, err)
+	applog.GLog.Logger.Debug("stockGet response",
+		"available", response.Available,
+		"reserved", response.Reserved)
+	require.Equal(t, response.Available, int32(0))
+	require.Equal(t, response.Reserved, int32(0))
+}
+
+func TestStockService_SingleReleaseSuccess(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+
+	err := stock.ConnectToStockService()
+	require.Nil(t, err)
+
+	defer func() {
+		if err := stock.grpcConnection.Close(); err != nil {
+		}
+	}()
+
+	order := createOrder()
+
+	request := stockProto.StockRequest{
+		Quantity:    5,
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+	}
+	_, err = stock.stockService.StockAllocate(ctx, &request)
+	require.Nil(t, err)
+
+	requestStock := RequestStock{
+		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
+		Count:       5,
+	}
+
+	iFuture := stock.SingleStockAction(ctx, requestStock, 0, system_action.New(system_action.StockReserve))
+	futureData := iFuture.Get()
+	require.Nil(t, futureData.Error())
+
+	iFuture = stock.SingleStockAction(ctx, requestStock, 0, system_action.New(system_action.StockRelease))
+	futureData = iFuture.Get()
+	require.Nil(t, futureData.Error())
+
+	response, err := stock.stockService.StockGet(ctx, &stockProto.GetRequest{InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId})
+	require.Nil(t, err)
+	applog.GLog.Logger.Debug("stockGet response",
+		"available", response.Available,
+		"reserved", response.Reserved)
 	require.Equal(t, response.Available, int32(5))
 	require.Equal(t, response.Reserved, int32(0))
 }

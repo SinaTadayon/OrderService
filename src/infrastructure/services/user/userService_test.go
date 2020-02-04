@@ -7,6 +7,7 @@ import (
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"google.golang.org/grpc/metadata"
 
 	"os"
@@ -26,9 +27,13 @@ func TestMain(m *testing.M) {
 		path = ""
 	}
 
+	applog.GLog.ZapLogger = applog.InitZap()
+	applog.GLog.Logger = logger.NewZapLogger(applog.GLog.ZapLogger)
+
 	config, _, err = configs.LoadConfigs(path, "")
 	if err != nil {
-		logger.Err(err.Error())
+		applog.GLog.Logger.Error("configs.LoadConfig failed",
+			"error", err)
 		os.Exit(1)
 	}
 
@@ -36,6 +41,7 @@ func TestMain(m *testing.M) {
 		client:        nil,
 		serverAddress: config.UserService.Address,
 		serverPort:    config.UserService.Port,
+		timeout:       config.UserService.Timeout,
 	}
 
 	// Running Tests

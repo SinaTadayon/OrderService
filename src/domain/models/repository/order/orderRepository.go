@@ -3,58 +3,61 @@ package order_repository
 import (
 	"context"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository"
 )
 
 type IOrderRepository interface {
-	Save(ctx context.Context, order entities.Order) (*entities.Order, error)
+	Save(ctx context.Context, order entities.Order) (*entities.Order, repository.IRepoError)
 
-	SaveAll(ctx context.Context, orders []entities.Order) ([]*entities.Order, error)
+	SaveAll(ctx context.Context, orders []entities.Order) ([]*entities.Order, repository.IRepoError)
 
-	Insert(ctx context.Context, order entities.Order) (*entities.Order, error)
+	UpdateStatus(ctx context.Context, order *entities.Order) repository.IRepoError
 
-	InsertAll(ctx context.Context, orders []entities.Order) ([]*entities.Order, error)
+	Insert(ctx context.Context, order entities.Order) (*entities.Order, repository.IRepoError)
 
-	FindAll(ctx context.Context) ([]*entities.Order, error)
+	InsertAll(ctx context.Context, orders []entities.Order) ([]*entities.Order, repository.IRepoError)
 
-	FindAllWithSort(ctx context.Context, fieldName string, direction int) ([]*entities.Order, error)
+	FindAll(ctx context.Context) ([]*entities.Order, repository.IRepoError)
 
-	FindAllWithPage(ctx context.Context, page, perPage int64) ([]*entities.Order, int64, error)
+	FindAllWithSort(ctx context.Context, fieldName string, direction int) ([]*entities.Order, repository.IRepoError)
 
-	FindAllWithPageAndSort(ctx context.Context, page, perPage int64, fieldName string, direction int) ([]*entities.Order, int64, error)
+	FindAllWithPage(ctx context.Context, page, perPage int64) ([]*entities.Order, int64, repository.IRepoError)
 
-	FindAllById(ctx context.Context, ids ...uint64) ([]*entities.Order, error)
+	FindAllWithPageAndSort(ctx context.Context, page, perPage int64, fieldName string, direction int) ([]*entities.Order, int64, repository.IRepoError)
 
-	FindById(ctx context.Context, orderId uint64) (*entities.Order, error)
+	FindAllById(ctx context.Context, ids ...uint64) ([]*entities.Order, repository.IRepoError)
 
-	FindByFilter(ctx context.Context, supplier func() (filter interface{})) ([]*entities.Order, error)
+	FindById(ctx context.Context, orderId uint64) (*entities.Order, repository.IRepoError)
 
-	FindByFilterWithSort(ctx context.Context, supplier func() (filter interface{}, fieldName string, direction int)) ([]*entities.Order, error)
+	FindByFilter(ctx context.Context, supplier func() (filter interface{})) ([]*entities.Order, repository.IRepoError)
 
-	FindByFilterWithPage(ctx context.Context, supplier func() (filter interface{}), page, perPage int64) ([]*entities.Order, int64, error)
+	FindByFilterWithSort(ctx context.Context, supplier func() (filter interface{}, fieldName string, direction int)) ([]*entities.Order, repository.IRepoError)
 
-	FindByFilterWithPageAndSort(ctx context.Context, supplier func() (filter interface{}, fieldName string, direction int), page, perPage int64) ([]*entities.Order, int64, error)
+	FindByFilterWithPage(ctx context.Context, supplier func() (filter interface{}), page, perPage int64) ([]*entities.Order, int64, repository.IRepoError)
 
-	ExistsById(ctx context.Context, orderId uint64) (bool, error)
+	FindByFilterWithPageAndSort(ctx context.Context, supplier func() (filter interface{}, fieldName string, direction int), page, perPage int64) ([]*entities.Order, int64, repository.IRepoError)
 
-	Count(ctx context.Context) (int64, error)
+	ExistsById(ctx context.Context, orderId uint64) (bool, repository.IRepoError)
 
-	CountWithFilter(ctx context.Context, supplier func() (filter interface{})) (int64, error)
+	Count(ctx context.Context) (int64, repository.IRepoError)
+
+	CountWithFilter(ctx context.Context, supplier func() (filter interface{})) (int64, repository.IRepoError)
 
 	// only set DeletedAt field
-	DeleteById(ctx context.Context, orderId uint64) (*entities.Order, error)
+	DeleteById(ctx context.Context, orderId uint64) (*entities.Order, repository.IRepoError)
 
-	Delete(ctx context.Context, order entities.Order) (*entities.Order, error)
+	Delete(ctx context.Context, order entities.Order) (*entities.Order, repository.IRepoError)
 
-	DeleteAllWithOrders(ctx context.Context, orders []entities.Order) error
+	DeleteAllWithOrders(ctx context.Context, orders []entities.Order) repository.IRepoError
 
-	DeleteAll(ctx context.Context) error
+	DeleteAll(ctx context.Context) repository.IRepoError
 
 	// remove order from db
-	RemoveById(ctx context.Context, orderId uint64) error
+	RemoveById(ctx context.Context, orderId uint64) repository.IRepoError
 
-	Remove(ctx context.Context, order entities.Order) error
+	Remove(ctx context.Context, order entities.Order) repository.IRepoError
 
-	RemoveAllWithOrders(ctx context.Context, orders []entities.Order) error
+	RemoveAllWithOrders(ctx context.Context, orders []entities.Order) repository.IRepoError
 
-	RemoveAll(ctx context.Context) error
+	RemoveAll(ctx context.Context) repository.IRepoError
 }

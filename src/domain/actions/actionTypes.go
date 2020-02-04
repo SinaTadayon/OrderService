@@ -10,7 +10,7 @@ var actionTypeStrings = []string{
 	"Operator",
 	"Seller",
 	"Buyer",
-	"Scheduler",
+	"Schedulers",
 	"System",
 }
 
@@ -53,7 +53,7 @@ func FromString(actionType string) (ActionType, error) {
 		return Seller, nil
 	case "Buyer":
 		return Buyer, nil
-	case "Scheduler":
+	case "Schedulers":
 		return Scheduler, nil
 	case "System":
 		return System, nil

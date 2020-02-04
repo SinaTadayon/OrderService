@@ -4,7 +4,7 @@ import (
 	"flag"
 	"github.com/Netflix/go-env"
 	"github.com/joho/godotenv"
-	"gitlab.faza.io/go-framework/logger"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"os"
 )
 
@@ -38,8 +38,10 @@ type Config struct {
 		EmailTemplateNotifySellerForNewOrder string `env:"EMAIL_TMP_NOTIFY_SELLER_FOR_NEW_ORDER"`
 		PrometheusPort                       int    `env:"PROMETHEUS_PORT"`
 
-		OrderPaymentCallbackUrlStaging      string `env:"ORDER_PAYMENT_CALLBACK_URL_STAGING"`
-		OrderPaymentCallbackUrlAsanpardakht string `env:"ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT"`
+		OrderPaymentCallbackUrlSuccess             string `env:"ORDER_PAYMENT_CALLBACK_URL_SUCCESS"`
+		OrderPaymentCallbackUrlFail                string `env:"ORDER_PAYMENT_CALLBACK_URL_FAIL"`
+		OrderPaymentCallbackUrlAsanpardakhtSuccess string `env:"ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT_SUCCESS"`
+		OrderPaymentCallbackUrlAsanpardakhtFail    string `env:"ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT_FAIL"`
 
 		SchedulerTimeUint            string `env:"ORDER_SCHEDULER_TIME_UNIT"`
 		SchedulerStates              string `env:"ORDER_SCHEDULER_STATES"`
@@ -47,8 +49,10 @@ type Config struct {
 		SchedulerParentWorkerTimeout string `env:"ORDER_SCHEDULER_PARENT_WORKER_TIMEOUT"`
 		SchedulerWorkerTimeout       string `env:"ORDER_SCHEDULER_WORKER_TIMEOUT"`
 
-		SchedulerStateTimeUint              string `env:"ORDER_SCHEDULER_STATE_TIME_UINT"`
+		SchedulerStateTimeUint              string `env:"ORDER_SCHEDULER_STATE_TIME_UNIT"`
 		SchedulerSellerReactionTime         string `env:"ORDER_SCHEDULER_SELLER_REACTION_TIME"`
+		SchedulerPaymentPendingState        string `env:"ORDER_SCHEDULER_PAYMENT_PENDING_STATE"`
+		SchedulerRetryPaymentPendingState   string `env:"ORDER_SCHEDULER_RETRY_PAYMENT_PENDING_STATE"`
 		SchedulerApprovalPendingState       string `env:"ORDER_SCHEDULER_APPROVAL_PENDING_STATE"`
 		SchedulerShipmentPendingState       string `env:"ORDER_SCHEDULER_SHIPMENT_PENDING_STATE"`
 		SchedulerShippedState               string `env:"ORDER_SCHEDULER_SHIPPED_STATE"`
@@ -69,28 +73,36 @@ type Config struct {
 	UserService struct {
 		Address string `env:"USER_SERVICE_ADDRESS"`
 		Port    int    `env:"USER_SERVICE_PORT"`
+		Timeout int    `env:"USER_SERVICE_TIMEOUT"`
 	}
 
 	NotifyService struct {
-		Address string `env:"NOTIFY_SERVICE_ADDRESS"`
-		Port    int    `env:"NOTIFY_SERVICE_PORT"`
+		Address      string `env:"NOTIFY_SERVICE_ADDRESS"`
+		Port         int    `env:"NOTIFY_SERVICE_PORT"`
+		Timeout      int    `env:"NOTIFY_SERVICE_TIMEOUT"`
+		NotifySeller bool   `env:"NOTIFY_SERVICE_SELLER_ENABLED"`
+		NotifyBuyer  bool   `env:"NOTIFY_SERVICE_BUYER_ENABLED"`
 	}
 
 	VoucherService struct {
 		Address     string `env:"VOUCHER_SERVICE_ADDRESS"`
 		Port        int    `env:"VOUCHER_SERVICE_PORT"`
+		Timeout     int    `env:"VOUCHER_SERVICE_TIMEOUT"`
 		MockEnabled bool   `env:"VOUCHER_SERVICE_MOCK_ENABLED"`
 	}
 
 	PaymentGatewayService struct {
-		Address     string `env:"PAYMENT_GATEWAY_ADDRESS"`
-		Port        int    `env:"PAYMENT_GATEWAY_PORT"`
-		MockEnabled bool   `env:"PAYMENT_SERVICE_MOCK_ENABLED"`
+		Address              string `env:"PAYMENT_SERVICE_ADDRESS"`
+		Port                 int    `env:"PAYMENT_SERVICE_PORT"`
+		CallbackTimeout      int    `env:"PAYMENT_SERVICE_PAYMENT_CALLBACK_TIMEOUT"`
+		PaymentResultTimeout int    `env:"PAYMENT_SERVICE_PAYMENT_RESULT_TIMEOUT"`
+		MockEnabled          bool   `env:"PAYMENT_SERVICE_MOCK_ENABLED"`
 	}
 
 	StockService struct {
 		Address     string `env:"STOCK_SERVICE_ADDRESS"`
 		Port        int    `env:"STOCK_SERVICE_PORT"`
+		Timeout     int    `env:"STOCK_SERVICE_TIMEOUT"`
 		MockEnabled bool   `env:"STOCK_SERVICE_MOCK_ENABLED"`
 	}
 
@@ -113,6 +125,9 @@ type Config struct {
 		MaxConnIdleTime   int    `env:"ORDER_SERVICE_MONGO_MAX_CONN_IDLE_TIME"`
 		MaxPoolSize       int    `env:"ORDER_SERVICE_MONGO_MAX_POOL_SIZE"`
 		MinPoolSize       int    `env:"ORDER_SERVICE_MONGO_MIN_POOL_SIZE"`
+		WriteConcernW     string `env:"ORDER_SERVICE_MONGO_WRITE_CONCERN_W"`
+		WriteConcernJ     string `env:"ORDER_SERVICE_MONGO_WRITE_CONCERN_J"`
+		RetryWrite        bool   `env:"ORDER_SERVICE_MONGO_RETRY_WRITE"`
 	}
 }
 
@@ -121,47 +136,50 @@ func LoadConfig(path string) (*Config, *SmsTemplate, error) {
 	var smsTemplate = &SmsTemplate{}
 	currntPath, err := os.Getwd()
 	if err != nil {
-		logger.Err("get current working directory failed, error %s", err)
+		applog.GLog.Logger.Error("get current working directory failed", "error", err)
 	}
 
 	if os.Getenv("APP_MODE") == "dev" {
 		if path != "" {
 			err := godotenv.Load(path)
 			if err != nil {
-				logger.Err("Error loading testdata .env file, Working Directory: %s  path: %s, error: %s", currntPath, path, err)
+				applog.GLog.Logger.Error("Error loading testdata .env file",
+					"Working Directory", currntPath,
+					"path", path,
+					"error", err)
 			}
 		} else if flag.Lookup("test.v") != nil {
 			// test mode
 			err := godotenv.Load("../testdata/.env")
 			if err != nil {
-				logger.Err("Error loading testdata .env file, error: %s", err)
+				applog.GLog.Logger.Error("Error loading testdata .env file", "error", err)
 			}
 		}
 	} else if os.Getenv("APP_MODE") == "docker" {
 		err := godotenv.Load(path)
 		if err != nil {
-			logger.Err("Error loading .docker-env file, " + path)
+			applog.GLog.Logger.Error("Error loading .docker-env file", "path", path)
 		}
 	}
 
 	// Get environment variables for Config
 	_, err = env.UnmarshalFromEnviron(config)
 	if err != nil {
-		logger.Err("env.UnmarshalFromEnviron config failed")
+		applog.GLog.Logger.Error("env.UnmarshalFromEnviron config failed")
 		return nil, nil, err
 	}
 
 	if config.App.SmsTemplates != "" {
 		err := godotenv.Load(config.App.SmsTemplates)
 		if err != nil {
-			logger.Err("Error loading " + config.App.SmsTemplates + " file")
+			applog.GLog.Logger.Error("Error loading sms template file", "template", config.App.SmsTemplates)
 			return nil, nil, err
 		}
 	}
 
 	_, err = env.UnmarshalFromEnviron(smsTemplate)
 	if err != nil {
-		logger.Err("env.UnmarshalFromEnviron smsTemplate failed")
+		applog.GLog.Logger.Error("env.UnmarshalFromEnviron smsTemplate failed")
 		return nil, nil, err
 	}
 
@@ -173,20 +191,23 @@ func LoadConfigs(configPath string, smsTemplatePath string) (*Config, *SmsTempla
 	var smsTemplate = &SmsTemplate{}
 	currntPath, err := os.Getwd()
 	if err != nil {
-		logger.Err("get current working directory failed, error %s", err)
+		applog.GLog.Logger.Error("get current working directory failed", "error", err)
 	}
 
 	if os.Getenv("APP_MODE") == "dev" {
 		if configPath != "" {
 			err := godotenv.Load(configPath)
 			if err != nil {
-				logger.Err("Error loading testdata .env file, Working Directory: %s  path: %s, error: %s", currntPath, configPath, err)
+				applog.GLog.Logger.Error("Error loading testdata .env file",
+					"Working Directory", currntPath,
+					"path", configPath,
+					"error", err)
 			}
 		} else if flag.Lookup("test.v") != nil {
 			// test mode
 			err := godotenv.Load("../testdata/.env")
 			if err != nil {
-				logger.Err("Error loading testdata .env file, error: %s", err)
+				applog.GLog.Logger.Error("Error loading testdata .env file", "error", err)
 			}
 		}
 	}
@@ -194,20 +215,20 @@ func LoadConfigs(configPath string, smsTemplatePath string) (*Config, *SmsTempla
 	// Get environment variables for Config
 	_, err = env.UnmarshalFromEnviron(config)
 	if err != nil {
-		logger.Err("env.UnmarshalFromEnviron config failed")
+		applog.GLog.Logger.Error("env.UnmarshalFromEnviron config failed")
 		return nil, nil, err
 	}
 
 	if smsTemplatePath != "" {
 		err = godotenv.Load(smsTemplatePath)
 		if err != nil {
-			logger.Err("Error loading " + smsTemplatePath + " file")
+			applog.GLog.Logger.Error("Error loading sms template file", "template", smsTemplatePath)
 			return nil, nil, err
 		}
 
 		_, err = env.UnmarshalFromEnviron(smsTemplate)
 		if err != nil {
-			logger.Err("env.UnmarshalFromEnviron smsTemplate failed")
+			applog.GLog.Logger.Error("env.UnmarshalFromEnviron smsTemplate failed")
 			return nil, nil, err
 		}
 		return config, smsTemplate, nil

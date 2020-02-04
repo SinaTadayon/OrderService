@@ -13,7 +13,7 @@ const (
 )
 
 const (
-	DocumentVersion string = "1.0.0"
+	DocumentVersion string = "1.0.4"
 )
 
 func init() {
@@ -36,7 +36,7 @@ type Order struct {
 	Status        string                 `bson:"status"`
 	BuyerInfo     BuyerInfo              `bson:"buyerInfo"`
 	Invoice       Invoice                `bson:"invoice"`
-	Packages      []PackageItem          `bson:"packages"`
+	Packages      []*PackageItem         `bson:"packages"`
 	CreatedAt     time.Time              `bson:"createdAt"`
 	UpdatedAt     time.Time              `bson:"updatedAt"`
 	DeletedAt     *time.Time             `bson:"deletedAt"`
@@ -50,7 +50,7 @@ type PaymentService struct {
 	Extended        map[string]interface{} `bson:"ext"`
 }
 
-// TODO get configs of pay to market from siavash
+// TODO get configs of pay to market from back-office
 type SystemPayment struct {
 	PayToBuyer  []PayToBuyerInfo       `bson:"payToBuyer"`
 	PayToMarket []PayToMarket          `bson:"payToMarket"`
@@ -91,11 +91,15 @@ type PaymentOption struct {
 }
 
 type Voucher struct {
-	Percent  float64                `bson:"percent"`
-	Price    *Money                 `bson:"price"`
-	Code     string                 `bson:"code"`
-	Details  *VoucherDetails        `bson:"details"`
-	Extended map[string]interface{} `bson:"ext"`
+	Percent      float64                `bson:"percent"`
+	Price        *Money                 `bson:"price"`
+	Code         string                 `bson:"code"`
+	Details      *VoucherDetails        `bson:"details"`
+	Settlement   string                 `bson:"settlement"`
+	SettlementAt *time.Time             `bson:"settlementAt"`
+	Reserved     string                 `bson:"reserved"`
+	ReservedAt   *time.Time             `bson:"reservedAt"`
+	Extended     map[string]interface{} `bson:"ext"`
 }
 
 type CartRule struct {
@@ -124,6 +128,8 @@ type PaymentRequest struct {
 	Price     *Money                 `bson:"price"`
 	Gateway   string                 `bson:"gateway"`
 	CreatedAt time.Time              `bson:"createdAt"`
+	Mobile    string                 `bson:"mobile"`
+	Data      interface{}            `bson:"data"`
 	Extended  map[string]interface{} `bson:"ext"`
 }
 
@@ -131,11 +137,23 @@ type PaymentResponse struct {
 	Result      bool                   `bson:"result"`
 	Reason      string                 `bson:"reason"`
 	Description string                 `bson:"description"`
+	Response    interface{}            `bson:"response"`
+	CreatedAt   time.Time              `bson:"createdAt"`
+	Extended    map[string]interface{} `bson:"ext"`
+}
+
+type PaymentIPGResponse struct {
 	CallBackUrl string                 `bson:"callbackUrl"`
 	InvoiceId   int64                  `bson:"invoiceId"`
 	PaymentId   string                 `bson:"paymentId"`
-	CreatedAt   time.Time              `bson:"createdAt"`
 	Extended    map[string]interface{} `bson:"ext"`
+}
+
+type PaymentMPGResponse struct {
+	HostRequest     string                 `bson:"hostRequest"`
+	HostRequestSign string                 `bson:"hostRequestSign"`
+	PaymentId       string                 `bson:"paymentId"`
+	Extended        map[string]interface{} `bson:"ext"`
 }
 
 type PaymentResult struct {
@@ -145,6 +163,7 @@ type PaymentResult struct {
 	InvoiceId   int64                  `bson:"invoiceId"`
 	Price       *Money                 `bson:"price"`
 	CardNumMask string                 `bson:"cardNumMask"`
+	Data        interface{}            `bson:"data"`
 	CreatedAt   time.Time              `bson:"createdAt"`
 	Extended    map[string]interface{} `bson:"ext"`
 }

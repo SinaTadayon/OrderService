@@ -2,7 +2,6 @@ package converter
 
 import (
 	"github.com/pkg/errors"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	ordersrv "gitlab.faza.io/protos/order"
 	"strconv"
@@ -110,7 +109,10 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	order.BuyerInfo.ShippingAddress.Province = newOrderDto.Buyer.ShippingAddress.Province
 	order.BuyerInfo.ShippingAddress.Neighbourhood = newOrderDto.Buyer.ShippingAddress.Neighbourhood
 	order.BuyerInfo.ShippingAddress.ZipCode = newOrderDto.Buyer.ShippingAddress.ZipCode
-	setOrderLocation(newOrderDto.Buyer.ShippingAddress.Lat, newOrderDto.Buyer.ShippingAddress.Long, &order)
+	err := setOrderLocation(newOrderDto.Buyer.ShippingAddress.Lat, newOrderDto.Buyer.ShippingAddress.Long, &order)
+	if err != nil {
+		return nil, errors.New("Lat/Long ShippingAddress Invalid")
+	}
 
 	if newOrderDto.Invoice == nil {
 		return nil, errors.New("invoice of RequestNewOrder invalid")
@@ -142,10 +144,15 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 
 	if newOrderDto.Invoice.Voucher != nil {
 		order.Invoice.Voucher = &entities.Voucher{
-			Percent: float64(newOrderDto.Invoice.Voucher.Percent),
-			Price:   nil,
-			Code:    newOrderDto.Invoice.Voucher.Code,
-			Details: nil,
+			Percent:      float64(newOrderDto.Invoice.Voucher.Percent),
+			Price:        nil,
+			Code:         newOrderDto.Invoice.Voucher.Code,
+			Details:      nil,
+			Settlement:   "",
+			SettlementAt: nil,
+			Reserved:     "",
+			ReservedAt:   nil,
+			Extended:     nil,
 		}
 
 		if newOrderDto.Invoice.Voucher.Price != nil {
@@ -176,7 +183,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 		}
 	}
 
-	order.Packages = make([]entities.PackageItem, 0, len(newOrderDto.Packages))
+	order.Packages = make([]*entities.PackageItem, 0, len(newOrderDto.Packages))
 	for _, pkgDto := range newOrderDto.Packages {
 
 		if pkgDto.SellerId <= 0 {
@@ -207,7 +214,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 			return nil, errors.New("Subtotal of Invoice is nil")
 		}
 
-		var pkgItem = entities.PackageItem{
+		var pkgItem = &entities.PackageItem{
 			PId:         pkgDto.SellerId,
 			OrderId:     0,
 			Version:     0,
@@ -321,7 +328,7 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 				Image:       itemDto.Image,
 				Returnable:  itemDto.Returnable,
 				Quantity:    itemDto.Quantity,
-				Attributes:  itemDto.Attributes,
+				Attributes:  nil,
 				Invoice: entities.ItemInvoice{
 					Unit: entities.Money{
 						Amount:   itemDto.Invoice.Unit.Amount,
@@ -356,6 +363,24 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 				item.Invoice.ApplicableVoucher = true
 			}
 
+			if itemDto.Attributes != nil {
+				item.Attributes = make(map[string]*entities.Attribute, len(itemDto.Attributes))
+				for attrKey, attribute := range itemDto.Attributes {
+					keyTranslates := make(map[string]string, len(attribute.KeyTrans))
+					for keyTran, value := range attribute.KeyTrans {
+						keyTranslates[keyTran] = value
+					}
+					valTranslates := make(map[string]string, len(attribute.ValueTrans))
+					for valTran, value := range attribute.ValueTrans {
+						valTranslates[valTran] = value
+					}
+					item.Attributes[attrKey] = &entities.Attribute{
+						KeyTranslate:   keyTranslates,
+						ValueTranslate: valTranslates,
+					}
+				}
+			}
+
 			pkgItem.Subpackages[0].Items = append(pkgItem.Subpackages[0].Items, item)
 		}
 		order.Packages = append(order.Packages, pkgItem)
@@ -364,24 +389,23 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	return &order, nil
 }
 
-func setOrderLocation(lat, long string, order *entities.Order) {
+func setOrderLocation(lat, long string, order *entities.Order) error {
 	var latitude, longitude float64
 	var err error
 	if len(lat) == 0 || len(long) == 0 {
-		return
+		return nil
 	}
 
 	if latitude, err = strconv.ParseFloat(lat, 64); err != nil {
-		logger.Err("shippingAddress.latitude of RequestNewOrder ")
-		return
+		return err
 	}
 
 	if longitude, err = strconv.ParseFloat(long, 64); err != nil {
-		logger.Err("shippingAddress.longitude of RequestNewOrder ")
-		return
+		return err
 	}
 
 	order.BuyerInfo.ShippingAddress.Location = &entities.Location{}
 	order.BuyerInfo.ShippingAddress.Location.Type = "Point"
 	order.BuyerInfo.ShippingAddress.Location.Coordinates = []float64{longitude, latitude}
+	return nil
 }

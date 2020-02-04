@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/configs"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	user_service "gitlab.faza.io/order-project/order-service/infrastructure/services/user"
 	voucherProto "gitlab.faza.io/protos/cart"
 	"google.golang.org/grpc/metadata"
@@ -53,19 +54,24 @@ func TestMain(m *testing.M) {
 		path = ""
 	}
 
+	applog.GLog.ZapLogger = applog.InitZap()
+	applog.GLog.Logger = logger.NewZapLogger(applog.GLog.ZapLogger)
+
 	config, _, err = configs.LoadConfigs(path, "")
 	if err != nil {
-		logger.Err(err.Error())
+		applog.GLog.Logger.Error("configs.LoadConfig failed",
+			"error", err)
 		os.Exit(1)
 	}
 
-	userService = user_service.NewUserService(config.UserService.Address, config.UserService.Port)
+	userService = user_service.NewUserService(config.UserService.Address, config.UserService.Port, config.UserService.Timeout)
 
 	voucherSrv = iVoucherServiceImpl{
 		voucherClient:  nil,
 		grpcConnection: nil,
 		serverAddress:  config.VoucherService.Address,
 		serverPort:     config.VoucherService.Port,
+		timeout:        config.VoucherService.Timeout,
 	}
 
 	// Running Tests

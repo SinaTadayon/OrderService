@@ -5,6 +5,54 @@ package payment_gateway;
 service PaymentGateway{
   rpc GenerateRedirectURL(GenerateRedirRequest) returns (GenerateRedirResponse) {};
   rpc ListGateways(ListGatewaysRequest) returns (ListGatewaysResponse) {};
+  rpc GetPaymentResultByOrderID(GetPaymentResultByOrderIdRequest) returns (PaymentRequest) {};
+
+  rpc MPGStart(MPGStartRequest) returns (MPGStartResponse) {};
+  rpc MPGValidate(MPGValidateRequest) returns (MPGValidateResponse) {};
+}
+
+message MPGValidateRequest {
+	string  Message          =  1; 
+	string  HostResponse     =  2; 
+	string  HostResponseSign =  3; 
+	int64   StatusCode       =  4; 
+	int64   UniqueTranID     =  5; 
+	string  PaymentID        =  7; 
+}
+
+message MPGValidateResponse {
+  bool    Success = 1;
+}
+
+message MPGStartRequest {
+  int64   amount    = 1; 
+  string  currency  = 2; 
+  string  orderID   = 3;
+  string  mobile    = 4;
+}
+
+message MPGStartResponse {
+	string hostRequest     = 1;
+  string hostRequestSign = 2;
+  string paymentId       = 3;
+}
+
+message GetPaymentResultByOrderIdRequest{
+  string orderID    = 1;
+}
+
+message PaymentRequest{
+  string  orderID   = 1;
+  string  paymentId = 2;
+  int64   invoiceId = 3;
+  int64   amount    = 4;
+  string  cardMask  = 5;
+  enum Status {
+    PENDING = 0;
+    SUCCESS = 1;
+    FAIL    = 2;
+  }
+  Status  status    = 6;
 }
 
 message GenerateRedirRequest{
@@ -12,6 +60,7 @@ message GenerateRedirRequest{
   int64   amount    = 2; 
   string  currency  = 3; 
   string  orderID   = 4;
+  string  mobile    = 5;
 }
 
 

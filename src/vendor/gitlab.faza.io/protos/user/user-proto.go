@@ -1368,15 +1368,13 @@ type UserSellerData struct {
 	CorpInfo    *CorporateSellerInfo  `protobuf:"bytes,3,opt,name=corpInfo,proto3" json:"corpInfo,omitempty"`
 	IndivInfo   *IndividualSellerInfo `protobuf:"bytes,4,opt,name=indivInfo,proto3" json:"indivInfo,omitempty"`
 	// @inject_tag: validate:"required"
-	ReturnInfo    *ReturnInfo          `protobuf:"bytes,5,opt,name=returnInfo,proto3" json:"returnInfo,omitempty" validate:"required"`
-	ContactPerson *SellerContactPerson `protobuf:"bytes,6,opt,name=contactPerson,proto3" json:"contactPerson,omitempty"`
-	// @inject_tag: validate:"required"
-	ShipmentInfo *SellerShipmentInfo `protobuf:"bytes,7,opt,name=shipmentInfo,proto3" json:"shipmentInfo,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	FinanceData          *SellerFinanceData `protobuf:"bytes,8,opt,name=financeData,proto3" json:"financeData,omitempty" validate:"required"`
-	XXX_NoUnkeyedLiteral struct{}           `json:"-"`
-	XXX_unrecognized     []byte             `json:"-"`
-	XXX_sizecache        int32              `json:"-"`
+	ReturnInfo           *ReturnInfo          `protobuf:"bytes,5,opt,name=returnInfo,proto3" json:"returnInfo,omitempty" validate:"required"`
+	ContactPerson        *SellerContactPerson `protobuf:"bytes,6,opt,name=contactPerson,proto3" json:"contactPerson,omitempty"`
+	ShipmentInfo         *SellerShipmentInfo  `protobuf:"bytes,7,opt,name=shipmentInfo,proto3" json:"shipmentInfo,omitempty"`
+	FinanceData          *SellerFinanceData   `protobuf:"bytes,8,opt,name=financeData,proto3" json:"financeData,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
 }
 
 func (m *UserSellerData) Reset()         { *m = UserSellerData{} }
@@ -1461,12 +1459,9 @@ func (m *UserSellerData) GetFinanceData() *SellerFinanceData {
 }
 
 type SellerFinanceData struct {
-	// @inject_tag: validate:"required"
-	Iban string `protobuf:"bytes,1,opt,name=iban,proto3" json:"iban,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	AccountHolderFirstName string `protobuf:"bytes,2,opt,name=accountHolderFirstName,proto3" json:"accountHolderFirstName,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	AccountHolderFamilyName string   `protobuf:"bytes,3,opt,name=accountHolderFamilyName,proto3" json:"accountHolderFamilyName,omitempty" validate:"required"`
+	Iban                    string   `protobuf:"bytes,1,opt,name=iban,proto3" json:"iban,omitempty"`
+	AccountHolderFirstName  string   `protobuf:"bytes,2,opt,name=accountHolderFirstName,proto3" json:"accountHolderFirstName,omitempty"`
+	AccountHolderFamilyName string   `protobuf:"bytes,3,opt,name=accountHolderFamilyName,proto3" json:"accountHolderFamilyName,omitempty"`
 	XXX_NoUnkeyedLiteral    struct{} `json:"-"`
 	XXX_unrecognized        []byte   `json:"-"`
 	XXX_sizecache           int32    `json:"-"`
@@ -1522,9 +1517,8 @@ type GeneralSellerInfo struct {
 	// @inject_tag: validate:"required"
 	ShopDisplayName string `protobuf:"bytes,2,opt,name=shopDisplayName,proto3" json:"shopDisplayName,omitempty" validate:"required"`
 	// @inject_tag: validate:"required"
-	Type string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	Email     string `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty" validate:"required"`
+	Type      string `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty" validate:"required"`
+	Email     string `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
 	LandPhone string `protobuf:"bytes,5,opt,name=landPhone,proto3" json:"landPhone,omitempty"`
 	// @inject_tag: validate:"required"
 	MobilePhone string `protobuf:"bytes,6,opt,name=mobilePhone,proto3" json:"mobilePhone,omitempty" validate:"required"`
@@ -1537,9 +1531,8 @@ type GeneralSellerInfo struct {
 	City         *NameIdPair `protobuf:"bytes,10,opt,name=city,proto3" json:"city,omitempty" validate:"required"`
 	Neighborhood *NameIdPair `protobuf:"bytes,11,opt,name=neighborhood,proto3" json:"neighborhood,omitempty"`
 	// @inject_tag: validate:"required"
-	PostalAddress string `protobuf:"bytes,12,opt,name=postalAddress,proto3" json:"postalAddress,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	PostalCode               string   `protobuf:"bytes,13,opt,name=postalCode,proto3" json:"postalCode,omitempty" validate:"required"`
+	PostalAddress            string   `protobuf:"bytes,12,opt,name=postalAddress,proto3" json:"postalAddress,omitempty" validate:"required"`
+	PostalCode               string   `protobuf:"bytes,13,opt,name=postalCode,proto3" json:"postalCode,omitempty"`
 	IsVATObliged             bool     `protobuf:"varint,14,opt,name=isVATObliged,proto3" json:"isVATObliged,omitempty"`
 	VATCertificationImageURL string   `protobuf:"bytes,15,opt,name=VATCertificationImageURL,proto3" json:"VATCertificationImageURL,omitempty"`
 	XXX_NoUnkeyedLiteral     struct{} `json:"-"`
@@ -1671,17 +1664,13 @@ func (m *GeneralSellerInfo) GetVATCertificationImageURL() string {
 }
 
 type CorporateSellerInfo struct {
-	// @inject_tag: validate:"required"
-	CompanyRegisteredName string `protobuf:"bytes,1,opt,name=companyRegisteredName,proto3" json:"companyRegisteredName,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	CompanyRegistrationNumber string `protobuf:"bytes,2,opt,name=companyRegistrationNumber,proto3" json:"companyRegistrationNumber,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	CompanyRationalID string `protobuf:"bytes,3,opt,name=companyRationalID,proto3" json:"companyRationalID,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	TradeNumber          string   `protobuf:"bytes,4,opt,name=tradeNumber,proto3" json:"tradeNumber,omitempty" validate:"required"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	CompanyRegisteredName     string   `protobuf:"bytes,1,opt,name=companyRegisteredName,proto3" json:"companyRegisteredName,omitempty"`
+	CompanyRegistrationNumber string   `protobuf:"bytes,2,opt,name=companyRegistrationNumber,proto3" json:"companyRegistrationNumber,omitempty"`
+	CompanyRationalID         string   `protobuf:"bytes,3,opt,name=companyRationalID,proto3" json:"companyRationalID,omitempty"`
+	TradeNumber               string   `protobuf:"bytes,4,opt,name=tradeNumber,proto3" json:"tradeNumber,omitempty"`
+	XXX_NoUnkeyedLiteral      struct{} `json:"-"`
+	XXX_unrecognized          []byte   `json:"-"`
+	XXX_sizecache             int32    `json:"-"`
 }
 
 func (m *CorporateSellerInfo) Reset()         { *m = CorporateSellerInfo{} }
@@ -1738,16 +1727,11 @@ func (m *CorporateSellerInfo) GetTradeNumber() string {
 }
 
 type IndividualSellerInfo struct {
-	// @inject_tag: validate:"required"
-	FirstName string `protobuf:"bytes,1,opt,name=firstName,proto3" json:"firstName,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	FamilyName string `protobuf:"bytes,2,opt,name=familyName,proto3" json:"familyName,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	NationalID string `protobuf:"bytes,3,opt,name=nationalID,proto3" json:"nationalID,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	NationalIDfrontURL string `protobuf:"bytes,4,opt,name=nationalIDfrontURL,proto3" json:"nationalIDfrontURL,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	NationalIDbackURL    string   `protobuf:"bytes,5,opt,name=nationalIDbackURL,proto3" json:"nationalIDbackURL,omitempty" validate:"required"`
+	FirstName            string   `protobuf:"bytes,1,opt,name=firstName,proto3" json:"firstName,omitempty"`
+	FamilyName           string   `protobuf:"bytes,2,opt,name=familyName,proto3" json:"familyName,omitempty"`
+	NationalID           string   `protobuf:"bytes,3,opt,name=nationalID,proto3" json:"nationalID,omitempty"`
+	NationalIDfrontURL   string   `protobuf:"bytes,4,opt,name=nationalIDfrontURL,proto3" json:"nationalIDfrontURL,omitempty"`
+	NationalIDbackURL    string   `protobuf:"bytes,5,opt,name=nationalIDbackURL,proto3" json:"nationalIDbackURL,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1898,14 +1882,10 @@ func (m *ReturnInfo) GetPostalCode() string {
 }
 
 type SellerContactPerson struct {
-	// @inject_tag: validate:"required"
-	FirstName string `protobuf:"bytes,1,opt,name=firstName,proto3" json:"firstName,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	FamilyName string `protobuf:"bytes,2,opt,name=familyName,proto3" json:"familyName,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	MobilePhone string `protobuf:"bytes,3,opt,name=mobilePhone,proto3" json:"mobilePhone,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	Email                string   `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty" validate:"required"`
+	FirstName            string   `protobuf:"bytes,1,opt,name=firstName,proto3" json:"firstName,omitempty"`
+	FamilyName           string   `protobuf:"bytes,2,opt,name=familyName,proto3" json:"familyName,omitempty"`
+	MobilePhone          string   `protobuf:"bytes,3,opt,name=mobilePhone,proto3" json:"mobilePhone,omitempty"`
+	Email                string   `protobuf:"bytes,4,opt,name=email,proto3" json:"email,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -1965,10 +1945,8 @@ func (m *SellerContactPerson) GetEmail() string {
 }
 
 type SellerShipmentInfo struct {
-	// @inject_tag: validate:"required"
-	SameCity *SellerShipmentInfo_PricePlan `protobuf:"bytes,1,opt,name=sameCity,proto3" json:"sameCity,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	DifferentCity        *SellerShipmentInfo_PricePlan `protobuf:"bytes,2,opt,name=differentCity,proto3" json:"differentCity,omitempty" validate:"required"`
+	SameCity             *SellerShipmentInfo_PricePlan `protobuf:"bytes,1,opt,name=sameCity,proto3" json:"sameCity,omitempty"`
+	DifferentCity        *SellerShipmentInfo_PricePlan `protobuf:"bytes,2,opt,name=differentCity,proto3" json:"differentCity,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}                      `json:"-"`
 	XXX_unrecognized     []byte                        `json:"-"`
 	XXX_sizecache        int32                         `json:"-"`
@@ -2014,12 +1992,9 @@ func (m *SellerShipmentInfo) GetDifferentCity() *SellerShipmentInfo_PricePlan {
 }
 
 type SellerShipmentInfo_PricePlan struct {
-	// @inject_tag: validate:"required"
-	Threshold int64 `protobuf:"varint,1,opt,name=threshold,proto3" json:"threshold,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	BelowPrice int64 `protobuf:"varint,3,opt,name=belowPrice,proto3" json:"belowPrice,omitempty" validate:"required"`
-	// @inject_tag: validate:"required"
-	ReactionTimeDays     int64    `protobuf:"varint,4,opt,name=reactionTimeDays,proto3" json:"reactionTimeDays,omitempty" validate:"required"`
+	Threshold            int64    `protobuf:"varint,1,opt,name=threshold,proto3" json:"threshold,omitempty"`
+	BelowPrice           int64    `protobuf:"varint,3,opt,name=belowPrice,proto3" json:"belowPrice,omitempty"`
+	ReactionTimeDays     int64    `protobuf:"varint,4,opt,name=reactionTimeDays,proto3" json:"reactionTimeDays,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`

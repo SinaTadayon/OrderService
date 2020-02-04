@@ -3,7 +3,6 @@ package domain
 import (
 	"context"
 	"github.com/pkg/errors"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
 	buyer_action "gitlab.faza.io/order-project/order-service/domain/actions/buyer"
 	operator_action "gitlab.faza.io/order-project/order-service/domain/actions/operator"
@@ -43,6 +42,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/states/state_80"
 	"gitlab.faza.io/order-project/order-service/domain/states/state_90"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
+	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	"strconv"
 	"time"
 
@@ -412,8 +412,9 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
-		system_action.New(system_action.PaymentSuccess): flowManager.statesMap[states.PaymentSuccess],
-		system_action.New(system_action.PaymentFail):    flowManager.statesMap[states.PaymentFailed],
+		system_action.New(system_action.PaymentSuccess):    flowManager.statesMap[states.PaymentSuccess],
+		system_action.New(system_action.PaymentFail):       flowManager.statesMap[states.PaymentFailed],
+		scheduler_action.New(scheduler_action.PaymentFail): flowManager.statesMap[states.PaymentFailed],
 	}
 	childStates = []states.IState{
 		flowManager.statesMap[states.PaymentSuccess],
@@ -440,8 +441,10 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 func (flowManager iFlowManagerImpl) PaymentGatewayResult(ctx context.Context, req *pg.PaygateHookRequest) future.IFuture {
 	orderId, err := strconv.Atoi(req.OrderID)
 	if err != nil {
-		logger.Err("PaymentGatewayResult() => request orderId invalid, OrderRepository.FindById failed, order: %s, error: %s",
-			req.OrderID, err)
+		app.Globals.Logger.Error("request orderId invalid, OrderRepository.FindById failed",
+			"fn", "PaymentGatewayResult",
+			"orderId", req.OrderID,
+			"error", err)
 
 		return future.Factory().
 			SetError(future.BadRequest, "OrderId Invalid", errors.Wrap(err, "strconv.Atoi() Failed")).
@@ -486,10 +489,11 @@ func (flowManager iFlowManagerImpl) MessageHandler(ctx context.Context, iFrame f
 func (flowManager iFlowManagerImpl) newOrderHandler(ctx context.Context, iFrame frame.IFrame) {
 
 	requestNewOrder := iFrame.Header().Value(string(frame.HeaderNewOrder))
-
 	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
 	if err != nil {
-		logger.Err("Converter.Map requestNewOrder to order object failed, error: %s, requestNewOrder: %v", err, requestNewOrder)
+		app.Globals.Logger.FromContext(ctx).Error("Converter.Map requestNewOrder to order object failed",
+			"fn", "newOrderHandler",
+			"error", err, "requestNewOrder", requestNewOrder)
 		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 			SetError(future.BadRequest, "Received requestNewOrder invalid", err).
 			Send()
@@ -498,22 +502,66 @@ func (flowManager iFlowManagerImpl) newOrderHandler(ctx context.Context, iFrame 
 
 	newOrder := value.(*entities.Order)
 
-	var inventories = make(map[string]int, 32)
+	var requestStockList = make([]stock_service.RequestStock, 0, 32)
 	for i := 0; i < len(newOrder.Packages); i++ {
 		for j := 0; j < len(newOrder.Packages[i].Subpackages); j++ {
 			for z := 0; z < len(newOrder.Packages[i].Subpackages[j].Items); z++ {
 				item := newOrder.Packages[i].Subpackages[j].Items[z]
-				inventories[item.InventoryId] = int(item.Quantity)
+				requestStock := stock_service.RequestStock{
+					InventoryId: item.InventoryId,
+					Count:       int(item.Quantity),
+				}
+				requestStockList = append(requestStockList, requestStock)
 			}
 		}
 	}
 
-	iFuture := app.Globals.StockService.BatchStockActions(ctx, inventories,
+	iFuture := app.Globals.StockService.BatchStockActions(ctx, requestStockList, 0,
 		system_action.New(system_action.StockReserve))
 	futureData := iFuture.Get()
 	if futureData.Error() != nil {
-		logger.Err("Reserved stock from stockService failed, newOrder: %v, error: %s",
-			newOrder, futureData.Error())
+		app.Globals.Logger.FromContext(ctx).Error("Reserved stock from stockService failed",
+			"fn", "newOrderHandler",
+			"newOrder", newOrder,
+			"error", futureData.Error())
+
+		if responseStockList, ok := futureData.Data().([]stock_service.ResponseStock); ok {
+			requestStockList = make([]stock_service.RequestStock, 0, 32)
+			for _, response := range responseStockList {
+				if response.Result {
+					requestStock := stock_service.RequestStock{
+						InventoryId: response.InventoryId,
+						Count:       response.Count,
+					}
+					requestStockList = append(requestStockList, requestStock)
+				}
+			}
+			iFuture := app.Globals.StockService.BatchStockActions(ctx, requestStockList, 0,
+				system_action.New(system_action.StockRelease))
+			futureData := iFuture.Get()
+			if futureData.Error() != nil {
+				responseList, ok := futureData.Data().([]stock_service.ResponseStock)
+				if ok {
+					app.Globals.Logger.FromContext(ctx).Error("Rollback reserved stock from stockService failed",
+						"fn", "newOrderHandler",
+						"newOrder", newOrder,
+						"response", responseList,
+						"error", futureData.Error())
+				} else {
+					app.Globals.Logger.FromContext(ctx).Error("Rollback reserved stock from stockService failed",
+						"fn", "newOrderHandler",
+						"newOrder", newOrder,
+						"error", futureData.Error())
+				}
+			} else {
+				responseList := futureData.Data().([]stock_service.ResponseStock)
+				app.Globals.Logger.FromContext(ctx).Debug("Rollback reserved stock from stockService success",
+					"fn", "newOrderHandler",
+					"newOrder", newOrder,
+					"response", responseList)
+			}
+		}
+
 		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 			SetError(future.NotAccepted, "Received requestNewOrder invalid", err).
 			Send()
@@ -526,27 +574,71 @@ func (flowManager iFlowManagerImpl) newOrderHandler(ctx context.Context, iFrame 
 func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame frame.IFrame) {
 	event := iFrame.Header().Value(string(frame.HeaderEvent)).(events.IEvent)
 	if event.EventType() == events.Action {
-		pkgItem, err := app.Globals.PkgItemRepository.FindById(ctx, event.OrderId(), event.PackageId())
-		if err != nil {
-			logger.Err("EventHandler => SubPkgRepository.FindByOrderAndSellerId failed, event: %v, error: %s ", event, err)
-			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				SetError(future.InternalError, "Unknown Err", err).Send()
-		}
+		if event.Action().ActionEnum() == scheduler_action.PaymentFail {
+			order, err := app.Globals.OrderRepository.FindById(ctx, event.OrderId())
+			if err != nil {
+				app.Globals.Logger.FromContext(ctx).Error("OrderRepository.FindById failed",
+					"fn", "EventHandler",
+					"event", event,
+					"error", err)
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).Send()
+				return
+			}
 
-		state := states.FromIndex(event.StateIndex())
-		if state == nil {
-			logger.Err("EventHandler => stateIndex invalid, event: %v, error: %s ", event, err)
-			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				SetError(future.InternalError, "Unknown Err", err).Send()
-			return
-		}
+			state := states.FromIndex(event.StateIndex())
+			if state == nil {
+				app.Globals.Logger.FromContext(ctx).Error("sIdx invalid",
+					"fn", "EventHandler",
+					"event", event, "error", err)
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetError(future.InternalError, "Unknown Err", err).Send()
+				return
+			}
 
-		if state, ok := flowManager.statesMap[state]; ok {
-			state.Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItem).Build())
+			if state, ok := flowManager.statesMap[state]; ok {
+				state.Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
+			} else {
+				app.Globals.Logger.FromContext(ctx).Error("state in flowManager.statesMap no found",
+					"fn", "EventHandler",
+					"state", state.Name(),
+					"event", event,
+					"error", err)
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetError(future.InternalError, "Unknown Err", err).Send()
+			}
 		} else {
-			logger.Err("EventHandler => state in flowManager.statesMap no found, state: %s, event: %v, error: %s ", state.Name(), event, err)
-			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				SetError(future.InternalError, "Unknown Err", err).Send()
+			pkgItem, err := app.Globals.PkgItemRepository.FindById(ctx, event.OrderId(), event.PackageId())
+			if err != nil {
+				app.Globals.Logger.Error("PkgItemRepository.FindById failed",
+					"fn", "EventHandler",
+					"event", event, "error", err)
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).Send()
+				return
+			}
+
+			state := states.FromIndex(event.StateIndex())
+			if state == nil {
+				app.Globals.Logger.FromContext(ctx).Error("sIdx invalid",
+					"fn", "EventHandler",
+					"event", event, "error", err)
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetError(future.InternalError, "Unknown Err", err).Send()
+				return
+			}
+
+			if state, ok := flowManager.statesMap[state]; ok {
+				state.Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItem).Build())
+			} else {
+				app.Globals.Logger.FromContext(ctx).Error("state in flowManager.statesMap no found",
+					"fn", "EventHandler",
+					"state", state.Name(),
+					"event", event,
+					"error", err)
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetError(future.InternalError, "Unknown Err", err).Send()
+			}
 		}
 	}
 }

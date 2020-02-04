@@ -9,6 +9,7 @@ import (
 type OrderStatus string
 type PackageStatus string
 type ActionResult string
+type SchedulerType string
 
 const (
 	OrderNewStatus        OrderStatus = "NEW"
@@ -26,6 +27,16 @@ const (
 	ActionSuccess ActionResult = "Success"
 	ActionFail    ActionResult = "Fail"
 	ActionCancel  ActionResult = "Cancel"
+)
+
+const (
+	SchedulerSubpackageStateExpire SchedulerType = "SP_EXPIRATION"
+	SchedulerSubpackageStateNotify SchedulerType = "SP_NOTIFICATION"
+)
+
+const (
+	SchedulerJobName   string = "SCH_SP_JOB"
+	SchedulerGroupName string = "SCH_SP_GROUP"
 )
 
 type IState interface {

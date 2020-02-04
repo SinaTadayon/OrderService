@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/configs"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"os"
 	"testing"
 )
@@ -21,14 +22,20 @@ func TestMain(m *testing.M) {
 		path = ""
 	}
 
+	applog.GLog.ZapLogger = applog.InitZap()
+	applog.GLog.Logger = logger.NewZapLogger(applog.GLog.ZapLogger)
+
 	config, _, err = configs.LoadConfigs(path, "")
 	if err != nil {
-		logger.Err(err.Error())
+		applog.GLog.Logger.Error("configs.LoadConfig failed",
+			"error", err)
 		os.Exit(1)
 	}
 
 	notify = iNotificationServiceImpl{nil, nil,
-		config.NotifyService.Address, config.NotifyService.Port}
+		config.NotifyService.Address, config.NotifyService.Port,
+		config.NotifyService.NotifySeller, config.NotifyService.NotifyBuyer,
+		config.NotifyService.Timeout}
 
 	// Running Tests
 	code := m.Run()
@@ -41,6 +48,7 @@ func TestNotifySMS(t *testing.T) {
 		//Phone: "09373969041",
 		Phone: "09128085965",
 		Body:  "سلام، این اس ام اس تستی هست",
+		User:  SellerUser,
 	}
 	iFuture := notify.NotifyBySMS(ctx, request)
 	futureData := iFuture.Get()

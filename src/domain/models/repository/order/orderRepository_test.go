@@ -2,21 +2,18 @@ package order_repository
 
 import (
 	"context"
-	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"os"
 	"testing"
 	"time"
 )
-
-type DecimalTest struct {
-	DecimalValue decimal.Decimal `bson:"decimalValue"`
-}
 
 var orderRepository IOrderRepository
 
@@ -29,9 +26,13 @@ func TestMain(m *testing.M) {
 		path = ""
 	}
 
+	applog.GLog.ZapLogger = applog.InitZap()
+	applog.GLog.Logger = logger.NewZapLogger(applog.GLog.ZapLogger)
+
 	config, _, err := configs.LoadConfigs(path, "")
 	if err != nil {
-		logger.Err("configs.LoadConfig failed, %s", err.Error())
+		applog.GLog.Logger.Error("configs.LoadConfig failed",
+			"error", err)
 		os.Exit(1)
 	}
 
@@ -41,17 +42,20 @@ func TestMain(m *testing.M) {
 		Port:     config.Mongo.Port,
 		Username: config.Mongo.User,
 		//Password:     App.Cfg.Mongo.Pass,
-		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout),
-		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout),
-		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout),
-		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime),
+		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout) * time.Second,
+		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout) * time.Second,
+		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout) * time.Second,
+		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime) * time.Second,
 		MaxPoolSize:     uint64(config.Mongo.MaxPoolSize),
 		MinPoolSize:     uint64(config.Mongo.MinPoolSize),
+		WriteConcernW:   config.Mongo.WriteConcernW,
+		WriteConcernJ:   config.Mongo.WriteConcernJ,
+		RetryWrites:     config.Mongo.RetryWrite,
 	}
 
 	mongoAdapter, err := mongoadapter.NewMongo(mongoConf)
 	if err != nil {
-		logger.Err("IPkgItemRepository Mongo: %v", err.Error())
+		applog.GLog.Logger.Error("mongoadapter.NewMongo failed", "error", err)
 		os.Exit(1)
 	}
 
@@ -107,7 +111,7 @@ func TestUpdateOrderRepository_Failed(t *testing.T) {
 	order1.BuyerInfo.FirstName = "Siamak"
 	_, err = orderRepository.Save(ctx, *order1)
 	require.Error(t, err)
-	require.Equal(t, ErrorUpdateFailed, err)
+	//require.Equal(t, repository.ErrorUpdateFailed, err.Reason())
 }
 
 func TestInsertOrderRepository_Success(t *testing.T) {
@@ -201,9 +205,9 @@ func TestFindAllWithPageAndPerPageRepository_failed(t *testing.T) {
 	order = createOrder()
 	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
-	_, _, err = orderRepository.FindAllWithPage(ctx, 1002, 2000)
-	require.NotNil(t, err)
-	require.Equal(t, ErrorPageNotAvailable, err)
+	_, _, e := orderRepository.FindAllWithPage(ctx, 1002, 2000)
+	require.NotNil(t, e)
+	require.Equal(t, repository.ErrorPageNotAvailable, e.Reason())
 }
 
 func TestFindAllWithPageAndPerPageAndSortRepository_success(t *testing.T) {
@@ -377,11 +381,11 @@ func TestFindByFilterWithPageAndPerPageRepository_failed(t *testing.T) {
 	order.BuyerInfo.FirstName = "AAAA"
 	_, err = orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
-	_, _, err = orderRepository.FindByFilterWithPage(ctx, func() interface{} {
+	_, _, e := orderRepository.FindByFilterWithPage(ctx, func() interface{} {
 		return bson.D{{}, {"deletedAt", nil}}
 	}, 20002, 2000)
-	require.NotNil(t, err)
-	require.Equal(t, err, ErrorPageNotAvailable)
+	require.NotNil(t, e)
+	require.Equal(t, repository.ErrorPageNotAvailable, e.Reason())
 }
 
 func TestFindByFilterWithPageAndPerPageAndSortRepository_success(t *testing.T) {
@@ -428,10 +432,13 @@ func createOrder() *entities.Order {
 		Result:      true,
 		Reason:      "",
 		Description: "",
-		CallBackUrl: "http://baman.io/payment-service",
-		InvoiceId:   12345678946,
-		PaymentId:   "r3r434ef45d",
-		CreatedAt:   time.Now().UTC(),
+		Response: entities.PaymentIPGResponse{
+			CallBackUrl: "http://baman.io/payment-service",
+			InvoiceId:   12345678946,
+			PaymentId:   "r3r434ef45d",
+			Extended:    nil,
+		},
+		CreatedAt: time.Now().UTC(),
 	}
 
 	paymentResult := entities.PaymentResult{
@@ -543,7 +550,7 @@ func createOrder() *entities.Order {
 				},
 			},
 		},
-		Packages: []entities.PackageItem{
+		Packages: []*entities.PackageItem{
 			{
 				PId:      129384234,
 				OrderId:  0,
@@ -660,14 +667,27 @@ func createOrder() *entities.Order {
 								Returnable:  false,
 								Quantity:    5,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "0",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
+								Attributes: map[string]*entities.Attribute{
+									"Color": {
+										KeyTranslate: map[string]string{
+											"en": "رنگ",
+											"fa": "رنگ",
+										},
+										ValueTranslate: map[string]string{
+											"en": "رنگ",
+											"fa": "رنگ",
+										},
+									},
+									"dial_color": {
+										KeyTranslate: map[string]string{
+											"fa": "رنگ صفحه",
+											"en": "رنگ صفحه",
+										},
+										ValueTranslate: map[string]string{
+											"fa": "رنگ صفحه",
+											"en": "رنگ صفحه",
+										},
+									},
 								},
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
@@ -710,14 +730,27 @@ func createOrder() *entities.Order {
 								Returnable:  false,
 								Quantity:    2,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "2",
-									"Width":     "120cm",
-									"Height":    "110cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
+								Attributes: map[string]*entities.Attribute{
+									"Color": &entities.Attribute{
+										KeyTranslate: map[string]string{
+											"en": "رنگ",
+											"fa": "رنگ",
+										},
+										ValueTranslate: map[string]string{
+											"en": "رنگ",
+											"fa": "رنگ",
+										},
+									},
+									"dial_color": &entities.Attribute{
+										KeyTranslate: map[string]string{
+											"fa": "رنگ صفحه",
+											"en": "رنگ صفحه",
+										},
+										ValueTranslate: map[string]string{
+											"fa": "رنگ صفحه",
+											"en": "رنگ صفحه",
+										},
+									},
 								},
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
@@ -752,7 +785,7 @@ func createOrder() *entities.Order {
 						},
 						Shipments: &entities.Shipment{
 							ShipmentDetail: &entities.ShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -761,7 +794,7 @@ func createOrder() *entities.Order {
 								CreatedAt:      time.Now().UTC(),
 							},
 							ReturnShipmentDetail: &entities.ReturnShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -773,9 +806,10 @@ func createOrder() *entities.Order {
 						},
 						Tracking: entities.Progress{
 							State: &entities.State{
-								Name:  "1.New",
-								Index: 1,
-								Data:  nil,
+								Name:       "1.New",
+								Index:      1,
+								Schedulers: nil,
+								Data:       nil,
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
@@ -786,6 +820,7 @@ func createOrder() *entities.Order {
 									},
 								},
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
@@ -834,14 +869,27 @@ func createOrder() *entities.Order {
 								Returnable:  true,
 								Quantity:    5,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "0",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
+								Attributes: map[string]*entities.Attribute{
+									"Color": &entities.Attribute{
+										KeyTranslate: map[string]string{
+											"en": "رنگ",
+											"fa": "رنگ",
+										},
+										ValueTranslate: map[string]string{
+											"en": "رنگ",
+											"fa": "رنگ",
+										},
+									},
+									"dial_color": &entities.Attribute{
+										KeyTranslate: map[string]string{
+											"fa": "رنگ صفحه",
+											"en": "رنگ صفحه",
+										},
+										ValueTranslate: map[string]string{
+											"fa": "رنگ صفحه",
+											"en": "رنگ صفحه",
+										},
+									},
 								},
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
@@ -884,14 +932,27 @@ func createOrder() *entities.Order {
 								Returnable:  true,
 								Quantity:    2,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "2",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
+								Attributes: map[string]*entities.Attribute{
+									"Color": &entities.Attribute{
+										KeyTranslate: map[string]string{
+											"en": "رنگ",
+											"fa": "رنگ",
+										},
+										ValueTranslate: map[string]string{
+											"en": "رنگ",
+											"fa": "رنگ",
+										},
+									},
+									"dial_color": &entities.Attribute{
+										KeyTranslate: map[string]string{
+											"fa": "رنگ صفحه",
+											"en": "رنگ صفحه",
+										},
+										ValueTranslate: map[string]string{
+											"fa": "رنگ صفحه",
+											"en": "رنگ صفحه",
+										},
+									},
 								},
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
@@ -926,7 +987,7 @@ func createOrder() *entities.Order {
 						},
 						Shipments: &entities.Shipment{
 							ShipmentDetail: &entities.ShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -935,7 +996,7 @@ func createOrder() *entities.Order {
 								CreatedAt:      time.Now().UTC(),
 							},
 							ReturnShipmentDetail: &entities.ReturnShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -947,9 +1008,10 @@ func createOrder() *entities.Order {
 						},
 						Tracking: entities.Progress{
 							State: &entities.State{
-								Name:  "1.New",
-								Index: 1,
-								Data:  nil,
+								Name:       "1.New",
+								Index:      1,
+								Schedulers: nil,
+								Data:       nil,
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
@@ -960,6 +1022,7 @@ func createOrder() *entities.Order {
 									},
 								},
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
@@ -1113,14 +1176,27 @@ func createOrder() *entities.Order {
 								Returnable:  false,
 								Quantity:    5,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "0",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
+								Attributes: map[string]*entities.Attribute{
+									"Color": &entities.Attribute{
+										KeyTranslate: map[string]string{
+											"en": "رنگ",
+											"fa": "رنگ",
+										},
+										ValueTranslate: map[string]string{
+											"en": "رنگ",
+											"fa": "رنگ",
+										},
+									},
+									"dial_color": &entities.Attribute{
+										KeyTranslate: map[string]string{
+											"fa": "رنگ صفحه",
+											"en": "رنگ صفحه",
+										},
+										ValueTranslate: map[string]string{
+											"fa": "رنگ صفحه",
+											"en": "رنگ صفحه",
+										},
+									},
 								},
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
@@ -1162,14 +1238,27 @@ func createOrder() *entities.Order {
 								Returnable:  false,
 								Quantity:    3,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "3",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
+								Attributes: map[string]*entities.Attribute{
+									"Color": &entities.Attribute{
+										KeyTranslate: map[string]string{
+											"en": "رنگ",
+											"fa": "رنگ",
+										},
+										ValueTranslate: map[string]string{
+											"en": "رنگ",
+											"fa": "رنگ",
+										},
+									},
+									"dial_color": &entities.Attribute{
+										KeyTranslate: map[string]string{
+											"fa": "رنگ صفحه",
+											"en": "رنگ صفحه",
+										},
+										ValueTranslate: map[string]string{
+											"fa": "رنگ صفحه",
+											"en": "رنگ صفحه",
+										},
+									},
 								},
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
@@ -1204,7 +1293,7 @@ func createOrder() *entities.Order {
 						},
 						Shipments: &entities.Shipment{
 							ShipmentDetail: &entities.ShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -1213,7 +1302,7 @@ func createOrder() *entities.Order {
 								CreatedAt:      time.Now().UTC(),
 							},
 							ReturnShipmentDetail: &entities.ReturnShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -1225,9 +1314,10 @@ func createOrder() *entities.Order {
 						},
 						Tracking: entities.Progress{
 							State: &entities.State{
-								Name:  "1.New",
-								Index: 1,
-								Data:  nil,
+								Name:       "1.New",
+								Index:      1,
+								Schedulers: nil,
+								Data:       nil,
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
@@ -1238,6 +1328,7 @@ func createOrder() *entities.Order {
 									},
 								},
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
@@ -1286,14 +1377,27 @@ func createOrder() *entities.Order {
 								Returnable:  true,
 								Quantity:    3,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "3",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
+								Attributes: map[string]*entities.Attribute{
+									"Color": &entities.Attribute{
+										KeyTranslate: map[string]string{
+											"en": "رنگ",
+											"fa": "رنگ",
+										},
+										ValueTranslate: map[string]string{
+											"en": "رنگ",
+											"fa": "رنگ",
+										},
+									},
+									"dial_color": &entities.Attribute{
+										KeyTranslate: map[string]string{
+											"fa": "رنگ صفحه",
+											"en": "رنگ صفحه",
+										},
+										ValueTranslate: map[string]string{
+											"fa": "رنگ صفحه",
+											"en": "رنگ صفحه",
+										},
+									},
 								},
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
@@ -1336,14 +1440,27 @@ func createOrder() *entities.Order {
 								Returnable:  true,
 								Quantity:    3,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "3",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
+								Attributes: map[string]*entities.Attribute{
+									"Color": &entities.Attribute{
+										KeyTranslate: map[string]string{
+											"en": "رنگ",
+											"fa": "رنگ",
+										},
+										ValueTranslate: map[string]string{
+											"en": "رنگ",
+											"fa": "رنگ",
+										},
+									},
+									"dial_color": &entities.Attribute{
+										KeyTranslate: map[string]string{
+											"fa": "رنگ صفحه",
+											"en": "رنگ صفحه",
+										},
+										ValueTranslate: map[string]string{
+											"fa": "رنگ صفحه",
+											"en": "رنگ صفحه",
+										},
+									},
 								},
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
@@ -1378,7 +1495,7 @@ func createOrder() *entities.Order {
 						},
 						Shipments: &entities.Shipment{
 							ShipmentDetail: &entities.ShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -1387,7 +1504,7 @@ func createOrder() *entities.Order {
 								CreatedAt:      time.Now().UTC(),
 							},
 							ReturnShipmentDetail: &entities.ReturnShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -1399,9 +1516,10 @@ func createOrder() *entities.Order {
 						},
 						Tracking: entities.Progress{
 							State: &entities.State{
-								Name:  "1.New",
-								Index: 1,
-								Data:  nil,
+								Name:       "1.New",
+								Index:      1,
+								Schedulers: nil,
+								Data:       nil,
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
@@ -1412,6 +1530,7 @@ func createOrder() *entities.Order {
 									},
 								},
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",

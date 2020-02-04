@@ -172,7 +172,11 @@ message SellerOrderDetail {
         string image = 10;
         bool returnable = 11;
         int32 quantity = 12;
-        map<string, string> attributes = 13;
+        message Attribute {
+            map<string, string> keyTranslates = 1;
+            map<string, string> valueTranslates = 2;
+        }
+        map<string,Attribute> attributes = 13;
         message Invoice {
             uint64 unit = 1;
             uint64 total = 2;
@@ -196,6 +200,11 @@ message SellerOrderDashboardReports {
     uint32 ReturnRequestPending = 5;
 }
 
+message SellerApprovalPendingReports {
+    uint64 SellerId = 1;
+    uint32 ApprovalPending = 2;
+}
+
 message SellerOrderShipmentReports {
     uint64 SellerId = 1;
     uint32 ShipmentPending = 2;
@@ -205,9 +214,10 @@ message SellerOrderShipmentReports {
 
 message SellerOrderDeliveredReports {
     uint64 SellerId = 1;
-    uint32 DeliveryPendingAndDelayed = 2;
-    uint32 Delivered = 3;
-    uint32 DeliveryFailed = 4;
+    uint32 DeliveryPending = 2;
+    uint32 DeliveryDelayed = 3;
+    uint32 Delivered = 4;
+    uint32 DeliveryFailed = 5;
 }
 
 message SellerOrderReturnReports {
@@ -224,8 +234,46 @@ message SellerOrderReturnReports {
 
 message SellerOrderCancelReports {
     uint64 SellerId = 1;
-    uint32 CancelBySeller = 2;
-    uint32 CancelByBuyer = 3;
+    uint32 CanceledBySeller = 2;
+    uint32 CanceledByBuyer = 3;
+}
+
+message SellerAllOrderReports {
+    uint64 SellerId = 1;
+    uint32 ApprovalPending = 2;
+
+    message ShipmentReport {
+        uint32 ShipmentPending = 1;
+        uint32 ShipmentDelayed = 2;
+        uint32 Shipped = 3;
+    }
+    ShipmentReport shipmentReports = 3;
+
+    message DeliverReport {
+        uint32 DeliveryPending = 1;
+        uint32 DeliveryDelayed = 2;
+        uint32 Delivered = 3;
+        uint32 DeliveryFailed = 4;
+    }
+    DeliverReport deliverReports = 4;
+
+    message ReturnReport {
+        uint32 ReturnRequestPending = 1;
+        uint32 ReturnShipmentPending = 2;
+        uint32 ReturnShipped = 3;
+        uint32 ReturnDeliveryPending = 4;
+        uint32 ReturnDeliveryDelayed = 5;
+        uint32 ReturnDelivered = 6;
+        uint32 ReturnRequestRejected = 7;
+        uint32 ReturnDeliveryFailed = 8;
+    }
+    ReturnReport returnReports = 5;
+
+    message CancelReport {
+        uint32 CanceledBySeller = 1;
+        uint32 CanceledByBuyer = 2;
+    }
+    CancelReport cancelReport = 6;
 }
 
 //message SellerOrderReturnList {
@@ -290,7 +338,11 @@ message SellerReturnOrderDetailList {
                 string image = 6;
                 bool returnable = 7;
                 int32 quantity = 8;
-                map<string, string> attributes = 9;
+                message Attribute {
+                    map<string, string> keyTranslates = 1;
+                    map<string, string> valueTranslates = 2;
+                }
+                map<string,Attribute> attributes = 9;
                 string ReturnRequestAt = 10;
                 string ReturnShippedAt = 11;
                 message Invoice {
@@ -369,7 +421,11 @@ message BuyerOrderDetailList {
                 string image = 10;
                 bool returnable = 11;
                 int32 quantity = 12;
-                map<string, string> attributes = 13;
+                message Attribute {
+                    map<string, string> keyTranslates = 1;
+                    map<string, string> valueTranslates = 2;
+                }
+                map<string,Attribute> attributes = 13;
                 message Invoice {
                     uint64 unit = 1;
                     uint64 total = 2;
@@ -455,7 +511,11 @@ message BuyerReturnOrderDetailList {
                 string image = 9;
                 bool returnable = 10;
                 int32 quantity = 11;
-                map<string, string> attributes = 12;
+                message Attribute {
+                    map<string, string> keyTranslates = 1;
+                    map<string, string> valueTranslates = 2;
+                }
+                map<string,Attribute> attributes = 12;
                 message Invoice {
                     uint64 unit = 1;
                     uint64 total = 2;
@@ -583,7 +643,11 @@ message OperatorOrderDetail {
             string inventoryId = 1;
             string brand = 2;
             string title = 3;
-            map<string,string> Attributes = 4;
+            message Attribute {
+                map<string, string> keyTranslates = 1;
+                map<string, string> valueTranslates = 2;
+            }
+            map<string,Attribute> attributes = 4;
             int32  quantity   = 5;
             message Invoice {
                 uint64 unit = 1;

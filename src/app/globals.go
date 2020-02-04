@@ -38,6 +38,8 @@ const (
 
 	FlowManagerSchedulerStateTimeUintConfig              string = "SchedulerStateTimeUint"
 	FlowManagerSchedulerSellerReactionTimeConfig         string = "SchedulerSellerReactionTime"
+	FlowManagerSchedulerPaymentPendingStateConfig        string = "SchedulerPaymentPendingState"
+	FlowManagerSchedulerRetryPaymentPendingStateConfig   string = "SchedulerRetryPaymentPendingState"
 	FlowManagerSchedulerApprovalPendingStateConfig       string = "SchedulerApprovalPendingState"
 	FlowManagerSchedulerShipmentPendingStateConfig       string = "SchedulerShipmentPendingState"
 	FlowManagerSchedulerShippedStateConfig               string = "SchedulerShippedState"
@@ -75,35 +77,46 @@ func SetupMongoDriver(config configs.Config) (*mongoadapter.Mongo, error) {
 		Port:     config.Mongo.Port,
 		Username: config.Mongo.User,
 		//Password:     MainApp.Config.Mongo.Pass,
-		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout),
-		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout),
-		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout),
-		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime),
+		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout) * time.Second,
+		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout) * time.Second,
+		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout) * time.Second,
+		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime) * time.Second,
 		MaxPoolSize:     uint64(config.Mongo.MaxPoolSize),
 		MinPoolSize:     uint64(config.Mongo.MinPoolSize),
+		WriteConcernW:   config.Mongo.WriteConcernW,
+		WriteConcernJ:   config.Mongo.WriteConcernJ,
+		RetryWrites:     config.Mongo.RetryWrite,
 	}
 
 	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
 	if err != nil {
-		logger.Err("mongoadapter.NewMongo Mongo: %v", err.Error())
+		Globals.Logger.Error("mongoadapter.NewMongo failed",
+			"fn", "SetupMongoDriver",
+			"Mongo", err)
 		return nil, errors.Wrap(err, "mongoadapter.NewMongo init failed")
 	}
 
 	_, err = mongoDriver.AddUniqueIndex(DatabaseName, CollectionName, "orderId")
 	if err != nil {
-		logger.Err("create orderId index failed, error: %s", err.Error())
+		Globals.Logger.Error("create orderId index failed",
+			"fn", "SetupMongoDriver",
+			"error", err)
 		return nil, err
 	}
 
 	_, err = mongoDriver.AddTextV3Index(DatabaseName, CollectionName, "packages.pkgId")
 	if err != nil {
-		logger.Err("create packages.pkgId index failed, error: %s", err.Error())
+		Globals.Logger.Error("create packages.pkgId index failed",
+			"fn", "SetupMongoDriver",
+			"error", err)
 		return nil, err
 	}
 
-	_, err = mongoDriver.AddUniqueIndex(DatabaseName, CollectionName, "packages.subpackages.sid")
+	_, err = mongoDriver.AddTextV3Index(DatabaseName, CollectionName, "packages.subpackages.sid")
 	if err != nil {
-		logger.Err("create packages.subpackages.sid index failed, error: %s", err.Error())
+		Globals.Logger.Error("create packages.subpackages.sid index failed",
+			"fn", "SetupMongoDriver",
+			"error", err)
 		return nil, err
 	}
 

@@ -7,6 +7,7 @@ import (
 	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"os"
@@ -26,9 +27,13 @@ func TestMain(m *testing.M) {
 		path = ""
 	}
 
+	applog.GLog.ZapLogger = applog.InitZap()
+	applog.GLog.Logger = logger.NewZapLogger(applog.GLog.ZapLogger)
+
 	config, _, err := configs.LoadConfigs(path, "")
 	if err != nil {
-		logger.Err("configs.LoadConfig failed, %s", err.Error())
+		applog.GLog.Logger.Error("configs.LoadConfig failed",
+			"error", err)
 		os.Exit(1)
 	}
 
@@ -38,17 +43,20 @@ func TestMain(m *testing.M) {
 		Port:     config.Mongo.Port,
 		Username: config.Mongo.User,
 		//Password:     App.Config.Mongo.Pass,
-		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout),
-		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout),
-		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout),
-		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime),
+		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout) * time.Second,
+		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout) * time.Second,
+		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout) * time.Second,
+		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime) * time.Second,
 		MaxPoolSize:     uint64(config.Mongo.MaxPoolSize),
 		MinPoolSize:     uint64(config.Mongo.MinPoolSize),
+		WriteConcernW:   config.Mongo.WriteConcernW,
+		WriteConcernJ:   config.Mongo.WriteConcernJ,
+		RetryWrites:     config.Mongo.RetryWrite,
 	}
 
 	mongoAdapter, err = mongoadapter.NewMongo(mongoConf)
 	if err != nil {
-		logger.Err("ISubpackageRepository Mongo: %v", err.Error())
+		applog.GLog.Logger.Error("mongoadapter.NewMongo failed", "error", err)
 		os.Exit(1)
 	}
 
@@ -415,10 +423,13 @@ func createOrder() *entities.Order {
 		Result:      true,
 		Reason:      "",
 		Description: "",
-		CallBackUrl: "http://baman.io/payment-service",
-		InvoiceId:   12345678946,
-		PaymentId:   "r3r434ef45d",
-		CreatedAt:   time.Now().UTC(),
+		Response: entities.PaymentIPGResponse{
+			CallBackUrl: "http://baman.io/payment-service",
+			InvoiceId:   12345678946,
+			PaymentId:   "r3r434ef45d",
+			Extended:    nil,
+		},
+		CreatedAt: time.Now().UTC(),
 	}
 
 	paymentResult := entities.PaymentResult{
@@ -530,7 +541,7 @@ func createOrder() *entities.Order {
 				},
 			},
 		},
-		Packages: []entities.PackageItem{
+		Packages: []*entities.PackageItem{
 			{
 				PId:      129384234,
 				OrderId:  0,
@@ -647,15 +658,7 @@ func createOrder() *entities.Order {
 								Returnable:  false,
 								Quantity:    5,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "0",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "1270000",
@@ -697,15 +700,7 @@ func createOrder() *entities.Order {
 								Returnable:  false,
 								Quantity:    2,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "2",
-									"Width":     "120cm",
-									"Height":    "110cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "3270000",
@@ -739,7 +734,7 @@ func createOrder() *entities.Order {
 						},
 						Shipments: &entities.Shipment{
 							ShipmentDetail: &entities.ShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -748,7 +743,7 @@ func createOrder() *entities.Order {
 								CreatedAt:      time.Now().UTC(),
 							},
 							ReturnShipmentDetail: &entities.ReturnShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -760,26 +755,44 @@ func createOrder() *entities.Order {
 						},
 						Tracking: entities.Progress{
 							State: &entities.State{
-								Name:  "1.New",
-								Index: 1,
-								Data:  nil,
+								Name:       "1.New",
+								Index:      1,
+								Schedulers: nil,
+								Data:       nil,
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
+										Type:      "",
+										UId:       0,
 										UTP:       "OrderBuyerCancel",
+										Perm:      "",
+										Priv:      "",
+										Policy:    "",
 										Result:    "Success",
 										Reasons:   nil,
+										Note:      "",
+										Data:      nil,
 										CreatedAt: time.Now().UTC(),
+										Extended:  nil,
 									},
 								},
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
+								Type:      "",
+								UId:       0,
 								UTP:       "OrderBuyerCancel",
+								Perm:      "",
+								Priv:      "",
+								Policy:    "",
 								Result:    "Success",
 								Reasons:   nil,
+								Note:      "",
+								Data:      nil,
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							History: []entities.State{
 								{
@@ -789,10 +802,18 @@ func createOrder() *entities.Order {
 									Actions: []entities.Action{
 										{
 											Name:      "BuyerCancel",
+											Type:      "",
+											UId:       0,
 											UTP:       "OrderBuyerCancel",
+											Perm:      "",
+											Priv:      "",
+											Policy:    "",
 											Result:    "Success",
 											Reasons:   nil,
+											Note:      "",
+											Data:      nil,
 											CreatedAt: time.Now().UTC(),
+											Extended:  nil,
 										},
 									},
 									CreatedAt: time.Now().UTC(),
@@ -821,15 +842,7 @@ func createOrder() *entities.Order {
 								Returnable:  true,
 								Quantity:    5,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "0",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "1270000",
@@ -871,15 +884,7 @@ func createOrder() *entities.Order {
 								Returnable:  true,
 								Quantity:    2,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "2",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "3270000",
@@ -913,7 +918,7 @@ func createOrder() *entities.Order {
 						},
 						Shipments: &entities.Shipment{
 							ShipmentDetail: &entities.ShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -922,7 +927,7 @@ func createOrder() *entities.Order {
 								CreatedAt:      time.Now().UTC(),
 							},
 							ReturnShipmentDetail: &entities.ReturnShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -934,26 +939,44 @@ func createOrder() *entities.Order {
 						},
 						Tracking: entities.Progress{
 							State: &entities.State{
-								Name:  "1.New",
-								Index: 1,
-								Data:  nil,
+								Name:       "1.New",
+								Index:      1,
+								Schedulers: nil,
+								Data:       nil,
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
+										Type:      "",
+										UId:       0,
 										UTP:       "OrderBuyerCancel",
+										Perm:      "",
+										Priv:      "",
+										Policy:    "",
 										Result:    "Success",
 										Reasons:   nil,
+										Note:      "",
+										Data:      nil,
 										CreatedAt: time.Now().UTC(),
+										Extended:  nil,
 									},
 								},
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
+								Type:      "",
+								UId:       0,
 								UTP:       "OrderBuyerCancel",
+								Perm:      "",
+								Priv:      "",
+								Policy:    "",
 								Result:    "Success",
 								Reasons:   nil,
+								Note:      "",
+								Data:      nil,
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							History: []entities.State{
 								{
@@ -963,10 +986,18 @@ func createOrder() *entities.Order {
 									Actions: []entities.Action{
 										{
 											Name:      "BuyerCancel",
+											Type:      "",
+											UId:       0,
 											UTP:       "OrderBuyerCancel",
+											Perm:      "",
+											Priv:      "",
+											Policy:    "",
 											Result:    "Success",
 											Reasons:   nil,
+											Note:      "",
+											Data:      nil,
 											CreatedAt: time.Now().UTC(),
+											Extended:  nil,
 										},
 									},
 									CreatedAt: time.Now().UTC(),
@@ -1100,15 +1131,7 @@ func createOrder() *entities.Order {
 								Returnable:  false,
 								Quantity:    5,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "0",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "1270000",
@@ -1149,15 +1172,7 @@ func createOrder() *entities.Order {
 								Returnable:  false,
 								Quantity:    3,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "3",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "2270000",
@@ -1191,7 +1206,7 @@ func createOrder() *entities.Order {
 						},
 						Shipments: &entities.Shipment{
 							ShipmentDetail: &entities.ShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -1200,7 +1215,7 @@ func createOrder() *entities.Order {
 								CreatedAt:      time.Now().UTC(),
 							},
 							ReturnShipmentDetail: &entities.ReturnShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -1212,26 +1227,44 @@ func createOrder() *entities.Order {
 						},
 						Tracking: entities.Progress{
 							State: &entities.State{
-								Name:  "1.New",
-								Index: 1,
-								Data:  nil,
+								Name:       "1.New",
+								Index:      1,
+								Schedulers: nil,
+								Data:       nil,
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
+										Type:      "",
+										UId:       0,
 										UTP:       "OrderBuyerCancel",
+										Perm:      "",
+										Priv:      "",
+										Policy:    "",
 										Result:    "Success",
 										Reasons:   nil,
+										Note:      "",
+										Data:      nil,
 										CreatedAt: time.Now().UTC(),
+										Extended:  nil,
 									},
 								},
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
+								Type:      "",
+								UId:       0,
 								UTP:       "OrderBuyerCancel",
+								Perm:      "",
+								Priv:      "",
+								Policy:    "",
 								Result:    "Success",
 								Reasons:   nil,
+								Note:      "",
+								Data:      nil,
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							History: []entities.State{
 								{
@@ -1241,10 +1274,18 @@ func createOrder() *entities.Order {
 									Actions: []entities.Action{
 										{
 											Name:      "BuyerCancel",
+											Type:      "",
+											UId:       0,
 											UTP:       "OrderBuyerCancel",
+											Perm:      "",
+											Priv:      "",
+											Policy:    "",
 											Result:    "Success",
 											Reasons:   nil,
+											Note:      "",
+											Data:      nil,
 											CreatedAt: time.Now().UTC(),
+											Extended:  nil,
 										},
 									},
 									CreatedAt: time.Now().UTC(),
@@ -1273,15 +1314,7 @@ func createOrder() *entities.Order {
 								Returnable:  true,
 								Quantity:    3,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "3",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "1270000",
@@ -1323,15 +1356,7 @@ func createOrder() *entities.Order {
 								Returnable:  true,
 								Quantity:    3,
 								Reasons:     nil,
-								Attributes: map[string]string{
-									"Quantity":  "3",
-									"Width":     "5cm",
-									"Height":    "7cm",
-									"Length":    "2m",
-									"Weight":    "5kg",
-									"Color":     "Blue",
-									"Materials": "Stone",
-								},
+								Attributes:  nil,
 								Invoice: entities.ItemInvoice{
 									Unit: entities.Money{
 										Amount:   "7270000",
@@ -1365,7 +1390,7 @@ func createOrder() *entities.Order {
 						},
 						Shipments: &entities.Shipment{
 							ShipmentDetail: &entities.ShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -1374,7 +1399,7 @@ func createOrder() *entities.Order {
 								CreatedAt:      time.Now().UTC(),
 							},
 							ReturnShipmentDetail: &entities.ReturnShippingDetail{
-								CarrierName:    "Post",
+								CourierName:    "Post",
 								ShippingMethod: "Normal",
 								TrackingNumber: "545349534958349",
 								Image:          "",
@@ -1386,26 +1411,44 @@ func createOrder() *entities.Order {
 						},
 						Tracking: entities.Progress{
 							State: &entities.State{
-								Name:  "1.New",
-								Index: 1,
-								Data:  nil,
+								Name:       "1.New",
+								Index:      1,
+								Schedulers: nil,
+								Data:       nil,
 								Actions: []entities.Action{
 									{
 										Name:      "BuyerCancel",
+										Type:      "",
+										UId:       0,
 										UTP:       "OrderBuyerCancel",
+										Perm:      "",
+										Priv:      "",
+										Policy:    "",
 										Result:    "Success",
 										Reasons:   nil,
+										Note:      "",
+										Data:      nil,
 										CreatedAt: time.Now().UTC(),
+										Extended:  nil,
 									},
 								},
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							Action: &entities.Action{
 								Name:      "BuyerCancel",
+								Type:      "",
+								UId:       0,
 								UTP:       "OrderBuyerCancel",
+								Perm:      "",
+								Priv:      "",
+								Policy:    "",
 								Result:    "Success",
 								Reasons:   nil,
+								Note:      "",
+								Data:      nil,
 								CreatedAt: time.Now().UTC(),
+								Extended:  nil,
 							},
 							History: []entities.State{
 								{
@@ -1415,10 +1458,18 @@ func createOrder() *entities.Order {
 									Actions: []entities.Action{
 										{
 											Name:      "BuyerCancel",
+											Type:      "",
+											UId:       0,
 											UTP:       "OrderBuyerCancel",
+											Perm:      "",
+											Priv:      "",
+											Policy:    "",
 											Result:    "Success",
 											Reasons:   nil,
+											Note:      "",
+											Data:      nil,
 											CreatedAt: time.Now().UTC(),
+											Extended:  nil,
 										},
 									},
 									CreatedAt: time.Now().UTC(),

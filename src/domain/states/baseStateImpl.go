@@ -2,7 +2,6 @@ package states
 
 import (
 	"context"
-	"github.com/pkg/errors"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
@@ -185,11 +184,14 @@ func (base BaseStateImpl) UpdateSubPackage(ctx context.Context, subpackage *enti
 	subpackage.Tracking.Action = action
 	if subpackage.Tracking.State == nil {
 		state := entities.State{
-			Name:      base.Name(),
-			Index:     base.Index(),
-			Data:      nil,
-			Actions:   nil,
-			CreatedAt: time.Now().UTC(),
+			Name:       base.Name(),
+			Index:      base.Index(),
+			Schedulers: nil,
+			Data:       nil,
+			Actions:    nil,
+			CreatedAt:  time.Now().UTC(),
+			UpdatedAt:  time.Now().UTC(),
+			Extended:   nil,
 		}
 		if action != nil {
 			state.Actions = make([]entities.Action, 0, 8)
@@ -204,11 +206,14 @@ func (base BaseStateImpl) UpdateSubPackage(ctx context.Context, subpackage *enti
 	} else {
 		if subpackage.Tracking.State.Index != base.Index() {
 			newState := entities.State{
-				Name:      base.Name(),
-				Index:     base.Index(),
-				Data:      nil,
-				Actions:   nil,
-				CreatedAt: time.Now().UTC(),
+				Name:       base.Name(),
+				Index:      base.Index(),
+				Schedulers: nil,
+				Data:       nil,
+				Actions:    nil,
+				CreatedAt:  time.Now().UTC(),
+				UpdatedAt:  time.Now().UTC(),
+				Extended:   nil,
 			}
 			if action != nil {
 				newState.Actions = make([]entities.Action, 0, 8)
@@ -220,6 +225,64 @@ func (base BaseStateImpl) UpdateSubPackage(ctx context.Context, subpackage *enti
 			subpackage.Tracking.State = &newState
 			subpackage.Tracking.History = append(subpackage.Tracking.History, newState)
 		} else {
+			subpackage.Tracking.State.UpdatedAt = time.Now().UTC()
+			if action != nil {
+				subpackage.Tracking.State.Actions = append(subpackage.Tracking.State.Actions, *action)
+				subpackage.Tracking.Action = action
+			}
+			subpackage.Tracking.History[len(subpackage.Tracking.History)-1] = *subpackage.Tracking.State
+		}
+	}
+}
+
+func (base BaseStateImpl) UpdateSubPackageWithScheduler(ctx context.Context, subpackage *entities.Subpackage, schedulers []*entities.SchedulerData, action *entities.Action) {
+	subpackage.UpdatedAt = time.Now().UTC()
+	subpackage.Status = base.Name()
+	subpackage.Tracking.Action = action
+	if subpackage.Tracking.State == nil {
+		state := entities.State{
+			Name:       base.Name(),
+			Index:      base.Index(),
+			Schedulers: schedulers,
+			Data:       nil,
+			Actions:    nil,
+			CreatedAt:  time.Now().UTC(),
+			UpdatedAt:  time.Now().UTC(),
+			Extended:   nil,
+		}
+		if action != nil {
+			state.Actions = make([]entities.Action, 0, 8)
+			state.Actions = append(state.Actions, *action)
+		}
+
+		if subpackage.Tracking.History == nil {
+			subpackage.Tracking.History = make([]entities.State, 0, 3)
+		}
+		subpackage.Tracking.State = &state
+		subpackage.Tracking.History = append(subpackage.Tracking.History, state)
+	} else {
+		if subpackage.Tracking.State.Index != base.Index() {
+			newState := entities.State{
+				Name:       base.Name(),
+				Index:      base.Index(),
+				Schedulers: schedulers,
+				Data:       nil,
+				Actions:    nil,
+				CreatedAt:  time.Now().UTC(),
+				UpdatedAt:  time.Now().UTC(),
+				Extended:   nil,
+			}
+			if action != nil {
+				newState.Actions = make([]entities.Action, 0, 8)
+				newState.Actions = append(newState.Actions, *action)
+			}
+			if subpackage.Tracking.History == nil {
+				subpackage.Tracking.History = make([]entities.State, 0, 3)
+			}
+			subpackage.Tracking.State = &newState
+			subpackage.Tracking.History = append(subpackage.Tracking.History, newState)
+		} else {
+			subpackage.Tracking.State.UpdatedAt = time.Now().UTC()
 			if action != nil {
 				subpackage.Tracking.State.Actions = append(subpackage.Tracking.State.Actions, *action)
 				subpackage.Tracking.Action = action
@@ -235,11 +298,14 @@ func (base BaseStateImpl) UpdateSubPackageWithData(ctx context.Context, subpacka
 	subpackage.Tracking.Action = action
 	if subpackage.Tracking.State == nil {
 		state := entities.State{
-			Name:      base.Name(),
-			Index:     base.Index(),
-			Data:      data,
-			Actions:   nil,
-			CreatedAt: time.Now().UTC(),
+			Name:       base.Name(),
+			Index:      base.Index(),
+			Schedulers: nil,
+			Data:       data,
+			Actions:    nil,
+			CreatedAt:  time.Now().UTC(),
+			UpdatedAt:  time.Now().UTC(),
+			Extended:   nil,
 		}
 		if action != nil {
 			state.Actions = make([]entities.Action, 0, 8)
@@ -254,11 +320,14 @@ func (base BaseStateImpl) UpdateSubPackageWithData(ctx context.Context, subpacka
 	} else {
 		if subpackage.Tracking.State.Index != base.Index() {
 			newState := entities.State{
-				Name:      base.Name(),
-				Index:     base.Index(),
-				Data:      data,
-				Actions:   nil,
-				CreatedAt: time.Now().UTC(),
+				Name:       base.Name(),
+				Index:      base.Index(),
+				Schedulers: nil,
+				Data:       data,
+				Actions:    nil,
+				CreatedAt:  time.Now().UTC(),
+				UpdatedAt:  time.Now().UTC(),
+				Extended:   nil,
 			}
 			if action != nil {
 				newState.Actions = make([]entities.Action, 0, 8)
@@ -270,6 +339,7 @@ func (base BaseStateImpl) UpdateSubPackageWithData(ctx context.Context, subpacka
 			subpackage.Tracking.State = &newState
 			subpackage.Tracking.History = append(subpackage.Tracking.History, newState)
 		} else {
+			subpackage.Tracking.State.UpdatedAt = time.Now().UTC()
 			if action != nil {
 				subpackage.Tracking.State.Actions = append(subpackage.Tracking.State.Actions, *action)
 				subpackage.Tracking.Action = action
@@ -282,5 +352,5 @@ func (base BaseStateImpl) UpdateSubPackageWithData(ctx context.Context, subpacka
 func (base BaseStateImpl) SaveOrUpdateOrder(ctx context.Context, order *entities.Order) error {
 	var err error
 	order, err = app.Globals.OrderRepository.Save(ctx, *order)
-	return errors.Wrap(err, "OrderRepository.Save failed")
+	return err
 }

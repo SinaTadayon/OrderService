@@ -3,7 +3,6 @@ package state_22
 import (
 	"bytes"
 	"context"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
@@ -46,19 +45,28 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 	if iFrame.Header().KeyExists(string(frame.HeaderSIds)) {
 		sids, ok := iFrame.Header().Value(string(frame.HeaderSIds)).([]uint64)
 		if !ok {
-			logger.Err("Process() => iFrame.Header() not a sids, state: %s, frame: %v", state.Name(), iFrame)
+			app.Globals.Logger.FromContext(ctx).Error("iFrame.Header() doesn't have a sids header",
+				"fn", "Process",
+				"state", state.Name(),
+				"iframe", iFrame)
 			return
 		}
 
 		if iFrame.Body().Content() == nil {
-			logger.Err("Process() => iFrame.Body().Content() is nil, state: %s, frame: %v", state.Name(), iFrame)
+			app.Globals.Logger.FromContext(ctx).Error("content of iFrame.Body() is nil",
+				"fn", "Process",
+				"state", state.Name(),
+				"iframe", iFrame)
 			return
 		}
 
 		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
 		if !ok {
-			logger.Err("Process() => pkgItem in iFrame.Body().Content() is not found, %s state, sids: %v, frame: %v",
-				state.Name(), sids, iFrame)
+			app.Globals.Logger.FromContext(ctx).Error("content of iFrame.Body() is not PackageItem",
+				"fn", "Process",
+				"state", state.Name(),
+				"sids", sids,
+				"iframe", iFrame)
 			return
 		}
 
@@ -94,25 +102,44 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 
 		smsTemplate, err := template.New("SMS").Parse(app.Globals.SMSTemplate.OrderNotifyBuyerCanceledByBuyerState)
 		if err != nil {
-			logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
-				state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerCanceledByBuyerState, err)
+			app.Globals.Logger.FromContext(ctx).Error("smsTemplate.Parse failed",
+				"fn", "Process",
+				"state", state.Name(),
+				"oid", pkgItem.OrderId,
+				"pid", pkgItem.PId,
+				"sids", sids,
+				"message", app.Globals.SMSTemplate.OrderNotifyBuyerCanceledByBuyerState,
+				"error", err)
 		} else {
 			var buf bytes.Buffer
 			err = smsTemplate.Execute(&buf, pkgItem.OrderId)
 			newBuf := bytes.NewBuffer(bytes.Replace(buf.Bytes(), []byte("\\n"), []byte{10}, -1))
 			if err != nil {
-				logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-					state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifyBuyerCanceledByBuyerState, err)
+				app.Globals.Logger.FromContext(ctx).Error("smsTemplate.Execute failed",
+					"fn", "Process",
+					"state", state.Name(),
+					"oid", pkgItem.OrderId,
+					"pid", pkgItem.PId,
+					"sids", sids,
+					"message", app.Globals.SMSTemplate.OrderNotifyBuyerCanceledByBuyerState,
+					"error", err)
 			} else {
 				buyerNotify := notify_service.SMSRequest{
 					Phone: pkgItem.ShippingAddress.Mobile,
 					Body:  newBuf.String(),
+					User:  notify_service.BuyerUser,
 				}
 
 				buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
 				if buyerFutureData.Error() != nil {
-					logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
-						buyerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, sids, buyerFutureData.Error().Reason())
+					app.Globals.Logger.FromContext(ctx).Error("NotifyService.NotifyBySMS failed",
+						"fn", "Process",
+						"state", state.Name(),
+						"oid", pkgItem.OrderId,
+						"pid", pkgItem.PId,
+						"sids", sids,
+						"request", buyerNotify,
+						"error", buyerFutureData.Error().Reason())
 					buyerNotificationAction = &entities.Action{
 						Name:      system_action.BuyerNotification.ActionName(),
 						Type:      "",
@@ -128,8 +155,12 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 						Extended:  nil,
 					}
 				} else {
-					logger.Audit("Process() => NotifyService.NotifyBySMS success, state: %s, orderId: %d, pid: %d, sids: %v",
-						state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
+					app.Globals.Logger.FromContext(ctx).Debug("NotifyService.NotifyBySMS success",
+						"fn", "Process",
+						"state", state.Name(),
+						"oid", pkgItem.OrderId,
+						"pid", pkgItem.PId,
+						"sids", sids)
 					buyerNotificationAction = &entities.Action{
 						Name:      system_action.BuyerNotification.ActionName(),
 						Type:      "",
@@ -150,32 +181,56 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 
 		futureData := app.Globals.UserService.GetSellerProfile(ctx, strconv.Itoa(int(pkgItem.PId))).Get()
 		if futureData.Error() != nil {
-			logger.Err("Process() => UserService.GetSellerProfile failed, send sms message failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
-				state.Name(), pkgItem.OrderId, pkgItem.PId, sids, futureData.Error().Reason())
+			app.Globals.Logger.FromContext(ctx).Error("UserService.GetSellerProfile failed, send sms message failed",
+				"fn", "Process",
+				"state", state.Name(),
+				"oid", pkgItem.OrderId,
+				"pid", pkgItem.PId,
+				"sids", sids,
+				"error", futureData.Error().Reason())
 		} else {
 			if futureData.Data() != nil {
 				sellerProfile := futureData.Data().(*entities.SellerProfile)
 
 				smsTemplate, err := template.New("SMS").Parse(app.Globals.SMSTemplate.OrderNotifySellerCanceledByBuyerState)
 				if err != nil {
-					logger.Err("Process() => smsTemplate.Parse failed, state: %s, orderId: %d, message: %s, err: %s",
-						state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifySellerCanceledByBuyerState, err)
+					app.Globals.Logger.FromContext(ctx).Error("smsTemplate.Parse failed",
+						"fn", "Process",
+						"state", state.Name(),
+						"oid", pkgItem.OrderId,
+						"pid", pkgItem.PId,
+						"sids", sids,
+						"message", app.Globals.SMSTemplate.OrderNotifySellerCanceledByBuyerState,
+						"error", err)
 				} else {
 					var buf bytes.Buffer
 					err = smsTemplate.Execute(&buf, pkgItem.OrderId)
 					newBuf := bytes.NewBuffer(bytes.Replace(buf.Bytes(), []byte("\\n"), []byte{10}, -1))
 					if err != nil {
-						logger.Err("Process() => smsTemplate.Execute failed, state: %s, orderId: %d, message: %s, err: %s",
-							state.Name(), pkgItem.OrderId, app.Globals.SMSTemplate.OrderNotifySellerCanceledByBuyerState, err)
+						app.Globals.Logger.FromContext(ctx).Error("smsTemplate.Execute failed",
+							"fn", "Process",
+							"state", state.Name(),
+							"oid", pkgItem.OrderId,
+							"pid", pkgItem.PId,
+							"sids", sids,
+							"message", app.Globals.SMSTemplate.OrderNotifySellerCanceledByBuyerState,
+							"error", err)
 					} else {
 						sellerNotify := notify_service.SMSRequest{
 							Phone: sellerProfile.GeneralInfo.MobilePhone,
 							Body:  newBuf.String(),
+							User:  notify_service.SellerUser,
 						}
 						sellerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, sellerNotify).Get()
 						if sellerFutureData.Error() != nil {
-							logger.Err("Process() => NotifyService.NotifyBySMS failed, request: %v, state: %s, orderId: %d, pid: %d, sids: %v, error: %s",
-								sellerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, sids, sellerFutureData.Error().Reason())
+							app.Globals.Logger.FromContext(ctx).Error("NotifyService.NotifyBySMS failed",
+								"fn", "Process",
+								"state", state.Name(),
+								"oid", pkgItem.OrderId,
+								"pid", pkgItem.PId,
+								"sids", sids,
+								"request", sellerNotify,
+								"error", sellerFutureData.Error().Reason())
 							sellerNotificationAction = &entities.Action{
 								Name:      system_action.SellerNotification.ActionName(),
 								Type:      "",
@@ -191,8 +246,13 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 								Extended:  nil,
 							}
 						} else {
-							logger.Audit("Process() => NotifyService.NotifyBySMS success, sellerNotify: %v, state: %s, orderId: %d, pid: %d, sids: %v",
-								sellerNotify, state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
+							app.Globals.Logger.FromContext(ctx).Debug("NotifyService.NotifyBySMS success",
+								"fn", "Process",
+								"state", state.Name(),
+								"oid", pkgItem.OrderId,
+								"pid", pkgItem.PId,
+								"sids", sids,
+								"sellerNotify", sellerNotify)
 							sellerNotificationAction = &entities.Action{
 								Name:      system_action.SellerNotification.ActionName(),
 								Type:      "",
@@ -211,8 +271,12 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 					}
 				}
 			} else {
-				logger.Err("Process() => UserService.GetSellerProfile futureData.Data() is nil, send sms message failed, state: %s, orderId: %d, pid: %d, sids: %v",
-					state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
+				app.Globals.Logger.FromContext(ctx).Error("UserService.GetSellerProfile futureData.Data() is nil, send sms message failed",
+					"fn", "Process",
+					"state", state.Name(),
+					"oid", pkgItem.OrderId,
+					"pid", pkgItem.PId,
+					"sids", sids)
 			}
 		}
 
@@ -241,16 +305,17 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 			}
 		}
 
-		pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
-		if err != nil {
-			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %s", state.Name(),
-				pkgItem.OrderId, pkgItem.PId, sids, err.Error())
-			return
-		}
-
-		logger.Audit("Process() => Status of subpackages update success, state: %s ,orderId: %d, pid: %d, sids: %v", state.Name(), pkgItem.OrderId, pkgItem.PId, sids)
-		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItemUpdated).Build())
+		app.Globals.Logger.FromContext(ctx).Debug("set status of subpackages success",
+			"fn", "Process",
+			"state", state.Name(),
+			"oid", pkgItem.OrderId,
+			"pid", pkgItem.PId,
+			"sids", sids)
+		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItem).Build())
 	} else {
-		logger.Err("iFrame.Header() not a subpackage or sellerId not found, state: %s iframe: %v", state.Name(), iFrame)
+		app.Globals.Logger.FromContext(ctx).Error("Frame Header/Body Invalid",
+			"fn", "Process",
+			"state", state.Name(),
+			"iframe", iFrame)
 	}
 }

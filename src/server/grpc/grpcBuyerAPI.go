@@ -5,7 +5,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/shopspring/decimal"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
@@ -91,8 +90,8 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 	}
 
 	if page <= 0 || perPage <= 0 {
-		logger.Err("buyerOrderDetailListHandler() => page or perPage invalid, userId: %d, page: %d, perPage: %d", userId, page, perPage)
-		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
+		app.Globals.Logger.FromContext(ctx).Error("page or perPage invalid", "fn", "buyerOrderDetailListHandler", "uid", userId, "oid", oid, "page", page, "perPage", perPage)
+		return nil, status.Error(codes.Code(future.BadRequest), "Page/PerPage Invalid")
 	}
 
 	var sortDirect int
@@ -120,12 +119,12 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 
 	orderList, total, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
 	if err != nil {
-		logger.Err("buyerOrderDetailListHandler() => FindByFilter failed, userId: %d, page: %d, perPage: %d, error: %s", userId, page, perPage, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "buyerOrderDetailListHandler", "oid", oid, "uid", userId, "page", page, "perPage", perPage, "error", err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	if total == 0 || orderList == nil || len(orderList) == 0 {
-		logger.Err("buyerOrderDetailListHandler() => oid not found, orderId: %d, userId: %d, filter:%s", oid, userId, filter)
+		app.Globals.Logger.FromContext(ctx).Info("oid not found", "fn", "buyerOrderDetailListHandler", "oid", oid, "uid", userId, "filter", filter)
 		return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
 	}
 
@@ -149,7 +148,7 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 						Image:              orderList[i].Packages[j].Subpackages[z].Items[t].Image,
 						Returnable:         orderList[i].Packages[j].Subpackages[z].Items[t].Returnable,
 						Quantity:           orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
-						Attributes:         orderList[i].Packages[j].Subpackages[z].Items[t].Attributes,
+						Attributes:         nil,
 						Invoice: &pb.BuyerOrderDetailList_OrderDetail_Package_Item_Invoice{
 							Unit:     0,
 							Total:    0,
@@ -162,40 +161,65 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 
 					unit, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount)
 					if err != nil {
-						logger.Err("buyerOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Unit invalid, unit: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Unit invalid",
+							"fn", "buyerOrderDetailListHandler",
+							"unit", orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount,
+							"oid", orderList[i].Packages[j].Subpackages[z].OrderId,
+							"pid", orderList[i].Packages[j].Subpackages[z].PId,
+							"sid", orderList[i].Packages[j].Subpackages[z].SId,
+							"error", err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 					itemPackageDetail.Invoice.Unit = uint64(unit.IntPart())
 
 					total, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount)
 					if err != nil {
-						logger.Err("buyerOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Total invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Total invalid",
+							"fn", "buyerOrderDetailListHandler",
+							"total", orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount,
+							"oid", orderList[i].Packages[j].Subpackages[z].OrderId,
+							"pid", orderList[i].Packages[j].Subpackages[z].PId,
+							"sid", orderList[i].Packages[j].Subpackages[z].SId,
+							"error", err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 					itemPackageDetail.Invoice.Total = uint64(total.IntPart())
 
 					original, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount)
 					if err != nil {
-						logger.Err("buyerOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Original invalid",
+							"fn", "buyerOrderDetailListHandler",
+							"original", orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount,
+							"oid", orderList[i].Packages[j].Subpackages[z].OrderId,
+							"pid", orderList[i].Packages[j].Subpackages[z].PId,
+							"sid", orderList[i].Packages[j].Subpackages[z].SId,
+							"error", err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 					itemPackageDetail.Invoice.Original = uint64(original.IntPart())
 
 					special, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount)
 					if err != nil {
-						logger.Err("buyerOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Special invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Special invalid",
+							"fn", "buyerOrderDetailListHandler",
+							"special", orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount,
+							"oid", orderList[i].Packages[j].Subpackages[z].OrderId,
+							"pid", orderList[i].Packages[j].Subpackages[z].PId,
+							"sid", orderList[i].Packages[j].Subpackages[z].SId,
+							"error", err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 					itemPackageDetail.Invoice.Special = uint64(special.IntPart())
 
 					discount, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount)
 					if err != nil {
-						logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Discount invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Discount invalid",
+							"fn", "buyerOrderDetailListHandler",
+							"discount", orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount,
+							"oid", orderList[i].Packages[j].Subpackages[z].OrderId,
+							"pid", orderList[i].Packages[j].Subpackages[z].PId,
+							"sid", orderList[i].Packages[j].Subpackages[z].SId,
+							"error", err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 					itemPackageDetail.Invoice.Discount = uint64(discount.IntPart())
@@ -228,15 +252,20 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 						DeliveryAt:     "",
 						ShippedAt:      orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601),
 						ShipmentAmount: 0,
-						CarrierName:    orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.CarrierName,
+						CarrierName:    orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.CourierName,
 						TrackingNumber: orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.TrackingNumber,
 					}
 
 					if orderList[i].Packages[j].ShipmentSpec.ShippingCost != nil {
 						shippingCost, err := decimal.NewFromString(orderList[i].Packages[j].ShipmentSpec.ShippingCost.Amount)
 						if err != nil {
-							logger.Err("sellerOrderReturnDetailListHandler() => decimal.NewFromString failed, package ShippingCost.Amount invalid, ShippingCost: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-								orderList[i].Packages[j].ShipmentSpec.ShippingCost, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+							app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, package ShippingCost.Amount invalid",
+								"fn", "buyerOrderDetailListHandler",
+								"ShippingCost", orderList[i].Packages[j].ShipmentSpec.ShippingCost,
+								"oid", orderList[i].Packages[j].Subpackages[z].OrderId,
+								"pid", orderList[i].Packages[j].Subpackages[z].PId,
+								"sid", orderList[i].Packages[j].Subpackages[z].SId,
+								"error", err)
 							return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 						}
 
@@ -278,32 +307,44 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 
 		grandTotal, err := decimal.NewFromString(orderList[i].Invoice.GrandTotal.Amount)
 		if err != nil {
-			logger.Err("buyerOrderDetailListHandler() => decimal.NewFromString failed, GrandTotal invalid, grandTotal: %s, orderId: %d, error:%s",
-				orderList[i].Invoice.GrandTotal.Amount, orderList[i].OrderId, err)
+			app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, GrandTotal invalid",
+				"fn", "buyerOrderDetailListHandler",
+				"grandTotal", orderList[i].Invoice.GrandTotal.Amount,
+				"oid", orderList[i].OrderId,
+				"error", err)
 			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 		}
 		orderDetail.PayableAmount = uint64(grandTotal.IntPart())
 
 		subtotal, err := decimal.NewFromString(orderList[i].Invoice.Subtotal.Amount)
 		if err != nil {
-			logger.Err("buyerOrderDetailListHandler() => decimal.NewFromString failed, Subtotal invalid, subtotal: %s, orderId: %d, error:%s",
-				orderList[i].Invoice.Subtotal.Amount, orderList[i].OrderId, err)
+			app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, Subtotal invalid",
+				"fn", "buyerOrderDetailListHandler",
+				"subtotal", orderList[i].Invoice.Subtotal.Amount,
+				"oid", orderList[i].OrderId,
+				"error", err)
 			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 		}
 		orderDetail.TotalAmount = uint64(subtotal.IntPart())
 
 		shipmentTotal, err := decimal.NewFromString(orderList[i].Invoice.ShipmentTotal.Amount)
 		if err != nil {
-			logger.Err("buyerOrderDetailListHandler() => decimal.NewFromString failed, shipmentTotal invalid, shipmentTotal: %s, orderId: %d, error:%s",
-				orderList[i].Invoice.ShipmentTotal.Amount, orderList[i].OrderId, err)
+			app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, shipmentTotal invalid",
+				"fn", "buyerOrderDetailListHandler",
+				"shipmentTotal", orderList[i].Invoice.ShipmentTotal.Amount,
+				"oid", orderList[i].OrderId,
+				"error", err)
 			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 		}
 		orderDetail.ShipmentAmount = uint64(shipmentTotal.IntPart())
 
 		discount, err := decimal.NewFromString(orderList[i].Invoice.Discount.Amount)
 		if err != nil {
-			logger.Err("buyerOrderDetailListHandler() => decimal.NewFromString failed, discount invalid, discount: %s, orderId: %d, error:%s",
-				orderList[i].Invoice.Discount.Amount, orderList[i].OrderId, err)
+			app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, discount invalid",
+				"fn", "buyerOrderDetailListHandler",
+				"discount", orderList[i].Invoice.Discount.Amount,
+				"oid", orderList[i].OrderId,
+				"error", err)
 			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 		}
 		orderDetail.Discounts = uint64(discount.IntPart())
@@ -325,9 +366,13 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 		OrderDetails: orderDetailList,
 	}
 
-	serializedData, err := proto.Marshal(buyerOrderDetailList)
-	if err != nil {
-		logger.Err("buyerOrderDetailListHandler() => could not serialize buyerOrderDetailList, userId: %d, error:%s", userId, err)
+	serializedData, e := proto.Marshal(buyerOrderDetailList)
+	if e != nil {
+		app.Globals.Logger.FromContext(ctx).Error("could not marshal buyerOrderDetailList",
+			"fn", "buyerOrderDetailListHandler",
+			"oid", oid,
+			"uid", userId,
+			"error", err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
@@ -351,8 +396,8 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 
 	order, err := app.Globals.OrderRepository.FindById(ctx, oid)
 	if err != nil {
-		logger.Err("buyerGetOrderDetailByIdHandler() => FindByFilter failed, oid: %d, error: %s", oid, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		app.Globals.Logger.FromContext(ctx).Error("FindById failed", "fn", "buyerGetOrderDetailByIdHandler", "oid", oid, "error", err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	orderDetailList := make([]*pb.BuyerOrderDetailList_OrderDetail, 0, 1)
@@ -375,7 +420,7 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 					Image:              order.Packages[j].Subpackages[z].Items[t].Image,
 					Returnable:         order.Packages[j].Subpackages[z].Items[t].Returnable,
 					Quantity:           order.Packages[j].Subpackages[z].Items[t].Quantity,
-					Attributes:         order.Packages[j].Subpackages[z].Items[t].Attributes,
+					Attributes:         nil,
 					Invoice: &pb.BuyerOrderDetailList_OrderDetail_Package_Item_Invoice{
 						Unit:     0,
 						Total:    0,
@@ -386,42 +431,85 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 					},
 				}
 
+				if order.Packages[j].Subpackages[z].Items[t].Attributes != nil {
+					itemPackageDetail.Attributes = make(map[string]*pb.BuyerOrderDetailList_OrderDetail_Package_Item_Attribute, len(order.Packages[j].Subpackages[z].Items[t].Attributes))
+					for attrKey, attribute := range order.Packages[j].Subpackages[z].Items[t].Attributes {
+						keyTranslates := make(map[string]string, len(attribute.KeyTranslate))
+						for keyTran, value := range attribute.KeyTranslate {
+							keyTranslates[keyTran] = value
+						}
+						valTranslates := make(map[string]string, len(attribute.ValueTranslate))
+						for valTran, value := range attribute.ValueTranslate {
+							valTranslates[valTran] = value
+						}
+						itemPackageDetail.Attributes[attrKey] = &pb.BuyerOrderDetailList_OrderDetail_Package_Item_Attribute{
+							KeyTranslates:   keyTranslates,
+							ValueTranslates: valTranslates,
+						}
+					}
+				}
+
 				unit, err := decimal.NewFromString(order.Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount)
 				if err != nil {
-					logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, subpackage Invoice.Unit invalid, unit: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-						order.Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount, order.Packages[j].Subpackages[z].OrderId, order.Packages[j].Subpackages[z].PId, order.Packages[j].Subpackages[z].SId, err)
+					app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Unit invalid",
+						"fn", "buyerGetOrderDetailByIdHandler",
+						"unit", order.Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount,
+						"oid", order.Packages[j].Subpackages[z].OrderId,
+						"pid", order.Packages[j].Subpackages[z].PId,
+						"sid", order.Packages[j].Subpackages[z].SId,
+						"error", err)
 					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 				}
 				itemPackageDetail.Invoice.Unit = uint64(unit.IntPart())
 
 				total, err := decimal.NewFromString(order.Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount)
 				if err != nil {
-					logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, subpackage Invoice.Total invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-						order.Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount, order.Packages[j].Subpackages[z].OrderId, order.Packages[j].Subpackages[z].PId, order.Packages[j].Subpackages[z].SId, err)
+					app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Total invalid",
+						"fn", "buyerGetOrderDetailByIdHandler",
+						"total", order.Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount,
+						"oid", order.Packages[j].Subpackages[z].OrderId,
+						"pid", order.Packages[j].Subpackages[z].PId,
+						"sid", order.Packages[j].Subpackages[z].SId,
+						"error", err)
 					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 				}
 				itemPackageDetail.Invoice.Total = uint64(total.IntPart())
 
 				original, err := decimal.NewFromString(order.Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount)
 				if err != nil {
-					logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-						order.Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount, order.Packages[j].Subpackages[z].OrderId, order.Packages[j].Subpackages[z].PId, order.Packages[j].Subpackages[z].SId, err)
+					app.Globals.Logger.FromContext(ctx).Error("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid",
+						"fn", "buyerGetOrderDetailByIdHandler",
+						"original", order.Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount,
+						"oid", order.Packages[j].Subpackages[z].OrderId,
+						"pid", order.Packages[j].Subpackages[z].PId,
+						"sid", order.Packages[j].Subpackages[z].SId,
+						"error", err)
 					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 				}
 				itemPackageDetail.Invoice.Original = uint64(original.IntPart())
 
 				special, err := decimal.NewFromString(order.Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount)
 				if err != nil {
-					logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, subpackage Invoice.Special invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-						order.Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount, order.Packages[j].Subpackages[z].OrderId, order.Packages[j].Subpackages[z].PId, order.Packages[j].Subpackages[z].SId, err)
+					app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Special invalid",
+						"fn", "buyerGetOrderDetailByIdHandler",
+						"special", order.Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount,
+						"oid", order.Packages[j].Subpackages[z].OrderId,
+						"pid", order.Packages[j].Subpackages[z].PId,
+						"sid", order.Packages[j].Subpackages[z].SId,
+						"error", err)
 					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 				}
 				itemPackageDetail.Invoice.Special = uint64(special.IntPart())
 
 				discount, err := decimal.NewFromString(order.Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount)
 				if err != nil {
-					logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, subpackage Invoice.Discount invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-						order.Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount, order.Packages[j].Subpackages[z].OrderId, order.Packages[j].Subpackages[z].PId, order.Packages[j].Subpackages[z].SId, err)
+					app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Discount invalid",
+						"fn", "buyerGetOrderDetailByIdHandler",
+						"discount", order.Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount,
+						"oid", order.Packages[j].Subpackages[z].OrderId,
+						"pid", order.Packages[j].Subpackages[z].PId,
+						"sid", order.Packages[j].Subpackages[z].SId,
+						"error", err)
 					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 				}
 				itemPackageDetail.Invoice.Discount = uint64(discount.IntPart())
@@ -454,15 +542,20 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 					DeliveryAt:     "",
 					ShippedAt:      order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601),
 					ShipmentAmount: 0,
-					CarrierName:    order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.CarrierName,
+					CarrierName:    order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.CourierName,
 					TrackingNumber: order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.TrackingNumber,
 				}
 
 				if order.Packages[j].ShipmentSpec.ShippingCost != nil {
 					shippingCost, err := decimal.NewFromString(order.Packages[j].ShipmentSpec.ShippingCost.Amount)
 					if err != nil {
-						logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, package ShippingCost.Amount invalid, ShippingCost: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							order.Packages[j].ShipmentSpec.ShippingCost, order.Packages[j].Subpackages[z].OrderId, order.Packages[j].Subpackages[z].PId, order.Packages[j].Subpackages[z].SId, err)
+						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, package ShippingCost.Amount invalid",
+							"fn", "buyerGetOrderDetailByIdHandler",
+							"ShippingCost", order.Packages[j].ShipmentSpec.ShippingCost,
+							"oid", order.Packages[j].Subpackages[z].OrderId,
+							"pid", order.Packages[j].Subpackages[z].PId,
+							"sid", order.Packages[j].Subpackages[z].SId,
+							"error", err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 
@@ -502,34 +595,46 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 		Packages:         packageDetailList,
 	}
 
-	grandTotal, err := decimal.NewFromString(order.Invoice.GrandTotal.Amount)
-	if err != nil {
-		logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, GrandTotal invalid, grandTotal: %s, orderId: %d, error:%s",
-			order.Invoice.GrandTotal.Amount, order.OrderId, err)
+	grandTotal, e := decimal.NewFromString(order.Invoice.GrandTotal.Amount)
+	if e != nil {
+		app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, GrandTotal invalid",
+			"fn", "buyerGetOrderDetailByIdHandler",
+			"grandTotal", order.Invoice.GrandTotal.Amount,
+			"oid", order.OrderId,
+			"error", err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 	orderDetail.PayableAmount = uint64(grandTotal.IntPart())
 
-	subtotal, err := decimal.NewFromString(order.Invoice.Subtotal.Amount)
-	if err != nil {
-		logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, Subtotal invalid, subtotal: %s, orderId: %d, error:%s",
-			order.Invoice.Subtotal.Amount, order.OrderId, err)
+	subtotal, e := decimal.NewFromString(order.Invoice.Subtotal.Amount)
+	if e != nil {
+		app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, Subtotal invalid",
+			"fn", "buyerGetOrderDetailByIdHandler",
+			"subtotal", order.Invoice.Subtotal.Amount,
+			"oid", order.OrderId,
+			"error", err)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 	orderDetail.TotalAmount = uint64(subtotal.IntPart())
 
-	shipmentTotal, err := decimal.NewFromString(order.Invoice.ShipmentTotal.Amount)
-	if err != nil {
-		logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, shipmentTotal invalid, shipmentTotal: %s, orderId: %d, error:%s",
-			order.Invoice.ShipmentTotal.Amount, order.OrderId, err)
+	shipmentTotal, e := decimal.NewFromString(order.Invoice.ShipmentTotal.Amount)
+	if e != nil {
+		app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, shipmentTotal invalid",
+			"fn", "buyerGetOrderDetailByIdHandler",
+			"shipmentTotal", order.Invoice.ShipmentTotal.Amount,
+			"oid", order.OrderId,
+			"error", e)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 	orderDetail.ShipmentAmount = uint64(shipmentTotal.IntPart())
 
-	discount, err := decimal.NewFromString(order.Invoice.Discount.Amount)
-	if err != nil {
-		logger.Err("buyerGetOrderDetailByIdHandler() => decimal.NewFromString failed, discount invalid, discount: %s, orderId: %d, error:%s",
-			order.Invoice.Discount.Amount, order.OrderId, err)
+	discount, e := decimal.NewFromString(order.Invoice.Discount.Amount)
+	if e != nil {
+		app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, discount invalid",
+			"fn", "buyerGetOrderDetailByIdHandler",
+			"discount", order.Invoice.Discount.Amount,
+			"oid", order.OrderId,
+			"error", e)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 	orderDetail.Discounts = uint64(discount.IntPart())
@@ -550,9 +655,9 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 		OrderDetails: orderDetailList,
 	}
 
-	serializedData, err := proto.Marshal(buyerOrderDetailList)
-	if err != nil {
-		logger.Err("buyerGetOrderDetailByIdHandler() => could not serialize buyerOrderDetailList, orderId: %d, error:%s", oid, err)
+	serializedData, e := proto.Marshal(buyerOrderDetailList)
+	if e != nil {
+		app.Globals.Logger.FromContext(ctx).Error("marshal buyerOrderDetailList failed", "fn", "buyerGetOrderDetailByIdHandler", "oid", oid, "error", e)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
@@ -640,34 +745,34 @@ func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId
 		}
 	}
 
-	returnRequestPendingCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnRequestPendingFilter)
+	returnRequestPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnRequestPendingFilter)
 	if err != nil {
-		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnRequestPendingFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnRequestPendingFilter failed", "fn", "buyerReturnOrderReportsHandler", "uid", userId, "error", err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnShipmentPendingCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnShipmentPendingFilter)
+	returnShipmentPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnShipmentPendingFilter)
 	if err != nil {
-		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnShipmentPendingFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnShipmentPendingFilter failed", "fn", "buyerReturnOrderReportsHandler", "uid", userId, "error", err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnShippedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnShippedFilter)
+	returnShippedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnShippedFilter)
 	if err != nil {
-		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnShippedFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnShippedFilter failed", "fn", "buyerReturnOrderReportsHandler", "uid", userId, "error", err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnDeliveredCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnDeliveredFilter)
+	returnDeliveredCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveredFilter)
 	if err != nil {
-		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnDeliveredFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnDeliveredFilter failed", "fn", "buyerReturnOrderReportsHandler", "uid", userId, "error", err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnDeliveryFailedCount, err := app.Globals.SubPkgRepository.CountWithFilter(ctx, returnDeliveryFailedFilter)
+	returnDeliveryFailedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveryFailedFilter)
 	if err != nil {
-		logger.Err("buyerReturnOrderReportsHandler() => CountWithFilter for returnDeliveryFailedFilter failed, userId: %d, error: %s", userId, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnDeliveryFailedFilter failed", "fn", "buyerReturnOrderReportsHandler", "uid", userId, "error", err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	buyerReturnOrderReports := &pb.BuyerReturnOrderReports{
@@ -679,9 +784,9 @@ func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId
 		ReturnDeliveryFailed:  int32(returnDeliveryFailedCount),
 	}
 
-	serializedData, err := proto.Marshal(buyerReturnOrderReports)
-	if err != nil {
-		logger.Err("buyerReturnOrderReportsHandler() => could not serialize buyerReturnOrderReports, userId: %d, error:%s", userId, err)
+	serializedData, e := proto.Marshal(buyerReturnOrderReports)
+	if e != nil {
+		app.Globals.Logger.FromContext(ctx).Error("marshal buyerReturnOrderReports failed", "fn", "buyerReturnOrderReportsHandler", "uid", userId, "error", e)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 
 	}
@@ -701,8 +806,8 @@ func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId
 func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId uint64, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
 	if page <= 0 || perPage <= 0 {
-		logger.Err("buyerAllReturnOrdersHandler() => page or perPage invalid, userId: %d, page: %d, perPage: %d", userId, page, perPage)
-		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
+		app.Globals.Logger.FromContext(ctx).Error("page or perPage invalid", "fn", "buyerAllReturnOrdersHandler", "uid", userId, "page", page, "perPage", perPage)
+		return nil, status.Error(codes.Code(future.BadRequest), "Page/PerPage Invalid")
 	}
 
 	var sortDirect int
@@ -734,12 +839,12 @@ func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId ui
 
 	orderList, total, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
 	if err != nil {
-		logger.Err("buyerAllReturnOrdersHandler() => FindByFilter failed, userId: %d, page: %d, perPage: %d, error: %s", userId, page, perPage, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "buyerAllReturnOrdersHandler", "uid", userId, "page", page, "perPage", perPage, "error", err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	if total == 0 || orderList == nil || len(orderList) == 0 {
-		logger.Err("buyerAllReturnOrdersHandler() => order not found, userId: %d", userId)
+		app.Globals.Logger.FromContext(ctx).Info("order not found", "fn", "buyerAllReturnOrdersHandler", "uid", userId)
 		return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
 	}
 
@@ -762,7 +867,7 @@ func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId ui
 						Image:           orderList[i].Packages[j].Subpackages[z].Items[t].Image,
 						Returnable:      orderList[i].Packages[j].Subpackages[z].Items[t].Returnable,
 						Quantity:        orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
-						Attributes:      orderList[i].Packages[j].Subpackages[z].Items[t].Attributes,
+						Attributes:      nil,
 						Reason:          "",
 						ReturnRequestAt: "",
 						Invoice: &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Invoice{
@@ -775,42 +880,85 @@ func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId ui
 						},
 					}
 
+					if orderList[i].Packages[j].Subpackages[z].Items[t].Attributes != nil {
+						returnItemPackageDetail.Attributes = make(map[string]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Attribute, len(orderList[i].Packages[j].Subpackages[z].Items[t].Attributes))
+						for attrKey, attribute := range orderList[i].Packages[j].Subpackages[z].Items[t].Attributes {
+							keyTranslates := make(map[string]string, len(attribute.KeyTranslate))
+							for keyTran, value := range attribute.KeyTranslate {
+								keyTranslates[keyTran] = value
+							}
+							valTranslates := make(map[string]string, len(attribute.ValueTranslate))
+							for valTran, value := range attribute.ValueTranslate {
+								valTranslates[valTran] = value
+							}
+							returnItemPackageDetail.Attributes[attrKey] = &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Attribute{
+								KeyTranslates:   keyTranslates,
+								ValueTranslates: valTranslates,
+							}
+						}
+					}
+
 					unit, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount)
 					if err != nil {
-						logger.Err("buyerAllReturnOrdersHandler() => decimal.NewFromString failed, subpackage Invoice.Unit invalid, unit: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Unit invalid",
+							"fn", "buyerAllReturnOrdersHandler",
+							"unit", orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount,
+							"oid", orderList[i].Packages[j].Subpackages[z].OrderId,
+							"pid", orderList[i].Packages[j].Subpackages[z].PId,
+							"sid", orderList[i].Packages[j].Subpackages[z].SId,
+							"error", err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 					returnItemPackageDetail.Invoice.Unit = uint64(unit.IntPart())
 
 					total, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount)
 					if err != nil {
-						logger.Err("buyerAllReturnOrdersHandler() => decimal.NewFromString failed, subpackage Invoice.Total invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Total invalid",
+							"fn", "buyerAllReturnOrdersHandler",
+							"total", orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount,
+							"oid", orderList[i].Packages[j].Subpackages[z].OrderId,
+							"pid", orderList[i].Packages[j].Subpackages[z].PId,
+							"sid", orderList[i].Packages[j].Subpackages[z].SId,
+							"error", err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 					returnItemPackageDetail.Invoice.Total = uint64(total.IntPart())
 
 					original, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount)
 					if err != nil {
-						logger.Err("buyerAllReturnOrdersHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Original invalid",
+							"fn", "buyerAllReturnOrdersHandler",
+							"original", orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount,
+							"oid", orderList[i].Packages[j].Subpackages[z].OrderId,
+							"pid", orderList[i].Packages[j].Subpackages[z].PId,
+							"sid", orderList[i].Packages[j].Subpackages[z].SId,
+							"error", err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 					returnItemPackageDetail.Invoice.Original = uint64(original.IntPart())
 
 					special, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount)
 					if err != nil {
-						logger.Err("buyerAllReturnOrdersHandler() => decimal.NewFromString failed, subpackage Invoice.Special invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Special invalid",
+							"fn", "buyerAllReturnOrdersHandler",
+							"special", orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount,
+							"oid", orderList[i].Packages[j].Subpackages[z].OrderId,
+							"pid", orderList[i].Packages[j].Subpackages[z].PId,
+							"sid", orderList[i].Packages[j].Subpackages[z].SId,
+							"error", err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 					returnItemPackageDetail.Invoice.Special = uint64(special.IntPart())
 
 					discount, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount)
 					if err != nil {
-						logger.Err("buyerAllReturnOrdersHandler() => decimal.NewFromString failed, subpackage Invoice.Discount invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Discount invalid",
+							"fn", "buyerAllReturnOrdersHandler",
+							"discount", orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount,
+							"oid", orderList[i].Packages[j].Subpackages[z].OrderId,
+							"pid", orderList[i].Packages[j].Subpackages[z].PId,
+							"sid", orderList[i].Packages[j].Subpackages[z].SId,
+							"error", err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 					returnItemPackageDetail.Invoice.Discount = uint64(discount.IntPart())
@@ -872,8 +1020,11 @@ func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId ui
 
 		subtotal, err := decimal.NewFromString(orderList[i].Invoice.Subtotal.Amount)
 		if err != nil {
-			logger.Err("buyerAllReturnOrdersHandler() => decimal.NewFromString failed, Subtotal invalid, subtotal: %s, orderId: %d, error:%s",
-				orderList[i].Invoice.Subtotal.Amount, orderList[i].OrderId, err)
+			app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, Subtotal invalid",
+				"fn", "buyerAllReturnOrdersHandler",
+				"subtotal", orderList[i].Invoice.Subtotal.Amount,
+				"oid", orderList[i].OrderId,
+				"error", err)
 			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 		}
 		returnOrderDetail.TotalAmount = uint64(subtotal.IntPart())
@@ -886,9 +1037,9 @@ func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId ui
 		ReturnOrderDetail: returnOrderDetailList,
 	}
 
-	serializedData, err := proto.Marshal(buyerReturnOrderDetailList)
-	if err != nil {
-		logger.Err("buyerAllReturnOrdersHandler() => could not serialize buyerReturnOrderDetailList, userId: %d, error:%s", userId, err)
+	serializedData, e := proto.Marshal(buyerReturnOrderDetailList)
+	if e != nil {
+		app.Globals.Logger.FromContext(ctx).Error("marshal buyerReturnOrderDetailList failed", "fn", "buyerAllReturnOrdersHandler", "uid", userId, "error", e)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 
@@ -912,8 +1063,8 @@ func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId ui
 func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, userId uint64, filter FilterValue, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
 	if page <= 0 || perPage <= 0 {
-		logger.Err("buyerReturnOrderDetailListHandler() => page or perPage invalid, userId: %d, filter: %s, page: %d, perPage: %d", userId, filter, page, perPage)
-		return nil, status.Error(codes.Code(future.BadRequest), "neither offset nor start can be zero")
+		app.Globals.Logger.FromContext(ctx).Error("page or perPage invalid", "fn", "buyerReturnOrderDetailListHandler", "uid", userId, "filter", filter, "page", page, "perPage", perPage)
+		return nil, status.Error(codes.Code(future.BadRequest), "Page/PerPage invalid")
 	}
 
 	if filter == AllOrdersFilter {
@@ -954,12 +1105,12 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 
 	orderList, total, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
 	if err != nil {
-		logger.Err("buyerReturnOrderDetailListHandler() => FindByFilter failed, userId: %d, filter: %s, page: %d, perPage: %d, error: %s", userId, filter, page, perPage, err)
-		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "buyerReturnOrderDetailListHandler", "uid", userId, "filter", filter, "page", page, "perPage", perPage, "error", err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
 	if total == 0 || orderList == nil || len(orderList) == 0 {
-		logger.Err("buyerReturnOrderDetailListHandler() => oid not found, userId: %d, filter:%s", userId, filter)
+		app.Globals.Logger.FromContext(ctx).Error("oid not found, userId: %d, filter:%s", userId, filter)
 		return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
 	}
 
@@ -982,7 +1133,7 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 						Image:           orderList[i].Packages[j].Subpackages[z].Items[t].Image,
 						Returnable:      orderList[i].Packages[j].Subpackages[z].Items[t].Returnable,
 						Quantity:        orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
-						Attributes:      orderList[i].Packages[j].Subpackages[z].Items[t].Attributes,
+						Attributes:      nil,
 						Reason:          "",
 						ReturnRequestAt: "",
 						Invoice: &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Invoice{
@@ -995,42 +1146,85 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 						},
 					}
 
+					if orderList[i].Packages[j].Subpackages[z].Items[t].Attributes != nil {
+						returnItemPackageDetail.Attributes = make(map[string]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Attribute, len(orderList[i].Packages[j].Subpackages[z].Items[t].Attributes))
+						for attrKey, attribute := range orderList[i].Packages[j].Subpackages[z].Items[t].Attributes {
+							keyTranslates := make(map[string]string, len(attribute.KeyTranslate))
+							for keyTran, value := range attribute.KeyTranslate {
+								keyTranslates[keyTran] = value
+							}
+							valTranslates := make(map[string]string, len(attribute.ValueTranslate))
+							for valTran, value := range attribute.ValueTranslate {
+								valTranslates[valTran] = value
+							}
+							returnItemPackageDetail.Attributes[attrKey] = &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Attribute{
+								KeyTranslates:   keyTranslates,
+								ValueTranslates: valTranslates,
+							}
+						}
+					}
+
 					unit, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount)
 					if err != nil {
-						logger.Err("buyerReturnOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Unit invalid, unit: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Unit invalid",
+							"fn", "buyerReturnOrderDetailListHandler",
+							"unit", orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Unit.Amount,
+							"oid", orderList[i].Packages[j].Subpackages[z].OrderId,
+							"pid", orderList[i].Packages[j].Subpackages[z].PId,
+							"sid", orderList[i].Packages[j].Subpackages[z].SId,
+							"error", err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 					returnItemPackageDetail.Invoice.Unit = uint64(unit.IntPart())
 
 					total, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount)
 					if err != nil {
-						logger.Err("buyerReturnOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Total invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Total invalid",
+							"fn", "buyerReturnOrderDetailListHandler",
+							"total", orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Total.Amount,
+							"oid", orderList[i].Packages[j].Subpackages[z].OrderId,
+							"pid", orderList[i].Packages[j].Subpackages[z].PId,
+							"sid", orderList[i].Packages[j].Subpackages[z].SId,
+							"error", err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 					returnItemPackageDetail.Invoice.Total = uint64(total.IntPart())
 
 					original, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount)
 					if err != nil {
-						logger.Err("buyerReturnOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Original invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Original invalid",
+							"fn", "buyerReturnOrderDetailListHandler",
+							"original", orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Original.Amount,
+							"orderId", orderList[i].Packages[j].Subpackages[z].OrderId,
+							"pid", orderList[i].Packages[j].Subpackages[z].PId,
+							"sid", orderList[i].Packages[j].Subpackages[z].SId,
+							"error", err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 					returnItemPackageDetail.Invoice.Original = uint64(original.IntPart())
 
 					special, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount)
 					if err != nil {
-						logger.Err("buyerReturnOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Special invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Special invalid",
+							"fn", "buyerReturnOrderDetailListHandler",
+							"special", orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Special.Amount,
+							"oid", orderList[i].Packages[j].Subpackages[z].OrderId,
+							"pid", orderList[i].Packages[j].Subpackages[z].PId,
+							"sid", orderList[i].Packages[j].Subpackages[z].SId,
+							"error", err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 					returnItemPackageDetail.Invoice.Special = uint64(special.IntPart())
 
 					discount, err := decimal.NewFromString(orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount)
 					if err != nil {
-						logger.Err("buyerReturnOrderDetailListHandler() => decimal.NewFromString failed, subpackage Invoice.Discount invalid, total: %s, orderId: %d, pid: %d, sid: %d, error: %s",
-							orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount, orderList[i].Packages[j].Subpackages[z].OrderId, orderList[i].Packages[j].Subpackages[z].PId, orderList[i].Packages[j].Subpackages[z].SId, err)
+						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, subpackage Invoice.Discount invalid",
+							"fn", "buyerReturnOrderDetailListHandler",
+							"discount", orderList[i].Packages[j].Subpackages[z].Items[t].Invoice.Discount.Amount,
+							"oid", orderList[i].Packages[j].Subpackages[z].OrderId,
+							"pid", orderList[i].Packages[j].Subpackages[z].PId,
+							"sid", orderList[i].Packages[j].Subpackages[z].SId,
+							"error", err)
 						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 					}
 					returnItemPackageDetail.Invoice.Discount = uint64(discount.IntPart())
@@ -1092,8 +1286,11 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 
 		subtotal, err := decimal.NewFromString(orderList[i].Invoice.Subtotal.Amount)
 		if err != nil {
-			logger.Err("buyerReturnOrderDetailListHandler() => decimal.NewFromString failed, Subtotal invalid, subtotal: %s, orderId: %d, error:%s",
-				orderList[i].Invoice.Subtotal.Amount, orderList[i].OrderId, err)
+			app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, Subtotal invalid",
+				"fn", "buyerReturnOrderDetailListHandler",
+				"subtotal", orderList[i].Invoice.Subtotal.Amount,
+				"oid", orderList[i].OrderId,
+				"error", err)
 			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 		}
 		returnOrderDetail.TotalAmount = uint64(subtotal.IntPart())
@@ -1106,9 +1303,9 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 		ReturnOrderDetail: returnOrderDetailList,
 	}
 
-	serializedData, err := proto.Marshal(buyerReturnOrderDetailList)
-	if err != nil {
-		logger.Err("buyerReturnOrderDetailListHandler() => could not serialize buyerReturnOrderDetailList, userId: %d, filter: %s, error:%s", userId, filter, err)
+	serializedData, e := proto.Marshal(buyerReturnOrderDetailList)
+	if e != nil {
+		app.Globals.Logger.FromContext(ctx).Error("marshal buyerReturnOrderDetailList failed", "fn", "buyerReturnOrderDetailListHandler", "uid", userId, "filter", filter, "error", e)
 		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 	}
 

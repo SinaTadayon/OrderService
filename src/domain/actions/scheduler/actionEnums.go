@@ -9,6 +9,7 @@ type ActionEnums int
 var actionStrings = []string{
 	"Cancel",
 	"Close",
+	"PaymentFail",
 	"DeliveryDelay",
 	"Deliver",
 	"DeliveryPending",
@@ -20,6 +21,7 @@ var actionStrings = []string{
 const (
 	Cancel ActionEnums = iota
 	Close
+	PaymentFail
 	DeliveryDelay
 	Deliver
 	DeliveryPending
@@ -58,6 +60,8 @@ func (actionEnum ActionEnums) FromString(action string) actions.IEnumAction {
 		return Cancel
 	case "Close":
 		return Close
+	case "PaymentFail":
+		return PaymentFail
 	case "DeliveryDelay":
 		return DeliveryDelay
 	case "DeliveryPending":

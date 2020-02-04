@@ -5,8 +5,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/configs"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"os"
 	"testing"
+	"time"
 )
 
 var config *configs.Config
@@ -21,22 +23,44 @@ func TestMain(m *testing.M) {
 		path = ""
 	}
 
+	applog.GLog.ZapLogger = applog.InitZap()
+	applog.GLog.Logger = logger.NewZapLogger(applog.GLog.ZapLogger)
+
 	config, _, err = configs.LoadConfigs(path, "")
 	if err != nil {
-		logger.Err(err.Error())
+		applog.GLog.Logger.Error("configs.LoadConfig failed",
+			"error", err)
 		os.Exit(1)
 	}
 
 	payment = iPaymentServiceImpl{nil, nil,
-		config.PaymentGatewayService.Address, config.PaymentGatewayService.Port}
+		config.PaymentGatewayService.Address,
+		config.PaymentGatewayService.Port, config.PaymentGatewayService.CallbackTimeout, config.PaymentGatewayService.PaymentResultTimeout}
 
 	// Running Tests
 	code := m.Run()
 	os.Exit(code)
 }
 
+func TestGetQueryOrder(t *testing.T) {
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+
+	err := payment.ConnectToPaymentService()
+	require.Nil(t, err)
+
+	defer func() {
+		if err := payment.grpcConnection.Close(); err != nil {
+		}
+	}()
+
+	iFuture := payment.GetPaymentResult(ctx, 123456789)
+	futureData := iFuture.Get()
+	require.NotNil(t, futureData)
+	require.Error(t, futureData.Error().Reason())
+}
+
 func TestOrderPayment_Success(t *testing.T) {
-	ctx, _ := context.WithCancel(context.Background())
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 
 	err := payment.ConnectToPaymentService()
 	require.Nil(t, err)

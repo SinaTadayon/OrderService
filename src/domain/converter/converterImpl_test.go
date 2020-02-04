@@ -130,14 +130,23 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Image:       "http://baman.io/image/asus.png",
 		Returnable:  true,
 		Quantity:    5,
-		Attributes: map[string]string{
-			"Quantity":  "10",
-			"Width":     "8cm",
-			"Height":    "10cm",
-			"Length":    "15cm",
-			"Weight":    "20kg",
-			"Color":     "blue",
-			"Materials": "stone",
+		Attributes: map[string]*pb.Attribute{
+			"Quantity": &pb.Attribute{
+				KeyTrans: map[string]string{
+					"en": "Quantity",
+				},
+				ValueTrans: map[string]string{
+					"en": "10",
+				},
+			},
+			"Width": &pb.Attribute{
+				KeyTrans: map[string]string{
+					"en": "Width",
+				},
+				ValueTrans: map[string]string{
+					"en": "10",
+				},
+			},
 		},
 		Invoice: &pb.ItemInvoice{
 			Unit: &pb.Money{
@@ -179,15 +188,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Image:       "http://baman.io/image/nexus.png",
 		Returnable:  true,
 		Quantity:    8,
-		Attributes: map[string]string{
-			"Quantity":  "20",
-			"Width":     "8cm",
-			"Height":    "10cm",
-			"Length":    "15cm",
-			"Weight":    "20kg",
-			"Color":     "blue",
-			"Materials": "stone",
-		},
+		Attributes:  nil,
 		Invoice: &pb.ItemInvoice{
 			Unit: &pb.Money{
 				Amount:   "100000",
@@ -262,15 +263,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Image:       "http://baman.io/image/asus.png",
 		Returnable:  true,
 		Quantity:    2,
-		Attributes: map[string]string{
-			"Quantity":  "10",
-			"Width":     "8cm",
-			"Height":    "10cm",
-			"Length":    "15cm",
-			"Weight":    "20kg",
-			"Color":     "blue",
-			"Materials": "stone",
-		},
+		Attributes:  nil,
 		Invoice: &pb.ItemInvoice{
 			Unit: &pb.Money{
 				Amount:   "200000",
@@ -311,15 +304,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Image:       "http://baman.io/image/nexus.png",
 		Returnable:  true,
 		Quantity:    6,
-		Attributes: map[string]string{
-			"Quantity":  "20",
-			"Width":     "8cm",
-			"Height":    "10cm",
-			"Length":    "15cm",
-			"Weight":    "20kg",
-			"Color":     "blue",
-			"Materials": "stone",
-		},
+		Attributes:  nil,
 		Invoice: &pb.ItemInvoice{
 			Unit: &pb.Money{
 				Amount:   "100000",

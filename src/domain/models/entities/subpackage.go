@@ -1,6 +1,8 @@
 package entities
 
-import "time"
+import (
+	"time"
+)
 
 // subpackage id same as sid
 type Subpackage struct {
@@ -24,7 +26,7 @@ type Shipment struct {
 }
 
 type ShippingDetail struct {
-	CarrierName    string                 `bson:"carrierName"`
+	CourierName    string                 `bson:"courierName"`
 	ShippingMethod string                 `bson:"shippingMethod"`
 	TrackingNumber string                 `bson:"trackingNumber"`
 	Image          string                 `bson:"image"`
@@ -35,7 +37,7 @@ type ShippingDetail struct {
 }
 
 type ReturnShippingDetail struct {
-	CarrierName    string                 `bson:"carrierName"`
+	CourierName    string                 `bson:"courierName"`
 	ShippingMethod string                 `bson:"shippingMethod"`
 	TrackingNumber string                 `bson:"trackingNumber"`
 	Image          string                 `bson:"image"`
@@ -57,9 +59,14 @@ type Item struct {
 	Returnable  bool                   `bson:"returnable"`
 	Quantity    int32                  `bson:"quantity"`
 	Reasons     []string               `bson:"reasons"`
-	Attributes  map[string]string      `bson:"attributes"`
+	Attributes  map[string]*Attribute  `bson:"attributes"`
 	Invoice     ItemInvoice            `bson:"invoice"`
 	Extended    map[string]interface{} `bson:"ext"`
+}
+
+type Attribute struct {
+	KeyTranslate   map[string]string `bson:"keyTranslate"`
+	ValueTranslate map[string]string `bson:"valueTranslate"`
 }
 
 type ItemInvoice struct {
@@ -86,20 +93,39 @@ type Progress struct {
 }
 
 type State struct {
-	Name      string                 `bson:"name"`
-	Index     int                    `bson:"index"`
-	Data      map[string]interface{} `bson:"data"`
-	Actions   []Action               `bson:"actions"`
-	CreatedAt time.Time              `bson:"createdAt"`
-	Extended  map[string]interface{} `bson:"ext"`
+	Name       string                 `bson:"name"`
+	Index      int                    `bson:"index"`
+	Schedulers []*SchedulerData       `bson:"schedulers"`
+	Data       map[string]interface{} `bson:"data"`
+	Actions    []Action               `bson:"actions"`
+	CreatedAt  time.Time              `bson:"createdAt"`
+	UpdatedAt  time.Time              `bson:"updatedAt"`
+	Extended   map[string]interface{} `bson:"ext"`
 }
 
 type SchedulerData struct {
-	Name    string    `bson:"name"`
-	Value   time.Time `bson:"value"`
-	Action  string    `bson:"action"`
-	Index   int32     `bson:"index"`
-	Enabled bool      `bson:"enabled"`
+	OId        uint64                 `bson:"oid"`
+	PId        uint64                 `bson:"pid"`
+	SId        uint64                 `bson:"sid"`
+	StateName  string                 `bson:"stateName"`
+	StateIndex int                    `bson:"stateIndex"`
+	Name       string                 `bson:"name"`
+	Group      string                 `bson:"group"`
+	Action     string                 `bson:"action"`
+	Index      int32                  `bson:"index"`
+	Retry      int32                  `bson:"retry"`
+	Cron       string                 `bson:"cron"`
+	Start      *time.Time             `bson:"start"`
+	End        *time.Time             `bson:"end"`
+	Type       string                 `bson:"type"`
+	Mode       string                 `bson:"mode"`
+	Policy     interface{}            `bson:"policy"`
+	Enabled    bool                   `bson:"enabled"`
+	Data       interface{}            `bson:"data"`
+	CreatedAt  time.Time              `bson:"createdAt"`
+	UpdatedAt  time.Time              `bson:"updatedAt"`
+	DeletedAt  *time.Time             `bson:"deletedAt"`
+	Extended   map[string]interface{} `bson:"ext"`
 }
 
 /*
@@ -118,9 +144,16 @@ type Action struct {
 	Policy    string                 `bson:"policy"`
 	Result    string                 `bson:"result"`
 	Reasons   []string               `bson:"reasons"`
+	Note      string                 `bson:"note"`
 	Data      map[string]interface{} `bson:"data"`
 	CreatedAt time.Time              `bson:"createdAt"`
 	Extended  map[string]interface{} `bson:"ext"`
+}
+
+type StockActionData struct {
+	InventoryId string `bson:"inventoryId"`
+	Quantity    int    `bson:"quantity"`
+	Result      bool   `bson:"result"`
 }
 
 func (item Item) DeepCopy() *Item {
@@ -135,7 +168,7 @@ func (item Item) DeepCopy() *Item {
 		Returnable:  item.Returnable,
 		Quantity:    item.Quantity,
 		Reasons:     nil,
-		Attributes:  item.Attributes,
+		Attributes:  nil,
 		Extended:    item.Extended,
 		Invoice: ItemInvoice{
 			Unit:              item.Invoice.Unit,
@@ -153,6 +186,25 @@ func (item Item) DeepCopy() *Item {
 			Extended:          item.Extended,
 		},
 	}
+
+	if item.Attributes != nil {
+		newItem.Attributes = make(map[string]*Attribute, len(item.Attributes))
+		for attrKey, attribute := range item.Attributes {
+			keyTranslates := make(map[string]string, len(attribute.KeyTranslate))
+			for keyTran, value := range attribute.KeyTranslate {
+				keyTranslates[keyTran] = value
+			}
+			valTranslates := make(map[string]string, len(attribute.ValueTranslate))
+			for valTran, value := range attribute.ValueTranslate {
+				valTranslates[valTran] = value
+			}
+			newItem.Attributes[attrKey] = &Attribute{
+				KeyTranslate:   keyTranslates,
+				ValueTranslate: valTranslates,
+			}
+		}
+	}
+
 	if item.Reasons != nil {
 		newItem.Reasons = make([]string, 0, len(item.Reasons))
 		for _, reason := range item.Reasons {
@@ -191,7 +243,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 			Image:       item.Image,
 			Returnable:  item.Returnable,
 			Quantity:    item.Quantity,
-			Attributes:  item.Attributes,
+			Attributes:  nil,
 			Extended:    item.Extended,
 			Reasons:     nil,
 			Invoice: ItemInvoice{
@@ -210,6 +262,25 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 				Extended:          item.Invoice.Extended,
 			},
 		}
+
+		if item.Attributes != nil {
+			newItem.Attributes = make(map[string]*Attribute, len(item.Attributes))
+			for attrKey, attribute := range item.Attributes {
+				keyTranslates := make(map[string]string, len(attribute.KeyTranslate))
+				for keyTran, value := range attribute.KeyTranslate {
+					keyTranslates[keyTran] = value
+				}
+				valTranslates := make(map[string]string, len(attribute.ValueTranslate))
+				for valTran, value := range attribute.ValueTranslate {
+					valTranslates[valTran] = value
+				}
+				newItem.Attributes[attrKey] = &Attribute{
+					KeyTranslate:   keyTranslates,
+					ValueTranslate: valTranslates,
+				}
+			}
+		}
+
 		if item.Reasons != nil {
 			newItem.Reasons = make([]string, 0, len(item.Reasons))
 			for _, reason := range item.Reasons {
@@ -223,7 +294,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 		subPkg.Shipments = &Shipment{}
 		if subpackage.Shipments.ShipmentDetail != nil {
 			subPkg.Shipments.ShipmentDetail = &ShippingDetail{
-				CarrierName:    subpackage.Shipments.ShipmentDetail.CarrierName,
+				CourierName:    subpackage.Shipments.ShipmentDetail.CourierName,
 				ShippingMethod: subpackage.Shipments.ShipmentDetail.ShippingMethod,
 				TrackingNumber: subpackage.Shipments.ShipmentDetail.TrackingNumber,
 				Image:          subpackage.Shipments.ShipmentDetail.Image,
@@ -236,7 +307,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 
 		if subpackage.Shipments.ReturnShipmentDetail != nil {
 			subPkg.Shipments.ReturnShipmentDetail = &ReturnShippingDetail{
-				CarrierName:    subpackage.Shipments.ReturnShipmentDetail.CarrierName,
+				CourierName:    subpackage.Shipments.ReturnShipmentDetail.CourierName,
 				ShippingMethod: subpackage.Shipments.ReturnShipmentDetail.ShippingMethod,
 				TrackingNumber: subpackage.Shipments.ReturnShipmentDetail.TrackingNumber,
 				Image:          subpackage.Shipments.ReturnShipmentDetail.Image,
@@ -257,16 +328,49 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 
 	if subpackage.Tracking.State != nil {
 		subPkg.Tracking.State = &State{
-			Name:      subpackage.Tracking.State.Name,
-			Index:     subpackage.Tracking.State.Index,
-			Data:      subpackage.Tracking.State.Data,
-			Actions:   nil,
-			CreatedAt: subpackage.Tracking.State.CreatedAt,
-			Extended:  subpackage.Tracking.Extended,
+			Name:       subpackage.Tracking.State.Name,
+			Index:      subpackage.Tracking.State.Index,
+			Data:       subpackage.Tracking.State.Data,
+			Schedulers: subpackage.Tracking.State.Schedulers,
+			Actions:    nil,
+			CreatedAt:  subpackage.Tracking.State.CreatedAt,
+			Extended:   subpackage.Tracking.Extended,
 		}
 	}
 
-	if subPkg.Tracking.Action != nil {
+	if subpackage.Tracking.State.Schedulers != nil {
+		subPkg.Tracking.State.Schedulers = make([]*SchedulerData, 0, len(subpackage.Tracking.State.Schedulers))
+		for _, schedulerData := range subpackage.Tracking.State.Schedulers {
+			newSchedulerData := &SchedulerData{
+				OId:        schedulerData.OId,
+				PId:        schedulerData.PId,
+				SId:        schedulerData.SId,
+				StateName:  schedulerData.StateName,
+				StateIndex: schedulerData.StateIndex,
+				Name:       schedulerData.Name,
+				Group:      schedulerData.Group,
+				Action:     schedulerData.Action,
+				Index:      schedulerData.Index,
+				Retry:      schedulerData.Retry,
+				Cron:       schedulerData.Cron,
+				Start:      schedulerData.Start,
+				End:        schedulerData.End,
+				Type:       schedulerData.Type,
+				Mode:       schedulerData.Mode,
+				Policy:     schedulerData.Policy,
+				Enabled:    schedulerData.Enabled,
+				Data:       schedulerData.Data,
+				CreatedAt:  schedulerData.CreatedAt,
+				UpdatedAt:  schedulerData.UpdatedAt,
+				DeletedAt:  schedulerData.DeletedAt,
+				Extended:   schedulerData.Extended,
+			}
+
+			subPkg.Tracking.State.Schedulers = append(subPkg.Tracking.State.Schedulers, newSchedulerData)
+		}
+	}
+
+	if subpackage.Tracking.Action != nil {
 		subPkg.Tracking.Action = &Action{
 			Name:      subpackage.Tracking.Action.Name,
 			Type:      subpackage.Tracking.Action.Type,
@@ -277,6 +381,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 			Policy:    subpackage.Tracking.Action.Policy,
 			Result:    subpackage.Tracking.Action.Result,
 			Reasons:   subpackage.Tracking.Action.Reasons,
+			Note:      subpackage.Tracking.Action.Note,
 			Data:      subpackage.Tracking.Action.Data,
 			CreatedAt: subpackage.Tracking.Action.CreatedAt,
 			Extended:  subpackage.Tracking.Action.Extended,
@@ -289,7 +394,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 		}
 	}
 
-	if subPkg.Tracking.State.Actions != nil {
+	if subpackage.Tracking.State.Actions != nil {
 		subPkg.Tracking.State.Actions = make([]Action, 0, len(subpackage.Tracking.State.Actions))
 		for _, action := range subpackage.Tracking.State.Actions {
 			newAction := Action{

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx"
 
 	"strconv"
@@ -29,6 +30,9 @@ type MongoConfig struct {
 	MaxConnIdleTime time.Duration
 	MaxPoolSize     uint64
 	MinPoolSize     uint64
+	WriteConcernW   string
+	WriteConcernJ   string
+	RetryWrites		bool
 }
 
 type Mongo struct {
@@ -102,8 +106,39 @@ func NewMongo(Config *MongoConfig) (*Mongo, error) {
 			clientOptions.MinPoolSize = &Config.MinPoolSize
 		}
 
-		client, err := mongo.Connect(ctx, clientOptions)
+		clientOptions.SetRetryWrites(Config.RetryWrites)
 
+		if Config.WriteConcernW != "" || Config.WriteConcernJ != "" {
+			var writeConcernOptions = make([]writeconcern.Option, 0, 2)
+			if Config.WriteConcernW != "" {
+				if Config.WriteConcernW == "majority" {
+					writeConcernOptions = append(writeConcernOptions, writeconcern.WMajority())
+				} else {
+					w, err := strconv.Atoi(Config.WriteConcernW)
+					if err != nil {
+						mainErr = errors.New("WriteConcernW config invalid, got error: " + err.Error())
+						return
+					}
+					writeConcernOptions = append(writeConcernOptions, writeconcern.W(w))
+				}
+			}
+
+			if Config.WriteConcernJ != "" {
+				if j, err := strconv.ParseBool(Config.WriteConcernJ); err != nil {
+					mainErr = errors.New("Config.WriteConcernJ config invalid, got error: " + err.Error())
+					return
+				} else {
+					writeConcernOptions = append(writeConcernOptions, writeconcern.J(j))
+				}
+			}
+
+			if len(writeConcernOptions) != 0 {
+				writeConcernOptions = append(writeConcernOptions, writeconcern.WTimeout(Config.WriteTimeout))
+				clientOptions.SetWriteConcern(writeconcern.New(writeConcernOptions...))
+			}
+		}
+
+		client, err := mongo.Connect(ctx, clientOptions)
 		if err != nil {
 			mainErr = errors.New("failed to Connect() to mongo, got error: " + err.Error())
 			return

@@ -2,7 +2,6 @@ package state_36
 
 import (
 	"context"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
@@ -40,27 +39,30 @@ func NewValueOf(base *states.BaseStateImpl, params ...interface{}) states.IState
 
 func (state deliveryFailedState) Process(ctx context.Context, iFrame frame.IFrame) {
 	if iFrame.Header().KeyExists(string(frame.HeaderSIds)) {
-		//subpackages, ok := iFrame.Header().Value(string(frame.HeaderSubpackages)).([]*entities.Subpackage)
-		//if !ok {
-		//	logger.Err("iFrame.Header() not a subpackages, frame: %v, %s state ", iFrame, state.Name())
-		//	return
-		//}
-
 		sids, ok := iFrame.Header().Value(string(frame.HeaderSIds)).([]uint64)
 		if !ok {
-			logger.Err("Process() => iFrame.Header() not a sids, state: %s, frame: %v", state.Name(), iFrame)
+			app.Globals.Logger.FromContext(ctx).Error("iFrame.Header() doesn't have a sids header",
+				"fn", "Process",
+				"state", state.Name(),
+				"iframe", iFrame)
 			return
 		}
 
 		if iFrame.Body().Content() == nil {
-			logger.Err("Process() => iFrame.Body().Content() is nil, state: %s, frame: %v", state.Name(), iFrame)
+			app.Globals.Logger.FromContext(ctx).Error("content of iFrame.Body() is nil",
+				"fn", "Process",
+				"state", state.Name(),
+				"iframe", iFrame)
 			return
 		}
 
 		pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
 		if !ok {
-			logger.Err("Process() => pkgItem in iFrame.Body().Content() is not found, %s state, sids: %v, frame: %v",
-				state.Name(), sids, iFrame)
+			app.Globals.Logger.FromContext(ctx).Error("content of iFrame.Body() is not PackageItem",
+				"fn", "Process",
+				"state", state.Name(),
+				"sids", sids,
+				"iframe", iFrame)
 			return
 		}
 
@@ -87,29 +89,18 @@ func (state deliveryFailedState) Process(ctx context.Context, iFrame frame.IFram
 			}
 		}
 
-		pkgItemUpdated, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
-		if err != nil {
-			logger.Err("Process() => PkgItemRepository.Update failed, state: %s, orderId: %d, pid: %d, sids: %v, error: %s", state.Name(),
-				pkgItem.OrderId, pkgItem.PId, sids, err.Error())
-			return
-		}
-
-		//var updatedSubpackages = make([]*entities.Subpackage, 0, len(subpackages))
-		//for _, subpackage := range subpackages {
-		//	state.UpdateSubPackage(ctx, subpackage, nextToAction)
-		//	subPkgUpdated, err := app.Globals.SubPkgRepository.Update(ctx, *subpackage)
-		//	if err != nil {
-		//		logger.Err("SubPkgRepository.Update in %s state failed, orderId: %d, pid: %d, sid: %d, error: %s",
-		//			state.Name(), subpackage.OrderId, subpackage.PId, subpackage.SId, err.Error())
-		//		return
-		//	}
-		//	updatedSubpackages = append(updatedSubpackages, subPkgUpdated)
-		//}
-
-		//logger.Audit("%s state success, orderId: %d, pid: %d, sid: %v", state.Name(), updatedSubpackages[0].OrderId, updatedSubpackages[0].PId, sids)
-		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItemUpdated).Build())
+		app.Globals.Logger.FromContext(ctx).Debug("set status of subpackages success",
+			"fn", "Process",
+			"state", state.Name(),
+			"oid", pkgItem.OrderId,
+			"pid", pkgItem.PId,
+			"sids", sids)
+		state.StatesMap()[state.Actions()[0]].Process(ctx, frame.FactoryOf(iFrame).SetBody(pkgItem).Build())
 
 	} else {
-		logger.Err("iFrame.Header() not a subpackage , state: %s iframe: %v", state.Name(), iFrame)
+		app.Globals.Logger.FromContext(ctx).Error("Frame Header/Body Invalid",
+			"fn", "Process",
+			"state", state.Name(),
+			"iframe", iFrame)
 	}
 }
