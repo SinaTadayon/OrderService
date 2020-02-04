@@ -15,24 +15,17 @@ import (
 )
 
 const (
-	databaseName    string = "orderService"
-	collectionName  string = "orders"
-	defaultDocCount int    = 1024
+	defaultDocCount int = 1024
 )
-
-//var ErrorTotalCountExceeded = errors.New("total count exceeded")
-//var ErrorPageNotAvailable = errors.New("page not available")
-//var ErrorDeleteFailed = errors.New("update deletedAt field failed")
-//var ErrorRemoveFailed = errors.New("remove subpackage failed")
-//var ErrorUpdateFailed = errors.New("update subpackage failed")
-//var ErrorVersionUpdateFailed = errors.New("update subpackage version failed")
 
 type iSubPkgRepositoryImpl struct {
 	mongoAdapter *mongoadapter.Mongo
+	database     string
+	collection   string
 }
 
-func NewSubPkgRepository(mongoDriver *mongoadapter.Mongo) ISubpackageRepository {
-	return &iSubPkgRepositoryImpl{mongoDriver}
+func NewSubPkgRepository(mongoDriver *mongoadapter.Mongo, database, collection string) ISubpackageRepository {
+	return &iSubPkgRepositoryImpl{mongoDriver, database, collection}
 }
 
 func (repo iSubPkgRepositoryImpl) findAndUpdate(ctx context.Context, subPkg *entities.Subpackage) repository.IRepoError {
@@ -48,7 +41,7 @@ func (repo iSubPkgRepositoryImpl) findAndUpdate(ctx context.Context, subPkg *ent
 		},
 	}).SetReturnDocument(options.After)
 
-	singleResult := repo.mongoAdapter.GetConn().Database(databaseName).Collection(collectionName).FindOneAndUpdate(ctx,
+	singleResult := repo.mongoAdapter.GetConn().Database(repo.database).Collection(repo.collection).FindOneAndUpdate(ctx,
 		bson.D{{"orderId", subPkg.OrderId}},
 		bson.D{{"$set", bson.D{{"packages.$[package].subpackages.$[subpackage]", subPkg}}}}, opt)
 
@@ -72,7 +65,7 @@ func (repo iSubPkgRepositoryImpl) Save(ctx context.Context, subPkg *entities.Sub
 			random := strconv.Itoa(int(entities.GenerateRandomNumber()))
 			sid, _ := strconv.Atoi(strconv.Itoa(int(subPkg.OrderId)) + random)
 			subPkg.SId = uint64(sid)
-			updateResult, err = repo.mongoAdapter.UpdateOne(databaseName, collectionName, bson.D{
+			updateResult, err = repo.mongoAdapter.UpdateOne(repo.database, repo.collection, bson.D{
 				{"orderId", subPkg.OrderId},
 				{"deletedAt", nil},
 				{"packages.pid", subPkg.PId}},
@@ -92,7 +85,7 @@ func (repo iSubPkgRepositoryImpl) Save(ctx context.Context, subPkg *entities.Sub
 			return repository.ErrorFactory(repository.NotFoundErr, "Subpackage Not Found", repository.ErrorUpdateFailed)
 		}
 	} else {
-		updateResult, err := repo.mongoAdapter.UpdateOne(databaseName, collectionName, bson.D{
+		updateResult, err := repo.mongoAdapter.UpdateOne(repo.database, repo.collection, bson.D{
 			{"orderId", subPkg.OrderId},
 			{"deletedAt", nil},
 			{"packages.pid", subPkg.PId}},
@@ -143,7 +136,7 @@ func (repo iSubPkgRepositoryImpl) FindByOrderAndItemId(ctx context.Context, orde
 		{"$replaceRoot": bson.M{"newRoot": "$subpackages"}},
 	}
 
-	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
+	cursor, err := repo.mongoAdapter.Aggregate(repo.database, repo.collection, pipeline)
 	if err != nil {
 		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
 	}
@@ -171,7 +164,7 @@ func (repo iSubPkgRepositoryImpl) FindByOrderAndSellerId(ctx context.Context, or
 		{"$replaceRoot": bson.M{"newRoot": "$subpackages"}},
 	}
 
-	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
+	cursor, err := repo.mongoAdapter.Aggregate(repo.database, repo.collection, pipeline)
 	if err != nil {
 		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
 	}
@@ -203,7 +196,7 @@ func (repo iSubPkgRepositoryImpl) FindAll(ctx context.Context, pid uint64) ([]*e
 		{"$replaceRoot": bson.M{"newRoot": "$subpackages"}},
 	}
 
-	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
+	cursor, err := repo.mongoAdapter.Aggregate(repo.database, repo.collection, pipeline)
 	if err != nil {
 		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
 	}
@@ -236,7 +229,7 @@ func (repo iSubPkgRepositoryImpl) FindAllWithSort(ctx context.Context, pid uint6
 		{"$replaceRoot": bson.M{"newRoot": "$subpackages"}},
 	}
 
-	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
+	cursor, err := repo.mongoAdapter.Aggregate(repo.database, repo.collection, pipeline)
 	if err != nil {
 		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
 	}
@@ -306,7 +299,7 @@ func (repo iSubPkgRepositoryImpl) FindAllWithPage(ctx context.Context, pid uint6
 		{"$replaceRoot": bson.M{"newRoot": "$subpackages"}},
 	}
 
-	cursor, e := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
+	cursor, e := repo.mongoAdapter.Aggregate(repo.database, repo.collection, pipeline)
 	if e != nil {
 		return nil, 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
 	}
@@ -376,7 +369,7 @@ func (repo iSubPkgRepositoryImpl) FindAllWithPageAndSort(ctx context.Context, pi
 		{"$replaceRoot": bson.M{"newRoot": "$subpackages"}},
 	}
 
-	cursor, e := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
+	cursor, e := repo.mongoAdapter.Aggregate(repo.database, repo.collection, pipeline)
 	if e != nil {
 		return nil, 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(e, "Aggregate Failed"))
 	}
@@ -409,7 +402,7 @@ func (repo iSubPkgRepositoryImpl) FindByFilter(ctx context.Context, totalSupplie
 		return nil, nil
 	}
 
-	cursor, e := repo.mongoAdapter.Aggregate(databaseName, collectionName, filter)
+	cursor, e := repo.mongoAdapter.Aggregate(repo.database, repo.collection, filter)
 	if e != nil {
 		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(e, "Aggregate Subpackage Failed"))
 	}
@@ -468,7 +461,7 @@ func (repo iSubPkgRepositoryImpl) FindByFilterWithPage(ctx context.Context, tota
 		return nil, totalCount, repository.ErrorFactory(repository.BadRequestErr, "Request Operation Failed", repository.ErrorTotalCountExceeded)
 	}
 
-	cursor, e := repo.mongoAdapter.Aggregate(databaseName, collectionName, filter)
+	cursor, e := repo.mongoAdapter.Aggregate(repo.database, repo.collection, filter)
 	if e != nil {
 		return nil, totalCount, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(e, "Aggregate Subpackages Failed"))
 	} else if cursor.Err() != nil {
@@ -492,7 +485,7 @@ func (repo iSubPkgRepositoryImpl) FindByFilterWithPage(ctx context.Context, tota
 }
 
 func (repo iSubPkgRepositoryImpl) ExistsById(ctx context.Context, sid uint64) (bool, repository.IRepoError) {
-	singleResult := repo.mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"packages.subpackages.sid", sid}, {"deletedAt", nil}})
+	singleResult := repo.mongoAdapter.FindOne(repo.database, repo.collection, bson.D{{"packages.subpackages.sid", sid}, {"deletedAt", nil}})
 	if err := singleResult.Err(); err != nil {
 		if repo.mongoAdapter.NoDocument(err) {
 			return false, nil
@@ -514,7 +507,7 @@ func (repo iSubPkgRepositoryImpl) Count(ctx context.Context, pid uint64) (int64,
 		{"$project": bson.M{"_id": 0, "count": 1}},
 	}
 
-	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
+	cursor, err := repo.mongoAdapter.Aggregate(repo.database, repo.collection, pipeline)
 	if err != nil {
 		return 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
 	}
@@ -535,7 +528,7 @@ func (repo iSubPkgRepositoryImpl) CountWithFilter(ctx context.Context, supplier 
 		Count int
 	}
 
-	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, supplier())
+	cursor, err := repo.mongoAdapter.Aggregate(repo.database, repo.collection, supplier())
 	if err != nil {
 		return 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
 	}

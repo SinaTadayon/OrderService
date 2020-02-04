@@ -63,9 +63,9 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver)
-	app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver)
-	app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver)
+	app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
+	app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
+	app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
 
 	// TODO create item repository
 	flowManager, err := domain.NewFlowManager()

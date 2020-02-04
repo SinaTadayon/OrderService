@@ -18,9 +18,11 @@ import (
 
 var subPkgRepo ISubpackageRepository
 var mongoAdapter *mongoadapter.Mongo
+var config *configs.Config
 
 func TestMain(m *testing.M) {
 	var path string
+	var err error
 	if os.Getenv("APP_MODE") == "dev" {
 		path = "../../../../testdata/.env"
 	} else {
@@ -30,7 +32,7 @@ func TestMain(m *testing.M) {
 	applog.GLog.ZapLogger = applog.InitZap()
 	applog.GLog.Logger = logger.NewZapLogger(applog.GLog.ZapLogger)
 
-	config, _, err := configs.LoadConfigs(path, "")
+	config, _, err = configs.LoadConfigs(path, "")
 	if err != nil {
 		applog.GLog.Logger.Error("configs.LoadConfig failed",
 			"error", err)
@@ -60,7 +62,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	subPkgRepo = NewSubPkgRepository(mongoAdapter)
+	subPkgRepo = NewSubPkgRepository(mongoAdapter, config.Mongo.Database, config.Mongo.Collection)
 
 	// Running Tests
 	code := m.Run()
@@ -304,7 +306,7 @@ func TestExitsById_Success(t *testing.T) {
 }
 
 func removeCollection() {
-	if _, err := mongoAdapter.DeleteMany(databaseName, collectionName, bson.M{}); err != nil {
+	if _, err := mongoAdapter.DeleteMany(config.Mongo.Database, config.Mongo.Collection, bson.M{}); err != nil {
 	}
 }
 
@@ -335,11 +337,11 @@ func insert(order *entities.Order) (*entities.Order, error) {
 		}
 
 		order.CreatedAt = time.Now().UTC()
-		var insertOneResult, err = mongoAdapter.InsertOne(databaseName, collectionName, &order)
+		var insertOneResult, err = mongoAdapter.InsertOne(config.Mongo.Database, config.Mongo.Collection, &order)
 		if err != nil {
 			if mongoAdapter.IsDupError(err) {
 				for mongoAdapter.IsDupError(err) {
-					insertOneResult, err = mongoAdapter.InsertOne(databaseName, collectionName, &order)
+					insertOneResult, err = mongoAdapter.InsertOne(config.Mongo.Database, config.Mongo.Collection, &order)
 				}
 			} else {
 				return nil, err
@@ -348,7 +350,7 @@ func insert(order *entities.Order) (*entities.Order, error) {
 		order.ID = insertOneResult.InsertedID.(primitive.ObjectID)
 	} else {
 		order.CreatedAt = time.Now().UTC()
-		var insertOneResult, err = mongoAdapter.InsertOne(databaseName, collectionName, &order)
+		var insertOneResult, err = mongoAdapter.InsertOne(config.Mongo.Database, config.Mongo.Collection, &order)
 		if err != nil {
 			return nil, err
 		}
@@ -382,11 +384,11 @@ func insertWithoutChangeTime(order *entities.Order) (*entities.Order, error) {
 		}
 
 		order.CreatedAt = time.Now().UTC()
-		var insertOneResult, err = mongoAdapter.InsertOne(databaseName, collectionName, &order)
+		var insertOneResult, err = mongoAdapter.InsertOne(config.Mongo.Database, config.Mongo.Collection, &order)
 		if err != nil {
 			if mongoAdapter.IsDupError(err) {
 				for mongoAdapter.IsDupError(err) {
-					insertOneResult, err = mongoAdapter.InsertOne(databaseName, collectionName, &order)
+					insertOneResult, err = mongoAdapter.InsertOne(config.Mongo.Database, config.Mongo.Collection, &order)
 				}
 			} else {
 				return nil, err
@@ -395,7 +397,7 @@ func insertWithoutChangeTime(order *entities.Order) (*entities.Order, error) {
 		order.ID = insertOneResult.InsertedID.(primitive.ObjectID)
 	} else {
 		order.CreatedAt = time.Now().UTC()
-		var insertOneResult, err = mongoAdapter.InsertOne(databaseName, collectionName, &order)
+		var insertOneResult, err = mongoAdapter.InsertOne(config.Mongo.Database, config.Mongo.Collection, &order)
 		if err != nil {
 			return nil, err
 		}
@@ -1498,7 +1500,7 @@ func createOrder() *entities.Order {
 
 func getOrder(orderId uint64) (*entities.Order, error) {
 	var order entities.Order
-	singleResult := mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"orderId", orderId}, {"deletedAt", nil}})
+	singleResult := mongoAdapter.FindOne(config.Mongo.Database, config.Mongo.Collection, bson.D{{"orderId", orderId}, {"deletedAt", nil}})
 	if err := singleResult.Err(); err != nil {
 		return nil, err
 	}

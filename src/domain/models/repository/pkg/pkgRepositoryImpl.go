@@ -14,17 +14,17 @@ import (
 )
 
 const (
-	databaseName    string = "orderService"
-	collectionName  string = "orders"
-	defaultDocCount int    = 1024
+	defaultDocCount int = 1024
 )
 
 type iPkgItemRepositoryImpl struct {
 	mongoAdapter *mongoadapter.Mongo
+	database     string
+	collection   string
 }
 
-func NewPkgItemRepository(mongoDriver *mongoadapter.Mongo) IPkgItemRepository {
-	return &iPkgItemRepositoryImpl{mongoDriver}
+func NewPkgItemRepository(mongoDriver *mongoadapter.Mongo, database, collection string) IPkgItemRepository {
+	return &iPkgItemRepositoryImpl{mongoDriver, database, collection}
 }
 
 func (repo iPkgItemRepositoryImpl) findAndUpdate(ctx context.Context, pkgItem *entities.PackageItem, upsert bool) (*entities.PackageItem, repository.IRepoError) {
@@ -33,7 +33,7 @@ func (repo iPkgItemRepositoryImpl) findAndUpdate(ctx context.Context, pkgItem *e
 	pkgItem.Version += 1
 	opt := options.FindOneAndUpdate()
 	opt.SetUpsert(upsert)
-	singleResult := repo.mongoAdapter.GetConn().Database(databaseName).Collection(collectionName).FindOneAndUpdate(ctx,
+	singleResult := repo.mongoAdapter.GetConn().Database(repo.database).Collection(repo.collection).FindOneAndUpdate(ctx,
 		bson.D{
 			{"orderId", pkgItem.OrderId},
 			{"packages", bson.D{
@@ -122,7 +122,7 @@ func (repo iPkgItemRepositoryImpl) FindById(ctx context.Context, orderId uint64,
 		{"$replaceRoot": bson.M{"newRoot": "$packages"}},
 	}
 
-	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
+	cursor, err := repo.mongoAdapter.Aggregate(repo.database, repo.collection, pipeline)
 	if err != nil {
 		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
 	}
@@ -141,7 +141,7 @@ func (repo iPkgItemRepositoryImpl) FindById(ctx context.Context, orderId uint64,
 func (repo iPkgItemRepositoryImpl) FindByFilter(ctx context.Context, supplier func() (filter interface{})) ([]*entities.PackageItem, repository.IRepoError) {
 	filter := supplier()
 
-	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, filter)
+	cursor, err := repo.mongoAdapter.Aggregate(repo.database, repo.collection, filter)
 	if err != nil {
 		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
 	}
@@ -163,7 +163,7 @@ func (repo iPkgItemRepositoryImpl) FindByFilter(ctx context.Context, supplier fu
 }
 
 func (repo iPkgItemRepositoryImpl) ExistsById(ctx context.Context, orderId uint64, id uint64) (bool, repository.IRepoError) {
-	singleResult := repo.mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"orderId", orderId}, {"packages.pid", id}, {"deletedAt", nil}})
+	singleResult := repo.mongoAdapter.FindOne(repo.database, repo.collection, bson.D{{"orderId", orderId}, {"packages.pid", id}, {"deletedAt", nil}})
 	if err := singleResult.Err(); err != nil {
 		if repo.mongoAdapter.NoDocument(err) {
 			return false, nil
@@ -174,7 +174,7 @@ func (repo iPkgItemRepositoryImpl) ExistsById(ctx context.Context, orderId uint6
 }
 
 func (repo iPkgItemRepositoryImpl) Count(ctx context.Context, id uint64) (int64, repository.IRepoError) {
-	total, err := repo.mongoAdapter.Count(databaseName, collectionName, bson.D{{"packages.pid", id},
+	total, err := repo.mongoAdapter.Count(repo.database, repo.collection, bson.D{{"packages.pid", id},
 		{"deletedAt", nil}})
 	if err != nil {
 		return 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, ""))
@@ -188,7 +188,7 @@ func (repo iPkgItemRepositoryImpl) CountWithFilter(ctx context.Context, supplier
 		Count int
 	}
 
-	cursor, err := repo.mongoAdapter.Aggregate(databaseName, collectionName, supplier())
+	cursor, err := repo.mongoAdapter.Aggregate(repo.database, repo.collection, supplier())
 	if err != nil {
 		return 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate failed"))
 	}

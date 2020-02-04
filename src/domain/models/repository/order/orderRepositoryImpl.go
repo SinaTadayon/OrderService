@@ -15,18 +15,14 @@ import (
 	"time"
 )
 
-const (
-	databaseName    string = "orderService"
-	collectionName  string = "orders"
-	defaultDocCount int    = 1024
-)
-
 type iOrderRepositoryImpl struct {
 	mongoAdapter *mongoadapter.Mongo
+	database     string
+	collection   string
 }
 
-func NewOrderRepository(mongoDriver *mongoadapter.Mongo) IOrderRepository {
-	return &iOrderRepositoryImpl{mongoDriver}
+func NewOrderRepository(mongoDriver *mongoadapter.Mongo, database, collection string) IOrderRepository {
+	return &iOrderRepositoryImpl{mongoDriver, database, collection}
 }
 
 func (repo iOrderRepositoryImpl) generateAndSetId(ctx context.Context, order entities.Order) *entities.Order {
@@ -66,7 +62,7 @@ func (repo iOrderRepositoryImpl) Save(ctx context.Context, order entities.Order)
 		var newOrder *entities.Order
 		for {
 			newOrder = repo.generateAndSetId(ctx, order)
-			var insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, newOrder)
+			var insertOneResult, err = repo.mongoAdapter.InsertOne(repo.database, repo.collection, newOrder)
 			if err != nil {
 				if repo.mongoAdapter.IsDupError(err) {
 					continue
@@ -82,7 +78,7 @@ func (repo iOrderRepositoryImpl) Save(ctx context.Context, order entities.Order)
 		order.UpdatedAt = time.Now().UTC()
 		currentVersion := order.Version
 		order.Version += 1
-		updateResult, e := repo.mongoAdapter.UpdateOne(databaseName, collectionName, bson.D{{"orderId", order.OrderId}, {"deletedAt", nil}, {"version", currentVersion}},
+		updateResult, e := repo.mongoAdapter.UpdateOne(repo.database, repo.collection, bson.D{{"orderId", order.OrderId}, {"deletedAt", nil}, {"version", currentVersion}},
 			bson.D{{"$set", order}})
 		if e != nil {
 			return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(e, "UpdateOne Failed"))
@@ -106,7 +102,7 @@ func (repo iOrderRepositoryImpl) UpdateStatus(ctx context.Context, order *entiti
 	order.Version += 1
 	opt := options.FindOneAndUpdate()
 	opt.SetUpsert(false)
-	singleResult := repo.mongoAdapter.GetConn().Database(databaseName).Collection(collectionName).FindOneAndUpdate(ctx,
+	singleResult := repo.mongoAdapter.GetConn().Database(repo.database).Collection(repo.collection).FindOneAndUpdate(ctx,
 		bson.D{
 			{"orderId", order.OrderId},
 			{"version", currentVersion},
@@ -128,7 +124,7 @@ func (repo iOrderRepositoryImpl) Insert(ctx context.Context, order entities.Orde
 		var newOrder *entities.Order
 		for {
 			newOrder = repo.generateAndSetId(ctx, order)
-			var insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, newOrder)
+			var insertOneResult, err = repo.mongoAdapter.InsertOne(repo.database, repo.collection, newOrder)
 			if err != nil {
 				if repo.mongoAdapter.IsDupError(err) {
 					continue
@@ -141,7 +137,7 @@ func (repo iOrderRepositoryImpl) Insert(ctx context.Context, order entities.Orde
 		}
 		return newOrder, nil
 	} else {
-		var insertOneResult, err = repo.mongoAdapter.InsertOne(databaseName, collectionName, &order)
+		var insertOneResult, err = repo.mongoAdapter.InsertOne(repo.database, repo.collection, &order)
 		if err != nil {
 			return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Insert Order Failed"))
 		}
@@ -165,7 +161,7 @@ func (repo iOrderRepositoryImpl) FindAll(ctx context.Context) ([]*entities.Order
 		return nil, nil
 	}
 
-	cursor, e := repo.mongoAdapter.FindMany(databaseName, collectionName, bson.D{{"deletedAt", nil}})
+	cursor, e := repo.mongoAdapter.FindMany(repo.database, repo.collection, bson.D{{"deletedAt", nil}})
 	if e != nil {
 		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(e, "FindMany Orders Failed"))
 	}
@@ -202,7 +198,7 @@ func (repo iOrderRepositoryImpl) FindAllWithSort(ctx context.Context, fieldName 
 	optionFind := options.Find()
 	optionFind.SetSort(sortMap)
 
-	cursor, e := repo.mongoAdapter.FindMany(databaseName, collectionName, bson.D{{"deletedAt", nil}}, optionFind)
+	cursor, e := repo.mongoAdapter.FindMany(repo.database, repo.collection, bson.D{{"deletedAt", nil}}, optionFind)
 	if e != nil {
 		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(e, "FindMany Order Failed"))
 	}
@@ -263,7 +259,7 @@ func (repo iOrderRepositoryImpl) FindAllWithPage(ctx context.Context, page, perP
 	optionFind.SetLimit(perPage)
 	optionFind.SetSkip(offset)
 
-	cursor, e := repo.mongoAdapter.FindMany(databaseName, collectionName, bson.D{{"deletedAt", nil}}, optionFind)
+	cursor, e := repo.mongoAdapter.FindMany(repo.database, repo.collection, bson.D{{"deletedAt", nil}}, optionFind)
 	if e != nil {
 		return nil, totalCount, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "FindMany Orders Failed"))
 	} else if cursor.Err() != nil {
@@ -332,7 +328,7 @@ func (repo iOrderRepositoryImpl) FindAllWithPageAndSort(ctx context.Context, pag
 		optionFind.SetSort(sortMap)
 	}
 
-	cursor, e := repo.mongoAdapter.FindMany(databaseName, collectionName, bson.D{{"deletedAt", nil}}, optionFind)
+	cursor, e := repo.mongoAdapter.FindMany(repo.database, repo.collection, bson.D{{"deletedAt", nil}}, optionFind)
 	if e != nil {
 		return nil, totalCount, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "FindMany Orders Failed"))
 	} else if cursor.Err() != nil {
@@ -361,7 +357,7 @@ func (repo iOrderRepositoryImpl) FindAllById(ctx context.Context, ids ...uint64)
 
 func (repo iOrderRepositoryImpl) FindById(ctx context.Context, orderId uint64) (*entities.Order, repository.IRepoError) {
 	var order entities.Order
-	singleResult := repo.mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"orderId", orderId}, {"deletedAt", nil}})
+	singleResult := repo.mongoAdapter.FindOne(repo.database, repo.collection, bson.D{{"orderId", orderId}, {"deletedAt", nil}})
 	if singleResult.Err() != nil {
 		if repo.mongoAdapter.NoDocument(singleResult.Err()) {
 			return nil, repository.ErrorFactory(repository.NotFoundErr, "Order Not Found", errors.Wrap(singleResult.Err(), "Order Not Found"))
@@ -388,7 +384,7 @@ func (repo iOrderRepositoryImpl) FindByFilter(ctx context.Context, supplier func
 		return nil, nil
 	}
 
-	cursor, e := repo.mongoAdapter.FindMany(databaseName, collectionName, filter)
+	cursor, e := repo.mongoAdapter.FindMany(repo.database, repo.collection, filter)
 	if e != nil {
 		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(e, "FindMany Order Failed"))
 	}
@@ -426,7 +422,7 @@ func (repo iOrderRepositoryImpl) FindByFilterWithSort(ctx context.Context, suppl
 	optionFind := options.Find()
 	optionFind.SetSort(sortMap)
 
-	cursor, e := repo.mongoAdapter.FindMany(databaseName, collectionName, filter, optionFind)
+	cursor, e := repo.mongoAdapter.FindMany(repo.database, repo.collection, filter, optionFind)
 	if e != nil {
 		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(e, "FindMany Orders Failed"))
 	}
@@ -489,7 +485,7 @@ func (repo iOrderRepositoryImpl) FindByFilterWithPage(ctx context.Context, suppl
 	optionFind.SetLimit(perPage)
 	optionFind.SetSkip(offset)
 
-	cursor, e := repo.mongoAdapter.FindMany(databaseName, collectionName, filter, optionFind)
+	cursor, e := repo.mongoAdapter.FindMany(repo.database, repo.collection, filter, optionFind)
 	if e != nil {
 		return nil, totalCount, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "FindMany Orders Failed"))
 	} else if cursor.Err() != nil {
@@ -560,7 +556,7 @@ func (repo iOrderRepositoryImpl) FindByFilterWithPageAndSort(ctx context.Context
 		optionFind.SetSort(sortMap)
 	}
 
-	cursor, e := repo.mongoAdapter.FindMany(databaseName, collectionName, filter, optionFind)
+	cursor, e := repo.mongoAdapter.FindMany(repo.database, repo.collection, filter, optionFind)
 	if e != nil {
 		return nil, totalCount, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(e, "FindMany Orders Failed"))
 	} else if cursor.Err() != nil {
@@ -584,7 +580,7 @@ func (repo iOrderRepositoryImpl) FindByFilterWithPageAndSort(ctx context.Context
 }
 
 func (repo iOrderRepositoryImpl) ExistsById(ctx context.Context, orderId uint64) (bool, repository.IRepoError) {
-	singleResult := repo.mongoAdapter.FindOne(databaseName, collectionName, bson.D{{"orderId", orderId}, {"deletedAt", nil}})
+	singleResult := repo.mongoAdapter.FindOne(repo.database, repo.collection, bson.D{{"orderId", orderId}, {"deletedAt", nil}})
 	if singleResult.Err() != nil {
 		if repo.mongoAdapter.NoDocument(singleResult.Err()) {
 			return false, nil
@@ -595,7 +591,7 @@ func (repo iOrderRepositoryImpl) ExistsById(ctx context.Context, orderId uint64)
 }
 
 func (repo iOrderRepositoryImpl) Count(ctx context.Context) (int64, repository.IRepoError) {
-	total, err := repo.mongoAdapter.Count(databaseName, collectionName, bson.D{{"deletedAt", nil}})
+	total, err := repo.mongoAdapter.Count(repo.database, repo.collection, bson.D{{"deletedAt", nil}})
 	if err != nil {
 		return 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Quantity Orders Failed"))
 	}
@@ -603,7 +599,7 @@ func (repo iOrderRepositoryImpl) Count(ctx context.Context) (int64, repository.I
 }
 
 func (repo iOrderRepositoryImpl) CountWithFilter(ctx context.Context, supplier func() interface{}) (int64, repository.IRepoError) {
-	total, err := repo.mongoAdapter.Count(databaseName, collectionName, supplier())
+	total, err := repo.mongoAdapter.Count(repo.database, repo.collection, supplier())
 	if err != nil {
 		return 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "CountWithFilter Orders Failed"))
 	}
@@ -620,7 +616,7 @@ func (repo iOrderRepositoryImpl) DeleteById(ctx context.Context, orderId uint64)
 	deletedAt := time.Now().UTC()
 	order.DeletedAt = &deletedAt
 
-	updateResult, e := repo.mongoAdapter.UpdateOne(databaseName, collectionName,
+	updateResult, e := repo.mongoAdapter.UpdateOne(repo.database, repo.collection,
 		bson.D{{"orderId", order.OrderId}, {"deletedAt", nil}},
 		bson.D{{"$set", order}})
 	if e != nil {
@@ -644,7 +640,7 @@ func (repo iOrderRepositoryImpl) DeleteAllWithOrders(ctx context.Context, orders
 
 // TODO cascade delete in packages and subpackages
 func (repo iOrderRepositoryImpl) DeleteAll(ctx context.Context) repository.IRepoError {
-	_, err := repo.mongoAdapter.UpdateMany(databaseName, collectionName,
+	_, err := repo.mongoAdapter.UpdateMany(repo.database, repo.collection,
 		bson.D{{"deletedAt", nil}},
 		bson.M{"$set": bson.M{"deletedAt": time.Now().UTC()}})
 	if err != nil {
@@ -654,7 +650,7 @@ func (repo iOrderRepositoryImpl) DeleteAll(ctx context.Context) repository.IRepo
 }
 
 func (repo iOrderRepositoryImpl) RemoveById(ctx context.Context, orderId uint64) repository.IRepoError {
-	result, err := repo.mongoAdapter.DeleteOne(databaseName, collectionName, bson.M{"orderId": orderId})
+	result, err := repo.mongoAdapter.DeleteOne(repo.database, repo.collection, bson.M{"orderId": orderId})
 	if err != nil {
 		return repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "RemoveById Order Failed"))
 	}
@@ -674,7 +670,7 @@ func (repo iOrderRepositoryImpl) RemoveAllWithOrders(ctx context.Context, orders
 }
 
 func (repo iOrderRepositoryImpl) RemoveAll(ctx context.Context) repository.IRepoError {
-	_, err := repo.mongoAdapter.DeleteMany(databaseName, collectionName, bson.M{})
+	_, err := repo.mongoAdapter.DeleteMany(repo.database, repo.collection, bson.M{})
 	if err != nil {
 		return repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "DeleteMany Order Failed"))
 	}

@@ -22,11 +22,6 @@ import (
 )
 
 const (
-	databaseName   string = "orderService"
-	collectionName string = "orders"
-)
-
-const (
 	// ISO8601 standard time format
 	ISO8601 = "2006-01-02T15:04:05-0700"
 )
@@ -83,6 +78,8 @@ type startStewardFn func(ctx context.Context, pulseInterval time.Duration) (hear
 
 type SchedulerService struct {
 	mongoAdapter            *mongoadapter.Mongo
+	database                string
+	collection              string
 	orderClient             protoOrder.OrderServiceClient
 	grpcConnection          *grpc.ClientConn
 	serverAddress           string
@@ -94,7 +91,7 @@ type SchedulerService struct {
 	waitGroup               sync.WaitGroup
 }
 
-func NewScheduler(mongoAdapter *mongoadapter.Mongo, address string, port int,
+func NewScheduler(mongoAdapter *mongoadapter.Mongo, database, collection, address string, port int,
 	schedulerInterval time.Duration, schedulerStewardTimeout time.Duration, schedulerWorkerTimeout time.Duration,
 	states ...StateConfig) *SchedulerService {
 	for i := 0; i < len(states); i++ {
@@ -102,7 +99,7 @@ func NewScheduler(mongoAdapter *mongoadapter.Mongo, address string, port int,
 			states[i].ScheduleInterval = schedulerInterval
 		}
 	}
-	return &SchedulerService{mongoAdapter: mongoAdapter, serverAddress: address, serverPort: port,
+	return &SchedulerService{mongoAdapter: mongoAdapter, database: database, collection: collection, serverAddress: address, serverPort: port,
 		schedulerInterval: schedulerInterval, schedulerStewardTimeout: schedulerStewardTimeout, schedulerWorkerTimeout: schedulerWorkerTimeout,
 		states: states}
 }
@@ -637,7 +634,7 @@ func (scheduler *SchedulerService) findAllWithPage(ctx context.Context, state st
 		{"$project": bson.M{"_id": 0, "packages.oid": 0}},
 	}
 
-	cursor, err := scheduler.mongoAdapter.Aggregate(databaseName, collectionName, pipeline)
+	cursor, err := scheduler.mongoAdapter.Aggregate(scheduler.database, scheduler.collection, pipeline)
 	if err != nil {
 		return nil, 0, errors.Wrap(err, "Aggregate Failed")
 	}
@@ -672,7 +669,7 @@ func (scheduler *SchedulerService) getTotalCount(ctx context.Context, state stat
 		{"$project": bson.M{"_id": 0, "count": 1}},
 	}
 
-	cursor, err := scheduler.mongoAdapter.Aggregate(databaseName, collectionName, totalCountPipeline)
+	cursor, err := scheduler.mongoAdapter.Aggregate(scheduler.database, scheduler.collection, totalCountPipeline)
 	if err != nil {
 		return 0, errors.Wrap(err, "Aggregate Failed")
 	}

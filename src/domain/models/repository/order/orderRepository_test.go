@@ -59,7 +59,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	orderRepository = NewOrderRepository(mongoAdapter)
+	orderRepository = NewOrderRepository(mongoAdapter, config.Mongo.Database, config.Mongo.Collection)
 
 	// Running Tests
 	code := m.Run()

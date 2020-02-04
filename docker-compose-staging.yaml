@@ -23,6 +23,8 @@ services:
       - ORDER_SERVICE_MONGO_MAX_CONN_IDLE_TIME=60
       - ORDER_SERVICE_MONGO_MAX_POOL_SIZE=128
       - ORDER_SERVICE_MONGO_MIN_POOL_SIZE=64
+      - ORDER_SERVICE_MONGO_DB_NAME=orderService
+      - ORDER_SERVICE_MONGO_COLLECTION_NAME=orders
       - ORDER_SCHEDULER_TIME_UNIT=minute
       - ORDER_SCHEDULER_STATES=Payment_Pending;Approval_Pending;Shipment_Pending;Shipment_Delayed;Shipped;Delivery_Pending;Delivered;Return_Shipment_Pending;Return_Shipped;Return_Delivered
       - ORDER_SCHEDULER_INTERVAL=60
@@ -44,8 +46,6 @@ services:
       - ORDER_SCHEDULER_RETURN_DELIVERED_STATE=96
       - ORDER_PAYMENT_CALLBACK_URL_SUCCESS=http://staging.faza.io/callback-success?orderId=
       - ORDER_PAYMENT_CALLBACK_URL_FAIL=http://staging.faza.io/callback-failed?orderId=
-      - ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT_SUCCESS=http://staging.faza.io/callback-success?orderId=
-      - ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT_FAIL=http://staging.faza.io/callback-fail?orderId=
       - PROMETHEUS_PORT=9100
       - NOTIFICATION_SMS_TEMPLATES=/app/notification/sms/smsTemplate.txt
       - EMAIL_TMP_NOTIFY_SELLER_FOR_NEW_ORDER=NotifySellerForNewOrder.html

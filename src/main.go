@@ -64,9 +64,9 @@ func main() {
 			"configs", app.Globals.Config.Mongo, "error", err)
 	}
 
-	app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver)
-	app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver)
-	app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver)
+	app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
+	app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
+	app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
 
 	if app.Globals.Config.App.ServiceMode == "server" {
 		app.Globals.Logger.Info("Order Service Run in Server Mode . . . ", "fn", "main")
@@ -74,10 +74,8 @@ func main() {
 		app.Globals.FlowManagerConfig = make(map[string]interface{}, 32)
 
 		if app.Globals.Config.App.OrderPaymentCallbackUrlSuccess == "" ||
-			app.Globals.Config.App.OrderPaymentCallbackUrlFail == "" ||
-			app.Globals.Config.App.OrderPaymentCallbackUrlAsanpardakhtSuccess == "" ||
-			app.Globals.Config.App.OrderPaymentCallbackUrlAsanpardakhtFail == "" {
-			app.Globals.Logger.Error("OrderPaymentCallbackUrlSuccess/Fail or OrderPaymentCallbackUrlAsanpardakhtSuccess/Fail empty", "fn", "main")
+			app.Globals.Config.App.OrderPaymentCallbackUrlFail == "" {
+			app.Globals.Logger.Error("OrderPaymentCallbackUrlSuccess/Fail", "fn", "main")
 			os.Exit(1)
 		}
 
@@ -460,6 +458,8 @@ func main() {
 		app.Globals.Logger.Info("Order Service Run in Schedulers Mode . . . ", "fn", "main")
 
 		schedulerService := scheduler_service.NewScheduler(mongoDriver,
+			app.Globals.Config.Mongo.Database,
+			app.Globals.Config.Mongo.Collection,
 			app.Globals.Config.GRPCServer.Address,
 			app.Globals.Config.GRPCServer.Port,
 			schedulerInterval,

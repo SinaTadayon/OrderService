@@ -9,12 +9,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-const (
-	databaseName    string = "orderService"
-	collectionName  string = "orders"
-	defaultDocCount int    = 1024
-)
-
 func SchedulerConvert() error {
 	orders, err := app.Globals.OrderRepository.FindAll(context.Background())
 	if err != nil {
