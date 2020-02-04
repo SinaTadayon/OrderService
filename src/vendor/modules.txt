@@ -76,7 +76,7 @@ gitlab.faza.io/go-framework/acl
 gitlab.faza.io/go-framework/logger
 # gitlab.faza.io/go-framework/mongoadapter v0.0.9
 gitlab.faza.io/go-framework/mongoadapter
-# gitlab.faza.io/protos/cart v0.0.12
+# gitlab.faza.io/protos/cart v0.0.14
 gitlab.faza.io/protos/cart
 # gitlab.faza.io/protos/notification v0.0.3
 gitlab.faza.io/protos/notification

@@ -66,6 +66,12 @@ message Coupon {
     string endDate = 3;
     string status = 4;
     CouponDiscount couponDiscount = 5;
+    repeated Usage usage = 6;
+}
+message Usage {
+    string user = 1;
+    string orderNum = 2;
+    string usedTime = 3;
 }
 message CouponUseRequest {
     string code = 1;
