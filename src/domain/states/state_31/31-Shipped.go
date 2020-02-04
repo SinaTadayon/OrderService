@@ -78,32 +78,32 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 			expireTime = time.Now().UTC().Add(value)
 		} else {
 			value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShippedStateConfig].(int)
-			if sellerReactionTime, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig]; ok {
-				if timeUnit == string(app.HourTimeUnit) {
-					expireTime = time.Now().UTC().Add(
-						time.Hour*time.Duration(sellerReactionTime.(int)+int(value)) +
-							time.Minute*time.Duration(0) +
-							time.Second*time.Duration(0))
-				} else {
-					expireTime = time.Now().UTC().Add(
-						time.Hour*time.Duration(0) +
-							time.Minute*time.Duration(sellerReactionTime.(int)+int(value)) +
-							time.Second*time.Duration(0))
-				}
+			//if sellerReactionTime, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig]; ok {
+			//	if timeUnit == string(app.HourTimeUnit) {
+			//		expireTime = time.Now().UTC().Add(
+			//			time.Hour*time.Duration(sellerReactionTime.(int)+int(value)) +
+			//				time.Minute*time.Duration(0) +
+			//				time.Second*time.Duration(0))
+			//	} else {
+			//		expireTime = time.Now().UTC().Add(
+			//			time.Hour*time.Duration(0) +
+			//				time.Minute*time.Duration(sellerReactionTime.(int)+int(value)) +
+			//				time.Second*time.Duration(0))
+			//	}
+			//} else {
+			//	timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
+			if timeUnit == app.HourTimeUnit {
+				expireTime = time.Now().UTC().Add(
+					time.Hour*time.Duration(int32(value)) +
+						time.Minute*time.Duration(0) +
+						time.Second*time.Duration(0))
 			} else {
-				timeUnit := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig].(string)
-				if timeUnit == string(app.HourTimeUnit) {
-					expireTime = time.Now().UTC().Add(
-						time.Hour*time.Duration(pkgItem.ShipmentSpec.ReactionTime+int32(value)) +
-							time.Minute*time.Duration(0) +
-							time.Second*time.Duration(0))
-				} else {
-					expireTime = time.Now().UTC().Add(
-						time.Hour*time.Duration(0) +
-							time.Minute*time.Duration((pkgItem.ShipmentSpec.ReactionTime*60)+int32(value)) +
-							time.Second*time.Duration(0))
-				}
+				expireTime = time.Now().UTC().Add(
+					time.Hour*time.Duration(0) +
+						time.Minute*time.Duration(int32(value)) +
+						time.Second*time.Duration(0))
 			}
+			//}
 		}
 
 		for i := 0; i < len(sids); i++ {
