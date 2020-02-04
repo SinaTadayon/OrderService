@@ -55,6 +55,7 @@ stages:
       - staging
       - master
       - prelive
+      - live
 
 #5-deploy:
 #  stage: deploy
