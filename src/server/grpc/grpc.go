@@ -272,7 +272,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	sellerFilterStatesMap[ReturnDeliveredFilter] = []FilterState{{[]states.IEnumState{states.ReturnDelivered}, states.ReturnDelivered}}
 	sellerFilterStatesMap[ReturnDeliveryFailedFilter] = []FilterState{{[]states.IEnumState{states.ReturnDeliveryFailed}, states.PayToSeller}}
 	sellerFilterStatesMap[ReturnRejectedFilter] = []FilterState{{[]states.IEnumState{states.ReturnRejected}, states.ReturnRejected}}
-	sellerFilterStatesMap[PayToSellerFilter] = []FilterState{{[]states.IEnumState{states.ReturnCanceled, states.ReturnDeliveryFailed, states.ReturnShipmentPending, states.ReturnRequestRejected}, states.PayToSeller}}
+	sellerFilterStatesMap[PayToSellerFilter] = []FilterState{{[]states.IEnumState{states.ReturnCanceled, states.ReturnDeliveryFailed, states.ReturnShipmentPending, states.ReturnRequestRejected, states.Delivered, states.ReturnRejected}, states.PayToSeller}}
 
 	sellerStatesMapping := make(map[string][]states.IEnumState, 30)
 	sellerStatesMapping[states.ApprovalPending.StateName()] = []states.IEnumState{states.ApprovalPending}
@@ -980,58 +980,31 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 	return &responseNewOrder, nil
 }
 
-// TODO Add checking acl and authenticate
-//func (server Server) SellerReportOrders(req *pb.RequestSellerReportOrders, srv pb.OrderService_SellerReportOrdersServer) error {
-//
-//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(srv.Context())
-//	if err != nil {
-//		logger.Err("SellerReportOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
-//		return status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	if userAcl.User().UserID != int64(req.PId) {
-//		logger.Err(" SellerFindAllItems() => token userId %d not authorized for sellerId %d", userAcl.User().UserID, req.PId)
-//		return status.Error(codes.Code(future.Forbidden), "User token not authorized")
-//	}
-//
-//	promiseHandler := server.flowManager.SellerReportOrders(req, srv)
-//	futureData := promiseHandler.Get()
-//	if futureData == nil {
-//		return status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	if futureData.Ex != nil {
-//		futureErr := futureData.Ex.(future.FutureError)
-//		return status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-//	}
-//
-//	return nil
-//}
-
-// TODO Add checking acl and authenticate
-func (server Server) BackOfficeReportOrderItems(req *pb.RequestReportOrderItems, srv pb.OrderService_ReportOrderItemsServer) error {
+func (server Server) ReportOrderItems(req *pb.RequestReportOrderItems, srv pb.OrderService_ReportOrderItemsServer) error {
 
 	userAcl, err := app.Globals.UserService.AuthenticateContextToken(srv.Context())
 	if err != nil {
-		logger.Err("SellerReportOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
-		return status.Error(codes.Code(future.InternalError), "Unknown Error")
+		app.Globals.Logger.Error("UserService.AuthenticateContextToken failed",
+			"fn", "ReportOrderItems",
+			"error", err)
+		return status.Error(codes.Code(future.Forbidden), "User Not Authorized")
 	}
 
-	// TODO Must Be changed
 	if userAcl.User().UserID <= 0 {
-		logger.Err("BackOfficeOrderAction() => token userId %d not authorized", userAcl.User().UserID)
+		app.Globals.Logger.Error("Token userId not authorized",
+			"fn", "ReportOrderItems",
+			"userId", userAcl.User().UserID)
 		return status.Error(codes.Code(future.Forbidden), "User token not authorized")
 	}
 
-	promiseHandler := server.flowManager.ReportOrderItems(req, srv)
-	futureData := promiseHandler.Get()
-	if futureData == nil {
-		return status.Error(codes.Code(future.InternalError), "Unknown Error")
+	if !userAcl.UserPerm().Has("order.state.all.view") || !userAcl.UserPerm().Has("order.state.all.action") {
+		return status.Error(codes.Code(future.Forbidden), "User Not Permitted")
 	}
 
-	if futureData.Ex != nil {
-		futureErr := futureData.Ex.(future.FutureError)
-		return status.Error(codes.Code(futureErr.Code), futureErr.Reason)
+	iFuture := server.flowManager.ReportOrderItems(srv.Context(), req, srv).Get()
+
+	if iFuture.Error() != nil {
+		return status.Error(codes.Code(iFuture.Error().Code()), iFuture.Error().Message())
 	}
 
 	return nil

@@ -511,9 +511,8 @@ func (repo iOrderRepositoryImpl) FindByFilterWithPage(ctx context.Context, suppl
 
 func (repo iOrderRepositoryImpl) FindByFilterWithPageAndSort(ctx context.Context, supplier func() (interface{}, string, int), page, perPage int64) ([]*entities.Order, int64, repository.IRepoError) {
 	if page <= 0 || perPage == 0 {
-		return nil, 0, repository.ErrorFactory(repository.BadRequestErr, "Request Operation Failed", errors.New("neither offset nor start can be zero"))
+		return nil, 0, repository.ErrorFactory(repository.BadRequestErr, "Request Operation Failed", errors.New("Page/PerPage Invalid"))
 	}
-
 	filter, fieldName, direction := supplier()
 	var totalCount, err = repo.CountWithFilter(ctx, func() interface{} { return filter })
 	if err != nil {
