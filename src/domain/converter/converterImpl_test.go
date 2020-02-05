@@ -1,7 +1,7 @@
 package converter
 
 import (
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	pb "gitlab.faza.io/protos/order"
 	"testing"
@@ -11,10 +11,10 @@ func TestOrderConverter(t *testing.T) {
 	converter := NewConverter()
 	RequestNewOrder := createRequestNewOrder()
 	out, err := converter.Map(RequestNewOrder, entities.Order{})
-	assert.NoError(t, err, "mapping order request to order failed")
+	require.NoError(t, err, "mapping order request to order failed")
 	order, ok := out.(*entities.Order)
-	assert.True(t, ok, "mapping order request to order failed")
-	assert.NotEmpty(t, order.Invoice.GrandTotal)
+	require.True(t, ok, "mapping order request to order failed")
+	require.NotEmpty(t, order.Invoice.GrandTotal)
 }
 
 func createRequestNewOrder() *pb.RequestNewOrder {
@@ -49,11 +49,32 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	}
 	order.Invoice.Voucher = &pb.Voucher{
 		Percent: 0,
+		AppliedPrice: &pb.Money{
+			Amount:   "40000",
+			Currency: "IRR",
+		},
 		Price: &pb.Money{
 			Amount:   "40000",
 			Currency: "IRR",
 		},
 		Code: "348",
+		Details: &pb.VoucherDetails{
+			StartDate:        "2019-12-28T14:32:46-0700",
+			EndDate:          "2020-01-20T00:00:00-0000",
+			Type:             "",
+			MaxDiscountValue: 0,
+			MinBasketValue:   0,
+			Title:            "",
+			Prefix:           "",
+			UseLimit:         0,
+			Count:            0,
+			Length:           0,
+			Categories:       nil,
+			Products:         nil,
+			Users:            nil,
+			Sellers:          nil,
+			IsFirstPurchase:  false,
+		},
 	}
 
 	order.Buyer.BuyerId = 1000001

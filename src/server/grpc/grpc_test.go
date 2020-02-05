@@ -63,9 +63,9 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver)
-	app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver)
-	app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver)
+	app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
+	app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
+	app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
 
 	// TODO create item repository
 	flowManager, err := domain.NewFlowManager()
@@ -351,11 +351,32 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	}
 	order.Invoice.Voucher = &pb.Voucher{
 		Percent: 0,
+		AppliedPrice: &pb.Money{
+			Amount:   "40000",
+			Currency: "IRR",
+		},
 		Price: &pb.Money{
 			Amount:   "40000",
 			Currency: "IRR",
 		},
 		Code: "348",
+		Details: &pb.VoucherDetails{
+			StartDate:        "2019-12-28T14:32:46-0700",
+			EndDate:          "2020-01-20T00:00:00-0000",
+			Type:             "",
+			MaxDiscountValue: 0,
+			MinBasketValue:   0,
+			Title:            "",
+			Prefix:           "",
+			UseLimit:         0,
+			Count:            0,
+			Length:           0,
+			Categories:       nil,
+			Products:         nil,
+			Users:            nil,
+			Sellers:          nil,
+			IsFirstPurchase:  false,
+		},
 	}
 
 	order.Buyer.BuyerId = 1000002

@@ -20,9 +20,11 @@ import (
 
 var pkgItemRepo IPkgItemRepository
 var mongoAdapter *mongoadapter.Mongo
+var config *configs.Config
 
 func TestMain(m *testing.M) {
 	var path string
+	var err error
 	if os.Getenv("APP_MODE") == "dev" {
 		path = "../../../../testdata/.env"
 	} else {
@@ -32,7 +34,7 @@ func TestMain(m *testing.M) {
 	applog.GLog.ZapLogger = applog.InitZap()
 	applog.GLog.Logger = logger.NewZapLogger(applog.GLog.ZapLogger)
 
-	config, _, err := configs.LoadConfigs(path, "")
+	config, _, err = configs.LoadConfigs(path, "")
 	if err != nil {
 		applog.GLog.Logger.Error("configs.LoadConfig failed",
 			"error", err)
@@ -62,7 +64,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	pkgItemRepo = NewPkgItemRepository(mongoAdapter)
+	pkgItemRepo = NewPkgItemRepository(mongoAdapter, config.Mongo.Database, config.Mongo.Collection)
 
 	// Running Tests
 	code := m.Run()
@@ -347,7 +349,7 @@ func TestFindByFilter(t *testing.T) {
 }
 
 func removeCollection() {
-	if _, err := mongoAdapter.DeleteMany(databaseName, collectionName, bson.M{}); err != nil {
+	if _, err := mongoAdapter.DeleteMany(config.Mongo.Database, config.Mongo.Collection, bson.M{}); err != nil {
 	}
 }
 
@@ -378,11 +380,11 @@ func insert(order *entities.Order) (*entities.Order, error) {
 		}
 
 		order.CreatedAt = time.Now().UTC()
-		var insertOneResult, err = mongoAdapter.InsertOne(databaseName, collectionName, &order)
+		var insertOneResult, err = mongoAdapter.InsertOne(config.Mongo.Database, config.Mongo.Collection, &order)
 		if err != nil {
 			if mongoAdapter.IsDupError(err) {
 				for mongoAdapter.IsDupError(err) {
-					insertOneResult, err = mongoAdapter.InsertOne(databaseName, collectionName, &order)
+					insertOneResult, err = mongoAdapter.InsertOne(config.Mongo.Database, config.Mongo.Collection, &order)
 				}
 			} else {
 				return nil, err
@@ -391,7 +393,7 @@ func insert(order *entities.Order) (*entities.Order, error) {
 		order.ID = insertOneResult.InsertedID.(primitive.ObjectID)
 	} else {
 		order.CreatedAt = time.Now().UTC()
-		var insertOneResult, err = mongoAdapter.InsertOne(databaseName, collectionName, &order)
+		var insertOneResult, err = mongoAdapter.InsertOne(config.Mongo.Database, config.Mongo.Collection, &order)
 		if err != nil {
 			return nil, err
 		}

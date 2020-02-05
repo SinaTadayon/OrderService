@@ -38,10 +38,8 @@ type Config struct {
 		EmailTemplateNotifySellerForNewOrder string `env:"EMAIL_TMP_NOTIFY_SELLER_FOR_NEW_ORDER"`
 		PrometheusPort                       int    `env:"PROMETHEUS_PORT"`
 
-		OrderPaymentCallbackUrlSuccess             string `env:"ORDER_PAYMENT_CALLBACK_URL_SUCCESS"`
-		OrderPaymentCallbackUrlFail                string `env:"ORDER_PAYMENT_CALLBACK_URL_FAIL"`
-		OrderPaymentCallbackUrlAsanpardakhtSuccess string `env:"ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT_SUCCESS"`
-		OrderPaymentCallbackUrlAsanpardakhtFail    string `env:"ORDER_PAYMENT_CALLBACK_URL_ASANPARDAKHT_FAIL"`
+		OrderPaymentCallbackUrlSuccess string `env:"ORDER_PAYMENT_CALLBACK_URL_SUCCESS"`
+		OrderPaymentCallbackUrlFail    string `env:"ORDER_PAYMENT_CALLBACK_URL_FAIL"`
 
 		SchedulerTimeUint            string `env:"ORDER_SCHEDULER_TIME_UNIT"`
 		SchedulerStates              string `env:"ORDER_SCHEDULER_STATES"`
@@ -119,6 +117,8 @@ type Config struct {
 		Pass              string `env:"ORDER_SERVICE_MONGO_PASS"`
 		Host              string `env:"ORDER_SERVICE_MONGO_HOST"`
 		Port              int    `env:"ORDER_SERVICE_MONGO_PORT"`
+		Database          string `env:"ORDER_SERVICE_MONGO_DB_NAME"`
+		Collection        string `env:"ORDER_SERVICE_MONGO_COLLECTION_NAME"`
 		ConnectionTimeout int    `env:"ORDER_SERVICE_MONGO_CONN_TIMEOUT"`
 		ReadTimeout       int    `env:"ORDER_SERVICE_MONGO_READ_TIMEOUT"`
 		WriteTimeout      int    `env:"ORDER_SERVICE_MONGO_WRITE_TIMEOUT"`

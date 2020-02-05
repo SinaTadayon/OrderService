@@ -33,9 +33,6 @@ const (
 )
 
 const (
-	DatabaseName   string = "orderService"
-	CollectionName string = "orders"
-
 	FlowManagerSchedulerStateTimeUintConfig              string = "SchedulerStateTimeUint"
 	FlowManagerSchedulerSellerReactionTimeConfig         string = "SchedulerSellerReactionTime"
 	FlowManagerSchedulerPaymentPendingStateConfig        string = "SchedulerPaymentPendingState"
@@ -96,7 +93,7 @@ func SetupMongoDriver(config configs.Config) (*mongoadapter.Mongo, error) {
 		return nil, errors.Wrap(err, "mongoadapter.NewMongo init failed")
 	}
 
-	_, err = mongoDriver.AddUniqueIndex(DatabaseName, CollectionName, "orderId")
+	_, err = mongoDriver.AddUniqueIndex(config.Mongo.Database, config.Mongo.Database, "orderId")
 	if err != nil {
 		Globals.Logger.Error("create orderId index failed",
 			"fn", "SetupMongoDriver",
@@ -104,7 +101,39 @@ func SetupMongoDriver(config configs.Config) (*mongoadapter.Mongo, error) {
 		return nil, err
 	}
 
-	_, err = mongoDriver.AddTextV3Index(DatabaseName, CollectionName, "packages.pkgId")
+	_, err = mongoDriver.AddTextV3Index(config.Mongo.Database, config.Mongo.Database, "createdAt")
+	if err != nil {
+		Globals.Logger.Error("create createdAt index failed",
+			"fn", "SetupMongoDriver",
+			"error", err)
+		return nil, err
+	}
+
+	_, err = mongoDriver.AddTextV3Index(config.Mongo.Database, config.Mongo.Database, "updatedAt")
+	if err != nil {
+		Globals.Logger.Error("create updatedAt index failed",
+			"fn", "SetupMongoDriver",
+			"error", err)
+		return nil, err
+	}
+
+	_, err = mongoDriver.AddTextV3Index(config.Mongo.Database, config.Mongo.Database, "packages.createdAt")
+	if err != nil {
+		Globals.Logger.Error("create packages.createdAt index failed",
+			"fn", "SetupMongoDriver",
+			"error", err)
+		return nil, err
+	}
+
+	_, err = mongoDriver.AddTextV3Index(config.Mongo.Database, config.Mongo.Database, "packages.updatedAt")
+	if err != nil {
+		Globals.Logger.Error("create packages.updatedAt index failed",
+			"fn", "SetupMongoDriver",
+			"error", err)
+		return nil, err
+	}
+
+	_, err = mongoDriver.AddTextV3Index(config.Mongo.Database, config.Mongo.Database, "packages.pkgId")
 	if err != nil {
 		Globals.Logger.Error("create packages.pkgId index failed",
 			"fn", "SetupMongoDriver",
@@ -112,9 +141,25 @@ func SetupMongoDriver(config configs.Config) (*mongoadapter.Mongo, error) {
 		return nil, err
 	}
 
-	_, err = mongoDriver.AddTextV3Index(DatabaseName, CollectionName, "packages.subpackages.sid")
+	_, err = mongoDriver.AddTextV3Index(config.Mongo.Database, config.Mongo.Database, "packages.subpackages.sid")
 	if err != nil {
 		Globals.Logger.Error("create packages.subpackages.sid index failed",
+			"fn", "SetupMongoDriver",
+			"error", err)
+		return nil, err
+	}
+
+	_, err = mongoDriver.AddTextV3Index(config.Mongo.Database, config.Mongo.Database, "packages.subpackages.createdAt")
+	if err != nil {
+		Globals.Logger.Error("create packages.subpackages.createdAt index failed",
+			"fn", "SetupMongoDriver",
+			"error", err)
+		return nil, err
+	}
+
+	_, err = mongoDriver.AddTextV3Index(config.Mongo.Database, config.Mongo.Database, "packages.subpackages.updatedAt")
+	if err != nil {
+		Globals.Logger.Error("create packages.subpackages.updatedAt index failed",
 			"fn", "SetupMongoDriver",
 			"error", err)
 		return nil, err
