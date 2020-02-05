@@ -137,8 +137,8 @@ gitlab.faza.io/protos/cart v0.0.14 h1:rTqokQ5pA/Ju7BwGlZ98BbkkAbZX6ua3nv/jDrPUCG
 gitlab.faza.io/protos/cart v0.0.14/go.mod h1:pemvjJkxFsjd629ESQjWKO7ZJZS6ARDU4sCLGprH7NE=
 gitlab.faza.io/protos/notification v0.0.3 h1:nnM5PVKukjR6qiRxVotmy8lAE/zTaGU4kAxTx+aQWi4=
 gitlab.faza.io/protos/notification v0.0.3/go.mod h1:qby43vdLlc43kTxassHtDYyqdrdf4cHKLz8OEK7Zo0s=
-gitlab.faza.io/protos/order v0.0.58 h1:yzw+pEPWEv2F5N2vOTSvRTklsJJFMXaeCaY8GONxpFE=
-gitlab.faza.io/protos/order v0.0.58/go.mod h1:mdK2jO7EiUBmd7x86Vp2g/cJ3W63G+q49vo+z7ABS1w=
+gitlab.faza.io/protos/order v0.0.59 h1:F5bVLBSvw8k65WZX1W92V/G1bYirF09H66/p4rP0kys=
+gitlab.faza.io/protos/order v0.0.59/go.mod h1:mdK2jO7EiUBmd7x86Vp2g/cJ3W63G+q49vo+z7ABS1w=
 gitlab.faza.io/protos/payment-gateway v0.0.14 h1:3C8TW5OfSdXkEz6gkPz/Jo7T8nwy8lyckvBOtOaK7K8=
 gitlab.faza.io/protos/payment-gateway v0.0.14/go.mod h1:UERc408Li0bb4ynMXnvJ6PySsgbOws1GvIQzJ5MJkzE=
 gitlab.faza.io/protos/stock-proto.git v0.0.8 h1:TA9/sMQe+acPsu7LmM8zdKV02/0VJUCQntGgnpCvynM=

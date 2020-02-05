@@ -8,6 +8,16 @@ service OrderService {
     rpc RequestHandler (MessageRequest) returns (MessageResponse);
     rpc SchedulerMessageHandler(MessageRequest) returns (MessageResponse);
     rpc NewOrder (RequestNewOrder) returns (ResponseNewOrder);
+    rpc ReportOrderItems(RequestReportOrderItems) returns(stream ResponseDownloadFile);
+}
+
+message ResponseDownloadFile {
+    bytes data = 1;
+}
+
+message RequestReportOrderItems {
+    string startDateTime = 1;
+    string endDataTime = 2;
 }
 
 message Money {
