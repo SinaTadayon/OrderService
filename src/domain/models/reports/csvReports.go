@@ -3,7 +3,7 @@ package reports
 type ExportOrderItems struct {
 	SId               uint64
 	InventoryId       string
-	ProductId         string
+	SKU               string
 	BuyerId           uint64
 	BuyerPhone        string
 	SellerId          uint64

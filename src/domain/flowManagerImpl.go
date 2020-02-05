@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"github.com/pkg/errors"
-	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
 	buyer_action "gitlab.faza.io/order-project/order-service/domain/actions/buyer"
 	operator_action "gitlab.faza.io/order-project/order-service/domain/actions/operator"
@@ -61,6 +60,7 @@ import (
 	pg "gitlab.faza.io/protos/payment-gateway"
 	//"github.com/golang/protobuf/ptypes"
 	//"gitlab.faza.io/go-framework/logger"
+	ptime "github.com/yaa110/go-persian-calendar"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 )
 
@@ -658,18 +658,23 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 
 func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *pb.RequestReportOrderItems, srv pb.OrderService_ReportOrderItemsServer) future.IFuture {
 
+	app.Globals.Logger.Debug("received new request . . .",
+		"fn", "ReportOrderItems",
+		"startTime", req.StartDateTime,
+		"endTime", req.EndDataTime)
+
 	startTime, err := time.Parse(ISO8601, req.StartDateTime)
 	if err != nil {
-		return future.Factory().SetCapacity(1).SetError(future.BadRequest, "StartDateTime Invalid", err).Build()
+		return future.Factory().SetCapacity(1).SetError(future.BadRequest, "StartDateTime Invalid", err).BuildAndSend()
 	}
 
 	endTime, err := time.Parse(ISO8601, req.EndDataTime)
 	if err != nil {
-		return future.Factory().SetCapacity(1).SetError(future.BadRequest, "EndDateTime Invalid", err).Build()
+		return future.Factory().SetCapacity(1).SetError(future.BadRequest, "EndDateTime Invalid", err).BuildAndSend()
 	}
 
 	orders, _, e := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, func() (interface{}, string, int) {
-		return bson.D{{"createdAt", bson.D{{"$gte", startTime}, {"$lte", endTime}}}},
+		return bson.D{{"createdAt", bson.D{{"$gte", req.StartDateTime}, {"$lte", req.EndDataTime}}}},
 			"createdAt", -1
 	}, int64(1), int64(2000))
 
@@ -679,115 +684,96 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 			"startDateTime", startTime,
 			"endDateTime", endTime,
 			"error", e)
-		return future.Factory().SetCapacity(1).SetError(future.ErrorCode(e.Code()), e.Message(), e.Reason()).Build()
+		return future.Factory().SetCapacity(1).SetError(future.ErrorCode(e.Code()), e.Message(), e.Reason()).BuildAndSend()
 	}
 
 	if orders == nil || len(orders) == 0 {
-		return future.Factory().SetCapacity(1).SetError(future.NotFound, "Order Not Found", errors.New("Order Not Found")).Build()
+		return future.Factory().SetCapacity(1).SetError(future.NotFound, "Order Not Found", errors.New("Order Not Found")).BuildAndSend()
 	}
 
 	orderReports := make([]*reports.ExportOrderItems, 0, len(orders))
-	sellerProfileMap := make(map[uint64]entities.SellerProfile, 16)
 
 	for i := 0; i < len(orders); i++ {
 		for j := 0; j < len(orders[i].Packages); j++ {
 			for k := 0; k < len(orders[i].Packages[j].Subpackages); k++ {
 				for z := 0; z < len(orders[i].Packages[j].Subpackages[k].Items); z++ {
-					itemReport := &reports.ExportOrderItems{
-						SId:               orders[i].Packages[j].Subpackages[k].SId,
-						InventoryId:       orders[i].Packages[j].Subpackages[k].Items[z].InventoryId,
-						ProductId:         orders[i].Packages[j].Subpackages[k].Items[z].SKU,
-						BuyerId:           orders[i].BuyerInfo.BuyerId,
-						BuyerPhone:        orders[i].BuyerInfo.Phone,
-						SellerId:          orders[i].Packages[j].PId,
-						SellerDisplayName: orders[i].Packages[j].ShopName,
-						Price:             orders[i].Invoice.Subtotal.Amount,
-						VoucherAmount:     nil,
-						ShippingCost:      orders[i].Packages[j].Invoice.ShipmentAmount.Amount,
-						Status:            orders[i].Packages[j].Subpackages[k].Status,
-						CreatedAt:         "",
-						UpdatedAt:         "",
-					}
-
-					if orders[i].Invoice.Voucher != nil {
-						itemReport.VoucherAmount = orders[i].Invoice.Voucher.AppliedPrice.Amount
-					}
-
-					tempTime := time.Date(orders[i].CreatedAt.Year(),
-						orders[i].CreatedAt.Month(),
-						orders[i].CreatedAt.Day(),
-						orders[i].CreatedAt.Hour(),
-						orders[i].CreatedAt.Minute(),
-						orders[i].CreatedAt.Second(),
-						orders[i].CreatedAt.Nanosecond(),
-						ptime.Iran())
-
-					pt := ptime.New(tempTime)
-					itemReport.CreatedAt = pt.String()
-
-					tempTime = time.Date(orders[i].Packages[j].Subpackages[k].UpdatedAt.Year(),
-						orders[i].Packages[j].Subpackages[k].UpdatedAt.Month(),
-						orders[i].Packages[j].Subpackages[k].UpdatedAt.Day(),
-						orders[i].Packages[j].Subpackages[k].UpdatedAt.Hour(),
-						orders[i].Packages[j].Subpackages[k].UpdatedAt.Minute(),
-						orders[i].Packages[j].Subpackages[k].UpdatedAt.Second(),
-						orders[i].Packages[j].Subpackages[k].UpdatedAt.Nanosecond(),
-						ptime.Iran())
-
-					pt = ptime.New(tempTime)
-					itemReport.UpdatedAt = pt.String()
-					reports = append(reports, itemReport)
-
-					if sellerProfile, ok := sellerProfileMap[item.SellerInfo.PId]; !ok {
-						userCtx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-						ipromise := app.Globals.UserService.GetSellerProfile(userCtx, strconv.Itoa(int(item.SellerInfo.PId)))
-						futureData := ipromise.Get()
-						if futureData.Ex != nil {
-							logger.Err("BackOfficeReportOrderItems() => get sellerProfile failed, orderId: %d, sid: %d, sellerId: %d",
-								order.OrderId, item.SId, item.SellerInfo.PId)
-							continue
+					for y := 0; y < int(orders[i].Packages[j].Subpackages[k].Items[z].Quantity); y++ {
+						itemReport := &reports.ExportOrderItems{
+							SId:               orders[i].Packages[j].Subpackages[k].SId,
+							InventoryId:       orders[i].Packages[j].Subpackages[k].Items[z].InventoryId,
+							SKU:               orders[i].Packages[j].Subpackages[k].Items[z].SKU,
+							BuyerId:           orders[i].BuyerInfo.BuyerId,
+							BuyerPhone:        orders[i].BuyerInfo.Mobile,
+							SellerId:          orders[i].Packages[j].PId,
+							SellerDisplayName: orders[i].Packages[j].ShopName,
+							Price:             orders[i].Invoice.Subtotal.Amount,
+							VoucherAmount:     "0",
+							ShippingCost:      orders[i].Packages[j].Invoice.ShipmentAmount.Amount,
+							Status:            orders[i].Packages[j].Subpackages[k].Status,
+							CreatedAt:         "",
+							UpdatedAt:         "",
 						}
 
-						sellerInfo, ok := futureData.Data.(entities.SellerProfile)
-						if ok != true {
-							logger.Err("BackOfficeReportOrderItems() => get sellerProfile invalid, orderId: %d, sid: %d, sellerId: %d",
-								order.OrderId, item.SId, item.SellerInfo.PId)
-							continue
+						if orders[i].Invoice.Voucher != nil {
+							if orders[i].Invoice.Voucher.AppliedPrice != nil {
+								itemReport.VoucherAmount = orders[i].Invoice.Voucher.AppliedPrice.Amount
+							} else if orders[i].Invoice.Voucher.Price != nil {
+								itemReport.VoucherAmount = orders[i].Invoice.Voucher.Price.Amount
+							} else {
+								itemReport.VoucherAmount = strconv.Itoa(int(orders[i].Invoice.Voucher.Percent)) + "%"
+							}
 						}
 
-						sellerProfileMap[item.SellerInfo.PId] = sellerProfile
-						itemReport.SellerDisplayName = sellerInfo.GeneralInfo.ShopDisplayName
-					} else {
-						itemReport.SellerDisplayName = sellerProfile.GeneralInfo.ShopDisplayName
+						tempTime := time.Date(orders[i].CreatedAt.Year(),
+							orders[i].CreatedAt.Month(),
+							orders[i].CreatedAt.Day(),
+							orders[i].CreatedAt.Hour(),
+							orders[i].CreatedAt.Minute(),
+							orders[i].CreatedAt.Second(),
+							orders[i].CreatedAt.Nanosecond(),
+							ptime.Iran())
+
+						pt := ptime.New(tempTime)
+						itemReport.CreatedAt = pt.Format("yyyy-MM-dd hh:mm:ss")
+
+						tempTime = time.Date(orders[i].Packages[j].Subpackages[k].UpdatedAt.Year(),
+							orders[i].Packages[j].Subpackages[k].UpdatedAt.Month(),
+							orders[i].Packages[j].Subpackages[k].UpdatedAt.Day(),
+							orders[i].Packages[j].Subpackages[k].UpdatedAt.Hour(),
+							orders[i].Packages[j].Subpackages[k].UpdatedAt.Minute(),
+							orders[i].Packages[j].Subpackages[k].UpdatedAt.Second(),
+							orders[i].Packages[j].Subpackages[k].UpdatedAt.Nanosecond(),
+							ptime.Iran())
+
+						pt = ptime.New(tempTime)
+						itemReport.UpdatedAt = pt.Format("yyyy-MM-dd hh:mm:ss")
+						orderReports = append(orderReports, itemReport)
 					}
+
 				}
 			}
 		}
 	}
 
-	for _, order := range orders {
-		for _, item := range order.Items {
-
-		}
-	}
-
-	csvReports := make([][]string, 0, len(reports))
+	csvReports := make([][]string, 0, len(orderReports))
 	csvHeadLines := []string{
-		"SId", "InventoryId", "ProductId", "BuyerId", "BuyerPhone", "PId",
-		"SellerDisplayName", "ItemInvoice", "Status", "CreatedAt", "UpdatedAt",
+		"SId", "InventoryId", "SKU", "BuyerId", "BuyerMobile", "SellerId",
+		"ShopDisplayName", "Price", "VoucherAmount", "ShippingCost", "Status", "CreatedAt", "UpdatedAt",
 	}
 
 	csvReports = append(csvReports, csvHeadLines)
-	for _, itemReport := range reports {
+	for _, itemReport := range orderReports {
 		csvRecord := []string{
 			strconv.Itoa(int(itemReport.SId)),
 			itemReport.InventoryId,
-			itemReport.ProductId,
+			itemReport.SKU,
 			strconv.Itoa(int(itemReport.BuyerId)),
 			itemReport.BuyerPhone,
-			strconv.Itoa(int(itemReport.PId)),
-			itemReport.SellerName,
+			strconv.Itoa(int(itemReport.SellerId)),
+			itemReport.SellerDisplayName,
 			fmt.Sprint(itemReport.Price),
+			itemReport.VoucherAmount,
+			itemReport.ShippingCost,
 			itemReport.Status,
 			itemReport.CreatedAt,
 			itemReport.UpdatedAt,
@@ -795,41 +781,46 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 		csvReports = append(csvReports, csvRecord)
 	}
 
-	reportTime := time.Unix(int64(req.StartDateTime), 0)
-	fileName := fmt.Sprintf("BackOfficeReport-%s.csv", fmt.Sprintf("%d", reportTime.UnixNano()))
+	fileName := fmt.Sprintf("Report-%s.csv", fmt.Sprintf("%d", startTime.UnixNano()))
 	f, err := os.Create("/tmp/" + fileName)
 	if err != nil {
-		logger.Err("BackOfficeReportOrderItems() => create file %s failed, startDateTime: %v, endDateTime: %v, error: %s",
-			fileName, req.StartDateTime, req.EndDataTime, err)
-		returnChannel := make(chan future.FutureData, 1)
-		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
-		defer close(returnChannel)
-		return future.NewPromise(returnChannel, 1, 1)
+		app.Globals.Logger.Error("create file failed",
+			"fn", "ReportOrderItems",
+			"startDateTime", startTime,
+			"endDateTime", endTime,
+			"error", err)
+		return future.Factory().SetCapacity(1).SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "")).BuildAndSend()
 	}
 
 	w := csv.NewWriter(f)
 	// calls Flush internally
 	if err := w.WriteAll(csvReports); err != nil {
-		logger.Err("BackOfficeReportOrderItems() => write csv to file failed, startDateTime: %v, endDateTime: %v, error: %s",
-			req.StartDateTime, req.EndDataTime, err)
-		returnChannel := make(chan future.FutureData, 1)
-		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
-		defer close(returnChannel)
-		return future.NewPromise(returnChannel, 1, 1)
+		app.Globals.Logger.Error("write csv to file failed",
+			"fn", "ReportOrderItems",
+			"startDateTime", startTime,
+			"endDateTime", endTime,
+			"error", err)
+		return future.Factory().SetCapacity(1).SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "")).BuildAndSend()
 	}
 
 	if err := f.Close(); err != nil {
-		logger.Err("BackOfficeReportOrderItems() => file close failed, filename: %s, error: %s", fileName, err)
+		app.Globals.Logger.Error("file close failed",
+			"fn", "ReportOrderItems",
+			"filename", fileName,
+			"startDateTime", startTime,
+			"endDateTime", endTime,
+			"error", err)
 	}
 
 	file, err := os.Open("/tmp/" + fileName)
 	if err != nil {
-		logger.Err("BackOfficeReportOrderItems() => read csv from file failed, startDateTime: %v, endDateTime: %v, error: %s",
-			req.StartDateTime, req.EndDataTime, err)
-		returnChannel := make(chan future.FutureData, 1)
-		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
-		defer close(returnChannel)
-		return future.NewPromise(returnChannel, 1, 1)
+		app.Globals.Logger.Error("read csv from file failed",
+			"fn", "ReportOrderItems",
+			"filename", fileName,
+			"startDateTime", startTime,
+			"endDateTime", endTime,
+			"error", err)
+		return future.Factory().SetCapacity(1).SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "")).BuildAndSend()
 	}
 
 	var fileErr, grpcErr error
@@ -842,7 +833,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 			}
 			break
 		}
-		err = srv.Send(&message.ResponseDownloadFile{
+		err = srv.Send(&pb.ResponseDownloadFile{
 			Data: b[:n],
 		})
 		if err != nil {
@@ -851,31 +842,47 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 	}
 
 	if err := file.Close(); err != nil {
-		logger.Err("BackOfficeReportOrderItems() => file close failed, filename: %s, error: %s", file.Name(), err)
+		app.Globals.Logger.Warn("file close failed",
+			"fn", "ReportOrderItems",
+			"filename", fileName,
+			"startDateTime", startTime,
+			"endDateTime", endTime,
+			"error", err)
 	}
 
 	if err := os.Remove("/tmp/" + fileName); err != nil {
-		logger.Err("BackOfficeReportOrderItems() => remove file failed, filename: %s, error: %s", fileName, err)
+		app.Globals.Logger.Warn("remove file failed",
+			"fn", "ReportOrderItems",
+			"filename", fileName,
+			"startDateTime", startTime,
+			"endDateTime", endTime,
+			"error", err)
 	}
 
 	if fileErr != nil {
-		logger.Err("BackOfficeReportOrderItems() => read csv from file failed, filename: %s, error: %s", fileName, err)
-		returnChannel := make(chan future.FutureData, 1)
-		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
-		defer close(returnChannel)
-		return future.NewPromise(returnChannel, 1, 1)
+		app.Globals.Logger.Warn("read csv from file failed",
+			"fn", "ReportOrderItems",
+			"filename", fileName,
+			"startDateTime", startTime,
+			"endDateTime", endTime,
+			"error", err)
+		return future.Factory().SetCapacity(1).SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "")).BuildAndSend()
 	}
 
 	if grpcErr != nil {
-		logger.Err("BackOfficeReportOrderItems() => send cvs file failed, filename: %s, error: %s", fileName, err)
-		returnChannel := make(chan future.FutureData, 1)
-		returnChannel <- future.FutureData{Data: nil, Ex: future.FutureError{Code: future.InternalError, Reason: "Unknown Error"}}
-		defer close(returnChannel)
-		return future.NewPromise(returnChannel, 1, 1)
+		app.Globals.Logger.Error("send cvs file failed",
+			"fn", "ReportOrderItems",
+			"filename", fileName,
+			"startDateTime", startTime,
+			"endDateTime", endTime,
+			"error", err)
+		return future.Factory().SetCapacity(1).SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "")).BuildAndSend()
 	}
 
-	returnChannel := make(chan future.FutureData, 1)
-	returnChannel <- future.FutureData{Data: nil, Ex: nil}
-	defer close(returnChannel)
-	return future.NewPromise(returnChannel, 1, 1)
+	app.Globals.Logger.Debug("generate csv file success . . .",
+		"fn", "ReportOrderItems",
+		"startTime", req.StartDateTime,
+		"endTime", req.EndDataTime)
+
+	return future.Factory().SetCapacity(1).BuildAndSend()
 }

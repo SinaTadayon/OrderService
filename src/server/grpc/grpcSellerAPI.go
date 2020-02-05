@@ -20,27 +20,31 @@ func (server *Server) sellerGeneratePipelineFilter(ctx context.Context, filter F
 
 	newFilter := make([]interface{}, 2)
 
-	//if filter == DeliveryPendingFilter {
-	//	queryPathDeliveryPendingState := server.queryPathStates[DeliveryPendingFilter]
-	//	queryPathDeliveryDelayedState := server.queryPathStates[DeliveryDelayedFilter]
-	//	newFilter[0] = "$or"
-	//	newFilter[1] = bson.A{
-	//		bson.M{queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()},
-	//		bson.M{queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}}
-	//
-	//} else
-	if filter == AllCanceledFilter {
-		queryPathCanceledBySellerState := server.queryPathStates[CanceledBySellerFilter]
-		queryPathCanceledByBuyerState := server.queryPathStates[CanceledByBuyerFilter]
+	if filter == AllOrdersFilter {
 		newFilter[0] = "$or"
-		newFilter[1] = bson.A{
-			bson.M{queryPathCanceledBySellerState.queryPath: queryPathCanceledBySellerState.state.StateName()},
-			bson.M{queryPathCanceledByBuyerState.queryPath: queryPathCanceledByBuyerState.state.StateName()}}
+		filterList := make([]interface{}, 0, 30)
+		for filter, _ := range server.sellerFilterStates {
+			if filter != PayToSellerFilter {
+				filterQueryState := server.queryPathStates[filter]
+				filterList = append(filterList, bson.M{filterQueryState.queryPath: filterQueryState.state.StateName()})
+			}
+		}
 
+		newFilter[1] = filterList
 	} else {
-		queryPathState := server.queryPathStates[filter]
-		newFilter[0] = queryPathState.queryPath
-		newFilter[1] = queryPathState.state.StateName()
+		if filter == AllCanceledFilter {
+			queryPathCanceledBySellerState := server.queryPathStates[CanceledBySellerFilter]
+			queryPathCanceledByBuyerState := server.queryPathStates[CanceledByBuyerFilter]
+			newFilter[0] = "$or"
+			newFilter[1] = bson.A{
+				bson.M{queryPathCanceledBySellerState.queryPath: queryPathCanceledBySellerState.state.StateName()},
+				bson.M{queryPathCanceledByBuyerState.queryPath: queryPathCanceledByBuyerState.state.StateName()}}
+
+		} else {
+			queryPathState := server.queryPathStates[filter]
+			newFilter[0] = queryPathState.queryPath
+			newFilter[1] = queryPathState.state.StateName()
+		}
 	}
 
 	return newFilter
