@@ -674,7 +674,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 	}
 
 	orders, _, e := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, func() (interface{}, string, int) {
-		return bson.D{{"createdAt", bson.D{{"$gte", req.StartDateTime}, {"$lte", req.EndDataTime}}}},
+		return bson.D{{"createdAt", bson.D{{"$gte", startTime.UTC()}, {"$lte", endTime.UTC()}}}},
 			"createdAt", -1
 	}, int64(1), int64(2000))
 
