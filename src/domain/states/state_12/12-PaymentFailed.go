@@ -130,6 +130,7 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 			state.UpdateOrderAllSubPkg(ctx, order, buyerNotificationAction)
 		}
 
+		state.releasedStock(ctx, order)
 		state.UpdateOrderAllStatus(ctx, order, states.OrderClosedStatus, states.PackageClosedStatus)
 		_, err = app.Globals.OrderRepository.Save(ctx, *order)
 		if err != nil {
