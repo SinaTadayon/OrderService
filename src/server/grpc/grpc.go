@@ -272,7 +272,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	sellerFilterStatesMap[ReturnDeliveredFilter] = []FilterState{{[]states.IEnumState{states.ReturnDelivered}, states.ReturnDelivered}}
 	sellerFilterStatesMap[ReturnDeliveryFailedFilter] = []FilterState{{[]states.IEnumState{states.ReturnDeliveryFailed}, states.PayToSeller}}
 	sellerFilterStatesMap[ReturnRejectedFilter] = []FilterState{{[]states.IEnumState{states.ReturnRejected}, states.ReturnRejected}}
-	sellerFilterStatesMap[PayToSellerFilter] = []FilterState{{[]states.IEnumState{states.ReturnCanceled, states.ReturnDeliveryFailed, states.ReturnShipmentPending, states.ReturnRequestRejected}, states.PayToSeller}}
+	sellerFilterStatesMap[PayToSellerFilter] = []FilterState{{[]states.IEnumState{states.ReturnCanceled, states.ReturnDeliveryFailed, states.ReturnShipmentPending, states.ReturnRequestRejected, states.Delivered, states.ReturnRejected}, states.PayToSeller}}
 
 	sellerStatesMapping := make(map[string][]states.IEnumState, 30)
 	sellerStatesMapping[states.ApprovalPending.StateName()] = []states.IEnumState{states.ApprovalPending}
@@ -290,7 +290,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	sellerStatesMapping[states.ReturnDeliveryDelayed.StateName()] = []states.IEnumState{states.ReturnDeliveryDelayed}
 	sellerStatesMapping[states.ReturnDelivered.StateName()] = []states.IEnumState{states.ReturnDelivered}
 	sellerStatesMapping[states.ReturnRejected.StateName()] = []states.IEnumState{states.ReturnRejected}
-	sellerStatesMapping[states.PayToSeller.StateName()] = []states.IEnumState{states.ReturnCanceled, states.ReturnDeliveryFailed, states.ReturnShipmentPending, states.ReturnRequestRejected}
+	sellerStatesMapping[states.PayToSeller.StateName()] = []states.IEnumState{states.ReturnCanceled, states.ReturnDeliveryFailed, states.ReturnShipmentPending, states.ReturnRequestRejected, states.ReturnRejected, states.Delivered}
 	sellerStatesMapping[states.PayToBuyer.StateName()] = []states.IEnumState{states.CanceledBySeller, states.CanceledByBuyer, states.DeliveryFailed, states.ReturnRejected, states.ReturnDelivered}
 
 	queryPathStatesMap := make(map[FilterValue]FilterQueryState, 30)
@@ -980,453 +980,35 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 	return &responseNewOrder, nil
 }
 
-// TODO Add checking acl
-//func (server Server) SellerFindAllItems(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseSellerFindAllItems, error) {
-//
-//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
-//	if err != nil {
-//		logger.Err("SellerFindAllItems() => UserService.AuthenticateContextToken failed, error: %s ", err)
-//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	if strconv.Itoa(int(userAcl.User().UserID)) != req.Id {
-//		logger.Err(" SellerFindAllItems() => token userId %d not authorized for sellerId %s", userAcl.User().UserID, req.Id)
-//		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
-//	}
-//
-//	sellerId, err := strconv.Atoi(req.Id)
-//	if err != nil {
-//		logger.Err(" SellerFindAllItems() => sellerId invalid: %s", req.Id)
-//		return nil, status.Error(codes.Code(future.BadRequest), "PID Invalid")
-//	}
-//
-//	orders, err := app.Globals.OrderRepository.FindByFilter(func() interface{} {
-//		return bson.D{{"items.sellerInfo.sellerId", uint64(sellerId)}}
-//	})
-//
-//	if err != nil {
-//		logger.Err("SellerFindAllItems failed, sellerId: %s, error: %s", req.Id, err.Error())
-//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	sellerItemMap := make(map[string]*pb.SellerFindAllItems, 16)
-//
-//	for _, order := range orders {
-//		for _, orderItem := range order.Items {
-//			if strconv.Itoa(int(orderItem.SellerInfo.PId)) == req.Id {
-//				if _, ok := sellerItemMap[orderItem.InventoryId]; !ok {
-//					newResponseItem := &pb.SellerFindAllItems{
-//						OrderId:     order.OrderId,
-//						ItemId:      orderItem.ItemId,
-//						InventoryId: orderItem.InventoryId,
-//						Title:       orderItem.Title,
-//						Image:       orderItem.Image,
-//						Returnable:  orderItem.Returnable,
-//						Status: &pb.Status{
-//							OrderStatus: order.Status,
-//							ItemStatus:  orderItem.Status,
-//							StepStatus:  "none",
-//						},
-//						CreatedAt:  orderItem.CreatedAt.Format(ISO8601),
-//						UpdatedAt:  orderItem.UpdatedAt.Format(ISO8601),
-//						Quantity:   orderItem.Quantity,
-//						Attributes: orderItem.Attributes,
-//						Price: &pb.SellerFindAllItems_Price{
-//							Unit:             orderItem.Invoice.Unit,
-//							Total:            orderItem.Invoice.Original,
-//							SellerCommission: orderItem.Invoice.SellerCommission,
-//							Currency:         orderItem.Invoice.Currency,
-//						},
-//						DeliveryAddress: &pb.Address{
-//							FirstName:     order.BuyerInfo.ShippingAddress.FirstName,
-//							LastName:      order.BuyerInfo.ShippingAddress.LastName,
-//							Address:       order.BuyerInfo.ShippingAddress.Address,
-//							Phone:         order.BuyerInfo.ShippingAddress.Phone,
-//							Mobile:        order.BuyerInfo.ShippingAddress.Mobile,
-//							Country:       order.BuyerInfo.ShippingAddress.Country,
-//							City:          order.BuyerInfo.ShippingAddress.City,
-//							Province:      order.BuyerInfo.ShippingAddress.Province,
-//							Neighbourhood: order.BuyerInfo.ShippingAddress.Neighbourhood,
-//							ZipCode:       order.BuyerInfo.ShippingAddress.ZipCode,
-//						},
-//					}
-//
-//					if order.BuyerInfo.ShippingAddress.Location != nil {
-//						newResponseItem.DeliveryAddress.Lat = fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[1])
-//						newResponseItem.DeliveryAddress.Long = fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[0])
-//					}
-//
-//					lastStep := orderItem.Progress.StepsHistory[len(orderItem.Progress.StepsHistory)-1]
-//					if lastStep.ActionHistory != nil {
-//						lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
-//						newResponseItem.Status.StepStatus = lastAction.Name
-//					} else {
-//						newResponseItem.Status.StepStatus = "none"
-//						logger.Audit("SellerFindAllItems() => Actions History is nil, orderId: %d, sid: %d", order.OrderId, orderItem.ItemId)
-//					}
-//
-//					sellerItemMap[orderItem.InventoryId] = newResponseItem
-//				}
-//			}
-//		}
-//	}
-//
-//	var response = pb.ResponseSellerFindAllItems{}
-//	response.Items = make([]*pb.SellerFindAllItems, 0, len(sellerItemMap))
-//
-//	for _, item := range sellerItemMap {
-//		response.Items = append(response.Items, item)
-//	}
-//
-//	return &response, nil
-//}
+func (server Server) ReportOrderItems(req *pb.RequestReportOrderItems, srv pb.OrderService_ReportOrderItemsServer) error {
 
-// TODO Add checking acl
-//func (server Server) BuyerOrderAction(ctx context.Context, req *pb.RequestBuyerOrderAction) (*pb.ResponseBuyerOrderAction, error) {
-//
-//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
-//	if err != nil {
-//		logger.Err("BuyerOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
-//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	if userAcl.User().UserID != int64(req.BuyerId) {
-//		logger.Err(" BuyerOrderAction() => token userId %d not authorized for buyerId %d", userAcl.User().UserID, req.BuyerId)
-//		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
-//	}
-//
-//	promiseHandler := server.flowManager.BuyerApprovalPending(ctx, req)
-//	futureData := promiseHandler.Get()
-//	if futureData == nil {
-//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	if futureData.Ex != nil {
-//		futureErr := futureData.Ex.(future.FutureError)
-//		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-//	}
-//
-//	return &pb.ResponseBuyerOrderAction{Result: true}, nil
-//}
+	userAcl, err := app.Globals.UserService.AuthenticateContextToken(srv.Context())
+	if err != nil {
+		app.Globals.Logger.Error("UserService.AuthenticateContextToken failed",
+			"fn", "ReportOrderItems",
+			"error", err)
+		return status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+	}
 
-// TODO Add checking acl
-//func (server Server) SellerOrderAction(ctx context.Context, req *pb.RequestSellerOrderAction) (*pb.ResponseSellerOrderAction, error) {
-//
-//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
-//	if err != nil {
-//		logger.Err("SellerOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
-//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	if userAcl.User().UserID != int64(req.PId) {
-//		logger.Err("SellerOrderAction() => token userId %d not authorized for sellerId %d", userAcl.User().UserID, req.PId)
-//		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
-//	}
-//
-//	promiseHandler := server.flowManager.SellerApprovalPending(ctx, req)
-//	futureData := promiseHandler.Get()
-//	if futureData == nil {
-//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	if futureData.Ex != nil {
-//		futureErr := futureData.Ex.(future.FutureError)
-//		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-//	}
-//
-//	return &pb.ResponseSellerOrderAction{Result: true}, nil
-//}
+	if userAcl.User().UserID <= 0 {
+		app.Globals.Logger.Error("Token userId not authorized",
+			"fn", "ReportOrderItems",
+			"userId", userAcl.User().UserID)
+		return status.Error(codes.Code(future.Forbidden), "User token not authorized")
+	}
 
-// TODO Add checking acl
-//func (server Server) BuyerFindAllOrders(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseBuyerFindAllOrders, error) {
-//
-//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
-//	if err != nil {
-//		logger.Err("BuyerFindAllOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
-//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	if strconv.Itoa(int(userAcl.User().UserID)) != req.Id {
-//		logger.Err(" BuyerFindAllOrders() => token userId %d not authorized of buyerId %s", userAcl.User().UserID, req.Id)
-//		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
-//	}
-//
-//	buyerId, err := strconv.Atoi(req.Id)
-//	if err != nil {
-//		logger.Err(" SellerFindAllItems() => buyerId invalid: %s", req.Id)
-//		return nil, status.Error(codes.Code(future.BadRequest), "BuyerId Invalid")
-//	}
-//
-//	orders, err := app.Globals.OrderRepository.FindByFilter(func() interface{} {
-//		return bson.D{{"buyerInfo.buyerId", uint64(buyerId)}}
-//	})
-//
-//	if err != nil {
-//		logger.Err("SellerFindAllItems failed, buyerId: %s, error: %s", req.Id, err.Error())
-//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	var response pb.ResponseBuyerFindAllOrders
-//	responseOrders := make([]*pb.BuyerAllOrders, 0, len(orders))
-//
-//	for _, order := range orders {
-//		responseOrder := &pb.BuyerAllOrders{
-//			OrderId:     order.OrderId,
-//			CreatedAt:   order.CreatedAt.Format(ISO8601),
-//			UpdatedAt:   order.UpdatedAt.Format(ISO8601),
-//			OrderStatus: order.Status,
-//			Amount: &pb.Amount{
-//				Total:         order.Invoice.Total,
-//				Subtotal:      order.Invoice.Subtotal,
-//				Discount:      order.Invoice.Discount,
-//				Currency:      order.Invoice.Currency,
-//				ShipmentTotal: order.Invoice.ShipmentTotal,
-//				PaymentMethod: order.Invoice.PaymentMethod,
-//				PaymentOption: order.Invoice.PaymentGateway,
-//				System: &pb.System{
-//					Amount: order.Invoice.System.Amount,
-//					Code:   order.Invoice.System.Code,
-//				},
-//			},
-//			ShippingAddress: &pb.Address{
-//				FirstName:     order.BuyerInfo.ShippingAddress.FirstName,
-//				LastName:      order.BuyerInfo.ShippingAddress.LastName,
-//				Address:       order.BuyerInfo.ShippingAddress.Address,
-//				Phone:         order.BuyerInfo.ShippingAddress.Phone,
-//				Mobile:        order.BuyerInfo.ShippingAddress.Mobile,
-//				Country:       order.BuyerInfo.ShippingAddress.Country,
-//				City:          order.BuyerInfo.ShippingAddress.City,
-//				Province:      order.BuyerInfo.ShippingAddress.Province,
-//				Neighbourhood: order.BuyerInfo.ShippingAddress.Neighbourhood,
-//			},
-//			Items: make([]*pb.BuyerOrderItems, 0, len(order.Items)),
-//		}
-//
-//		if order.BuyerInfo.ShippingAddress.Location != nil {
-//			responseOrder.ShippingAddress.Lat = fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[1])
-//			responseOrder.ShippingAddress.Long = fmt.Sprintf("%f", order.BuyerInfo.ShippingAddress.Location.Coordinates[0])
-//		}
-//
-//		orderItemMap := make(map[string]*pb.BuyerOrderItems, 16)
-//
-//		for _, item := range order.Items {
-//			if _, ok := orderItemMap[item.InventoryId]; !ok {
-//				newResponseOrderItem := &pb.BuyerOrderItems{
-//					InventoryId: item.InventoryId,
-//					Title:       item.Title,
-//					Brand:       item.Brand,
-//					Category:    item.Category,
-//					Guaranty:    item.Guaranty,
-//					Image:       item.Image,
-//					Returnable:  item.Returnable,
-//					PId:    item.SellerInfo.PId,
-//					Quantity:    item.Quantity,
-//					Attributes:  item.Attributes,
-//					ItemStatus:  item.Status,
-//					Price: &pb.BuyerOrderItems_Price{
-//						Unit:     item.Invoice.Unit,
-//						Total:    item.Invoice.Total,
-//						Original: item.Invoice.Original,
-//						Special:  item.Invoice.Special,
-//						Currency: item.Invoice.Currency,
-//					},
-//					Shipment: &pb.BuyerOrderItems_ShipmentSpec{
-//						CourierName:  item.ShipmentSpec.CourierName,
-//						ShippingCost: item.ShipmentSpec.ShippingCost,
-//					},
-//				}
-//
-//				lastStep := item.Progress.StepsHistory[len(item.Progress.StepsHistory)-1]
-//
-//				if lastStep.ActionHistory != nil {
-//					lastAction := lastStep.ActionHistory[len(lastStep.ActionHistory)-1]
-//					newResponseOrderItem.StepStatus = lastAction.Name
-//				} else {
-//					newResponseOrderItem.StepStatus = "none"
-//					logger.Audit("BuyerFindAllOrders() => Actions History is nil, orderId: %d, sid: %d", order.OrderId, item.ItemId)
-//				}
-//				orderItemMap[item.InventoryId] = newResponseOrderItem
-//			}
-//		}
-//
-//		for _, orderItem := range orderItemMap {
-//			responseOrder.Items = append(responseOrder.Items, orderItem)
-//		}
-//
-//		responseOrders = append(responseOrders, responseOrder)
-//	}
-//
-//	response.Orders = responseOrders
-//	return &response, nil
-//}
+	if !userAcl.UserPerm().Has("order.state.all.view") || !userAcl.UserPerm().Has("order.state.all.action") {
+		return status.Error(codes.Code(future.Forbidden), "User Not Permitted")
+	}
 
-//func (server Server) convertNewOrderRequestToMessage(req *pb.RequestNewOrder) *pb.MessageRequest {
-//
-//	serializedOrder, err := proto.Marshal(req)
-//	if err != nil {
-//		logger.Err("could not serialize timestamp")
-//	}
-//
-//	request := pb.MessageRequest{
-//		Name:   "NewOrder",
-//		UTP:   string(DataReqType),
-//		ADT:    "Single",
-//		Method: "GRPC",
-//		Time: ptypes.TimestampNow(),
-//		Meta: nil,
-//		Data: &any.Any{
-//			TypeUrl: "baman.io/" + proto.MessageName(req),
-//			Value:   serializedOrder,
-//		},
-//	}
-//
-//	return &request
-//}
+	iFuture := server.flowManager.ReportOrderItems(srv.Context(), req, srv).Get()
 
-// TODO Add checking acl and authenticate
-//func (server Server) BackOfficeOrdersListView(ctx context.Context, req *pb.RequestBackOfficeOrdersList) (*pb.ResponseBackOfficeOrdersList, error) {
-//
-//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
-//	if err != nil {
-//		logger.Err("BackOfficeOrdersListView() => UserService.AuthenticateContextToken failed, error: %s ", err)
-//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	// TODO Must Be changed
-//	if userAcl.User().UserID <= 0 {
-//		logger.Err("BackOfficeOrdersListView() => token userId %d not authorized", userAcl.User().UserID)
-//		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
-//	}
-//
-//	promiseHandler := server.flowManager.BackOfficeOrdersListView(ctx, req)
-//	futureData := promiseHandler.Get()
-//	if futureData == nil {
-//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	if futureData.Ex != nil {
-//		futureErr := futureData.Ex.(future.FutureError)
-//		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-//	}
-//
-//	return futureData.Data.(*pb.ResponseBackOfficeOrdersList), nil
-//}
+	if iFuture.Error() != nil {
+		return status.Error(codes.Code(iFuture.Error().Code()), iFuture.Error().Message())
+	}
 
-// TODO Add checking acl and authenticate
-//func (server Server) BackOfficeOrderDetailView(ctx context.Context, req *pb.RequestIdentifier) (*pb.ResponseOrderDetailView, error) {
-//
-//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
-//	if err != nil {
-//		logger.Err("BackOfficeOrderDetailView() => UserService.AuthenticateContextToken failed, error: %s ", err)
-//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	// TODO Must Be changed
-//	if userAcl.User().UserID <= 0 {
-//		logger.Err("BackOfficeOrderDetailView() => token userId %d not authorized", userAcl.User().UserID)
-//		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
-//	}
-//
-//	promiseHandler := server.flowManager.BackOfficeOrderDetailView(ctx, req)
-//	futureData := promiseHandler.Get()
-//	if futureData == nil {
-//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	if futureData.Ex != nil {
-//		futureErr := futureData.Ex.(future.FutureError)
-//		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-//	}
-//
-//	return futureData.Data.(*pb.ResponseOrderDetailView), nil
-//}
-
-// TODO Add checking acl and authenticate
-//func (server Server) BackOfficeOrderAction(ctx context.Context, req *pb.RequestBackOfficeOrderAction) (*pb.ResponseBackOfficeOrderAction, error) {
-//
-//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
-//	if err != nil {
-//		logger.Err("BackOfficeOrderAction() => UserService.AuthenticateContextToken failed, error: %s ", err)
-//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	// TODO Must Be changed
-//	if userAcl.User().UserID <= 0 {
-//		logger.Err("BackOfficeOrderAction() => token userId %d not authorized", userAcl.User().UserID)
-//		return nil, status.Error(codes.Code(future.Forbidden), "User token not authorized")
-//	}
-//
-//	promiseHandler := server.flowManager.OperatorActionPending(ctx, req)
-//	futureData := promiseHandler.Get()
-//	if futureData == nil {
-//		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	if futureData.Ex != nil {
-//		futureErr := futureData.Ex.(future.FutureError)
-//		return nil, status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-//	}
-//
-//	return &pb.ResponseBackOfficeOrderAction{Result: true}, nil
-//
-//}
-
-// TODO Add checking acl and authenticate
-//func (server Server) SellerReportOrders(req *pb.RequestSellerReportOrders, srv pb.OrderService_SellerReportOrdersServer) error {
-//
-//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(srv.Context())
-//	if err != nil {
-//		logger.Err("SellerReportOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
-//		return status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	if userAcl.User().UserID != int64(req.PId) {
-//		logger.Err(" SellerFindAllItems() => token userId %d not authorized for sellerId %d", userAcl.User().UserID, req.PId)
-//		return status.Error(codes.Code(future.Forbidden), "User token not authorized")
-//	}
-//
-//	promiseHandler := server.flowManager.SellerReportOrders(req, srv)
-//	futureData := promiseHandler.Get()
-//	if futureData == nil {
-//		return status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	if futureData.Ex != nil {
-//		futureErr := futureData.Ex.(future.FutureError)
-//		return status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-//	}
-//
-//	return nil
-//}
-
-// TODO Add checking acl and authenticate
-//func (server Server) BackOfficeReportOrderItems(req *pb.RequestBackOfficeReportOrderItems, srv pb.OrderService_BackOfficeReportOrderItemsServer) error {
-//
-//	userAcl, err := app.Globals.UserService.AuthenticateContextToken(srv.Context())
-//	if err != nil {
-//		logger.Err("SellerReportOrders() => UserService.AuthenticateContextToken failed, error: %s ", err)
-//		return status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	// TODO Must Be changed
-//	if userAcl.User().UserID <= 0 {
-//		logger.Err("BackOfficeOrderAction() => token userId %d not authorized", userAcl.User().UserID)
-//		return status.Error(codes.Code(future.Forbidden), "User token not authorized")
-//	}
-//
-//	promiseHandler := server.flowManager.BackOfficeReportOrderItems(req, srv)
-//	futureData := promiseHandler.Get()
-//	if futureData == nil {
-//		return status.Error(codes.Code(future.InternalError), "Unknown Error")
-//	}
-//
-//	if futureData.Ex != nil {
-//		futureErr := futureData.Ex.(future.FutureError)
-//		return status.Error(codes.Code(futureErr.Code), futureErr.Reason)
-//	}
-//
-//	return nil
-//}
+	return nil
+}
 
 func (server Server) Start() {
 	port := strconv.Itoa(int(server.port))

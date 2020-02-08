@@ -20,27 +20,31 @@ func (server *Server) sellerGeneratePipelineFilter(ctx context.Context, filter F
 
 	newFilter := make([]interface{}, 2)
 
-	//if filter == DeliveryPendingFilter {
-	//	queryPathDeliveryPendingState := server.queryPathStates[DeliveryPendingFilter]
-	//	queryPathDeliveryDelayedState := server.queryPathStates[DeliveryDelayedFilter]
-	//	newFilter[0] = "$or"
-	//	newFilter[1] = bson.A{
-	//		bson.M{queryPathDeliveryPendingState.queryPath: queryPathDeliveryPendingState.state.StateName()},
-	//		bson.M{queryPathDeliveryDelayedState.queryPath: queryPathDeliveryDelayedState.state.StateName()}}
-	//
-	//} else
-	if filter == AllCanceledFilter {
-		queryPathCanceledBySellerState := server.queryPathStates[CanceledBySellerFilter]
-		queryPathCanceledByBuyerState := server.queryPathStates[CanceledByBuyerFilter]
+	if filter == AllOrdersFilter {
 		newFilter[0] = "$or"
-		newFilter[1] = bson.A{
-			bson.M{queryPathCanceledBySellerState.queryPath: queryPathCanceledBySellerState.state.StateName()},
-			bson.M{queryPathCanceledByBuyerState.queryPath: queryPathCanceledByBuyerState.state.StateName()}}
+		filterList := make([]interface{}, 0, 30)
+		for filter, _ := range server.sellerFilterStates {
+			//if filter != PayToSellerFilter {
+			filterQueryState := server.queryPathStates[filter]
+			filterList = append(filterList, map[string]string{filterQueryState.queryPath: filterQueryState.state.StateName()})
+			//}
+		}
 
+		newFilter[1] = bson.A(filterList)
 	} else {
-		queryPathState := server.queryPathStates[filter]
-		newFilter[0] = queryPathState.queryPath
-		newFilter[1] = queryPathState.state.StateName()
+		if filter == AllCanceledFilter {
+			queryPathCanceledBySellerState := server.queryPathStates[CanceledBySellerFilter]
+			queryPathCanceledByBuyerState := server.queryPathStates[CanceledByBuyerFilter]
+			newFilter[0] = "$or"
+			newFilter[1] = bson.A{
+				bson.M{queryPathCanceledBySellerState.queryPath: queryPathCanceledBySellerState.state.StateName()},
+				bson.M{queryPathCanceledByBuyerState.queryPath: queryPathCanceledByBuyerState.state.StateName()}}
+
+		} else {
+			queryPathState := server.queryPathStates[filter]
+			newFilter[0] = queryPathState.queryPath
+			newFilter[1] = queryPathState.state.StateName()
+		}
 	}
 
 	return newFilter
@@ -48,7 +52,7 @@ func (server *Server) sellerGeneratePipelineFilter(ctx context.Context, filter F
 
 func (server *Server) sellerGetOrderByIdHandler(ctx context.Context, oid uint64, pid uint64, filter FilterValue) (*pb.MessageResponse, error) {
 	genFilter := server.sellerGeneratePipelineFilter(ctx, filter)
-	filters := make(bson.M, 3)
+	filters := make(bson.M, 4)
 	filters["packages.orderId"] = oid
 	filters["packages.pid"] = pid
 	filters["packages.deletedAt"] = nil
@@ -75,12 +79,12 @@ func (server *Server) sellerGetOrderByIdHandler(ctx context.Context, oid uint64,
 	}
 
 	if pkgList == nil || len(pkgList) == 0 {
-		app.Globals.Logger.FromContext(ctx).Error("pid not found",
+		app.Globals.Logger.FromContext(ctx).Error("Order not found",
 			"fn", "sellerGetOrderByIdHandler",
 			"oid", oid,
 			"pid", pid,
 			"filter", filter)
-		return nil, status.Error(codes.Code(future.NotFound), "Pid Not Found")
+		return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
 	}
 
 	itemList := make([]*pb.SellerOrderList_ItemList, 0, 1)
