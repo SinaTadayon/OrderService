@@ -290,7 +290,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	sellerStatesMapping[states.ReturnDeliveryDelayed.StateName()] = []states.IEnumState{states.ReturnDeliveryDelayed}
 	sellerStatesMapping[states.ReturnDelivered.StateName()] = []states.IEnumState{states.ReturnDelivered}
 	sellerStatesMapping[states.ReturnRejected.StateName()] = []states.IEnumState{states.ReturnRejected}
-	sellerStatesMapping[states.PayToSeller.StateName()] = []states.IEnumState{states.ReturnCanceled, states.ReturnDeliveryFailed, states.ReturnShipmentPending, states.ReturnRequestRejected}
+	sellerStatesMapping[states.PayToSeller.StateName()] = []states.IEnumState{states.ReturnCanceled, states.ReturnDeliveryFailed, states.ReturnShipmentPending, states.ReturnRequestRejected, states.ReturnRejected, states.Delivered}
 	sellerStatesMapping[states.PayToBuyer.StateName()] = []states.IEnumState{states.CanceledBySeller, states.CanceledByBuyer, states.DeliveryFailed, states.ReturnRejected, states.ReturnDelivered}
 
 	queryPathStatesMap := make(map[FilterValue]FilterQueryState, 30)
@@ -493,14 +493,14 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("UserService.AuthenticateContextToken failed", "fn", "RequestHandler", "error", err)
-		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+		//return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
 	}
 
-	if uint64(userAcl.User().UserID) != req.Meta.UID {
-		app.Globals.Logger.FromContext(ctx).Error("request userId mismatch with token userId", "fn", "RequestHandler",
-			"userId", req.Meta.UID, "token", userAcl.User().UserID)
-		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
-	}
+	//if uint64(userAcl.User().UserID) != req.Meta.UID {
+	//	app.Globals.Logger.FromContext(ctx).Error("request userId mismatch with token userId", "fn", "RequestHandler",
+	//		"userId", req.Meta.UID, "token", userAcl.User().UserID)
+	//	return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+	//}
 
 	if req.Meta.UTP == string(OperatorUser) {
 		if !userAcl.UserPerm().Has("order.state.all.view") && RequestType(req.Type) == DataReqType {

@@ -658,6 +658,11 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 
 func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *pb.RequestReportOrderItems, srv pb.OrderService_ReportOrderItemsServer) future.IFuture {
 
+	app.Globals.Logger.Debug("received new request . . .",
+		"fn", "ReportOrderItems",
+		"startTime", req.StartDateTime,
+		"endTime", req.EndDataTime)
+
 	startTime, err := time.Parse(ISO8601, req.StartDateTime)
 	if err != nil {
 		return future.Factory().SetCapacity(1).SetError(future.BadRequest, "StartDateTime Invalid", err).BuildAndSend()
@@ -873,5 +878,10 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 			"error", err)
 		return future.Factory().SetCapacity(1).SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "")).BuildAndSend()
 	}
+	app.Globals.Logger.Debug("generate csv file success . . .",
+		"fn", "ReportOrderItems",
+		"startTime", req.StartDateTime,
+		"endTime", req.EndDataTime)
+
 	return future.Factory().SetCapacity(1).BuildAndSend()
 }
