@@ -20,19 +20,19 @@ import (
 func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, filter FilterValue, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
 
-	var sortDirect int
-	if direction == "ASC" {
-		sortDirect = 1
-	} else {
-		sortDirect = -1
-	}
-
 	var orderList []*entities.Order
 	var totalCount int64
 	var err repository.IRepoError
 	if oid > 0 {
 		return server.operatorGetOrderByIdHandler(ctx, oid, filter)
 	} else {
+		var sortDirect int
+		if direction == "ASC" {
+			sortDirect = 1
+		} else {
+			sortDirect = -1
+		}
+
 		if filter != "" {
 			filters := server.OperatorGeneratePipelineFilter(ctx, filter)
 			if sortName != "" {

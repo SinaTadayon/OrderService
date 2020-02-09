@@ -58,9 +58,7 @@ import (
 	//"google.golang.org/grpc/status"
 	pb "gitlab.faza.io/protos/order"
 	pg "gitlab.faza.io/protos/payment-gateway"
-	//"github.com/golang/protobuf/ptypes"
-	//"gitlab.faza.io/go-framework/logger"
-	ptime "github.com/yaa110/go-persian-calendar"
+
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 )
 
@@ -710,8 +708,8 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 							VoucherAmount:     "0",
 							ShippingCost:      orders[i].Packages[j].Invoice.ShipmentAmount.Amount,
 							Status:            orders[i].Packages[j].Subpackages[k].Status,
-							CreatedAt:         "",
-							UpdatedAt:         "",
+							CreatedAt:         orders[i].CreatedAt.Format(ISO8601),
+							UpdatedAt:         orders[i].Packages[j].Subpackages[k].UpdatedAt.Format(ISO8601),
 						}
 
 						if orders[i].Invoice.Voucher != nil {
@@ -724,29 +722,29 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 							}
 						}
 
-						tempTime := time.Date(orders[i].CreatedAt.Year(),
-							orders[i].CreatedAt.Month(),
-							orders[i].CreatedAt.Day(),
-							orders[i].CreatedAt.Hour(),
-							orders[i].CreatedAt.Minute(),
-							orders[i].CreatedAt.Second(),
-							orders[i].CreatedAt.Nanosecond(),
-							ptime.Iran())
-
-						pt := ptime.New(tempTime)
-						itemReport.CreatedAt = pt.Format("yyyy-MM-dd hh:mm:ss")
-
-						tempTime = time.Date(orders[i].Packages[j].Subpackages[k].UpdatedAt.Year(),
-							orders[i].Packages[j].Subpackages[k].UpdatedAt.Month(),
-							orders[i].Packages[j].Subpackages[k].UpdatedAt.Day(),
-							orders[i].Packages[j].Subpackages[k].UpdatedAt.Hour(),
-							orders[i].Packages[j].Subpackages[k].UpdatedAt.Minute(),
-							orders[i].Packages[j].Subpackages[k].UpdatedAt.Second(),
-							orders[i].Packages[j].Subpackages[k].UpdatedAt.Nanosecond(),
-							ptime.Iran())
-
-						pt = ptime.New(tempTime)
-						itemReport.UpdatedAt = pt.Format("yyyy-MM-dd hh:mm:ss")
+						//tempTime := time.Date(orders[i].CreatedAt.Year(),
+						//	orders[i].CreatedAt.Month(),
+						//	orders[i].CreatedAt.Day(),
+						//	orders[i].CreatedAt.Hour(),
+						//	orders[i].CreatedAt.Minute(),
+						//	orders[i].CreatedAt.Second(),
+						//	orders[i].CreatedAt.Nanosecond(),
+						//	ptime.Iran())
+						//
+						//pt := ptime.New(tempTime)
+						//itemReport.CreatedAt = pt.Format("yyyy-MM-dd hh:mm:ss")
+						//
+						//tempTime = time.Date(orders[i].Packages[j].Subpackages[k].UpdatedAt.Year(),
+						//	orders[i].Packages[j].Subpackages[k].UpdatedAt.Month(),
+						//	orders[i].Packages[j].Subpackages[k].UpdatedAt.Day(),
+						//	orders[i].Packages[j].Subpackages[k].UpdatedAt.Hour(),
+						//	orders[i].Packages[j].Subpackages[k].UpdatedAt.Minute(),
+						//	orders[i].Packages[j].Subpackages[k].UpdatedAt.Second(),
+						//	orders[i].Packages[j].Subpackages[k].UpdatedAt.Nanosecond(),
+						//	ptime.Iran())
+						//
+						//pt = ptime.New(tempTime)
+						//itemReport.UpdatedAt = pt.Format("yyyy-MM-dd hh:mm:ss")
 						orderReports = append(orderReports, itemReport)
 					}
 
