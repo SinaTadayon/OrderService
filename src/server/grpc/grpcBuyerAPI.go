@@ -6,6 +6,8 @@ import (
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/shopspring/decimal"
 	"gitlab.faza.io/order-project/order-service/app"
+	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	pb "gitlab.faza.io/protos/order"
@@ -94,15 +96,40 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 		return nil, status.Error(codes.Code(future.BadRequest), "Page/PerPage Invalid")
 	}
 
-	var sortDirect int
-	if direction == "ASC" {
-		sortDirect = 1
-	} else {
-		sortDirect = -1
-	}
+	var orderList []*entities.Order
+	var total int64
+	var err repository.IRepoError
+	if sortName != "" {
+		var sortDirect int
+		if direction == "ASC" {
+			sortDirect = 1
+		} else {
+			sortDirect = -1
+		}
 
-	orderFilter := func() (interface{}, string, int) {
-		return bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
+		orderFilter := func() (interface{}, string, int) {
+			return bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
+					bson.D{{server.queryPathStates[PaymentFailedFilter].queryPath, server.queryPathStates[PaymentFailedFilter].state.StateName()}},
+					bson.D{{server.queryPathStates[ApprovalPendingFilter].queryPath, server.queryPathStates[ApprovalPendingFilter].state.StateName()}},
+					bson.D{{server.queryPathStates[ShipmentPendingFilter].queryPath, server.queryPathStates[ShipmentPendingFilter].state.StateName()}},
+					bson.D{{server.queryPathStates[ShipmentDelayedFilter].queryPath, server.queryPathStates[ShipmentDelayedFilter].state.StateName()}},
+					bson.D{{server.queryPathStates[ShippedFilter].queryPath, server.queryPathStates[ShippedFilter].state.StateName()}},
+					bson.D{{server.queryPathStates[DeliveryPendingFilter].queryPath, server.queryPathStates[DeliveryPendingFilter].state.StateName()}},
+					bson.D{{server.queryPathStates[DeliveryDelayedFilter].queryPath, server.queryPathStates[DeliveryDelayedFilter].state.StateName()}},
+					bson.D{{server.queryPathStates[DeliveredFilter].queryPath, server.queryPathStates[DeliveredFilter].state.StateName()}},
+					bson.D{{server.queryPathStates[DeliveryFailedFilter].queryPath, server.queryPathStates[DeliveryFailedFilter].state.StateName()}},
+					bson.D{{server.queryPathStates[PayToBuyerFilter].queryPath, server.queryPathStates[PayToBuyerFilter].state.StateName()}},
+					bson.D{{server.queryPathStates[PayToSellerFilter].queryPath, server.queryPathStates[PayToSellerFilter].state.StateName()}}}}},
+				sortName, sortDirect
+		}
+		orderList, total, err = app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+		if err != nil {
+			app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "buyerOrderDetailListHandler", "oid", oid, "uid", userId, "page", page, "perPage", perPage, "error", err)
+			return nil, status.Error(codes.Code(err.Code()), err.Message())
+		}
+	} else {
+		orderFilter := func() interface{} {
+			return bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
 				bson.D{{server.queryPathStates[PaymentFailedFilter].queryPath, server.queryPathStates[PaymentFailedFilter].state.StateName()}},
 				bson.D{{server.queryPathStates[ApprovalPendingFilter].queryPath, server.queryPathStates[ApprovalPendingFilter].state.StateName()}},
 				bson.D{{server.queryPathStates[ShipmentPendingFilter].queryPath, server.queryPathStates[ShipmentPendingFilter].state.StateName()}},
@@ -113,14 +140,13 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 				bson.D{{server.queryPathStates[DeliveredFilter].queryPath, server.queryPathStates[DeliveredFilter].state.StateName()}},
 				bson.D{{server.queryPathStates[DeliveryFailedFilter].queryPath, server.queryPathStates[DeliveryFailedFilter].state.StateName()}},
 				bson.D{{server.queryPathStates[PayToBuyerFilter].queryPath, server.queryPathStates[PayToBuyerFilter].state.StateName()}},
-				bson.D{{server.queryPathStates[PayToSellerFilter].queryPath, server.queryPathStates[PayToSellerFilter].state.StateName()}}}}},
-			sortName, sortDirect
-	}
-
-	orderList, total, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
-	if err != nil {
-		app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "buyerOrderDetailListHandler", "oid", oid, "uid", userId, "page", page, "perPage", perPage, "error", err)
-		return nil, status.Error(codes.Code(err.Code()), err.Message())
+				bson.D{{server.queryPathStates[PayToSellerFilter].queryPath, server.queryPathStates[PayToSellerFilter].state.StateName()}}}}}
+		}
+		orderList, total, err = app.Globals.OrderRepository.FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
+		if err != nil {
+			app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPage failed", "fn", "buyerOrderDetailListHandler", "oid", oid, "uid", userId, "page", page, "perPage", perPage, "error", err)
+			return nil, status.Error(codes.Code(err.Code()), err.Message())
+		}
 	}
 
 	if total == 0 || orderList == nil || len(orderList) == 0 {
@@ -810,13 +836,6 @@ func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId ui
 		return nil, status.Error(codes.Code(future.BadRequest), "Page/PerPage Invalid")
 	}
 
-	var sortDirect int
-	if direction == "ASC" {
-		sortDirect = 1
-	} else {
-		sortDirect = -1
-	}
-
 	var returnFilter bson.D
 	returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
 		bson.D{{server.queryPathStates[ReturnRequestPendingFilter].queryPath, server.queryPathStates[ReturnRequestPendingFilter].state.StateName()}},
@@ -828,19 +847,42 @@ func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId ui
 		bson.D{{server.queryPathStates[ReturnDeliveryFailedFilter].queryPath, server.queryPathStates[ReturnDeliveryFailedFilter].state.StateName()}},
 		bson.D{{server.queryPathStates[ReturnDeliveredFilter].queryPath, server.queryPathStates[ReturnDeliveredFilter].state.StateName()}}}}}
 
-	//genFilter := server.buyerGeneratePipelineFilter(ctx, filter)
-	//filters := make(bson.M, 3)
-	//filters["buyerInfo.buyerId"] = userId
-	//filters["deletedAt"] = nil
-	//filters[genFilter[0].(string)] = genFilter[1]
-	orderFilter := func() (interface{}, string, int) {
-		return returnFilter, sortName, sortDirect
-	}
+	var orderList []*entities.Order
+	var total int64
+	var err repository.IRepoError
 
-	orderList, total, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
-	if err != nil {
-		app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "buyerAllReturnOrdersHandler", "uid", userId, "page", page, "perPage", perPage, "error", err)
-		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	if sortName != "" {
+		var sortDirect int
+		if direction == "ASC" {
+			sortDirect = 1
+		} else {
+			sortDirect = -1
+		}
+
+		//genFilter := server.buyerGeneratePipelineFilter(ctx, filter)
+		//filters := make(bson.M, 3)
+		//filters["buyerInfo.buyerId"] = userId
+		//filters["deletedAt"] = nil
+		//filters[genFilter[0].(string)] = genFilter[1]
+		orderFilter := func() (interface{}, string, int) {
+			return returnFilter, sortName, sortDirect
+		}
+
+		orderList, total, err = app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+		if err != nil {
+			app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "buyerAllReturnOrdersHandler", "uid", userId, "page", page, "perPage", perPage, "error", err)
+			return nil, status.Error(codes.Code(err.Code()), err.Message())
+		}
+	} else {
+		orderFilter := func() interface{} {
+			return returnFilter
+		}
+
+		orderList, total, err = app.Globals.OrderRepository.FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
+		if err != nil {
+			app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPage failed", "fn", "buyerAllReturnOrdersHandler", "uid", userId, "page", page, "perPage", perPage, "error", err)
+			return nil, status.Error(codes.Code(err.Code()), err.Message())
+		}
 	}
 
 	if total == 0 || orderList == nil || len(orderList) == 0 {
@@ -1071,13 +1113,6 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 		return server.buyerAllReturnOrdersHandler(ctx, userId, page, perPage, sortName, direction)
 	}
 
-	var sortDirect int
-	if direction == "ASC" {
-		sortDirect = 1
-	} else {
-		sortDirect = -1
-	}
-
 	var returnFilter bson.D
 	if filter == ReturnDeliveredFilter {
 		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
@@ -1094,19 +1129,41 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 		returnFilter = bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {server.queryPathStates[filter].queryPath, server.queryPathStates[filter].state.StateName()}}
 	}
 
-	//genFilter := server.buyerGeneratePipelineFilter(ctx, filter)
-	//filters := make(bson.M, 3)
-	//filters["buyerInfo.buyerId"] = userId
-	//filters["deletedAt"] = nil
-	//filters[genFilter[0].(string)] = genFilter[1]
-	orderFilter := func() (interface{}, string, int) {
-		return returnFilter, sortName, sortDirect
-	}
+	var orderList []*entities.Order
+	var total int64
+	var err repository.IRepoError
+	if sortName != "" {
+		var sortDirect int
+		if direction == "ASC" {
+			sortDirect = 1
+		} else {
+			sortDirect = -1
+		}
 
-	orderList, total, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
-	if err != nil {
-		app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "buyerReturnOrderDetailListHandler", "uid", userId, "filter", filter, "page", page, "perPage", perPage, "error", err)
-		return nil, status.Error(codes.Code(err.Code()), err.Message())
+		//genFilter := server.buyerGeneratePipelineFilter(ctx, filter)
+		//filters := make(bson.M, 3)
+		//filters["buyerInfo.buyerId"] = userId
+		//filters["deletedAt"] = nil
+		//filters[genFilter[0].(string)] = genFilter[1]
+		orderFilter := func() (interface{}, string, int) {
+			return returnFilter, sortName, sortDirect
+		}
+
+		orderList, total, err = app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+		if err != nil {
+			app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "buyerReturnOrderDetailListHandler", "uid", userId, "filter", filter, "page", page, "perPage", perPage, "error", err)
+			return nil, status.Error(codes.Code(err.Code()), err.Message())
+		}
+	} else {
+		orderFilter := func() interface{} {
+			return returnFilter
+		}
+
+		orderList, total, err = app.Globals.OrderRepository.FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
+		if err != nil {
+			app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPage failed", "fn", "buyerReturnOrderDetailListHandler", "uid", userId, "filter", filter, "page", page, "perPage", perPage, "error", err)
+			return nil, status.Error(codes.Code(err.Code()), err.Message())
+		}
 	}
 
 	if total == 0 || orderList == nil || len(orderList) == 0 {
