@@ -232,24 +232,41 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, oid, pid uint6
 		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
 	}
 
-	var sortDirect int
-	if direction == "ASC" {
-		sortDirect = 1
-	} else {
-		sortDirect = -1
-	}
+	var pkgFilter func() interface{}
 
-	pkgFilter := func() interface{} {
-		return []bson.M{
-			{"$match": filters},
-			{"$unwind": "$packages"},
-			{"$match": filters},
-			{"$project": bson.M{"_id": 0, "packages": 1}},
-			{"$sort": bson.M{"packages.subpackages." + sortName: sortDirect}},
-			{"$skip": offset},
-			{"$limit": perPage},
-			{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+	if sortName != "" {
+		var sortDirect int
+		if direction == "ASC" {
+			sortDirect = 1
+		} else {
+			sortDirect = -1
 		}
+
+		pkgFilter = func() interface{} {
+			return []bson.M{
+				{"$match": filters},
+				{"$unwind": "$packages"},
+				{"$match": filters},
+				{"$project": bson.M{"_id": 0, "packages": 1}},
+				{"$sort": bson.M{"packages.subpackages." + sortName: sortDirect}},
+				{"$skip": offset},
+				{"$limit": perPage},
+				{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+			}
+		}
+	} else {
+		pkgFilter = func() interface{} {
+			return []bson.M{
+				{"$match": filters},
+				{"$unwind": "$packages"},
+				{"$match": filters},
+				{"$project": bson.M{"_id": 0, "packages": 1}},
+				{"$skip": offset},
+				{"$limit": perPage},
+				{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+			}
+		}
+
 	}
 
 	pkgList, err := app.Globals.PkgItemRepository.FindByFilter(ctx, pkgFilter)
@@ -416,23 +433,38 @@ func (server *Server) sellerAllOrdersHandler(ctx context.Context, pid uint64, pa
 		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
 	}
 
-	var sortDirect int
-	if direction == "ASC" {
-		sortDirect = 1
-	} else {
-		sortDirect = -1
-	}
+	var pkgFilter func() interface{}
+	if sortName != "" {
+		var sortDirect int
+		if direction == "ASC" {
+			sortDirect = 1
+		} else {
+			sortDirect = -1
+		}
 
-	pkgFilter := func() interface{} {
-		return []bson.M{
-			{"$match": filters},
-			{"$unwind": "$packages"},
-			{"$match": filters},
-			{"$project": bson.M{"_id": 0, "packages": 1}},
-			{"$sort": bson.M{"packages.subpackages." + sortName: sortDirect}},
-			{"$skip": offset},
-			{"$limit": perPage},
-			{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+		pkgFilter = func() interface{} {
+			return []bson.M{
+				{"$match": filters},
+				{"$unwind": "$packages"},
+				{"$match": filters},
+				{"$project": bson.M{"_id": 0, "packages": 1}},
+				{"$sort": bson.M{"packages.subpackages." + sortName: sortDirect}},
+				{"$skip": offset},
+				{"$limit": perPage},
+				{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+			}
+		}
+	} else {
+		pkgFilter = func() interface{} {
+			return []bson.M{
+				{"$match": filters},
+				{"$unwind": "$packages"},
+				{"$match": filters},
+				{"$project": bson.M{"_id": 0, "packages": 1}},
+				{"$skip": offset},
+				{"$limit": perPage},
+				{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+			}
 		}
 	}
 
@@ -917,23 +949,38 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 		return nil, status.Error(codes.Code(future.NotFound), "Not Found")
 	}
 
-	var sortDirect int
-	if direction == "ASC" {
-		sortDirect = 1
-	} else {
-		sortDirect = -1
-	}
+	var pkgFilter func() interface{}
+	if sortName != "" {
+		var sortDirect int
+		if direction == "ASC" {
+			sortDirect = 1
+		} else {
+			sortDirect = -1
+		}
 
-	pkgFilter := func() interface{} {
-		return []bson.M{
-			{"$match": filters},
-			{"$unwind": "$packages"},
-			{"$match": filters},
-			{"$project": bson.M{"_id": 0, "packages": 1}},
-			{"$sort": bson.M{"packages.subpackages." + sortName: sortDirect}},
-			{"$skip": offset},
-			{"$limit": perPage},
-			{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+		pkgFilter = func() interface{} {
+			return []bson.M{
+				{"$match": filters},
+				{"$unwind": "$packages"},
+				{"$match": filters},
+				{"$project": bson.M{"_id": 0, "packages": 1}},
+				{"$sort": bson.M{"packages.subpackages." + sortName: sortDirect}},
+				{"$skip": offset},
+				{"$limit": perPage},
+				{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+			}
+		}
+	} else {
+		pkgFilter = func() interface{} {
+			return []bson.M{
+				{"$match": filters},
+				{"$unwind": "$packages"},
+				{"$match": filters},
+				{"$project": bson.M{"_id": 0, "packages": 1}},
+				{"$skip": offset},
+				{"$limit": perPage},
+				{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+			}
 		}
 	}
 

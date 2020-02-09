@@ -7,6 +7,8 @@ import (
 	"github.com/shopspring/decimal"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
+	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	pb "gitlab.faza.io/protos/order"
@@ -18,35 +20,69 @@ import (
 func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, filter FilterValue, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
 
-	var sortDirect int
-	if direction == "ASC" {
-		sortDirect = 1
-	} else {
-		sortDirect = -1
-	}
-
-	var orderFilter func() (interface{}, string, int)
+	var orderList []*entities.Order
+	var totalCount int64
+	var err repository.IRepoError
 	if oid > 0 {
 		return server.operatorGetOrderByIdHandler(ctx, oid, filter)
 	} else {
+		var sortDirect int
+		if direction == "ASC" {
+			sortDirect = 1
+		} else {
+			sortDirect = -1
+		}
+
 		if filter != "" {
 			filters := server.OperatorGeneratePipelineFilter(ctx, filter)
-			orderFilter = func() (interface{}, string, int) {
-				return bson.D{{"deletedAt", nil}, {filters[0].(string), filters[1]}},
-					sortName, sortDirect
+			if sortName != "" {
+				orderFilter := func() (interface{}, string, int) {
+					return bson.D{{"deletedAt", nil}, {filters[0].(string), filters[1]}},
+						sortName, sortDirect
+				}
+				orderList, totalCount, err = app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+				if err != nil {
+					app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "operatorOrderListHandler", "oid", oid, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
+					return nil, status.Error(codes.Code(err.Code()), err.Message())
+				}
+			} else {
+				orderFilter := func() interface{} {
+					return bson.D{{"deletedAt", nil}, {filters[0].(string), filters[1]}}
+				}
+				orderList, totalCount, err = app.Globals.OrderRepository.FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
+				if err != nil {
+					app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPage failed", "fn", "operatorOrderListHandler", "oid", oid, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
+					return nil, status.Error(codes.Code(err.Code()), err.Message())
+				}
 			}
 		} else {
-			orderFilter = func() (interface{}, string, int) {
-				return bson.D{{"deletedAt", nil}}, sortName, sortDirect
+			if sortName != "" {
+				orderFilter := func() (interface{}, string, int) {
+					return bson.D{{"deletedAt", nil}}, sortName, sortDirect
+				}
+				orderList, totalCount, err = app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+				if err != nil {
+					app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "operatorOrderListHandler", "oid", oid, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
+					return nil, status.Error(codes.Code(err.Code()), err.Message())
+				}
+			} else {
+				orderFilter := func() interface{} {
+					return bson.D{{"deletedAt", nil}}
+				}
+				orderList, totalCount, err = app.Globals.OrderRepository.FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
+				if err != nil {
+					app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPage failed", "fn", "operatorOrderListHandler", "oid", oid, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
+					return nil, status.Error(codes.Code(err.Code()), err.Message())
+				}
 			}
 		}
 	}
 
-	orderList, totalCount, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
-	if err != nil {
-		app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "operatorOrderListHandler", "oid", oid, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
-		return nil, status.Error(codes.Code(err.Code()), err.Message())
-	}
+	//orderList, totalCount, err := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+	//if err != nil {
+	//	app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "operatorOrderListHandler", "oid", oid, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
+	//	return nil, status.Error(codes.Code(err.Code()), err.Message())
+	//}
 
 	if totalCount == 0 || orderList == nil || len(orderList) == 0 {
 		app.Globals.Logger.FromContext(ctx).Info("order not found", "fn", "operatorOrderListHandler", "oid", oid, "filter", filter)
