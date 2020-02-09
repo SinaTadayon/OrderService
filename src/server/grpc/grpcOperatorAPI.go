@@ -134,12 +134,18 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 					order.Invoice.PaymentStatus = "fail"
 				}
 			} else {
-				if orderList[i].OrderPayment[0].PaymentResponse != nil {
-					if orderList[i].OrderPayment[0].PaymentResponse.Result {
-						order.Invoice.PaymentStatus = "success"
+				if orderList[i].Status == string(states.OrderClosedStatus) {
+					if orderList[i].OrderPayment[0].PaymentResponse != nil {
+						if orderList[i].OrderPayment[0].PaymentResponse.Result {
+							order.Invoice.PaymentStatus = "success"
+						} else {
+							order.Invoice.PaymentStatus = "fail"
+						}
 					} else {
 						order.Invoice.PaymentStatus = "fail"
 					}
+				} else {
+					order.Invoice.PaymentStatus = "pending"
 				}
 			}
 		} else {
