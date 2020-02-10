@@ -493,14 +493,14 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("UserService.AuthenticateContextToken failed", "fn", "RequestHandler", "error", err)
-		//return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
 	}
 
-	//if uint64(userAcl.User().UserID) != req.Meta.UID {
-	//	app.Globals.Logger.FromContext(ctx).Error("request userId mismatch with token userId", "fn", "RequestHandler",
-	//		"userId", req.Meta.UID, "token", userAcl.User().UserID)
-	//	return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
-	//}
+	if uint64(userAcl.User().UserID) != req.Meta.UID {
+		app.Globals.Logger.FromContext(ctx).Error("request userId mismatch with token userId", "fn", "RequestHandler",
+			"userId", req.Meta.UID, "token", userAcl.User().UserID)
+		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+	}
 
 	if req.Meta.UTP == string(OperatorUser) {
 		if !userAcl.UserPerm().Has("order.state.all.view") && RequestType(req.Type) == DataReqType {
