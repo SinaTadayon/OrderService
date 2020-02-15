@@ -311,7 +311,7 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 				var subpackageList []*protoOrder.SchedulerActionRequest_Order_Package_Subpackage = nil
 				var pkg *protoOrder.SchedulerActionRequest_Order_Package = nil
 				for k := 0; k < len(orderList[i].Packages[j].Subpackages); k++ {
-					app.Globals.Logger.Error("scheduler check order",
+					app.Globals.Logger.Debug("scheduler check order",
 						"fn", "doProcess",
 						"oid", orderList[i].Packages[j].Subpackages[k].OrderId,
 						"pid", orderList[i].Packages[j].Subpackages[k].Pid,
