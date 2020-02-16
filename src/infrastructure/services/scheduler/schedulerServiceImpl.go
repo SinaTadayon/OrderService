@@ -442,13 +442,14 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 		if err != nil {
 			app.Globals.Logger.FromContext(ctx).Error("scheduler.orderClient.SchedulerMessageHandler failed",
 				"fn", "doProcess",
+				"request", request,
 				"state", state.StateName(),
 				"error", err)
 			return
 		} else {
 			app.Globals.Logger.FromContext(ctx).Debug("scheduler.orderClient.SchedulerMessageHandler success",
 				"fn", "doProcess",
-				"request", msgReq,
+				"request", request,
 				"response", response,
 				"state", state.StateName())
 		}
@@ -457,7 +458,8 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 		case <-ctx.Done():
 			app.Globals.Logger.FromContext(ctx).Debug("context down",
 				"fn", "doProcess",
-				"state", state.StateName(), "cause", ctx.Err())
+				"state", state.StateName(),
+				"error", ctx.Err())
 			return
 		default:
 		}
