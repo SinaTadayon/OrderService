@@ -580,59 +580,56 @@ func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.Messa
 			server.flowManager.MessageHandler(ctx, iFrame)
 			futureData := iFuture.Get()
 			if futureData.Error() != nil {
-				app.Globals.Logger.FromContext(ctx).Error("flowManager.MessageHandler failed", "fn", "SchedulerMessageHandler", "event", event, "error", futureData.Error().Reason())
+				app.Globals.Logger.FromContext(ctx).Error("flowManager.MessageHandler failed",
+					"fn", "SchedulerMessageHandler",
+					"event", event,
+					"error", futureData.Error().Reason())
 			}
 
-			response := &pb.MessageResponse{
-				Entity: "ActionResponse",
-				Meta:   nil,
-				Data:   nil,
-			}
-			return response, nil
-		}
+		} else {
+			for _, pkgReq := range orderReq.Packages {
+				subpackages := make([]events.ActionSubpackage, 0, len(pkgReq.Subpackages))
+				for _, subPkgReq := range pkgReq.Subpackages {
 
-		for _, pkgReq := range orderReq.Packages {
-			subpackages := make([]events.ActionSubpackage, 0, len(pkgReq.Subpackages))
-			for _, subPkgReq := range pkgReq.Subpackages {
-
-				subpackage := events.ActionSubpackage{
-					SId:   subPkgReq.SID,
-					Items: nil,
-				}
-				subpackage.Items = make([]events.ActionItem, 0, len(subPkgReq.Items))
-				for _, item := range subPkgReq.Items {
-					actionItem := events.ActionItem{
-						InventoryId: item.InventoryId,
-						Quantity:    item.Quantity,
+					subpackage := events.ActionSubpackage{
+						SId:   subPkgReq.SID,
+						Items: nil,
 					}
-					subpackage.Items = append(subpackage.Items, actionItem)
+					subpackage.Items = make([]events.ActionItem, 0, len(subPkgReq.Items))
+					for _, item := range subPkgReq.Items {
+						actionItem := events.ActionItem{
+							InventoryId: item.InventoryId,
+							Quantity:    item.Quantity,
+						}
+						subpackage.Items = append(subpackage.Items, actionItem)
+					}
+					subpackages = append(subpackages, subpackage)
 				}
-				subpackages = append(subpackages, subpackage)
-			}
 
-			actionData := events.ActionData{
-				SubPackages:    subpackages,
-				Carrier:        "",
-				TrackingNumber: "",
-			}
+				actionData := events.ActionData{
+					SubPackages:    subpackages,
+					Carrier:        "",
+					TrackingNumber: "",
+				}
 
-			event := events.New(events.Action, orderReq.OID, pkgReq.PID, 0,
-				orderReq.StateIndex, userAction,
-				time.Unix(req.Time.GetSeconds(), int64(req.Time.GetNanos())), actionData)
+				event := events.New(events.Action, orderReq.OID, pkgReq.PID, 0,
+					orderReq.StateIndex, userAction,
+					time.Unix(req.Time.GetSeconds(), int64(req.Time.GetNanos())), actionData)
 
-			iFuture := future.Factory().SetCapacity(1).Build()
-			iFrame := frame.Factory().SetFuture(iFuture).SetEvent(event).Build()
+				iFuture := future.Factory().SetCapacity(1).Build()
+				iFrame := frame.Factory().SetFuture(iFuture).SetEvent(event).Build()
 
-			app.Globals.Logger.FromContext(ctx).Debug("scheduler action event",
-				"fn", "SchedulerMessageHandler",
-				"oid", event.OrderId(),
-				"uid", event.UserId(),
-				"event", event)
+				app.Globals.Logger.FromContext(ctx).Debug("scheduler action event",
+					"fn", "SchedulerMessageHandler",
+					"oid", event.OrderId(),
+					"uid", event.UserId(),
+					"event", event)
 
-			server.flowManager.MessageHandler(ctx, iFrame)
-			futureData := iFuture.Get()
-			if futureData.Error() != nil {
-				app.Globals.Logger.FromContext(ctx).Error("flowManager.MessageHandler failed", "fn", "SchedulerMessageHandler", "event", event, "error", futureData.Error().Reason())
+				server.flowManager.MessageHandler(ctx, iFrame)
+				futureData := iFuture.Get()
+				if futureData.Error() != nil {
+					app.Globals.Logger.FromContext(ctx).Error("flowManager.MessageHandler failed", "fn", "SchedulerMessageHandler", "event", event, "error", futureData.Error().Reason())
+				}
 			}
 		}
 	}
