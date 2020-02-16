@@ -10,6 +10,7 @@ import (
 	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	stockProto "gitlab.faza.io/protos/stock-proto.git"
 	"os"
+	"sync"
 	"testing"
 	"time"
 )
@@ -38,7 +39,7 @@ func TestMain(m *testing.M) {
 
 	stock = &iStockServiceImpl{nil, nil,
 		config.StockService.Address,
-		config.StockService.Port, config.StockService.Timeout,
+		config.StockService.Port, config.StockService.Timeout, sync.Mutex{},
 	}
 
 	// Running Tests

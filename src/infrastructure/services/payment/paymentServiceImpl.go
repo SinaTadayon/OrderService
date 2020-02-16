@@ -8,9 +8,9 @@ import (
 	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	payment_gateway "gitlab.faza.io/protos/payment-gateway"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/metadata"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -21,29 +21,34 @@ type iPaymentServiceImpl struct {
 	serverPort           int
 	callbackTimeout      int
 	paymentResultTimeout int
+	mux                  sync.Mutex
 }
 
 func NewPaymentService(address string, port int, callbackTimeout, paymentResultTimeout int) IPaymentService {
 	return &iPaymentServiceImpl{nil, nil, address,
-		port, callbackTimeout, paymentResultTimeout,
+		port, callbackTimeout, paymentResultTimeout, sync.Mutex{},
 	}
 }
 
 func (payment *iPaymentServiceImpl) ConnectToPaymentService() error {
-	if payment.grpcConnection == nil || payment.grpcConnection.GetState() != connectivity.Ready {
-		var err error
-		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-		payment.grpcConnection, err = grpc.DialContext(ctx, payment.serverAddress+":"+fmt.Sprint(payment.serverPort),
-			grpc.WithBlock(), grpc.WithInsecure())
-		if err != nil {
-			applog.GLog.Logger.Error("GRPC connect dial to payment service failed",
-				"fn", "ConnectToPaymentService",
-				"address", payment.serverAddress,
-				"port", payment.serverPort,
-				"err", err.Error())
-			return err
+	if payment.grpcConnection == nil {
+		payment.mux.Lock()
+		defer payment.mux.Unlock()
+		if payment.grpcConnection == nil {
+			var err error
+			ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+			payment.grpcConnection, err = grpc.DialContext(ctx, payment.serverAddress+":"+fmt.Sprint(payment.serverPort),
+				grpc.WithBlock(), grpc.WithInsecure())
+			if err != nil {
+				applog.GLog.Logger.Error("GRPC connect dial to payment service failed",
+					"fn", "ConnectToPaymentService",
+					"address", payment.serverAddress,
+					"port", payment.serverPort,
+					"error", err.Error())
+				return err
+			}
+			payment.paymentService = payment_gateway.NewPaymentGatewayClient(payment.grpcConnection)
 		}
-		payment.paymentService = payment_gateway.NewPaymentGatewayClient(payment.grpcConnection)
 	}
 	return nil
 }

@@ -8,8 +8,8 @@ import (
 	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"gitlab.faza.io/protos/notification"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/metadata"
+	"sync"
 	"time"
 )
 
@@ -21,23 +21,28 @@ type iNotificationServiceImpl struct {
 	notifySeller   bool
 	notifyBuyer    bool
 	timeout        int
+	mux            sync.Mutex
 }
 
 func (notification *iNotificationServiceImpl) ConnectToNotifyService() error {
-	if notification.grpcConnection == nil || notification.grpcConnection.GetState() != connectivity.Ready {
-		var err error
-		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-		notification.grpcConnection, err = grpc.DialContext(ctx, notification.serverAddress+":"+fmt.Sprint(notification.serverPort),
-			grpc.WithBlock(), grpc.WithInsecure())
-		if err != nil {
-			applog.GLog.Logger.Error("GRPC connect dial to stock service failed",
-				"fn", "ConnectToNotifyService",
-				"address", notification.serverAddress,
-				"port", notification.serverPort,
-				"err", err.Error())
-			return err
+	if notification.grpcConnection == nil {
+		notification.mux.Lock()
+		defer notification.mux.Unlock()
+		if notification.grpcConnection == nil {
+			var err error
+			ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+			notification.grpcConnection, err = grpc.DialContext(ctx, notification.serverAddress+":"+fmt.Sprint(notification.serverPort),
+				grpc.WithBlock(), grpc.WithInsecure())
+			if err != nil {
+				applog.GLog.Logger.Error("GRPC connect dial to stock service failed",
+					"fn", "ConnectToNotifyService",
+					"address", notification.serverAddress,
+					"port", notification.serverPort,
+					"error", err.Error())
+				return err
+			}
+			notification.notifyService = NotificationService.NewNotificationServiceClient(notification.grpcConnection)
 		}
-		notification.notifyService = NotificationService.NewNotificationServiceClient(notification.grpcConnection)
 	}
 	return nil
 }

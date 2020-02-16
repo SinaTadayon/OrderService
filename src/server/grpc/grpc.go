@@ -527,6 +527,10 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 
 func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
 
+	app.Globals.Logger.FromContext(ctx).Debug("Received scheduler action request",
+		"fn", "SchedulerMessageHandler",
+		"request", req)
+
 	if ctx.Value(string(utils.CtxUserID)) == nil {
 		ctx = context.WithValue(ctx, string(utils.CtxUserID), uint64(0))
 	}
@@ -612,6 +616,13 @@ func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.Messa
 
 			iFuture := future.Factory().SetCapacity(1).Build()
 			iFrame := frame.Factory().SetFuture(iFuture).SetEvent(event).Build()
+
+			app.Globals.Logger.FromContext(ctx).Debug("scheduler action event",
+				"fn", "SchedulerMessageHandler",
+				"oid", event.OrderId(),
+				"uid", event.UserId(),
+				"event", event)
+
 			server.flowManager.MessageHandler(ctx, iFrame)
 			futureData := iFuture.Get()
 			if futureData.Error() != nil {

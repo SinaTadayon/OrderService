@@ -8,9 +8,9 @@ import (
 	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	voucherProto "gitlab.faza.io/protos/cart"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/metadata"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -20,6 +20,7 @@ type iVoucherServiceImpl struct {
 	serverAddress  string
 	serverPort     int
 	timeout        int
+	mux            sync.Mutex
 }
 
 func NewVoucherService(serverAddress string, serverPort int, timeout int) IVoucherService {
@@ -31,20 +32,24 @@ func NewVoucherService(serverAddress string, serverPort int, timeout int) IVouch
 }
 
 func (voucherService *iVoucherServiceImpl) Connect() error {
-	if voucherService.grpcConnection == nil || voucherService.grpcConnection.GetState() != connectivity.Ready {
-		var err error
-		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-		voucherService.grpcConnection, err = grpc.DialContext(ctx, voucherService.serverAddress+":"+fmt.Sprint(voucherService.serverPort),
-			grpc.WithBlock(), grpc.WithInsecure())
-		if err != nil {
-			applog.GLog.Logger.Error("GRPC connect dial to voucher service failed",
-				"fn", "connect",
-				"address", voucherService.serverAddress,
-				"port", voucherService.serverPort,
-				"err", err.Error())
-			return err
+	if voucherService.grpcConnection == nil {
+		voucherService.mux.Lock()
+		defer voucherService.mux.Unlock()
+		if voucherService.grpcConnection == nil {
+			var err error
+			ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+			voucherService.grpcConnection, err = grpc.DialContext(ctx, voucherService.serverAddress+":"+fmt.Sprint(voucherService.serverPort),
+				grpc.WithBlock(), grpc.WithInsecure())
+			if err != nil {
+				applog.GLog.Logger.Error("GRPC connect dial to voucher service failed",
+					"fn", "connect",
+					"address", voucherService.serverAddress,
+					"port", voucherService.serverPort,
+					"error", err.Error())
+				return err
+			}
+			voucherService.voucherClient = voucherProto.NewCouponServiceClient(voucherService.grpcConnection)
 		}
-		voucherService.voucherClient = voucherProto.NewCouponServiceClient(voucherService.grpcConnection)
 	}
 	return nil
 }
