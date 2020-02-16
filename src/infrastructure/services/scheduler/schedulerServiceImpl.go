@@ -16,7 +16,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/connectivity"
 	"sync"
 	"time"
 )
@@ -89,6 +88,7 @@ type SchedulerService struct {
 	schedulerStewardTimeout time.Duration
 	schedulerWorkerTimeout  time.Duration
 	waitGroup               sync.WaitGroup
+	mux                     sync.Mutex
 }
 
 func NewScheduler(mongoAdapter *mongoadapter.Mongo, database, collection, address string, port int,
@@ -105,18 +105,24 @@ func NewScheduler(mongoAdapter *mongoadapter.Mongo, database, collection, addres
 }
 
 func (scheduler *SchedulerService) ConnectToOrderService() error {
-	if scheduler.grpcConnection == nil || scheduler.grpcConnection.GetState() != connectivity.Ready {
-		var err error
-		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-		scheduler.grpcConnection, err = grpc.DialContext(ctx, scheduler.serverAddress+":"+fmt.Sprint(scheduler.serverPort),
-			grpc.WithBlock(), grpc.WithInsecure())
-		if err != nil {
-			app.Globals.Logger.Error("GRPC connect dial to order service failed",
-				"fn", " ConnectToOrderService",
-				"error", err)
-			return err
+	if scheduler.grpcConnection == nil {
+		scheduler.mux.Lock()
+		defer scheduler.mux.Unlock()
+		if scheduler.grpcConnection == nil {
+			var err error
+			ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+			scheduler.grpcConnection, err = grpc.DialContext(ctx, scheduler.serverAddress+":"+fmt.Sprint(scheduler.serverPort),
+				grpc.WithBlock(), grpc.WithInsecure())
+			if err != nil {
+				app.Globals.Logger.Error("GRPC connect dial to order service failed",
+					"fn", " ConnectToOrderService",
+					"address", scheduler.serverAddress,
+					"port", scheduler.serverPort,
+					"error", err)
+				return err
+			}
+			scheduler.orderClient = protoOrder.NewOrderServiceClient(scheduler.grpcConnection)
 		}
-		scheduler.orderClient = protoOrder.NewOrderServiceClient(scheduler.grpcConnection)
 	}
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/configs"
 	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"os"
+	"sync"
 	"testing"
 	"time"
 )
@@ -35,7 +36,8 @@ func TestMain(m *testing.M) {
 
 	payment = iPaymentServiceImpl{nil, nil,
 		config.PaymentGatewayService.Address,
-		config.PaymentGatewayService.Port, config.PaymentGatewayService.CallbackTimeout, config.PaymentGatewayService.PaymentResultTimeout}
+		config.PaymentGatewayService.Port, config.PaymentGatewayService.CallbackTimeout,
+		config.PaymentGatewayService.PaymentResultTimeout, sync.Mutex{}}
 
 	// Running Tests
 	code := m.Run()
