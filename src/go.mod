@@ -14,9 +14,8 @@ require (
 	github.com/prometheus/client_golang v1.3.0
 	github.com/shopspring/decimal v0.0.0-20191130220710-360f2bc03045
 	github.com/stretchr/testify v1.4.0
-	github.com/yaa110/go-persian-calendar v0.5.0
 	gitlab.faza.io/go-framework/acl v0.0.3
-	gitlab.faza.io/go-framework/logger v0.0.10
+	gitlab.faza.io/go-framework/logger v0.0.12
 	gitlab.faza.io/go-framework/mongoadapter v0.0.9
 	gitlab.faza.io/protos/cart v0.0.14
 	gitlab.faza.io/protos/notification v0.0.3

@@ -70,11 +70,9 @@ github.com/stretchr/testify/require
 github.com/xdg/scram
 # github.com/xdg/stringprep v1.0.0
 github.com/xdg/stringprep
-# github.com/yaa110/go-persian-calendar v0.5.0
-github.com/yaa110/go-persian-calendar
 # gitlab.faza.io/go-framework/acl v0.0.3
 gitlab.faza.io/go-framework/acl
-# gitlab.faza.io/go-framework/logger v0.0.10
+# gitlab.faza.io/go-framework/logger v0.0.12
 gitlab.faza.io/go-framework/logger
 # gitlab.faza.io/go-framework/mongoadapter v0.0.9
 gitlab.faza.io/go-framework/mongoadapter

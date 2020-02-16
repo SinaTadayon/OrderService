@@ -2,6 +2,7 @@ package logger
 
 import (
 	"context"
+	"runtime/debug"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc/metadata"
@@ -9,17 +10,14 @@ import (
 
 // NewProductionZaplogger will return a new production logger backed by zap
 func NewProductionZaplogger() (Logger, error) {
-	logger, err := zap.NewProduction()
-	return zpLg{
-		lg: logger.Sugar(),
-	}, err
-}
+	conf := zap.NewProductionConfig()
+	conf.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+	conf.DisableCaller = true
+	conf.DisableStacktrace = true
+	zapLogger, err := conf.Build(zap.AddCaller(), zap.AddCallerSkip(1))
 
-// NewDevelopmentZaplogger will return a new development logger backed by zap
-func NewDevelopmentZaplogger() (Logger, error) {
-	logger, err := zap.NewDevelopment()
 	return zpLg{
-		lg: logger.Sugar(),
+		lg: zapLogger.Sugar(),
 	}, err
 }
 
@@ -70,6 +68,7 @@ func extractValuesFromGRPcContectx(ctx context.Context) (vals map[string]string)
 		"user-agent",
 		"forwarded-host",
 		"request-id",
+		"user-id",
 	}
 	for _, key := range keys {
 		if val, ok := md[key]; ok && len(val) > 0 {
@@ -92,7 +91,7 @@ func (l zpLg) Warn(msg string, keyvals ...interface{}) {
 }
 
 func (l zpLg) Error(msg string, keyvals ...interface{}) {
-	l.lg.Errorw(msg, keyvals...)
+	l.lg.With("stacktrace", string(debug.Stack())).Errorw(msg, keyvals...)
 }
 
 func (l zpLg) Fatal(msg string, keyvals ...interface{}) {
