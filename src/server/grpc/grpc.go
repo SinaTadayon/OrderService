@@ -569,6 +569,12 @@ func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.Messa
 				orderReq.StateIndex, userAction,
 				time.Unix(req.Time.GetSeconds(), int64(req.Time.GetNanos())), nil)
 
+			app.Globals.Logger.FromContext(ctx).Debug("scheduler action event paymentFail",
+				"fn", "SchedulerMessageHandler",
+				"oid", event.OrderId(),
+				"uid", event.UserId(),
+				"event", event)
+
 			iFuture := future.Factory().SetCapacity(1).Build()
 			iFrame := frame.Factory().SetFuture(iFuture).SetEvent(event).Build()
 			server.flowManager.MessageHandler(ctx, iFrame)
