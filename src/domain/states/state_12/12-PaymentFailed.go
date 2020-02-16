@@ -72,7 +72,7 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 					"fn", "Process",
 					"state", state.Name(),
 					"oid", order.OrderId,
-					"message", app.Globals.SMSTemplate.OrderNotifyBuyerPaymentSuccessState,
+					"message", app.Globals.SMSTemplate.OrderNotifyBuyerPaymentFailedState,
 					"error", err)
 			} else {
 				buyerNotify := notify_service.SMSRequest{
