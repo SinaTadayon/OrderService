@@ -133,9 +133,9 @@ func SetupMongoDriver(config configs.Config) (*mongoadapter.Mongo, error) {
 		return nil, err
 	}
 
-	_, err = mongoDriver.AddTextV3Index(config.Mongo.Database, config.Mongo.Collection, "packages.pkgId")
+	_, err = mongoDriver.AddTextV3Index(config.Mongo.Database, config.Mongo.Collection, "packages.pid")
 	if err != nil {
-		Globals.Logger.Error("create packages.pkgId index failed",
+		Globals.Logger.Error("create packages.pid index failed",
 			"fn", "SetupMongoDriver",
 			"error", err)
 		return nil, err

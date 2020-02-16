@@ -55,7 +55,7 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 		}
 
 		var buyerNotificationAction *entities.Action = nil
-		smsTemplate, err := template.New("SMS").Parse(app.Globals.SMSTemplate.OrderNotifyBuyerPaymentSuccessState)
+		smsTemplate, err := template.New("SMS").Parse(app.Globals.SMSTemplate.OrderNotifyBuyerPaymentFailedState)
 		if err != nil {
 			app.Globals.Logger.FromContext(ctx).Error("smsTemplate.Parse failed",
 				"fn", "Process",
