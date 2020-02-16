@@ -11,6 +11,7 @@ import (
 	userclient "gitlab.faza.io/services/user-app-client"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"sync"
 	"time"
 )
 
@@ -24,6 +25,7 @@ type iUserServiceImpl struct {
 	serverAddress string
 	serverPort    int
 	timeout       int
+	mux           sync.Mutex
 }
 
 func NewUserService(serverAddress string, serverPort int, timeout int) IUserService {
@@ -33,35 +35,37 @@ func NewUserService(serverAddress string, serverPort int, timeout int) IUserServ
 // TODO refactor fault-tolerant
 func (userService *iUserServiceImpl) getUserService(ctx context.Context) error {
 
-	if userService.client != nil {
-		return nil
-	}
-
-	var err error
-	config := &userclient.Config{
-		Host:    userService.serverAddress,
-		Port:    userService.serverPort,
-		Timeout: 10 * time.Second,
-	}
-	userService.client, err = userclient.NewClient(ctx, config, grpc.WithInsecure(), grpc.WithBlock())
-	if err != nil {
-		applog.GLog.Logger.FromContext(ctx).Error("userclient.NewClient failed",
-			"fn", "getUserService",
-			"address", userService.serverAddress,
-			"port", userService.serverPort,
-			"error", err)
-		return err
-	}
-	ctx, _ = context.WithTimeout(ctx, config.Timeout)
-	//defer cancel()
-	_, err = userService.client.Connect(ctx)
-	if err != nil {
-		applog.GLog.Logger.FromContext(ctx).Error("userclient.NewClient failed",
-			"fn", "getUserService",
-			"address", userService.serverAddress,
-			"port", userService.serverPort,
-			"error", err)
-		return err
+	if userService.client == nil {
+		userService.mux.Lock()
+		defer userService.mux.Unlock()
+		if userService.client == nil {
+			var err error
+			config := &userclient.Config{
+				Host:    userService.serverAddress,
+				Port:    userService.serverPort,
+				Timeout: 10 * time.Second,
+			}
+			userService.client, err = userclient.NewClient(ctx, config, grpc.WithInsecure(), grpc.WithBlock())
+			if err != nil {
+				applog.GLog.Logger.FromContext(ctx).Error("userclient.NewClient failed",
+					"fn", "getUserService",
+					"address", userService.serverAddress,
+					"port", userService.serverPort,
+					"error", err)
+				return err
+			}
+			ctx, _ = context.WithTimeout(ctx, config.Timeout)
+			//defer cancel()
+			_, err = userService.client.Connect(ctx)
+			if err != nil {
+				applog.GLog.Logger.FromContext(ctx).Error("userclient.NewClient failed",
+					"fn", "getUserService",
+					"address", userService.serverAddress,
+					"port", userService.serverPort,
+					"error", err)
+				return err
+			}
+		}
 	}
 
 	return nil

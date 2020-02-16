@@ -10,8 +10,8 @@ import (
 	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	stockProto "gitlab.faza.io/protos/stock-proto.git"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/metadata"
+	"sync"
 	"time"
 )
 
@@ -21,27 +21,32 @@ type iStockServiceImpl struct {
 	serverAddress  string
 	serverPort     int
 	timeout        int
+	mux            sync.Mutex
 }
 
 func NewStockService(address string, port int, timeout int) IStockService {
-	return &iStockServiceImpl{nil, nil, address, port, timeout}
+	return &iStockServiceImpl{nil, nil, address, port, timeout, sync.Mutex{}}
 }
 
 func (stock *iStockServiceImpl) ConnectToStockService() error {
-	if stock.grpcConnection == nil || stock.grpcConnection.GetState() != connectivity.Ready {
-		var err error
-		ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
-		stock.grpcConnection, err = grpc.DialContext(ctx, stock.serverAddress+":"+fmt.Sprint(stock.serverPort),
-			grpc.WithBlock(), grpc.WithInsecure())
-		if err != nil {
-			applog.GLog.Logger.Error("GRPC connect dial to stock service failed",
-				"fn", "ConnectToStockService",
-				"address", stock.serverAddress,
-				"port", stock.serverPort,
-				"err", err)
-			return err
+	if stock.grpcConnection == nil {
+		stock.mux.Lock()
+		defer stock.mux.Unlock()
+		if stock.grpcConnection == nil {
+			var err error
+			ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+			stock.grpcConnection, err = grpc.DialContext(ctx, stock.serverAddress+":"+fmt.Sprint(stock.serverPort),
+				grpc.WithBlock(), grpc.WithInsecure())
+			if err != nil {
+				applog.GLog.Logger.Error("GRPC connect dial to stock service failed",
+					"fn", "ConnectToStockService",
+					"address", stock.serverAddress,
+					"port", stock.serverPort,
+					"error", err)
+				return err
+			}
+			stock.stockService = stockProto.NewStockClient(stock.grpcConnection)
 		}
-		stock.stockService = stockProto.NewStockClient(stock.grpcConnection)
 	}
 	return nil
 }
