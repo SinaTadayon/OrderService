@@ -185,28 +185,28 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 			expireTime = time.Now().UTC().Add(value)
 		} else {
 			value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShipmentPendingStateConfig].(int)
-			sellerReactionTime, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig]
-			if ok && sellerReactionTime.(int) > 0 {
-				if timeUnit == string(app.HourTimeUnit) {
-					reactionTime := (sellerReactionTime.(int) * 60 * int(value)) / 100
-					expireTime = time.Now().UTC().Add(
-						time.Hour*time.Duration(reactionTime/60) +
-							time.Minute*time.Duration(reactionTime%60) +
-							time.Second*time.Duration(0))
-				} else {
-					reactionTime := (sellerReactionTime.(int) * int(value)) / 100
-					expireTime = time.Now().UTC().Add(
-						time.Hour*time.Duration(reactionTime/60) +
-							time.Minute*time.Duration(reactionTime%60) +
-							time.Second*time.Duration(0))
-				}
-			} else {
-				reactionTime := (pkgItem.ShipmentSpec.ReactionTime * 60 * int32(value)) / 100
-				expireTime = time.Now().UTC().Add(
-					time.Hour*time.Duration(reactionTime/60) +
-						time.Minute*time.Duration(reactionTime%60) +
-						time.Second*time.Duration(0))
-			}
+			//sellerReactionTime, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig]
+			//if ok && sellerReactionTime.(int) > 0 {
+			//	if timeUnit == string(app.HourTimeUnit) {
+			//		reactionTime := (sellerReactionTime.(int) * 60 * int(value)) / 100
+			//		expireTime = time.Now().UTC().Add(
+			//			time.Hour*time.Duration(reactionTime/60) +
+			//				time.Minute*time.Duration(reactionTime%60) +
+			//				time.Second*time.Duration(0))
+			//	} else {
+			//		reactionTime := (sellerReactionTime.(int) * int(value)) / 100
+			//		expireTime = time.Now().UTC().Add(
+			//			time.Hour*time.Duration(reactionTime/60) +
+			//				time.Minute*time.Duration(reactionTime%60) +
+			//				time.Second*time.Duration(0))
+			//	}
+			//} else {
+			reactionTime := (pkgItem.ShipmentSpec.ReactionTime * 60 * int32(value)) / 100
+			expireTime = time.Now().UTC().Add(
+				time.Hour*time.Duration(reactionTime/60) +
+					time.Minute*time.Duration(reactionTime%60) +
+					time.Second*time.Duration(0))
+			//}
 		}
 
 		for i := 0; i < len(sids); i++ {
