@@ -185,7 +185,8 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 			expireTime = time.Now().UTC().Add(value)
 		} else {
 			value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShipmentPendingStateConfig].(int)
-			if sellerReactionTime, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig]; ok {
+			sellerReactionTime, ok := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig]
+			if ok && sellerReactionTime.(int) > 0 {
 				if timeUnit == string(app.HourTimeUnit) {
 					reactionTime := (sellerReactionTime.(int) * 60 * int(value)) / 100
 					expireTime = time.Now().UTC().Add(
