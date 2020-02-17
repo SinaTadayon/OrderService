@@ -17,7 +17,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, filter FilterValue, page, perPage uint32,
+func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, buyerMobile string, filter FilterValue, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
 
 	var orderList []*entities.Order
@@ -25,6 +25,8 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 	var err repository.IRepoError
 	if oid > 0 {
 		return server.operatorGetOrderByIdHandler(ctx, oid, filter)
+	} else if buyerMobile != "" {
+		return server.operatorGetOrdersByMobileHandler(ctx, buyerMobile, filter, page, perPage, sortName, direction)
 	} else {
 		var sortDirect int
 		if direction == "ASC" {
@@ -152,6 +154,7 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 					voucherAmount, err = decimal.NewFromString(orderList[i].Invoice.Voucher.Price.Amount)
 					if err != nil {
 						app.Globals.Logger.FromContext(ctx).Error("order.Invoice.Voucher.Price.Amount invalid",
+							"fn", "operatorOrderListHandler",
 							"price", orderList[i].Invoice.Voucher.Price.Amount,
 							"oid", order.OrderId,
 							"error", err)
@@ -661,6 +664,208 @@ func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint6
 			Page:    1,
 			PerPage: 1,
 		},
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(operatorOrderList),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
+func (server *Server) operatorGetOrdersByMobileHandler(ctx context.Context, buyerMobile string, filter FilterValue, page, perPage uint32,
+	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
+	var orderList []*entities.Order
+	var totalCount int64
+	var err repository.IRepoError
+
+	var sortDirect int
+	if direction == "ASC" {
+		sortDirect = 1
+	} else {
+		sortDirect = -1
+	}
+
+	if filter != "" {
+		filters := server.OperatorGeneratePipelineFilter(ctx, filter)
+		if sortName != "" {
+			orderFilter := func() (interface{}, string, int) {
+				return bson.D{{"deletedAt", nil}, {"buyerInfo.mobile", bson.D{{"$regex", buyerMobile}}}, {filters[0].(string), filters[1]}},
+					sortName, sortDirect
+			}
+			orderList, totalCount, err = app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+			if err != nil {
+				app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "operatorGetOrdersByMobileHandler", "buyerMobile", buyerMobile, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
+				return nil, status.Error(codes.Code(err.Code()), err.Message())
+			}
+		} else {
+			orderFilter := func() interface{} {
+				return bson.D{{"deletedAt", nil}, {"buyerInfo.mobile", bson.D{{"$regex", buyerMobile}}}, {filters[0].(string), filters[1]}}
+			}
+			orderList, totalCount, err = app.Globals.OrderRepository.FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
+			if err != nil {
+				app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPage failed", "fn", "operatorGetOrdersByMobileHandler", "buyerMobile", buyerMobile, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
+				return nil, status.Error(codes.Code(err.Code()), err.Message())
+			}
+		}
+	} else {
+		if sortName != "" {
+			orderFilter := func() (interface{}, string, int) {
+				return bson.D{{"deletedAt", nil}, {"buyerInfo.mobile", bson.D{{"$regex", buyerMobile}}}}, sortName, sortDirect
+			}
+			orderList, totalCount, err = app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+			if err != nil {
+				app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "operatorGetOrdersByMobileHandler", "buyerMobile", buyerMobile, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
+				return nil, status.Error(codes.Code(err.Code()), err.Message())
+			}
+		} else {
+			orderFilter := func() interface{} {
+				return bson.D{{"deletedAt", nil}, {"buyerInfo.mobile", bson.D{{"$regex", buyerMobile}}}}
+			}
+			orderList, totalCount, err = app.Globals.OrderRepository.FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
+			if err != nil {
+				app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPage failed", "fn", "operatorGetOrdersByMobileHandler", "buyerMobile", buyerMobile, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
+				return nil, status.Error(codes.Code(err.Code()), err.Message())
+			}
+		}
+	}
+
+	if totalCount == 0 || orderList == nil || len(orderList) == 0 {
+		app.Globals.Logger.FromContext(ctx).Info("order not found", "fn", "operatorGetOrdersByMobileHandler", "buyerMobile", buyerMobile, "filter", filter)
+		return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
+	}
+
+	operatorOrders := make([]*pb.OperatorOrderList_Order, 0, len(orderList))
+	for i := 0; i < len(orderList); i++ {
+		order := &pb.OperatorOrderList_Order{
+			OrderId:     orderList[i].OrderId,
+			BuyerId:     orderList[i].BuyerInfo.BuyerId,
+			PurchasedOn: orderList[i].CreatedAt.Format(ISO8601),
+			BasketSize:  0,
+			BillTo:      orderList[i].BuyerInfo.FirstName + " " + orderList[i].BuyerInfo.LastName,
+			ShipTo:      orderList[i].BuyerInfo.ShippingAddress.FirstName + " " + orderList[i].BuyerInfo.ShippingAddress.LastName,
+			Platform:    orderList[i].Platform,
+			IP:          orderList[i].BuyerInfo.IP,
+			Status:      orderList[i].Status,
+			Invoice: &pb.OperatorOrderList_Order_Invoice{
+				GrandTotal:     0,
+				Subtotal:       0,
+				PaymentMethod:  orderList[i].Invoice.PaymentMethod,
+				PaymentGateway: orderList[i].Invoice.PaymentGateway,
+				Shipment:       0,
+			},
+		}
+
+		amount, err := decimal.NewFromString(orderList[i].Invoice.GrandTotal.Amount)
+		if err != nil {
+			app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, GrandTotal invalid",
+				"fn", "operatorGetOrdersByMobileHandler",
+				"grandTotal", orderList[i].Invoice.GrandTotal.Amount,
+				"oid", orderList[i].OrderId,
+				"error", err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+		order.Invoice.GrandTotal = uint64(amount.IntPart())
+
+		subtotal, err := decimal.NewFromString(orderList[i].Invoice.Subtotal.Amount)
+		if err != nil {
+			app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, Subtotal invalid",
+				"fn", "operatorGetOrdersByMobileHandler",
+				"subtotal", orderList[i].Invoice.Subtotal.Amount,
+				"oid", orderList[i].OrderId,
+				"error", err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+		order.Invoice.Subtotal = uint64(subtotal.IntPart())
+
+		shipmentTotal, err := decimal.NewFromString(orderList[i].Invoice.ShipmentTotal.Amount)
+		if err != nil {
+			app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, shipmentTotal invalid",
+				"fn", "operatorGetOrdersByMobileHandler",
+				"shipmentTotal", orderList[i].Invoice.ShipmentTotal.Amount,
+				"oid", orderList[i].OrderId,
+				"error", err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+		order.Invoice.Shipment = uint64(shipmentTotal.IntPart())
+
+		if orderList[i].Invoice.Voucher != nil {
+			if orderList[i].Invoice.Voucher.Percent > 0 {
+				order.Invoice.Voucher = float32(orderList[i].Invoice.Voucher.Percent)
+			} else {
+				var voucherAmount decimal.Decimal
+				if orderList[i].Invoice.Voucher.Price != nil {
+					voucherAmount, err = decimal.NewFromString(orderList[i].Invoice.Voucher.Price.Amount)
+					if err != nil {
+						app.Globals.Logger.FromContext(ctx).Error("order.Invoice.Voucher.Price.Amount invalid",
+							"fn", "operatorGetOrdersByMobileHandler",
+							"price", orderList[i].Invoice.Voucher.Price.Amount,
+							"oid", order.OrderId,
+							"error", err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+				}
+				order.Invoice.Voucher = float32(voucherAmount.IntPart())
+			}
+		}
+
+		if orderList[i].OrderPayment != nil && len(orderList[i].OrderPayment) > 0 {
+			if orderList[i].OrderPayment[0].PaymentResult != nil {
+				if orderList[i].OrderPayment[0].PaymentResult.Result {
+					order.Invoice.PaymentStatus = "success"
+				} else {
+					order.Invoice.PaymentStatus = "fail"
+				}
+			} else {
+				if orderList[i].Status == string(states.OrderClosedStatus) {
+					if orderList[i].OrderPayment[0].PaymentResponse != nil {
+						if orderList[i].OrderPayment[0].PaymentResponse.Result {
+							order.Invoice.PaymentStatus = "success"
+						} else {
+							order.Invoice.PaymentStatus = "fail"
+						}
+					} else {
+						order.Invoice.PaymentStatus = "fail"
+					}
+				} else {
+					order.Invoice.PaymentStatus = "pending"
+				}
+			}
+		} else {
+			order.Invoice.PaymentStatus = "pending"
+		}
+
+		for j := 0; j < len(orderList[i].Packages); j++ {
+			for z := 0; z < len(orderList[i].Packages[j].Subpackages); z++ {
+				for t := 0; t < len(orderList[i].Packages[j].Subpackages[z].Items); t++ {
+					order.BasketSize += orderList[i].Packages[j].Subpackages[z].Items[t].Quantity
+				}
+			}
+		}
+
+		operatorOrders = append(operatorOrders, order)
+	}
+
+	operatorOrderList := &pb.OperatorOrderList{
+		Orders: operatorOrders,
+	}
+
+	serializedData, e := proto.Marshal(operatorOrderList)
+	if e != nil {
+		app.Globals.Logger.FromContext(ctx).Error("marshal operatorOrderListHandler failed",
+			"fn", "operatorGetOrdersByMobileHandler", "operatorOrderList", operatorOrderList, "error", e)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	meta := &pb.ResponseMetadata{
+		Total:   uint32(totalCount),
+		Page:    page,
+		PerPage: perPage,
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "OperatorOrderList",
+		Meta:   meta,
 		Data: &any.Any{
 			TypeUrl: "baman.io/" + proto.MessageName(operatorOrderList),
 			Value:   serializedData,

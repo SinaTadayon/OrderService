@@ -53,6 +53,7 @@ message RequestMetadata {
     MetaAction action = 9;
     repeated MetaSorts sorts = 10;
     repeated MetaFilter filters = 11;
+    map<string,string> ext = 12;
 }
 
 message MetaAction {
