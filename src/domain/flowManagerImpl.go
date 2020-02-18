@@ -358,6 +358,7 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 		seller_action.New(seller_action.Approve):      flowManager.statesMap[states.ShipmentPending],
 		seller_action.New(seller_action.Reject):       flowManager.statesMap[states.CanceledBySeller],
 		buyer_action.New(buyer_action.Cancel):         flowManager.statesMap[states.CanceledByBuyer],
+		operator_action.New(operator_action.Cancel):   flowManager.statesMap[states.CanceledByBuyer],
 	}
 	childStates = []states.IState{
 		flowManager.statesMap[states.CanceledByBuyer],
@@ -706,6 +707,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 							SellerDisplayName: orders[i].Packages[j].ShopName,
 							Price:             orders[i].Invoice.Subtotal.Amount,
 							VoucherAmount:     "0",
+							VoucherCode:       "",
 							ShippingCost:      orders[i].Packages[j].Invoice.ShipmentAmount.Amount,
 							Status:            orders[i].Packages[j].Subpackages[k].Status,
 							CreatedAt:         orders[i].CreatedAt.Format(ISO8601),
@@ -713,6 +715,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 						}
 
 						if orders[i].Invoice.Voucher != nil {
+							itemReport.VoucherCode = orders[i].Invoice.Voucher.Code
 							if orders[i].Invoice.Voucher.AppliedPrice != nil {
 								itemReport.VoucherAmount = orders[i].Invoice.Voucher.AppliedPrice.Amount
 							} else if orders[i].Invoice.Voucher.Price != nil {
@@ -756,7 +759,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 	csvReports := make([][]string, 0, len(orderReports))
 	csvHeadLines := []string{
 		"SId", "InventoryId", "SKU", "BuyerId", "BuyerMobile", "SellerId",
-		"ShopDisplayName", "Price", "VoucherAmount", "ShippingCost", "Status", "CreatedAt", "UpdatedAt",
+		"ShopDisplayName", "Price", "VoucherAmount", "VoucherCode", "ShippingCost", "Status", "CreatedAt", "UpdatedAt",
 	}
 
 	csvReports = append(csvReports, csvHeadLines)
@@ -771,6 +774,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 			itemReport.SellerDisplayName,
 			fmt.Sprint(itemReport.Price),
 			itemReport.VoucherAmount,
+			itemReport.VoucherCode,
 			itemReport.ShippingCost,
 			itemReport.Status,
 			itemReport.CreatedAt,

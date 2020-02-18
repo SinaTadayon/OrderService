@@ -327,14 +327,30 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 		}
 	}
 
-	if order.OrderPayment != nil &&
-		len(order.OrderPayment) > 0 &&
-		order.OrderPayment[0].PaymentResult != nil {
-		if order.OrderPayment[0].PaymentResult.Result {
-			orderDetail.Invoice.PaymentStatus = "success"
+	if order.OrderPayment != nil && len(order.OrderPayment) > 0 {
+		if order.OrderPayment[0].PaymentResult != nil {
+			if order.OrderPayment[0].PaymentResult.Result {
+				orderDetail.Invoice.PaymentStatus = "success"
+			} else {
+				orderDetail.Invoice.PaymentStatus = "fail"
+			}
 		} else {
-			orderDetail.Invoice.PaymentStatus = "fail"
+			if order.Status == string(states.OrderClosedStatus) {
+				if order.OrderPayment[0].PaymentResponse != nil {
+					if order.OrderPayment[0].PaymentResponse.Result {
+						orderDetail.Invoice.PaymentStatus = "success"
+					} else {
+						orderDetail.Invoice.PaymentStatus = "fail"
+					}
+				} else {
+					orderDetail.Invoice.PaymentStatus = "fail"
+				}
+			} else {
+				orderDetail.Invoice.PaymentStatus = "pending"
+			}
 		}
+	} else {
+		orderDetail.Invoice.PaymentStatus = "pending"
 	}
 
 	orderDetail.Subpackages = make([]*pb.OperatorOrderDetail_Subpackage, 0, 32)
@@ -625,13 +641,27 @@ func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint6
 		}
 	}
 
-	if findOrder.OrderPayment != nil &&
-		len(findOrder.OrderPayment) > 0 &&
-		findOrder.OrderPayment[0].PaymentResult != nil {
-		if findOrder.OrderPayment[0].PaymentResult.Result {
-			order.Invoice.PaymentStatus = "success"
+	if findOrder.OrderPayment != nil && len(findOrder.OrderPayment) > 0 {
+		if findOrder.OrderPayment[0].PaymentResult != nil {
+			if findOrder.OrderPayment[0].PaymentResult.Result {
+				order.Invoice.PaymentStatus = "success"
+			} else {
+				order.Invoice.PaymentStatus = "fail"
+			}
 		} else {
-			order.Invoice.PaymentStatus = "fail"
+			if findOrder.Status == string(states.OrderClosedStatus) {
+				if findOrder.OrderPayment[0].PaymentResponse != nil {
+					if findOrder.OrderPayment[0].PaymentResponse.Result {
+						order.Invoice.PaymentStatus = "success"
+					} else {
+						order.Invoice.PaymentStatus = "fail"
+					}
+				} else {
+					order.Invoice.PaymentStatus = "fail"
+				}
+			} else {
+				order.Invoice.PaymentStatus = "pending"
+			}
 		}
 	} else {
 		order.Invoice.PaymentStatus = "pending"
