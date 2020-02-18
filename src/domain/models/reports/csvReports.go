@@ -10,6 +10,7 @@ type ExportOrderItems struct {
 	SellerDisplayName string
 	Price             string
 	VoucherAmount     string
+	VoucherCode       string
 	ShippingCost      string
 	Status            string
 	CreatedAt         string

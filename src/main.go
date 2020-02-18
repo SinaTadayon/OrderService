@@ -91,16 +91,16 @@ func main() {
 			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig] = app.Globals.Config.App.SchedulerStateTimeUint
 		}
 
-		if app.Globals.Config.App.SchedulerSellerReactionTime != "" {
-			temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerSellerReactionTime)
-			if err != nil {
-				app.Globals.Logger.Error("SchedulerSellerReactionTime invalid", "fn", "main",
-					"SchedulerSellerReactionTime", app.Globals.Config.App.SchedulerSellerReactionTime,
-					"error", err)
-				os.Exit(1)
-			}
-			app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig] = temp
-		}
+		//if app.Globals.Config.App.SchedulerSellerReactionTime != "" {
+		//	temp, err := strconv.Atoi(app.Globals.Config.App.SchedulerSellerReactionTime)
+		//	if err != nil {
+		//		app.Globals.Logger.Error("SchedulerSellerReactionTime invalid", "fn", "main",
+		//			"SchedulerSellerReactionTime", app.Globals.Config.App.SchedulerSellerReactionTime,
+		//			"error", err)
+		//		os.Exit(1)
+		//	}
+		//	app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig] = temp
+		//}
 
 		if app.Globals.Config.App.SchedulerPaymentPendingState == "" {
 			app.Globals.Logger.Error("SchedulerPaymentPendingState is empty", "fn", "main")

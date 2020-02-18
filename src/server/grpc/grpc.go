@@ -651,6 +651,7 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 	var filterValue FilterValue
 	var sortName string
 	var sortDirection SortDirection
+	var buyerMobile string
 	if req.Meta.Filters != nil {
 		//filterType = FilterType(req.Meta.Filters[0].UTP)
 		filterValue = FilterValue(req.Meta.Filters[0].Value)
@@ -762,6 +763,10 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 	if reqName == OperatorOrderDetail && filterValue != "" {
 		app.Globals.Logger.FromContext(ctx).Error("RequestName doesn't need any filter", "fn", "requestDataHandler", "rn", reqName, "filter", filterValue, "request", req)
 		return nil, status.Error(codes.Code(future.BadRequest), "RN Filter Invalid")
+	} else if reqName == OperatorOrderList {
+		if req.Meta.Ext != nil {
+			buyerMobile = req.Meta.Ext["buyerMobile"]
+		}
 	}
 
 	//if req.Meta.OID > 0 && reqName == SellerOrderList {
@@ -799,7 +804,7 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 		return server.buyerReturnOrderDetailListHandler(ctx, req.Meta.UID, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
 
 	case OperatorOrderList:
-		return server.operatorOrderListHandler(ctx, req.Meta.OID, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+		return server.operatorOrderListHandler(ctx, req.Meta.OID, buyerMobile, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
 	case OperatorOrderDetail:
 		return server.operatorOrderDetailHandler(ctx, req.Meta.OID)
 	}

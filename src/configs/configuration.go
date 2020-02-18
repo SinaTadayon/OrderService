@@ -47,8 +47,8 @@ type Config struct {
 		SchedulerParentWorkerTimeout string `env:"ORDER_SCHEDULER_PARENT_WORKER_TIMEOUT"`
 		SchedulerWorkerTimeout       string `env:"ORDER_SCHEDULER_WORKER_TIMEOUT"`
 
-		SchedulerStateTimeUint              string `env:"ORDER_SCHEDULER_STATE_TIME_UNIT"`
-		SchedulerSellerReactionTime         string `env:"ORDER_SCHEDULER_SELLER_REACTION_TIME"`
+		SchedulerStateTimeUint string `env:"ORDER_SCHEDULER_STATE_TIME_UNIT"`
+		//SchedulerSellerReactionTime         string `env:"ORDER_SCHEDULER_SELLER_REACTION_TIME"`
 		SchedulerPaymentPendingState        string `env:"ORDER_SCHEDULER_PAYMENT_PENDING_STATE"`
 		SchedulerRetryPaymentPendingState   string `env:"ORDER_SCHEDULER_RETRY_PAYMENT_PENDING_STATE"`
 		SchedulerApprovalPendingState       string `env:"ORDER_SCHEDULER_APPROVAL_PENDING_STATE"`

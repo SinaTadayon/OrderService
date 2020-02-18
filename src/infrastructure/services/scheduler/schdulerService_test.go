@@ -163,7 +163,7 @@ func TestMain(m *testing.M) {
 	app.Globals.FlowManagerConfig = make(map[string]interface{}, 32)
 
 	app.Globals.FlowManagerConfig[app.FlowManagerSchedulerStateTimeUintConfig] = app.DurationTimeUnit
-	app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig] = 2 * time.Second
+	//app.Globals.FlowManagerConfig[app.FlowManagerSchedulerSellerReactionTimeConfig] = 2 * time.Second
 	app.Globals.FlowManagerConfig[app.FlowManagerSchedulerApprovalPendingStateConfig] = 2 * time.Second
 	app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShipmentPendingStateConfig] = time.Second
 	app.Globals.FlowManagerConfig[app.FlowManagerSchedulerShippedStateConfig] = 2 * time.Second
