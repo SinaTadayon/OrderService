@@ -545,12 +545,13 @@ message OperatorOrderList {
         uint64 OrderId = 1;
         uint64 BuyerId = 2;
         string PurchasedOn = 3;
-        int32 basketSize = 4;
+        int32 BasketSize = 4;
         string BillTo = 5;
-        string ShipTo = 6;
-        string Platform = 7;
-        string IP = 8;
-        string Status = 9;
+        string BillMobile = 6;
+        string ShipTo = 7;
+        string Platform = 8;
+        string IP = 9;
+        string Status = 10;
         message Invoice {
             uint64 GrandTotal = 1;
             uint64 Subtotal = 2;
@@ -560,7 +561,7 @@ message OperatorOrderList {
             string PaymentMethod = 6;
             string PaymentGateway = 7;
         }
-        Invoice invoice = 10;
+        Invoice invoice = 11;
     }
     repeated Order orders = 1;
 }
