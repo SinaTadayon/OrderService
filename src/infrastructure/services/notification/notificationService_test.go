@@ -7,6 +7,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/configs"
 	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"os"
+	"sync"
 	"testing"
 )
 
@@ -35,7 +36,7 @@ func TestMain(m *testing.M) {
 	notify = iNotificationServiceImpl{nil, nil,
 		config.NotifyService.Address, config.NotifyService.Port,
 		config.NotifyService.NotifySeller, config.NotifyService.NotifyBuyer,
-		config.NotifyService.Timeout}
+		config.NotifyService.Timeout, sync.Mutex{}}
 
 	// Running Tests
 	code := m.Run()
