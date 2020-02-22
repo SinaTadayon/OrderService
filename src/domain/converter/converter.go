@@ -1,5 +1,7 @@
 package converter
 
+import "context"
+
 type IConverter interface {
-	Map(in interface{}, out interface{}) (interface{}, error)
+	Map(ctx context.Context, in interface{}, out interface{}) (interface{}, error)
 }

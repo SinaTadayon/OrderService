@@ -342,6 +342,10 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Currency: "IRR",
 	}
 
+	order.Invoice.Vat = &pb.Invoice_BusinessVAT{
+		Value: 9,
+	}
+
 	order.Invoice.PaymentMethod = "IPG"
 	order.Invoice.PaymentGateway = "AAP"
 	order.Invoice.PaymentOption = nil
@@ -351,7 +355,11 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	}
 	order.Invoice.Voucher = &pb.Voucher{
 		Percent: 0,
-		AppliedPrice: &pb.Money{
+		RawAppliedPrice: &pb.Money{
+			Amount:   "40000",
+			Currency: "IRR",
+		},
+		RoundupAppliedPrice: &pb.Money{
 			Amount:   "40000",
 			Currency: "IRR",
 		},
@@ -426,18 +434,20 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		},
 		Invoice: &pb.PackageInvoice{
 			Subtotal: &pb.Money{
-				Amount:   "9233454468443",
+				Amount:   "9238443",
 				Currency: "IRR",
 			},
-
 			Discount: &pb.Money{
 				Amount:   "9734234",
 				Currency: "IRR",
 			},
-
 			ShipmentPrice: &pb.Money{
 				Amount:   "23123",
 				Currency: "IRR",
+			},
+			Sso: &pb.PackageInvoice_SellerSSO{
+				Value:     9,
+				IsObliged: true,
 			},
 		},
 	}
@@ -476,28 +486,27 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 				Amount:   "200000",
 				Currency: "IRR",
 			},
-
 			Total: &pb.Money{
 				Amount:   "20000000",
 				Currency: "IRR",
 			},
-
 			Original: &pb.Money{
 				Amount:   "220000",
 				Currency: "IRR",
 			},
-
 			Special: &pb.Money{
 				Amount:   "200000",
 				Currency: "IRR",
 			},
-
 			Discount: &pb.Money{
 				Amount:   "20000",
 				Currency: "IRR",
 			},
-
-			SellerCommission: 10,
+			ItemCommission: 10,
+			Vat: &pb.ItemInvoice_SellerVAT{
+				Value:     9,
+				IsObliged: true,
+			},
 		},
 	}
 	pkg.Items = append(pkg.Items, item)
@@ -511,50 +520,33 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Image:       "http://baman.io/image/nexus.png",
 		Returnable:  true,
 		Quantity:    8,
-		Attributes: map[string]*pb.Attribute{
-			"Quantity": &pb.Attribute{
-				KeyTrans: map[string]string{
-					"en": "Quantity",
-				},
-				ValueTrans: map[string]string{
-					"en": "10",
-				},
-			},
-			"Width": &pb.Attribute{
-				KeyTrans: map[string]string{
-					"en": "Width",
-				},
-				ValueTrans: map[string]string{
-					"en": "10",
-				},
-			},
-		},
+		Attributes:  nil,
 		Invoice: &pb.ItemInvoice{
 			Unit: &pb.Money{
-				Amount:   "1000000",
+				Amount:   "100000",
 				Currency: "IRR",
 			},
-
 			Total: &pb.Money{
-				Amount:   "100000000",
+				Amount:   "10000000",
 				Currency: "IRR",
 			},
-
 			Original: &pb.Money{
-				Amount:   "1200000",
+				Amount:   "120000",
 				Currency: "IRR",
 			},
-
 			Special: &pb.Money{
-				Amount:   "1000000",
+				Amount:   "100000",
 				Currency: "IRR",
 			},
-
 			Discount: &pb.Money{
 				Amount:   "10000",
 				Currency: "IRR",
 			},
-			SellerCommission: 5,
+			ItemCommission: 10,
+			Vat: &pb.ItemInvoice_SellerVAT{
+				Value:     9,
+				IsObliged: true,
+			},
 		},
 	}
 	pkg.Items = append(pkg.Items, item)
@@ -577,17 +569,20 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		},
 		Invoice: &pb.PackageInvoice{
 			Subtotal: &pb.Money{
-				Amount:   "923845355443",
+				Amount:   "9238443",
 				Currency: "IRR",
 			},
 			Discount: &pb.Money{
 				Amount:   "9734234",
 				Currency: "IRR",
 			},
-
 			ShipmentPrice: &pb.Money{
 				Amount:   "23123",
 				Currency: "IRR",
+			},
+			Sso: &pb.PackageInvoice_SellerSSO{
+				Value:     16.67,
+				IsObliged: true,
 			},
 		},
 	}
@@ -603,51 +598,33 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Image:       "http://baman.io/image/asus.png",
 		Returnable:  true,
 		Quantity:    2,
-		Attributes: map[string]*pb.Attribute{
-			"Quantity": &pb.Attribute{
-				KeyTrans: map[string]string{
-					"en": "Quantity",
-				},
-				ValueTrans: map[string]string{
-					"en": "10",
-				},
-			},
-			"Width": &pb.Attribute{
-				KeyTrans: map[string]string{
-					"en": "Width",
-				},
-				ValueTrans: map[string]string{
-					"en": "10",
-				},
-			},
-		},
+		Attributes:  nil,
 		Invoice: &pb.ItemInvoice{
 			Unit: &pb.Money{
 				Amount:   "200000",
 				Currency: "IRR",
 			},
-
 			Total: &pb.Money{
-				Amount:   "200000000",
+				Amount:   "20000000",
 				Currency: "IRR",
 			},
-
 			Original: &pb.Money{
-				Amount:   "2200000",
+				Amount:   "220000",
 				Currency: "IRR",
 			},
-
 			Special: &pb.Money{
-				Amount:   "2000000",
+				Amount:   "200000",
 				Currency: "IRR",
 			},
-
 			Discount: &pb.Money{
 				Amount:   "20000",
 				Currency: "IRR",
 			},
-
-			SellerCommission: 8,
+			ItemCommission: 10,
+			Vat: &pb.ItemInvoice_SellerVAT{
+				Value:     9,
+				IsObliged: true,
+			},
 		},
 	}
 	pkg.Items = append(pkg.Items, item)
@@ -661,51 +638,33 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Image:       "http://baman.io/image/nexus.png",
 		Returnable:  true,
 		Quantity:    6,
-		Attributes: map[string]*pb.Attribute{
-			"Quantity": &pb.Attribute{
-				KeyTrans: map[string]string{
-					"en": "Quantity",
-				},
-				ValueTrans: map[string]string{
-					"en": "10",
-				},
-			},
-			"Width": &pb.Attribute{
-				KeyTrans: map[string]string{
-					"en": "Width",
-				},
-				ValueTrans: map[string]string{
-					"en": "10",
-				},
-			},
-		},
+		Attributes:  nil,
 		Invoice: &pb.ItemInvoice{
 			Unit: &pb.Money{
-				Amount:   "1000000",
+				Amount:   "100000",
 				Currency: "IRR",
 			},
-
 			Total: &pb.Money{
-				Amount:   "100000000",
+				Amount:   "10000000",
 				Currency: "IRR",
 			},
-
 			Original: &pb.Money{
-				Amount:   "1200000",
+				Amount:   "120000",
 				Currency: "IRR",
 			},
-
 			Special: &pb.Money{
-				Amount:   "1000000",
+				Amount:   "100000",
 				Currency: "IRR",
 			},
-
 			Discount: &pb.Money{
 				Amount:   "10000",
 				Currency: "IRR",
 			},
-
-			SellerCommission: 3,
+			ItemCommission: 10,
+			Vat: &pb.ItemInvoice_SellerVAT{
+				Value:     9,
+				IsObliged: true,
+			},
 		},
 	}
 
@@ -984,7 +943,7 @@ func TestSellerOrderDetail(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -1050,7 +1009,7 @@ func TestSellerOrderDetailWithAllOrderFilter(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -1126,7 +1085,7 @@ func TestSellerOrderList(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -1197,7 +1156,7 @@ func TestSellerOrderListWithAllCancelFilter(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -1270,7 +1229,7 @@ func TestSellerAllOrderList(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -1341,7 +1300,7 @@ func TestOperatorOrderDetail(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -1401,7 +1360,7 @@ func TestOperatorOrderList(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -1472,7 +1431,7 @@ func TestOperatorGetOrderById(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -1538,7 +1497,7 @@ func TestSellerGetOrderById(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -1604,7 +1563,7 @@ func TestSellerOrderList_ShipmentDelayedFilter(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -1677,7 +1636,7 @@ func TestSellerReturnOrderDetailList(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -1755,7 +1714,7 @@ func TestSellerOrderReturnReports(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -1826,7 +1785,7 @@ func TestSellerOrderDashboardReports(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -1889,7 +1848,7 @@ func TestSellerOrderShipmentReports(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -1952,7 +1911,7 @@ func TestSellerOrderDeliveredReports(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -2018,7 +1977,7 @@ func TestSellerOrderApprovalPendingReports(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -2079,7 +2038,7 @@ func TestSellerAllOrderReports(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -2143,7 +2102,7 @@ func TestSellerOrderCancelReports(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -2207,7 +2166,7 @@ func TestBuyerOrderDetailList(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -2278,7 +2237,7 @@ func TestBuyerGetOrderByIdDetailList(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -2342,7 +2301,7 @@ func TestBuyerReturnOrderDetailList(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -2424,7 +2383,7 @@ func TestBuyerReturnAllOrderDetailList(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -2506,7 +2465,7 @@ func TestBuyerReturnOrderReports(t *testing.T) {
 	defer grpcConn.Close()
 
 	requestNewOrder := createRequestNewOrder()
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -2645,7 +2604,7 @@ func TestPaymentPending_PaymentGatewayNotRespond(t *testing.T) {
 
 	defer releaseStock(ctx, requestNewOrder)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -2762,7 +2721,7 @@ func TestPaymentGateway_Success(t *testing.T) {
 
 	defer releaseStock(ctx, requestNewOrder)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -2820,7 +2779,7 @@ func TestPaymentGateway_Fail(t *testing.T) {
 
 	defer releaseStock(ctx, requestNewOrder)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -2878,7 +2837,7 @@ func TestApprovalPending_SellerApproved_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -2998,7 +2957,7 @@ func TestApprovalPending_SellerCancel_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -3122,7 +3081,7 @@ func TestApprovalPending_SellerApproved_Diff(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -3248,7 +3207,7 @@ func TestApprovalPending_SellerApproved_DiffAndFullItem(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -3376,7 +3335,7 @@ func TestApprovalPending_SellerReject_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -3496,7 +3455,7 @@ func TestApprovalPending_BuyerCancel_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -3616,7 +3575,7 @@ func TestShipmentPending_SellerShipmentDetail_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -3737,7 +3696,7 @@ func TestShipmentPending_SellerCancel_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -3858,7 +3817,7 @@ func TestShipmentPending_SchedulerCancel_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -3979,7 +3938,7 @@ func TestShipmentDelayed_SellerShipmentDetail_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -4101,7 +4060,7 @@ func TestShipmentDelayed_SellerCancel_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -4223,7 +4182,7 @@ func TestShipmentDelayed_BuyerCancel_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -4345,7 +4304,7 @@ func TestShipped_SchedulerDeliveryPending_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -4468,7 +4427,7 @@ func TestDeliveryPending_SchedulerDelivered_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -4592,7 +4551,7 @@ func TestDeliveryPending_SchedulerNotification_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -4766,7 +4725,7 @@ func TestDeliveryPending_OperatorDeliveryDelayed_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -4890,7 +4849,7 @@ func TestDeliveryDelayed_OperatorDelivery_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -5015,7 +4974,7 @@ func TestDeliveryDelayed_OperatorDeliveryFailed_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -5140,7 +5099,7 @@ func TestDelivered_BuyerSubmitReturnRequest_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -5266,7 +5225,7 @@ func TestDelivered_SchedulerClose_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -5392,7 +5351,7 @@ func TestReturnRequestPending_SellerReject_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -5519,7 +5478,7 @@ func TestReturnRequestPending_BuyerCancel_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -5646,7 +5605,7 @@ func TestReturnRequestPending_SchedulerAccept_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -5773,7 +5732,7 @@ func TestReturnRequestPending_SellerAccept_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -5900,7 +5859,7 @@ func TestReturnShipmentPending_BuyerEnterShipment_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -6028,7 +5987,7 @@ func TestReturnShipmentPending_SchedulerClose_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -6156,7 +6115,7 @@ func TestReturnRequestReject_OperatorAccept_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -6284,7 +6243,7 @@ func TestReturnRequestReject_OperatorReject_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -6412,7 +6371,7 @@ func TestReturnShipped_SellerDeliver_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -6542,7 +6501,7 @@ func TestReturnShipped_SchedulerDeliveryPending_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -6672,7 +6631,7 @@ func TestReturnDelivered_SchedulerClose_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -6803,7 +6762,7 @@ func TestReturnDelivered_SellerReject_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -6934,7 +6893,7 @@ func TestReturnDeliveryPending_SellerDeliver_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -7065,7 +7024,7 @@ func TestReturnDeliveryPending_SellerDeliveryFailed_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -7196,7 +7155,7 @@ func TestReturnDeliveryDelayed_OperatorDeliver_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -7328,7 +7287,7 @@ func TestReturnDeliveryDelayed_OperatorDeliveryFailed_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -7460,7 +7419,7 @@ func TestReturnRejected_OperatorAccept_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -7594,7 +7553,7 @@ func TestReturnRejected_OperatorReject_All(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 

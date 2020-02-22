@@ -98,14 +98,14 @@ func (state paymentPendingState) paymentHandler(ctx context.Context, iFrame fram
 		return
 	}
 
-	var voucherAmount decimal.Decimal
-	if order.Invoice.Voucher != nil && order.Invoice.Voucher.Price != nil {
-		voucherAmount, err = decimal.NewFromString(order.Invoice.Voucher.Price.Amount)
+	var voucherAppliedPrice = decimal.Zero
+	if order.Invoice.Voucher != nil && order.Invoice.Voucher.RoundupAppliedPrice != nil {
+		voucherAppliedPrice, err = decimal.NewFromString(order.Invoice.Voucher.RoundupAppliedPrice.Amount)
 		if err != nil {
-			app.Globals.Logger.FromContext(ctx).Error("order.Invoice.Voucher.Price.Amount invalid",
+			app.Globals.Logger.FromContext(ctx).Error("order.Invoice.Voucher.RoundupAppliedPrice.Amount invalid",
 				"fn", "paymentHandler",
 				"state", state.Name(),
-				"price", order.Invoice.Voucher.Price.Amount,
+				"roundupAppliedPrice", order.Invoice.Voucher.RoundupAppliedPrice.Amount,
 				"oid", order.OrderId,
 				"error", err)
 			state.actionFailOfPaymentHandler(ctx, iFrame, order)
@@ -113,7 +113,7 @@ func (state paymentPendingState) paymentHandler(ctx context.Context, iFrame fram
 		}
 	}
 
-	if grandTotal.IsZero() && order.Invoice.Voucher != nil && (order.Invoice.Voucher.Percent > 0 || !voucherAmount.IsZero()) {
+	if grandTotal.IsZero() && !voucherAppliedPrice.IsZero() {
 		state.voucherWithZeroGrandTotalHandler(ctx, iFrame, order)
 	} else {
 		app.Globals.Logger.FromContext(ctx).Info("invoice order without voucher applied",
@@ -502,21 +502,21 @@ func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFram
 		return
 	} else {
 		var voucherAction *entities.Action
-		var voucherAmount decimal.Decimal
-		if order.Invoice.Voucher != nil && order.Invoice.Voucher.Price != nil {
+		var voucherAppliedPrice = decimal.Zero
+		if order.Invoice.Voucher != nil && order.Invoice.Voucher.RoundupAppliedPrice != nil {
 			var e error
-			voucherAmount, e = decimal.NewFromString(order.Invoice.Voucher.Price.Amount)
+			voucherAppliedPrice, e = decimal.NewFromString(order.Invoice.Voucher.RoundupAppliedPrice.Amount)
 			if e != nil {
-				app.Globals.Logger.FromContext(ctx).Error("order.Invoice.Voucher.Price.Amount invalid",
+				app.Globals.Logger.FromContext(ctx).Error("order.Invoice.Voucher.RoundupAppliedPrice.Amount invalid",
 					"fn", "Process",
 					"state", state.Name(),
-					"price", order.Invoice.Voucher.Price.Amount,
+					"roundupAppliedPrice", order.Invoice.Voucher.RoundupAppliedPrice.Amount,
 					"oid", order.OrderId,
 					"error", err)
 			}
 		}
 
-		if order.Invoice.Voucher != nil && (order.Invoice.Voucher.Percent > 0 || !voucherAmount.IsZero()) {
+		if !voucherAppliedPrice.IsZero() {
 			iFuture := app.Globals.VoucherService.VoucherSettlement(ctx, order.Invoice.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
 			futureData := iFuture.Get()
 			if futureData.Error() != nil {
@@ -557,7 +557,7 @@ func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFram
 						"fn", "Process",
 						"state", state.Name(),
 						"oid", order.OrderId,
-						"voucher Amount", voucherAmount,
+						"voucher Amount", voucherAppliedPrice,
 						"voucher Code", order.Invoice.Voucher.Code)
 				}
 
@@ -593,7 +593,7 @@ func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFram
 					"fn", "Process",
 					"state", state.Name(),
 					"oid", order.OrderId,
-					"voucher Amount", voucherAmount,
+					"voucher Amount", voucherAppliedPrice,
 					"voucher Code", order.Invoice.Voucher.Code)
 			}
 		} else {
