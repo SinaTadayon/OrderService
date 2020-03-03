@@ -98,28 +98,20 @@ func (state paymentPendingState) paymentHandler(ctx context.Context, iFrame fram
 		return
 	}
 
-	var voucherAmount decimal.Decimal
-	if order.Invoice.Voucher != nil && order.Invoice.Voucher.Price != nil {
-		voucherAmount, err = decimal.NewFromString(order.Invoice.Voucher.Price.Amount)
-		if err != nil {
-			app.Globals.Logger.FromContext(ctx).Error("order.Invoice.Voucher.Price.Amount invalid",
-				"fn", "paymentHandler",
-				"state", state.Name(),
-				"price", order.Invoice.Voucher.Price.Amount,
-				"oid", order.OrderId,
-				"error", err)
-			state.actionFailOfPaymentHandler(ctx, iFrame, order)
-			return
-		}
-	}
-
-	if grandTotal.IsZero() && order.Invoice.Voucher != nil && (order.Invoice.Voucher.Percent > 0 || !voucherAmount.IsZero()) {
+	if grandTotal.IsZero() && order.Invoice.Voucher != nil {
 		state.voucherWithZeroGrandTotalHandler(ctx, iFrame, order)
 	} else {
-		app.Globals.Logger.FromContext(ctx).Info("invoice order without voucher applied",
-			"fn", "Process",
-			"state", state.Name(),
-			"oid", order.OrderId)
+		if order.Invoice.Voucher != nil {
+			app.Globals.Logger.FromContext(ctx).Info("invoice order with voucher applied",
+				"fn", "Process",
+				"state", state.Name(),
+				"oid", order.OrderId)
+		} else {
+			app.Globals.Logger.FromContext(ctx).Info("invoice order without voucher applied",
+				"fn", "Process",
+				"state", state.Name(),
+				"oid", order.OrderId)
+		}
 
 		var paymentRequest payment_service.PaymentRequest
 		if order.Invoice.PaymentMethod == "IPG" {
@@ -502,21 +494,7 @@ func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFram
 		return
 	} else {
 		var voucherAction *entities.Action
-		var voucherAmount decimal.Decimal
-		if order.Invoice.Voucher != nil && order.Invoice.Voucher.Price != nil {
-			var e error
-			voucherAmount, e = decimal.NewFromString(order.Invoice.Voucher.Price.Amount)
-			if e != nil {
-				app.Globals.Logger.FromContext(ctx).Error("order.Invoice.Voucher.Price.Amount invalid",
-					"fn", "Process",
-					"state", state.Name(),
-					"price", order.Invoice.Voucher.Price.Amount,
-					"oid", order.OrderId,
-					"error", err)
-			}
-		}
-
-		if order.Invoice.Voucher != nil && (order.Invoice.Voucher.Percent > 0 || !voucherAmount.IsZero()) {
+		if order.Invoice.Voucher != nil {
 			iFuture := app.Globals.VoucherService.VoucherSettlement(ctx, order.Invoice.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
 			futureData := iFuture.Get()
 			if futureData.Error() != nil {
@@ -545,21 +523,12 @@ func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFram
 					Extended:  nil,
 				}
 			} else {
-				if order.Invoice.Voucher.Percent > 0 {
-					app.Globals.Logger.FromContext(ctx).Info("voucher applied in invoice of order success",
-						"fn", "Process",
-						"state", state.Name(),
-						"oid", order.OrderId,
-						"voucher Percent", order.Invoice.Voucher.Percent,
-						"voucher Code", order.Invoice.Voucher.Code)
-				} else {
-					app.Globals.Logger.FromContext(ctx).Info("voucher applied in invoice of order success",
-						"fn", "Process",
-						"state", state.Name(),
-						"oid", order.OrderId,
-						"voucher Amount", voucherAmount,
-						"voucher Code", order.Invoice.Voucher.Code)
-				}
+				app.Globals.Logger.FromContext(ctx).Info("voucher applied in invoice of order success",
+					"fn", "Process",
+					"state", state.Name(),
+					"oid", order.OrderId,
+					"voucher Amount", order.Invoice.Voucher.AppliedPrice.Amount,
+					"voucher Code", order.Invoice.Voucher.Code)
 
 				timestamp := time.Now().UTC()
 				order.Invoice.Voucher.Settlement = string(states.ActionSuccess)
@@ -581,21 +550,13 @@ func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFram
 				}
 			}
 
-			if order.Invoice.Voucher.Percent > 0 {
-				app.Globals.Logger.FromContext(ctx).Info("VoucherSettlement success",
-					"fn", "Process",
-					"state", state.Name(),
-					"oid", order.OrderId,
-					"voucher Percent", order.Invoice.Voucher.Percent,
-					"voucher Code", order.Invoice.Voucher.Code)
-			} else {
-				app.Globals.Logger.FromContext(ctx).Info("VoucherSettlement success",
-					"fn", "Process",
-					"state", state.Name(),
-					"oid", order.OrderId,
-					"voucher Amount", voucherAmount,
-					"voucher Code", order.Invoice.Voucher.Code)
-			}
+			app.Globals.Logger.FromContext(ctx).Info("VoucherSettlement success",
+				"fn", "Process",
+				"state", state.Name(),
+				"oid", order.OrderId,
+				"voucher Amount", order.Invoice.Voucher.AppliedPrice.Amount,
+				"voucher Code", order.Invoice.Voucher.Code)
+
 		} else {
 			app.Globals.Logger.FromContext(ctx).Info("Order Invoice hasn't voucher",
 				"state", state.Name(),
@@ -773,12 +734,7 @@ func (state paymentPendingState) eventHandler(ctx context.Context, iFrame frame.
 					state.StatesMap()[failAction].Process(ctx, frame.FactoryOf(iFrame).SetOrderId(order.OrderId).SetBody(order).Build())
 				} else {
 					var voucherAction *entities.Action
-					var voucherAmount = 0
-					if order.Invoice.Voucher != nil && order.Invoice.Voucher.Price != nil {
-						voucherAmount, _ = strconv.Atoi(order.Invoice.Voucher.Price.Amount)
-					}
-
-					if order.Invoice.Voucher != nil && (order.Invoice.Voucher.Percent > 0 || voucherAmount > 0) {
+					if order.Invoice.Voucher != nil {
 						iFuture := app.Globals.VoucherService.VoucherSettlement(ctx, order.Invoice.Voucher.Code, order.OrderId, order.BuyerInfo.BuyerId)
 						futureData := iFuture.Get()
 						if futureData.Error() != nil {
@@ -807,21 +763,12 @@ func (state paymentPendingState) eventHandler(ctx context.Context, iFrame frame.
 								Extended:  nil,
 							}
 						} else {
-							if order.Invoice.Voucher.Percent > 0 {
-								app.Globals.Logger.FromContext(ctx).Info("Invoice paid by voucher Percent order success",
-									"fn", "eventHandler",
-									"state", state.Name(),
-									"oid", order.OrderId,
-									"voucher Percent", order.Invoice.Voucher.Percent,
-									"voucher Code", order.Invoice.Voucher.Code)
-							} else {
-								app.Globals.Logger.FromContext(ctx).Info("Invoice paid by voucher Amount order success",
-									"fn", "eventHandler",
-									"state", state.Name(),
-									"oid", order.OrderId,
-									"voucher Amount", voucherAmount,
-									"voucher Code", order.Invoice.Voucher.Code)
-							}
+							app.Globals.Logger.FromContext(ctx).Info("Invoice paid by voucher Amount order success",
+								"fn", "eventHandler",
+								"state", state.Name(),
+								"oid", order.OrderId,
+								"voucher Amount", order.Invoice.Voucher.AppliedPrice.Amount,
+								"voucher Code", order.Invoice.Voucher.Code)
 
 							timestamp := time.Now().UTC()
 							order.Invoice.Voucher.Settlement = string(states.ActionSuccess)
@@ -843,21 +790,13 @@ func (state paymentPendingState) eventHandler(ctx context.Context, iFrame frame.
 							}
 						}
 
-						if order.Invoice.Voucher.Percent > 0 {
-							app.Globals.Logger.FromContext(ctx).Info("VoucherSettlement success",
-								"fn", "eventHandler",
-								"state", state.Name(),
-								"oid", order.OrderId,
-								"voucher Percent", order.Invoice.Voucher.Percent,
-								"voucher Code", order.Invoice.Voucher.Code)
-						} else {
-							app.Globals.Logger.FromContext(ctx).Info("VoucherSettlement success",
-								"fn", "eventHandler",
-								"state", state.Name(),
-								"oid", order.OrderId,
-								"voucher Amount", voucherAmount,
-								"voucher Code", order.Invoice.Voucher.Code)
-						}
+						app.Globals.Logger.FromContext(ctx).Info("VoucherSettlement success",
+							"fn", "eventHandler",
+							"state", state.Name(),
+							"oid", order.OrderId,
+							"voucher Amount", order.Invoice.Voucher.AppliedPrice.Amount,
+							"voucher Code", order.Invoice.Voucher.Code)
+
 					} else {
 						app.Globals.Logger.FromContext(ctx).Info("Order Invoice hasn't voucher",
 							"fn", "eventHandler",
