@@ -104,10 +104,11 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 						Extended:  nil,
 					}
 				} else {
-					app.Globals.Logger.FromContext(ctx).Info("NotifyService.NotifyBySMS success",
+					app.Globals.Logger.FromContext(ctx).Debug("NotifyService.NotifyBySMS success",
 						"fn", "Process",
 						"state", state.Name(),
-						"oid", order.OrderId)
+						"oid", order.OrderId,
+						"request", buyerNotify)
 					buyerNotificationAction = &entities.Action{
 						Name:      system_action.BuyerNotification.ActionName(),
 						Type:      "",

@@ -146,12 +146,12 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 									Extended:  nil,
 								}
 							} else {
-								app.Globals.Logger.FromContext(ctx).Info("NotifyService.NotifyBySMS success",
+								app.Globals.Logger.FromContext(ctx).Debug("NotifyService.NotifyBySMS success",
 									"fn", "Process",
 									"state", state.Name(),
 									"oid", order.Packages[i].OrderId,
 									"pid", order.Packages[i].PId,
-									"sellerNotify", sellerNotify)
+									"request", sellerNotify)
 								sellerNotificationAction = &entities.Action{
 									Name:      system_action.SellerNotification.ActionName(),
 									Type:      "",
@@ -260,6 +260,17 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 				SetError(future.InternalError, "Unknown Err", nil).Send()
 			return
 		}
+
+		app.Globals.Logger.FromContext(ctx).Debug("received event",
+			"fn", "Process",
+			"state", state.Name(),
+			"oid", event.OrderId(),
+			"pid", event.PackageId(),
+			"uid", event.UserId(),
+			"sIdx", event.StateIndex(),
+			"action", event.Action(),
+			"data", event.Data(),
+			"event", event)
 
 		if event.EventType() == events.Action {
 			pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)

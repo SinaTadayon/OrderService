@@ -119,6 +119,17 @@ func (state DeliveryDelayedState) Process(ctx context.Context, iFrame frame.IFra
 			return
 		}
 
+		app.Globals.Logger.FromContext(ctx).Debug("received event",
+			"fn", "Process",
+			"state", state.Name(),
+			"oid", event.OrderId(),
+			"pid", event.PackageId(),
+			"uid", event.UserId(),
+			"sIdx", event.StateIndex(),
+			"action", event.Action(),
+			"data", event.Data(),
+			"event", event)
+
 		if event.EventType() == events.Action {
 			pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)
 			if !ok {

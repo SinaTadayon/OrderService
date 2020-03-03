@@ -182,6 +182,7 @@ func (state returnDeliveredState) Process(ctx context.Context, iFrame frame.IFra
 							"state", state.Name(),
 							"oid", pkgItem.OrderId,
 							"pid", pkgItem.PId,
+							"request", buyerNotify,
 							"sids", sids)
 						buyerNotificationAction = &entities.Action{
 							Name:      system_action.BuyerNotification.ActionName(),
@@ -297,6 +298,17 @@ func (state returnDeliveredState) Process(ctx context.Context, iFrame frame.IFra
 				SetError(future.InternalError, "Unknown Err", nil).Send()
 			return
 		}
+
+		app.Globals.Logger.FromContext(ctx).Debug("received event",
+			"fn", "Process",
+			"state", state.Name(),
+			"oid", event.OrderId(),
+			"pid", event.PackageId(),
+			"uid", event.UserId(),
+			"sIdx", event.StateIndex(),
+			"action", event.Action(),
+			"data", event.Data(),
+			"event", event)
 
 		if event.EventType() == events.Action {
 			pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)

@@ -160,6 +160,7 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 						"state", state.Name(),
 						"oid", pkgItem.OrderId,
 						"pid", pkgItem.PId,
+						"request", buyerNotify,
 						"sids", sids)
 					buyerNotificationAction = &entities.Action{
 						Name:      system_action.BuyerNotification.ActionName(),
@@ -252,7 +253,7 @@ func (state canceledByBuyerState) Process(ctx context.Context, iFrame frame.IFra
 								"oid", pkgItem.OrderId,
 								"pid", pkgItem.PId,
 								"sids", sids,
-								"sellerNotify", sellerNotify)
+								"request", sellerNotify)
 							sellerNotificationAction = &entities.Action{
 								Name:      system_action.SellerNotification.ActionName(),
 								Type:      "",

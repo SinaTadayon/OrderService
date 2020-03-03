@@ -292,6 +292,13 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 		return
 	}
 
+	if totalCount == 0 {
+		app.Globals.Logger.Debug("scheduler getTotalCount is zero",
+			"fn", "doProcess",
+			"state", state.StateName())
+		return
+	}
+
 	for page := int64(1); page <= (totalCount/perPage)+1; page++ {
 		orderList, _, err := scheduler.findAllWithPage(ctx, state, page, perPage)
 		if err != nil {
@@ -313,9 +320,11 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 		for i := 0; i < len(orderList); i++ {
 			var packageList []*protoOrder.SchedulerActionRequest_Order_Package = nil
 			var orderReq *protoOrder.SchedulerActionRequest_Order = nil
+
 			for j := 0; j < len(orderList[i].Packages); j++ {
 				var subpackageList []*protoOrder.SchedulerActionRequest_Order_Package_Subpackage = nil
 				var pkg *protoOrder.SchedulerActionRequest_Order_Package = nil
+
 				for k := 0; k < len(orderList[i].Packages[j].Subpackages); k++ {
 					app.Globals.Logger.Debug("scheduler check order",
 						"fn", "doProcess",
@@ -328,28 +337,23 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 						continue
 					}
 
-					if packageList == nil {
-						packageList = make([]*protoOrder.SchedulerActionRequest_Order_Package, 0, len(orderList[i].Packages))
-					}
-
 					if orderReq == nil {
 						orderReq = &protoOrder.SchedulerActionRequest_Order{
 							OID:         orderList[i].Packages[j].Subpackages[k].OrderId,
 							ActionType:  "",
 							ActionState: scheduler.Action,
 							StateIndex:  orderList[i].Packages[j].Subpackages[k].Sidx,
-							Packages:    packageList,
+							Packages:    nil,
 						}
-					}
 
-					if subpackageList == nil {
+						packageList = make([]*protoOrder.SchedulerActionRequest_Order_Package, 0, len(orderList[i].Packages))
 						subpackageList = make([]*protoOrder.SchedulerActionRequest_Order_Package_Subpackage, 0, len(orderList[i].Packages[j].Subpackages))
 					}
 
 					if pkg == nil {
 						pkg = &protoOrder.SchedulerActionRequest_Order_Package{
 							PID:         orderList[i].Packages[j].Subpackages[k].Pid,
-							Subpackages: subpackageList,
+							Subpackages: nil,
 						}
 					}
 
@@ -372,11 +376,10 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 					subpackageList = append(subpackageList, subpkg)
 					pkg.Subpackages = subpackageList
 				}
-				if packageList != nil {
+
+				if packageList != nil && pkg != nil {
 					packageList = append(packageList, pkg)
-					if orderReq != nil {
-						orderReq.Packages = packageList
-					}
+					orderReq.Packages = packageList
 				}
 			}
 
@@ -399,9 +402,10 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 
 		serializedData, err := proto.Marshal(request)
 		if err != nil {
-			app.Globals.Logger.FromContext(ctx).Error("marshal serialize protoOrder.SchedulerActionRequest",
+			app.Globals.Logger.Error("marshal serialize protoOrder.SchedulerActionRequest",
 				"fn", "doProcess",
-				"state", state.StateName(), "error", err)
+				"state", state.StateName(),
+				"error", err)
 			return
 		}
 
@@ -432,22 +436,23 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 
 		err = scheduler.ConnectToOrderService()
 		if err != nil {
-			app.Globals.Logger.FromContext(ctx).Error("scheduler.ConnectToOrderService failed",
+			app.Globals.Logger.Error("scheduler.ConnectToOrderService failed",
 				"fn", "doProcess",
+				"state", state.StateName(),
 				"error", err)
 			return
 		}
 
 		response, err := scheduler.orderClient.SchedulerMessageHandler(ctx, msgReq)
 		if err != nil {
-			app.Globals.Logger.FromContext(ctx).Error("scheduler.orderClient.SchedulerMessageHandler failed",
+			app.Globals.Logger.Error("scheduler.orderClient.SchedulerMessageHandler failed",
 				"fn", "doProcess",
 				"request", request,
 				"state", state.StateName(),
 				"error", err)
 			return
 		} else {
-			app.Globals.Logger.FromContext(ctx).Debug("scheduler.orderClient.SchedulerMessageHandler success",
+			app.Globals.Logger.Debug("scheduler.orderClient.SchedulerMessageHandler success",
 				"fn", "doProcess",
 				"request", request,
 				"response", response,
@@ -456,20 +461,30 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 
 		select {
 		case <-ctx.Done():
-			app.Globals.Logger.FromContext(ctx).Debug("context down",
+			app.Globals.Logger.Debug("context down",
 				"fn", "doProcess",
 				"state", state.StateName(),
 				"error", ctx.Err())
 			return
 		default:
 		}
-	}
 
-	//if total != totalCount {
-	//	page = 1
-	//	totalCount = total
-	//}
-	//
+		totalCount, err = scheduler.getTotalCount(ctx, state)
+		if err != nil {
+			app.Globals.Logger.Error("scheduler getTotalCount failed",
+				"fn", "doProcess",
+				"state", state.StateName(),
+				"error", err)
+			return
+		}
+
+		if totalCount == 0 {
+			app.Globals.Logger.Debug("scheduler getTotalCount is zero",
+				"fn", "doProcess",
+				"state", state.StateName())
+			return
+		}
+	}
 }
 
 func (scheduler *SchedulerService) checkExpiredTime(subpackage Subpackage) *Scheduler {
@@ -529,10 +544,6 @@ func (scheduler *SchedulerService) checkExpiredTime(subpackage Subpackage) *Sche
 
 		var sche *Scheduler = nil
 		for i := 0; i < len(sortedScheduler); i++ {
-			//if sortedScheduler[i].Data.(primitive.DateTime).Time().Before(time.Now().UTC()) && sortedScheduler[i].Enabled {
-			//	sche = sortedScheduler[i]
-			//}
-
 			if dateTime, ok := subpackage.Scheduler[i].Data.(primitive.DateTime); ok {
 				if dateTime.Time().UTC().Before(time.Now().UTC()) && subpackage.Scheduler[i].Enabled {
 					app.Globals.Logger.Info("action expired",

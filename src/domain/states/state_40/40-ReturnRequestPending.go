@@ -166,6 +166,7 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 						"state", state.Name(),
 						"oid", pkgItem.OrderId,
 						"pid", pkgItem.PId,
+						"request", buyerNotify,
 						"sids", sids)
 					buyerNotificationAction = &entities.Action{
 						Name:      system_action.BuyerNotification.ActionName(),
@@ -258,7 +259,7 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 								"oid", pkgItem.OrderId,
 								"pid", pkgItem.PId,
 								"sids", sids,
-								"sellerNotify", sellerNotify)
+								"request", sellerNotify)
 							sellerNotificationAction = &entities.Action{
 								Name:      system_action.SellerNotification.ActionName(),
 								Type:      "",
@@ -381,6 +382,17 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 				SetError(future.InternalError, "Unknown Err", nil).Send()
 			return
 		}
+
+		app.Globals.Logger.FromContext(ctx).Debug("received event",
+			"fn", "Process",
+			"state", state.Name(),
+			"oid", event.OrderId(),
+			"pid", event.PackageId(),
+			"uid", event.UserId(),
+			"sIdx", event.StateIndex(),
+			"action", event.Action(),
+			"data", event.Data(),
+			"event", event)
 
 		if event.EventType() == events.Action {
 			pkgItem, ok := iFrame.Body().Content().(*entities.PackageItem)

@@ -84,24 +84,24 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			return
 		}
 
-		var buyerNotificationAction = &entities.Action{
-			Name:      system_action.BuyerNotification.ActionName(),
-			Type:      "",
-			UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
-			UTP:       actions.System.ActionName(),
-			Perm:      "",
-			Priv:      "",
-			Policy:    "",
-			Result:    string(states.ActionFail),
-			Reasons:   nil,
-			Note:      "",
-			Data:      nil,
-			CreatedAt: time.Now().UTC(),
-			Extended:  nil,
-		}
-
 		if event.Action().ActionEnum() == seller_action.Accept ||
 			event.Action().ActionEnum() == operator_action.Accept {
+
+			var buyerNotificationAction = &entities.Action{
+				Name:      system_action.BuyerNotification.ActionName(),
+				Type:      "",
+				UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+				UTP:       actions.System.ActionName(),
+				Perm:      "",
+				Priv:      "",
+				Policy:    "",
+				Result:    string(states.ActionFail),
+				Reasons:   nil,
+				Note:      "",
+				Data:      nil,
+				CreatedAt: time.Now().UTC(),
+				Extended:  nil,
+			}
 
 			var message string
 			if event.Action().ActionEnum() == seller_action.Accept {
@@ -179,6 +179,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 							"state", state.Name(),
 							"oid", pkgItem.OrderId,
 							"pid", pkgItem.PId,
+							"request", buyerNotify,
 							"sids", sids)
 						buyerNotificationAction = &entities.Action{
 							Name:      system_action.BuyerNotification.ActionName(),
@@ -198,12 +199,12 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 					}
 				}
 			}
-		}
 
-		for i := 0; i < len(sids); i++ {
-			for j := 0; j < len(pkgItem.Subpackages); j++ {
-				if pkgItem.Subpackages[j].SId == sids[i] {
-					state.UpdateSubPackage(ctx, pkgItem.Subpackages[j], buyerNotificationAction)
+			for i := 0; i < len(sids); i++ {
+				for j := 0; j < len(pkgItem.Subpackages); j++ {
+					if pkgItem.Subpackages[j].SId == sids[i] {
+						state.UpdateSubPackage(ctx, pkgItem.Subpackages[j], buyerNotificationAction)
+					}
 				}
 			}
 		}

@@ -107,7 +107,7 @@ func (repo iOrderRepositoryImpl) UpdateStatus(ctx context.Context, order *entiti
 			{"orderId", order.OrderId},
 			{"version", currentVersion},
 		},
-		bson.D{{"$set", bson.D{{"version", order.Version}, {"status", order.Status}, {"updateAt", order.UpdatedAt}}}}, opt)
+		bson.D{{"$set", bson.D{{"version", order.Version}, {"status", order.Status}, {"updatedAt", order.UpdatedAt}}}}, opt)
 	if singleResult.Err() != nil {
 		if repo.mongoAdapter.NoDocument(singleResult.Err()) {
 			return repository.ErrorFactory(repository.NotFoundErr, "Package Not Found", repository.ErrorUpdateFailed)
