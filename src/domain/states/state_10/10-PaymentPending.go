@@ -344,21 +344,12 @@ func (state paymentPendingState) voucherWithZeroGrandTotalHandler(ctx context.Co
 			Extended:  nil,
 		}
 	} else {
-		if order.Invoice.Voucher.Percent > 0 {
-			app.Globals.Logger.FromContext(ctx).Info("voucher applied in invoice of order success",
-				"fn", "voucherWithZeroGrandTotalHandler",
-				"state", state.Name(),
-				"oid", order.OrderId,
-				"voucher Percent", order.Invoice.Voucher.Percent,
-				"voucher Code", order.Invoice.Voucher.Code)
-		} else {
-			app.Globals.Logger.FromContext(ctx).Info("voucher applied in invoice of order success",
-				"fn", "voucherWithZeroGrandTotalHandler",
-				"state", state.Name(),
-				"oid", order.OrderId,
-				"voucher Amount", order.Invoice.Voucher.Price.Amount,
-				"voucher Code", order.Invoice.Voucher.Code)
-		}
+		app.Globals.Logger.FromContext(ctx).Info("voucher applied in invoice of order success",
+			"fn", "voucherWithZeroGrandTotalHandler",
+			"state", state.Name(),
+			"oid", order.OrderId,
+			"voucher Amount", order.Invoice.Voucher.AppliedPrice.Amount,
+			"voucher Code", order.Invoice.Voucher.Code)
 		timestamp := time.Now().UTC()
 		order.Invoice.Voucher.Settlement = string(states.ActionSuccess)
 		order.Invoice.Voucher.SettlementAt = &timestamp

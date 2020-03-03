@@ -292,6 +292,13 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 		return
 	}
 
+	if totalCount == 0 {
+		app.Globals.Logger.Debug("scheduler getTotalCount is zero",
+			"fn", "doProcess",
+			"state", state.StateName())
+		return
+	}
+
 	for page := int64(1); page <= (totalCount/perPage)+1; page++ {
 		orderList, _, err := scheduler.findAllWithPage(ctx, state, page, perPage)
 		if err != nil {
@@ -397,7 +404,8 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 		if err != nil {
 			app.Globals.Logger.Error("marshal serialize protoOrder.SchedulerActionRequest",
 				"fn", "doProcess",
-				"state", state.StateName(), "error", err)
+				"state", state.StateName(),
+				"error", err)
 			return
 		}
 
@@ -430,6 +438,7 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 		if err != nil {
 			app.Globals.Logger.Error("scheduler.ConnectToOrderService failed",
 				"fn", "doProcess",
+				"state", state.StateName(),
 				"error", err)
 			return
 		}
