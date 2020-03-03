@@ -145,6 +145,7 @@ func (state returnCanceledState) Process(ctx context.Context, iFrame frame.IFram
 						"state", state.Name(),
 						"oid", pkgItem.OrderId,
 						"pid", pkgItem.PId,
+						"request", buyerNotify,
 						"sids", sids)
 					buyerNotificationAction = &entities.Action{
 						Name:      system_action.BuyerNotification.ActionName(),

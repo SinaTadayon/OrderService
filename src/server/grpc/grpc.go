@@ -540,7 +540,7 @@ func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.Messa
 
 	var schedulerActionRequest pb.SchedulerActionRequest
 	if err := ptypes.UnmarshalAny(req.Data, &schedulerActionRequest); err != nil {
-		app.Globals.Logger.FromContext(ctx).Error("Could not unmarshal schedulerActionRequest from request anything field", "fn", "SchedulerMessageHandler",
+		app.Globals.Logger.Error("Could not unmarshal schedulerActionRequest from request anything field", "fn", "SchedulerMessageHandler",
 			"request", req, "error", err)
 		return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
 	}
@@ -548,7 +548,7 @@ func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.Messa
 	for _, orderReq := range schedulerActionRequest.Orders {
 		userActions, ok := server.actionStates[userType]
 		if !ok {
-			app.Globals.Logger.FromContext(ctx).Error("requested scheduler action not supported", "fn", "SchedulerMessageHandler", "request", req)
+			app.Globals.Logger.Error("requested scheduler action not supported", "fn", "SchedulerMessageHandler", "request", req)
 			return nil, status.Error(codes.Code(future.BadRequest), "Scheduler Action Invalid")
 		}
 
@@ -560,7 +560,7 @@ func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.Messa
 		}
 
 		if userAction == nil {
-			app.Globals.Logger.FromContext(ctx).Error("scheduler action invalid", "fn", "SchedulerMessageHandler", "request", req)
+			app.Globals.Logger.Error("scheduler action invalid", "fn", "SchedulerMessageHandler", "request", req)
 			return nil, status.Error(codes.Code(future.BadRequest), "Action Invalid")
 		}
 
@@ -569,7 +569,7 @@ func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.Messa
 				orderReq.StateIndex, userAction,
 				time.Unix(req.Time.GetSeconds(), int64(req.Time.GetNanos())), nil)
 
-			app.Globals.Logger.FromContext(ctx).Debug("scheduler action event paymentFail",
+			app.Globals.Logger.Debug("scheduler action event paymentFail",
 				"fn", "SchedulerMessageHandler",
 				"oid", event.OrderId(),
 				"uid", event.UserId(),
@@ -619,7 +619,7 @@ func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.Messa
 				iFuture := future.Factory().SetCapacity(1).Build()
 				iFrame := frame.Factory().SetFuture(iFuture).SetEvent(event).Build()
 
-				app.Globals.Logger.FromContext(ctx).Debug("scheduler action event",
+				app.Globals.Logger.Debug("scheduler action event",
 					"fn", "SchedulerMessageHandler",
 					"oid", event.OrderId(),
 					"uid", event.UserId(),
@@ -628,7 +628,7 @@ func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.Messa
 				server.flowManager.MessageHandler(ctx, iFrame)
 				futureData := iFuture.Get()
 				if futureData.Error() != nil {
-					app.Globals.Logger.FromContext(ctx).Error("flowManager.MessageHandler failed", "fn", "SchedulerMessageHandler", "event", event, "error", futureData.Error().Reason())
+					app.Globals.Logger.Error("flowManager.MessageHandler failed", "fn", "SchedulerMessageHandler", "event", event, "error", futureData.Error().Reason())
 				}
 			}
 		}
