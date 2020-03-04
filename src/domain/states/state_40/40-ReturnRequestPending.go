@@ -305,8 +305,13 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 						time.Minute*time.Duration(value) +
 						time.Second*time.Duration(0))
 			}
-
 		}
+
+		app.Globals.Logger.FromContext(ctx).Debug("scheduler expireTime",
+			"fn", "Process",
+			"state", state.Name(),
+			"timeUnit", timeUnit,
+			"expireTime", expireTime.UTC().String())
 
 		for i := 0; i < len(sids); i++ {
 			for j := 0; j < len(pkgItem.Subpackages); j++ {

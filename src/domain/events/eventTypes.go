@@ -40,6 +40,6 @@ func FromString(eventType string) (EventType, error) {
 	case "Action":
 		return Action, nil
 	default:
-		return -1, errors.New("invalid eventType string")
+		return -1, errors.New("invalid EType string")
 	}
 }

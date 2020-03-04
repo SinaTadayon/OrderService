@@ -5,7 +5,6 @@ import (
 	"context"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	operator_action "gitlab.faza.io/order-project/order-service/domain/actions/operator"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
@@ -83,7 +82,7 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 			return
 		}
 
-		if event.Action().ActionEnum() == operator_action.Reject {
+		if states.FromIndex(event.StateIndex()) == states.ReturnRejected {
 
 			var buyerNotificationAction = &entities.Action{
 				Name:      system_action.BuyerNotification.ActionName(),

@@ -202,6 +202,12 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 			}
 		}
 
+		app.Globals.Logger.FromContext(ctx).Debug("scheduler expireTime",
+			"fn", "Process",
+			"state", state.Name(),
+			"timeUnit", timeUnit,
+			"expireTime", expireTime.UTC().String())
+
 		order.UpdatedAt = time.Now().UTC()
 		for i := 0; i < len(order.Packages); i++ {
 			order.Packages[i].UpdatedAt = time.Now().UTC()

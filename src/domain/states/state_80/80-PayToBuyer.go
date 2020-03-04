@@ -5,8 +5,6 @@ import (
 	"context"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	operator_action "gitlab.faza.io/order-project/order-service/domain/actions/operator"
-	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
@@ -84,8 +82,8 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			return
 		}
 
-		if event.Action().ActionEnum() == seller_action.Accept ||
-			event.Action().ActionEnum() == operator_action.Accept {
+		if states.FromIndex(event.StateIndex()) == states.ReturnRejected ||
+			states.FromIndex(event.StateIndex()) == states.ReturnDelivered {
 
 			var buyerNotificationAction = &entities.Action{
 				Name:      system_action.BuyerNotification.ActionName(),
@@ -104,9 +102,9 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			}
 
 			var message string
-			if event.Action().ActionEnum() == seller_action.Accept {
+			if states.FromIndex(event.StateIndex()) == states.ReturnDelivered {
 				message = app.Globals.SMSTemplate.OrderNotifyBuyerReturnDeliveredToPayToBuyerState
-			} else if event.Action().ActionEnum() == operator_action.Accept {
+			} else if states.FromIndex(event.StateIndex()) == states.ReturnRejected {
 				message = app.Globals.SMSTemplate.OrderNotifyBuyerReturnRejectedToPayToBuyerState
 			}
 

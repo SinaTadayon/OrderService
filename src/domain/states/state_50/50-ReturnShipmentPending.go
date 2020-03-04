@@ -194,6 +194,12 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 			}
 		}
 
+		app.Globals.Logger.FromContext(ctx).Debug("scheduler expireTime",
+			"fn", "Process",
+			"state", state.Name(),
+			"timeUnit", timeUnit,
+			"expireTime", expireTime.UTC().String())
+
 		for i := 0; i < len(sids); i++ {
 			for j := 0; j < len(pkgItem.Subpackages); j++ {
 				if pkgItem.Subpackages[j].SId == sids[i] {

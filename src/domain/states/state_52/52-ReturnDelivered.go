@@ -7,9 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-	operator_action "gitlab.faza.io/order-project/order-service/domain/actions/operator"
 	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
-	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
@@ -103,13 +101,13 @@ func (state returnDeliveredState) Process(ctx context.Context, iFrame frame.IFra
 			Extended:  nil,
 		}
 
-		if event.Action().ActionEnum() == seller_action.Deliver ||
-			event.Action().ActionEnum() == operator_action.Deliver {
+		if states.FromIndex(event.StateIndex()) == states.ReturnDeliveryPending ||
+			states.FromIndex(event.StateIndex()) == states.ReturnDeliveryDelayed {
 
 			var message string
-			if event.Action().ActionEnum() == seller_action.Deliver {
+			if states.FromIndex(event.StateIndex()) == states.ReturnDeliveryPending {
 				message = app.Globals.SMSTemplate.OrderNotifyBuyerReturnDeliveryPendingToReturnDeliveredState
-			} else if event.Action().ActionEnum() == operator_action.Deliver {
+			} else if states.FromIndex(event.StateIndex()) == states.ReturnDeliveryDelayed {
 				message = app.Globals.SMSTemplate.OrderNotifyBuyerReturnDeliveryDelayedToReturnDeliveredState
 			}
 
@@ -223,6 +221,12 @@ func (state returnDeliveredState) Process(ctx context.Context, iFrame frame.IFra
 						time.Second*time.Duration(0))
 			}
 		}
+
+		app.Globals.Logger.FromContext(ctx).Debug("scheduler expireTime",
+			"fn", "Process",
+			"state", state.Name(),
+			"timeUnit", timeUnit,
+			"expireTime", expireTime.UTC().String())
 
 		for i := 0; i < len(sids); i++ {
 			for j := 0; j < len(pkgItem.Subpackages); j++ {

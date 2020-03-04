@@ -99,6 +99,10 @@ func (state paymentPendingState) paymentHandler(ctx context.Context, iFrame fram
 	}
 
 	if grandTotal.IsZero() && order.Invoice.Voucher != nil {
+		app.Globals.Logger.FromContext(ctx).Info("invoice order with zero grand total and full voucher applied",
+			"fn", "Process",
+			"state", state.Name(),
+			"oid", order.OrderId)
 		state.voucherWithZeroGrandTotalHandler(ctx, iFrame, order)
 	} else {
 		if order.Invoice.Voucher != nil {
@@ -216,6 +220,12 @@ func (state paymentPendingState) paymentHandler(ctx context.Context, iFrame fram
 						time.Second*time.Duration(0))
 				//}
 			}
+
+			app.Globals.Logger.FromContext(ctx).Debug("scheduler expireTime",
+				"fn", "paymentHandler",
+				"state", state.Name(),
+				"timeUnit", timeUnit,
+				"expireTime", expireTime.UTC().String())
 
 			order.UpdatedAt = time.Now().UTC()
 			for i := 0; i < len(order.Packages); i++ {
@@ -635,6 +645,12 @@ func (state paymentPendingState) eventHandler(ctx context.Context, iFrame frame.
 					time.Second*time.Duration(0))
 			//}
 		}
+
+		app.Globals.Logger.FromContext(ctx).Debug("scheduler expireTime",
+			"fn", "eventHandler",
+			"state", state.Name(),
+			"timeUnit", timeUnit,
+			"expireTime", expireTime.UTC().String())
 
 		var findFlag = false
 		for i := 0; i < len(order.Packages); i++ {
