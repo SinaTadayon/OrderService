@@ -224,6 +224,7 @@ func (state paymentPendingState) paymentHandler(ctx context.Context, iFrame fram
 			app.Globals.Logger.FromContext(ctx).Debug("scheduler expireTime",
 				"fn", "paymentHandler",
 				"state", state.Name(),
+				"oid", order.OrderId,
 				"timeUnit", timeUnit,
 				"expireTime", expireTime.UTC().String())
 
@@ -649,6 +650,7 @@ func (state paymentPendingState) eventHandler(ctx context.Context, iFrame frame.
 		app.Globals.Logger.FromContext(ctx).Debug("scheduler expireTime",
 			"fn", "eventHandler",
 			"state", state.Name(),
+			"oid", order.OrderId,
 			"timeUnit", timeUnit,
 			"expireTime", expireTime.UTC().String())
 

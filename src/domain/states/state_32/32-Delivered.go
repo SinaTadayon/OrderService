@@ -94,6 +94,9 @@ func (state shipmentDeliveredState) Process(ctx context.Context, iFrame frame.IF
 		app.Globals.Logger.FromContext(ctx).Debug("scheduler expireTime",
 			"fn", "Process",
 			"state", state.Name(),
+			"oid", pkgItem.OrderId,
+			"pid", pkgItem.PId,
+			"sids", sids,
 			"timeUnit", timeUnit,
 			"expireTime", expireTime.UTC().String())
 

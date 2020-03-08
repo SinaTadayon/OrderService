@@ -205,6 +205,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 		app.Globals.Logger.FromContext(ctx).Debug("scheduler expireTime",
 			"fn", "Process",
 			"state", state.Name(),
+			"oid", order.OrderId,
 			"timeUnit", timeUnit,
 			"expireTime", expireTime.UTC().String())
 

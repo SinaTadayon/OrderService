@@ -225,6 +225,9 @@ func (state returnDeliveredState) Process(ctx context.Context, iFrame frame.IFra
 		app.Globals.Logger.FromContext(ctx).Debug("scheduler expireTime",
 			"fn", "Process",
 			"state", state.Name(),
+			"oid", pkgItem.OrderId,
+			"pid", pkgItem.PId,
+			"sids", sids,
 			"timeUnit", timeUnit,
 			"expireTime", expireTime.UTC().String())
 
