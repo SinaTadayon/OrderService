@@ -101,19 +101,19 @@ func (state paymentPendingState) paymentHandler(ctx context.Context, iFrame fram
 
 	if grandTotal.IsZero() && order.Invoice.Voucher != nil {
 		app.Globals.Logger.FromContext(ctx).Info("invoice order with zero grand total and full voucher applied",
-			"fn", "Process",
+			"fn", "paymentHandler",
 			"state", state.Name(),
 			"oid", order.OrderId)
 		state.voucherWithZeroGrandTotalHandler(ctx, iFrame, order)
 	} else {
 		if order.Invoice.Voucher != nil {
 			app.Globals.Logger.FromContext(ctx).Info("invoice order with voucher applied",
-				"fn", "Process",
+				"fn", "paymentHandler",
 				"state", state.Name(),
 				"oid", order.OrderId)
 		} else {
 			app.Globals.Logger.FromContext(ctx).Info("invoice order without voucher applied",
-				"fn", "Process",
+				"fn", "paymentHandler",
 				"state", state.Name(),
 				"oid", order.OrderId)
 		}
@@ -266,7 +266,7 @@ func (state paymentPendingState) paymentHandler(ctx context.Context, iFrame fram
 			_, err := app.Globals.OrderRepository.Save(ctx, *order)
 			if err != nil {
 				app.Globals.Logger.FromContext(ctx).Error("OrderRepository.Save failed",
-					"fn", "Process",
+					"fn", "paymentHandler",
 					"state", state.Name(),
 					"oid", order.OrderId,
 					"error", err)
@@ -276,7 +276,7 @@ func (state paymentPendingState) paymentHandler(ctx context.Context, iFrame fram
 			}
 
 			app.Globals.Logger.FromContext(ctx).Debug("Order state of all subpackages update",
-				"fn", "Process",
+				"fn", "paymentHandler",
 				"state", state.Name(),
 				"oid", order.OrderId)
 			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
