@@ -10,6 +10,7 @@ import (
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
@@ -100,19 +101,19 @@ func (state paymentPendingState) paymentHandler(ctx context.Context, iFrame fram
 
 	if grandTotal.IsZero() && order.Invoice.Voucher != nil {
 		app.Globals.Logger.FromContext(ctx).Info("invoice order with zero grand total and full voucher applied",
-			"fn", "Process",
+			"fn", "paymentHandler",
 			"state", state.Name(),
 			"oid", order.OrderId)
 		state.voucherWithZeroGrandTotalHandler(ctx, iFrame, order)
 	} else {
 		if order.Invoice.Voucher != nil {
 			app.Globals.Logger.FromContext(ctx).Info("invoice order with voucher applied",
-				"fn", "Process",
+				"fn", "paymentHandler",
 				"state", state.Name(),
 				"oid", order.OrderId)
 		} else {
 			app.Globals.Logger.FromContext(ctx).Info("invoice order without voucher applied",
-				"fn", "Process",
+				"fn", "paymentHandler",
 				"state", state.Name(),
 				"oid", order.OrderId)
 		}
@@ -265,7 +266,7 @@ func (state paymentPendingState) paymentHandler(ctx context.Context, iFrame fram
 			_, err := app.Globals.OrderRepository.Save(ctx, *order)
 			if err != nil {
 				app.Globals.Logger.FromContext(ctx).Error("OrderRepository.Save failed",
-					"fn", "Process",
+					"fn", "paymentHandler",
 					"state", state.Name(),
 					"oid", order.OrderId,
 					"error", err)
@@ -275,7 +276,7 @@ func (state paymentPendingState) paymentHandler(ctx context.Context, iFrame fram
 			}
 
 			app.Globals.Logger.FromContext(ctx).Debug("Order state of all subpackages update",
-				"fn", "Process",
+				"fn", "paymentHandler",
 				"state", state.Name(),
 				"oid", order.OrderId)
 			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
@@ -429,36 +430,25 @@ func (state paymentPendingState) actionFailOfPaymentHandler(ctx context.Context,
 func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFrame frame.IFrame) {
 	order, err := app.Globals.OrderRepository.FindById(ctx, iFrame.Header().Value(string(frame.HeaderOrderId)).(uint64))
 	if err != nil {
-		app.Globals.Logger.FromContext(ctx).Error("OrderRepository.FindById failed",
-			"fn", "Process",
-			"state", state.Name(),
-			"oid", iFrame.Header().Value(string(frame.HeaderOrderId)).(uint64),
-			"paymentResult", iFrame.Header().Value(string(frame.HeaderPaymentResult)).(*entities.PaymentResult),
-			"error", err)
+		if err.Code() == repository.InternalErr {
+			app.Globals.Logger.FromContext(ctx).Error("app.Globals.OrderRepository.FindById of payment result failed",
+				"fn", "paymentResultHandler",
+				"state", state.Name(),
+				"oid", iFrame.Header().Value(string(frame.HeaderOrderId)).(uint64),
+				"paymentResult", iFrame.Header().Value(string(frame.HeaderPaymentResult)).(*entities.PaymentResult),
+				"error", err)
+		} else {
+			app.Globals.Logger.FromContext(ctx).Error("orderId of payment result received not found",
+				"fn", "paymentResultHandler",
+				"state", state.Name(),
+				"oid", iFrame.Header().Value(string(frame.HeaderOrderId)).(uint64),
+				"paymentResult", iFrame.Header().Value(string(frame.HeaderPaymentResult)).(*entities.PaymentResult),
+				"error", err)
+		}
 
 		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 			SetCapacity(1).SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).
 			Send()
-
-		paymentAction := &entities.Action{
-			Name:      system_action.PaymentFail.ActionName(),
-			Type:      "",
-			UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
-			UTP:       actions.System.ActionName(),
-			Perm:      "",
-			Priv:      "",
-			Policy:    "",
-			Result:    string(states.ActionFail),
-			Reasons:   nil,
-			Note:      "",
-			Data:      nil,
-			CreatedAt: time.Now().UTC(),
-			Extended:  nil,
-		}
-
-		state.UpdateOrderAllSubPkg(ctx, order, paymentAction)
-		failAction := state.GetAction(system_action.PaymentFail.ActionName())
-		state.StatesMap()[failAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
 		return
 	}
 
@@ -466,9 +456,20 @@ func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFram
 	future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 		SetCapacity(1).Send()
 
+	// issue SELLER-22
+	if states.OrderStatus(order.Status) != states.OrderNewStatus {
+		app.Globals.Logger.FromContext(ctx).Info("order status is not a NEW status",
+			"fn", "paymentResultHandler",
+			"state", state.Name(),
+			"oid", order.OrderId,
+			"status", order.Status,
+			"paymentResult", iFrame.Header().Value(string(frame.HeaderPaymentResult)).(*entities.PaymentResult))
+		return
+	}
+
 	order.OrderPayment[0].PaymentResult = iFrame.Header().Value(string(frame.HeaderPaymentResult)).(*entities.PaymentResult)
-	app.Globals.Logger.FromContext(ctx).Info("Order Received",
-		"fn", "Process",
+	app.Globals.Logger.FromContext(ctx).Info("PaymentResult received",
+		"fn", "paymentResultHandler",
 		"state", state.Name(),
 		"oid", order.OrderId)
 	if order.OrderPayment[0].PaymentResult.Result == false {
@@ -501,7 +502,7 @@ func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFram
 			futureData := iFuture.Get()
 			if futureData.Error() != nil {
 				app.Globals.Logger.FromContext(ctx).Error("VoucherService.VoucherSettlement failed",
-					"fn", "Process",
+					"fn", "paymentResultHandler",
 					"state", state.Name(),
 					"oid", order.OrderId,
 					"voucher Code", order.Invoice.Voucher.Code,
@@ -526,7 +527,7 @@ func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFram
 				}
 			} else {
 				app.Globals.Logger.FromContext(ctx).Info("voucher applied in invoice of order success",
-					"fn", "Process",
+					"fn", "paymentResultHandler",
 					"state", state.Name(),
 					"oid", order.OrderId,
 					"voucher Amount", order.Invoice.Voucher.AppliedPrice.Amount,
@@ -553,7 +554,7 @@ func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFram
 			}
 
 			app.Globals.Logger.FromContext(ctx).Info("VoucherSettlement success",
-				"fn", "Process",
+				"fn", "paymentResultHandler",
 				"state", state.Name(),
 				"oid", order.OrderId,
 				"voucher Amount", order.Invoice.Voucher.AppliedPrice.Amount,
@@ -561,6 +562,7 @@ func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFram
 
 		} else {
 			app.Globals.Logger.FromContext(ctx).Info("Order Invoice hasn't voucher",
+				"fn", "paymentResultHandler",
 				"state", state.Name(),
 				"oid", order.OrderId)
 		}
@@ -582,7 +584,7 @@ func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFram
 		}
 
 		app.Globals.Logger.FromContext(ctx).Info("PaymentResult success",
-			"fn", "Process",
+			"fn", "paymentResultHandler",
 			"state", state.Name(),
 			"oid", order.OrderId)
 		state.UpdateOrderAllSubPkg(ctx, order, paymentAction, voucherAction)
@@ -602,6 +604,19 @@ func (state paymentPendingState) eventHandler(ctx context.Context, iFrame frame.
 				"frame", iFrame)
 			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 				SetError(future.InternalError, "Unknown Err", errors.New("frame body invalid")).Send()
+			return
+		}
+
+		// issue SELLER-22
+		if states.OrderStatus(order.Status) != states.OrderNewStatus {
+			app.Globals.Logger.FromContext(ctx).Info("order status is not a NEW status",
+				"fn", "eventHandler",
+				"state", state.Name(),
+				"oid", order.OrderId,
+				"status", order.Status,
+				"event", event)
+			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+				SetError(future.NotAccepted, "Action Not Accepted", errors.New("Action Not Accepted")).Send()
 			return
 		}
 
