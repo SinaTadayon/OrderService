@@ -401,6 +401,7 @@ func (finance financeCalculatorImpl) sellerVatCalc(decorator financeCalcFunc) fi
 						itemFinance.Invoice.VAT.SellerVat.RawTotalPrice = &decimal.Zero
 						itemFinance.Invoice.VAT.SellerVat.RoundupUnitPrice = &decimal.Zero
 						itemFinance.Invoice.VAT.SellerVat.RoundupTotalPrice = &decimal.Zero
+						itemFinance.Invoice.VAT.SellerVat.UpdatedAt = finance.timestamp
 
 						rawItemNet := *itemFinance.Invoice.Share.RawItemGross
 						itemFinance.Invoice.Share.RawItemNet = &rawItemNet
@@ -517,13 +518,9 @@ func (finance financeCalculatorImpl) netCommissionCalc(decorator financeCalcFunc
 
 		if mode == ORDER_FINANCE || mode == SELLER_FINANCE {
 			if order.Status != inProgressStatus {
-				if rawTotalPrice.IsZero() && roundupTotalPrice.IsZero() {
-					order.Invoice.Commission = nil
-				} else {
-					order.Invoice.Commission.UpdatedAt = finance.timestamp
-					order.Invoice.Commission.RawTotalPrice = &rawTotalPrice
-					order.Invoice.Commission.RoundupTotalPrice = &roundupTotalPrice
-				}
+				order.Invoice.Commission.UpdatedAt = finance.timestamp
+				order.Invoice.Commission.RawTotalPrice = &rawTotalPrice
+				order.Invoice.Commission.RoundupTotalPrice = &roundupTotalPrice
 			}
 		}
 
@@ -612,13 +609,9 @@ func (finance financeCalculatorImpl) businessVatCalc(decorator financeCalcFunc) 
 
 		if mode == ORDER_FINANCE || mode == SELLER_FINANCE {
 			if order.Status != inProgressStatus {
-				if rawTotal.IsZero() && roundupTotal.IsZero() {
-					order.Invoice.VAT = nil
-				} else {
-					order.Invoice.VAT.UpdatedAt = finance.timestamp
-					order.Invoice.VAT.RawTotal = &rawTotal
-					order.Invoice.VAT.RoundupTotal = &roundupTotal
-				}
+				order.Invoice.VAT.UpdatedAt = finance.timestamp
+				order.Invoice.VAT.RawTotal = &rawTotal
+				order.Invoice.VAT.RoundupTotal = &roundupTotal
 			}
 		}
 
@@ -653,10 +646,6 @@ func (finance financeCalculatorImpl) sellerSsoCalc(decorator financeCalcFunc) fi
 				continue
 			}
 
-			if order.Packages[i].Invoice.SSO == nil || !order.Packages[i].Invoice.SSO.IsObliged {
-				continue
-			}
-
 			pkgRawTotal := decimal.Zero
 			pkgRoundupTotal := decimal.Zero
 
@@ -672,24 +661,34 @@ func (finance financeCalculatorImpl) sellerSsoCalc(decorator financeCalcFunc) fi
 						itemFinance.Invoice.SSO.CreatedAt = finance.timestamp
 					}
 
-					rawUnitPrice := (*itemFinance.Invoice.Commission.RawUnitPrice).
-						Mul(decimal.NewFromFloat32(order.Packages[i].Invoice.SSO.Rate)).
-						Div(decimal.NewFromInt(100))
-					itemFinance.Invoice.SSO.RawUnitPrice = &rawUnitPrice
+					if order.Packages[i].Invoice.SSO.IsObliged {
+						rawUnitPrice := (*itemFinance.Invoice.Commission.RawUnitPrice).
+							Mul(decimal.NewFromFloat32(order.Packages[i].Invoice.SSO.Rate)).
+							Div(decimal.NewFromInt(100))
+						itemFinance.Invoice.SSO.RawUnitPrice = &rawUnitPrice
 
-					rawTotalPrice := rawUnitPrice.Mul(decimal.NewFromInt32(itemFinance.Quantity))
-					itemFinance.Invoice.SSO.RawTotalPrice = &rawTotalPrice
+						rawTotalPrice := rawUnitPrice.Mul(decimal.NewFromInt32(itemFinance.Quantity))
+						itemFinance.Invoice.SSO.RawTotalPrice = &rawTotalPrice
 
-					roundupUnitPrice := (*itemFinance.Invoice.Commission.RoundupUnitPrice).
-						Mul(decimal.NewFromFloat32(order.Packages[i].Invoice.SSO.Rate)).
-						Div(decimal.NewFromInt(100)).
-						Ceil()
-					itemFinance.Invoice.SSO.RoundupUnitPrice = &roundupUnitPrice
+						roundupUnitPrice := (*itemFinance.Invoice.Commission.RoundupUnitPrice).
+							Mul(decimal.NewFromFloat32(order.Packages[i].Invoice.SSO.Rate)).
+							Div(decimal.NewFromInt(100)).
+							Ceil()
+						itemFinance.Invoice.SSO.RoundupUnitPrice = &roundupUnitPrice
 
-					roundupTotalPrice := roundupUnitPrice.Mul(decimal.NewFromInt32(itemFinance.Quantity))
-					itemFinance.Invoice.SSO.RoundupTotalPrice = &roundupTotalPrice
+						roundupTotalPrice := roundupUnitPrice.Mul(decimal.NewFromInt32(itemFinance.Quantity))
+						itemFinance.Invoice.SSO.RoundupTotalPrice = &roundupTotalPrice
+						itemFinance.Invoice.SSO.UpdatedAt = finance.timestamp
 
-					itemFinance.Invoice.SSO.UpdatedAt = finance.timestamp
+					} else {
+						itemFinance.Invoice.SSO.RawUnitPrice = &decimal.Zero
+						itemFinance.Invoice.SSO.RawTotalPrice = &decimal.Zero
+
+						itemFinance.Invoice.SSO.RoundupUnitPrice = &decimal.Zero
+						itemFinance.Invoice.SSO.RoundupTotalPrice = &decimal.Zero
+
+						itemFinance.Invoice.SSO.UpdatedAt = finance.timestamp
+					}
 
 					pkgRawTotal = pkgRawTotal.Add(*itemFinance.Invoice.SSO.RawTotalPrice)
 					pkgRoundupTotal = pkgRoundupTotal.Add(*itemFinance.Invoice.SSO.RoundupTotalPrice)
@@ -707,13 +706,9 @@ func (finance financeCalculatorImpl) sellerSsoCalc(decorator financeCalcFunc) fi
 
 		if mode == ORDER_FINANCE || mode == SELLER_FINANCE {
 			if order.Status != inProgressStatus {
-				if rawTotal.IsZero() && roundupTotal.IsZero() {
-					order.Invoice.SSO = nil
-				} else {
-					order.Invoice.SSO.UpdatedAt = finance.timestamp
-					order.Invoice.SSO.RawTotal = &rawTotal
-					order.Invoice.SSO.RoundupTotal = &roundupTotal
-				}
+				order.Invoice.SSO.UpdatedAt = finance.timestamp
+				order.Invoice.SSO.RawTotal = &rawTotal
+				order.Invoice.SSO.RoundupTotal = &roundupTotal
 			}
 		}
 
