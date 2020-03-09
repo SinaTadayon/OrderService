@@ -59,19 +59,6 @@ const (
 	OrderStateFilterType FilterType = "OrderState"
 )
 
-//const (
-//	ApprovalPendingFilter       FilterValue = "ApprovalPending"
-//	ShipmentPendingFilter       FilterValue = "ShipmentPending"
-//	ShippedFilter               FilterValue = "Shipped"
-//	DeliveredFilter             FilterValue = "Delivered"
-//	DeliveryFailedFilter        FilterValue = "DeliveryFailed"
-//	ReturnRequestPendingFilter  FilterValue = "ReturnRequestPending"
-//	ReturnShipmentPendingFilter FilterValue = "ReturnShipmentPending"
-//	ReturnShippedFilter         FilterValue = "ReturnShipped"
-//	ReturnDeliveredFilter       FilterValue = "ReturnDelivered"
-//	ReturnDeliveryFailedFilter  FilterValue = "ReturnDeliveryFailed"
-//)
-
 const (
 	NewOrderFilter                 FilterValue = "NewOrder"
 	PaymentPendingFilter           FilterValue = "PaymentPending"
@@ -162,8 +149,9 @@ const (
 	BuyerReturnOrderDetailList RequestName = "BuyerReturnOrderDetailList"
 
 	//OperatorAllOrders	RequestName = "OperatorAllOrders"
-	OperatorOrderList   RequestName = "OperatorOrderList"
-	OperatorOrderDetail RequestName = "OperatorOrderDetail"
+	OperatorOrderList          RequestName = "OperatorOrderList"
+	OperatorOrderDetail        RequestName = "OperatorOrderDetail"
+	OperatorOrderInvoiceDetail RequestName = "OperatorOrderInvoiceDetail"
 )
 
 const (
@@ -693,7 +681,8 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 		return nil, status.Error(codes.Code(future.BadRequest), "RN UTP Invalid")
 	} else if userType == OperatorUser &&
 		reqName != OperatorOrderList &&
-		reqName != OperatorOrderDetail {
+		reqName != OperatorOrderDetail &&
+		reqName != OperatorOrderInvoiceDetail {
 		app.Globals.Logger.FromContext(ctx).Error("RequestName with userType mismatch", "fn", "requestDataHandler", "rn", reqName, "utp", userType, "request", req)
 		return nil, status.Error(codes.Code(future.BadRequest), "RN UTP Invalid")
 	}
@@ -807,6 +796,8 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 		return server.operatorOrderListHandler(ctx, req.Meta.OID, buyerMobile, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
 	case OperatorOrderDetail:
 		return server.operatorOrderDetailHandler(ctx, req.Meta.OID)
+	case OperatorOrderInvoiceDetail:
+		return server.operatorOrderInvoiceDetailHandler(ctx, req.Meta.OID)
 	}
 
 	return nil, status.Error(codes.Code(future.BadRequest), "Invalid Request")

@@ -360,7 +360,7 @@ func (state paymentPendingState) voucherWithZeroGrandTotalHandler(ctx context.Co
 			"fn", "voucherWithZeroGrandTotalHandler",
 			"state", state.Name(),
 			"oid", order.OrderId,
-			"voucher Amount", order.Invoice.Voucher.AppliedPrice.Amount,
+			"voucher Amount", order.Invoice.Voucher.RoundupAppliedPrice.Amount,
 			"voucher Code", order.Invoice.Voucher.Code)
 		timestamp := time.Now().UTC()
 		order.Invoice.Voucher.Settlement = string(states.ActionSuccess)
@@ -526,11 +526,12 @@ func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFram
 					Extended:  nil,
 				}
 			} else {
+
 				app.Globals.Logger.FromContext(ctx).Info("voucher applied in invoice of order success",
 					"fn", "paymentResultHandler",
 					"state", state.Name(),
 					"oid", order.OrderId,
-					"voucher Amount", order.Invoice.Voucher.AppliedPrice.Amount,
+					"voucher Amount", order.Invoice.Voucher.RoundupAppliedPrice.Amount,
 					"voucher Code", order.Invoice.Voucher.Code)
 
 				timestamp := time.Now().UTC()
@@ -557,9 +558,8 @@ func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFram
 				"fn", "paymentResultHandler",
 				"state", state.Name(),
 				"oid", order.OrderId,
-				"voucher Amount", order.Invoice.Voucher.AppliedPrice.Amount,
+				"voucher Amount", order.Invoice.Voucher.RoundupAppliedPrice.Amount,
 				"voucher Code", order.Invoice.Voucher.Code)
-
 		} else {
 			app.Globals.Logger.FromContext(ctx).Info("Order Invoice hasn't voucher",
 				"fn", "paymentResultHandler",
@@ -791,7 +791,7 @@ func (state paymentPendingState) eventHandler(ctx context.Context, iFrame frame.
 								"fn", "eventHandler",
 								"state", state.Name(),
 								"oid", order.OrderId,
-								"voucher Amount", order.Invoice.Voucher.AppliedPrice.Amount,
+								"voucher Amount", order.Invoice.Voucher.RoundupAppliedPrice.Amount,
 								"voucher Code", order.Invoice.Voucher.Code)
 
 							timestamp := time.Now().UTC()
@@ -818,7 +818,7 @@ func (state paymentPendingState) eventHandler(ctx context.Context, iFrame frame.
 							"fn", "eventHandler",
 							"state", state.Name(),
 							"oid", order.OrderId,
-							"voucher Amount", order.Invoice.Voucher.AppliedPrice.Amount,
+							"voucher Amount", order.Invoice.Voucher.RoundupAppliedPrice.Amount,
 							"voucher Code", order.Invoice.Voucher.Code)
 
 					} else {

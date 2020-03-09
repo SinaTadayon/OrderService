@@ -31,15 +31,74 @@ type PackageInvoice struct {
 	Subtotal       Money                  `bson:"subtotal"`
 	Discount       Money                  `bson:"discount"`
 	ShipmentAmount Money                  `bson:"shipmentAmount"`
+	Share          *PackageShare          `bson:"share"`
+	Commission     *PackageCommission     `bson:"packageCommission"`
 	Voucher        *PackageVoucher        `bson:"voucher"`
 	CartRule       *CartRule              `bson:"cartRule"`
-	SSO            *SSO                   `bson:"sso"`
-	VAT            *VAT                   `bson:"vat"`
+	SSO            *PackageSSO            `bson:"sso"`
+	VAT            *PackageVAT            `bson:"vat"`
 	TAX            *TAX                   `bson:"tax"`
 	Extended       map[string]interface{} `bson:"ext"`
 }
 
+type PackageCommission struct {
+	RawTotalPrice     *Money                 `bson:"rawTotalPrice"`
+	RoundupTotalPrice *Money                 `bson:"roundupTotalPrice"`
+	CreatedAt         *time.Time             `bson:"createdAt"`
+	UpdatedAt         *time.Time             `bson:"updatedAt"`
+	Extended          map[string]interface{} `bson:"ext"`
+}
+
+type PackageShare struct {
+	RawBusinessShare     *Money                 `bson:"rawBusinessShare"`
+	RoundupBusinessShare *Money                 `bson:"roundupBusinessShare"`
+	RawSellerShare       *Money                 `bson:"rawSellerShare"`
+	RoundupSellerShare   *Money                 `bson:"roundupSellerShare"`
+	CreatedAt            *time.Time             `bson:"createdAt"`
+	UpdatedAt            *time.Time             `bson:"updatedAt"`
+	Extended             map[string]interface{} `bson:"ext"`
+}
+
 type PackageVoucher struct {
+	RawTotal                 *Money                 `bson:"rawTotal"`
+	RoundupTotal             *Money                 `bson:"roundupTotal"`
+	RawCalcShipmentPrice     *Money                 `bson:"rawCalcShipmentPrice"`
+	RoundupCalcShipmentPrice *Money                 `bson:"roundupCalcShipmentPrice"`
+	CreatedAt                *time.Time             `bson:"createdAt"`
+	UpdatedAt                *time.Time             `bson:"updatedAt"`
+	Extended                 map[string]interface{} `bson:"ext"`
+}
+
+type PackageSSO struct {
+	Rate         float32                `bson:"rate"`
+	IsObliged    bool                   `bson:"isObliged"`
+	RawTotal     *Money                 `bson:"rawTotal"`
+	RoundupTotal *Money                 `bson:"roundupTotal"`
+	CreatedAt    *time.Time             `bson:"createdAt"`
+	UpdatedAt    *time.Time             `bson:"updatedAt"`
+	Extended     map[string]interface{} `bson:"ext"`
+}
+
+type PackageVAT struct {
+	SellerVAT   *PackageSellerVAT      `bson:"sellerVat"`
+	BusinessVAT *PackageBusinessVAT    `bson:"businessVat"`
+	Extended    map[string]interface{} `bson:"ext"`
+}
+
+type PackageSellerVAT struct {
+	RawTotal     *Money                 `bson:"rawTotal"`
+	RoundupTotal *Money                 `bson:"roundupTotal"`
+	CreatedAt    *time.Time             `bson:"createdAt"`
+	UpdatedAt    *time.Time             `bson:"updatedAt"`
+	Extended     map[string]interface{} `bson:"ext"`
+}
+
+type PackageBusinessVAT struct {
+	RawTotal     *Money                 `bson:"rawTotal"`
+	RoundupTotal *Money                 `bson:"roundupTotal"`
+	CreatedAt    *time.Time             `bson:"createdAt"`
+	UpdatedAt    *time.Time             `bson:"updatedAt"`
+	Extended     map[string]interface{} `bson:"ext"`
 }
 
 // Time unit hours
