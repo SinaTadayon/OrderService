@@ -396,11 +396,14 @@ func (finance financeCalculatorImpl) sellerVatCalc(decorator financeCalcFunc) fi
 
 						itemFinance.Invoice.VAT.SellerVat.UpdatedAt = finance.timestamp
 
+						rawPkgTotalVat = rawPkgTotalVat.Add(*itemFinance.Invoice.VAT.SellerVat.RawTotalPrice)
+						roundupPkgTotalVat = roundupPkgTotalVat.Add(*itemFinance.Invoice.VAT.SellerVat.RoundupTotalPrice)
+
 					} else {
-						itemFinance.Invoice.VAT.SellerVat.RawUnitPrice = &decimal.Zero
-						itemFinance.Invoice.VAT.SellerVat.RawTotalPrice = &decimal.Zero
-						itemFinance.Invoice.VAT.SellerVat.RoundupUnitPrice = &decimal.Zero
-						itemFinance.Invoice.VAT.SellerVat.RoundupTotalPrice = &decimal.Zero
+						//itemFinance.Invoice.VAT.SellerVat.RawUnitPrice = &decimal.Zero
+						//itemFinance.Invoice.VAT.SellerVat.RawTotalPrice = &decimal.Zero
+						//itemFinance.Invoice.VAT.SellerVat.RoundupUnitPrice = &decimal.Zero
+						//itemFinance.Invoice.VAT.SellerVat.RoundupTotalPrice = &decimal.Zero
 
 						rawItemNet := *itemFinance.Invoice.Share.RawItemGross
 						itemFinance.Invoice.Share.RawItemNet = &rawItemNet
@@ -414,15 +417,16 @@ func (finance financeCalculatorImpl) sellerVatCalc(decorator financeCalcFunc) fi
 
 						itemFinance.Invoice.VAT.SellerVat.UpdatedAt = finance.timestamp
 					}
-
-					rawPkgTotalVat = rawPkgTotalVat.Add(*itemFinance.Invoice.VAT.SellerVat.RawTotalPrice)
-					roundupPkgTotalVat = roundupPkgTotalVat.Add(*itemFinance.Invoice.VAT.SellerVat.RoundupTotalPrice)
 				}
 			}
 
-			order.Packages[i].Invoice.VAT.SellerVAT.RawTotal = &rawPkgTotalVat
-			order.Packages[i].Invoice.VAT.SellerVAT.RoundupTotal = &roundupPkgTotalVat
-			order.Packages[i].Invoice.VAT.SellerVAT.UpdatedAt = finance.timestamp
+			if !rawPkgTotalVat.IsZero() && !roundupPkgTotalVat.IsZero() {
+				order.Packages[i].Invoice.VAT.SellerVAT.RawTotal = &rawPkgTotalVat
+				order.Packages[i].Invoice.VAT.SellerVAT.RoundupTotal = &roundupPkgTotalVat
+				order.Packages[i].Invoice.VAT.SellerVAT.UpdatedAt = finance.timestamp
+			} else {
+				order.Packages[i].Invoice.VAT.SellerVAT = nil
+			}
 		}
 		return nil
 	}
@@ -774,11 +778,11 @@ func (finance financeCalculatorImpl) shareCalc(decorator financeCalcFunc) financ
 
 					// seller share raw
 					var rawUnitSellerShare = decimal.Zero
-					if itemFinance.Invoice.SSO.RawUnitPrice != nil {
+					if itemFinance.Invoice.SSO != nil && itemFinance.Invoice.SSO.RawUnitPrice != nil {
 						rawUnitSellerShare = *itemFinance.Invoice.SSO.RawUnitPrice
 					}
 
-					if itemFinance.Invoice.VAT.SellerVat.RawUnitPrice != nil {
+					if itemFinance.Invoice.VAT.SellerVat != nil && itemFinance.Invoice.VAT.SellerVat.RawUnitPrice != nil {
 						rawUnitSellerShare = rawUnitSellerShare.Add(*itemFinance.Invoice.VAT.SellerVat.RawUnitPrice)
 					}
 
@@ -792,11 +796,11 @@ func (finance financeCalculatorImpl) shareCalc(decorator financeCalcFunc) financ
 
 					// seller share roundup
 					var roundupUnitSellerShare = decimal.Zero
-					if itemFinance.Invoice.SSO.RoundupUnitPrice != nil {
+					if itemFinance.Invoice.SSO != nil && itemFinance.Invoice.SSO.RoundupUnitPrice != nil {
 						roundupUnitSellerShare = *itemFinance.Invoice.SSO.RoundupUnitPrice
 					}
 
-					if itemFinance.Invoice.VAT.SellerVat.RoundupUnitPrice != nil {
+					if itemFinance.Invoice.VAT.SellerVat != nil && itemFinance.Invoice.VAT.SellerVat.RoundupUnitPrice != nil {
 						roundupUnitSellerShare = roundupUnitSellerShare.Add(*itemFinance.Invoice.VAT.SellerVat.RoundupUnitPrice)
 					}
 
@@ -814,7 +818,7 @@ func (finance financeCalculatorImpl) shareCalc(decorator financeCalcFunc) financ
 					rawUnitBusinessShare := (*itemFinance.Invoice.Commission.RawUnitPrice).
 						Add(*itemFinance.Invoice.VAT.BusinessVat.RawUnitPrice)
 
-					if itemFinance.Invoice.SSO.RawUnitPrice != nil {
+					if itemFinance.Invoice.SSO != nil && itemFinance.Invoice.SSO.RawUnitPrice != nil {
 						rawUnitBusinessShare = rawUnitBusinessShare.Sub(*itemFinance.Invoice.SSO.RawUnitPrice)
 					}
 
@@ -826,7 +830,7 @@ func (finance financeCalculatorImpl) shareCalc(decorator financeCalcFunc) financ
 					roundupUnitBusinessShare := (*itemFinance.Invoice.Commission.RoundupUnitPrice).
 						Add(*itemFinance.Invoice.VAT.BusinessVat.RoundupUnitPrice)
 
-					if itemFinance.Invoice.SSO.RoundupUnitPrice != nil {
+					if itemFinance.Invoice.SSO != nil && itemFinance.Invoice.SSO.RoundupUnitPrice != nil {
 						roundupUnitBusinessShare = roundupUnitBusinessShare.Sub(*itemFinance.Invoice.SSO.RoundupUnitPrice)
 					}
 
