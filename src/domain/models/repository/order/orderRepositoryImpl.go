@@ -29,12 +29,12 @@ func (repo iOrderRepositoryImpl) generateAndSetId(ctx context.Context, order ent
 	order.OrderId = entities.GenerateOrderId()
 	mapItemIds := make(map[int]uint64, 64)
 
-	order.CreatedAt = time.Now().UTC()
-	order.UpdatedAt = time.Now().UTC()
+	//order.CreatedAt = time.Now().UTC()
+	//order.UpdatedAt = time.Now().UTC()
 	for i := 0; i < len(order.Packages); i++ {
 		order.Packages[i].OrderId = order.OrderId
-		order.Packages[i].CreatedAt = time.Now().UTC()
-		order.Packages[i].UpdatedAt = time.Now().UTC()
+		//order.Packages[i].CreatedAt = time.Now().UTC()
+		//order.Packages[i].UpdatedAt = time.Now().UTC()
 		for j := 0; j < len(order.Packages[i].Subpackages); j++ {
 			for {
 				random := int(entities.GenerateRandomNumber())
@@ -46,8 +46,8 @@ func (repo iOrderRepositoryImpl) generateAndSetId(ctx context.Context, order ent
 				order.Packages[i].Subpackages[j].SId = uint64(sid)
 				order.Packages[i].Subpackages[j].PId = order.Packages[i].PId
 				order.Packages[i].Subpackages[j].OrderId = order.OrderId
-				order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
-				order.Packages[i].Subpackages[j].UpdatedAt = time.Now().UTC()
+				//order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
+				//order.Packages[i].Subpackages[j].UpdatedAt = time.Now().UTC()
 				break
 			}
 		}
@@ -78,8 +78,10 @@ func (repo iOrderRepositoryImpl) Save(ctx context.Context, order entities.Order)
 		order.UpdatedAt = time.Now().UTC()
 		currentVersion := order.Version
 		order.Version += 1
+		updateOptions := &options.UpdateOptions{}
+		updateOptions.SetUpsert(true)
 		updateResult, e := repo.mongoAdapter.UpdateOne(repo.database, repo.collection, bson.D{{"orderId", order.OrderId}, {"deletedAt", nil}, {"version", currentVersion}},
-			bson.D{{"$set", order}})
+			bson.D{{"$set", order}}, updateOptions)
 		if e != nil {
 			return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(e, "UpdateOne Failed"))
 		}

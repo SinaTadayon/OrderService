@@ -262,6 +262,10 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Currency: "IRR",
 	}
 
+	order.Invoice.Vat = &pb.Invoice_BusinessVAT{
+		Value: 9,
+	}
+
 	order.Invoice.PaymentMethod = "IPG"
 	order.Invoice.PaymentGateway = "AAP"
 	order.Invoice.PaymentOption = nil
@@ -271,7 +275,11 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	}
 	order.Invoice.Voucher = &pb.Voucher{
 		Percent: 0,
-		AppliedPrice: &pb.Money{
+		RawAppliedPrice: &pb.Money{
+			Amount:   "40000",
+			Currency: "IRR",
+		},
+		RoundupAppliedPrice: &pb.Money{
 			Amount:   "40000",
 			Currency: "IRR",
 		},
@@ -313,9 +321,12 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	order.Buyer.Finance.CardNumber = "4345345423533453"
 	order.Buyer.Finance.BankName = "pasargad"
 
+	order.Buyer.ShippingAddress.FirstName = "sina"
+	order.Buyer.ShippingAddress.LastName = "tadayon"
 	order.Buyer.ShippingAddress.Address = "Sheikh bahaee, p 5"
 	order.Buyer.ShippingAddress.Province = "Tehran"
-	order.Buyer.ShippingAddress.Phone = "+98912193870"
+	order.Buyer.ShippingAddress.Mobile = "+98912193870"
+	order.Buyer.ShippingAddress.Phone = "+98218475644"
 	order.Buyer.ShippingAddress.ZipCode = "1651764614"
 	order.Buyer.ShippingAddress.City = "Tehran"
 	order.Buyer.ShippingAddress.Country = "Iran"
@@ -346,15 +357,17 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 				Amount:   "9238443",
 				Currency: "IRR",
 			},
-
 			Discount: &pb.Money{
 				Amount:   "9734234",
 				Currency: "IRR",
 			},
-
 			ShipmentPrice: &pb.Money{
 				Amount:   "23123",
 				Currency: "IRR",
+			},
+			Sso: &pb.PackageInvoice_SellerSSO{
+				Value:     9,
+				IsObliged: true,
 			},
 		},
 	}
@@ -370,34 +383,50 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Image:       "http://baman.io/image/asus.png",
 		Returnable:  true,
 		Quantity:    5,
-		Attributes:  nil,
+		Attributes: map[string]*pb.Attribute{
+			"Quantity": &pb.Attribute{
+				KeyTrans: map[string]string{
+					"en": "Quantity",
+				},
+				ValueTrans: map[string]string{
+					"en": "10",
+				},
+			},
+			"Width": &pb.Attribute{
+				KeyTrans: map[string]string{
+					"en": "Width",
+				},
+				ValueTrans: map[string]string{
+					"en": "10",
+				},
+			},
+		},
 		Invoice: &pb.ItemInvoice{
 			Unit: &pb.Money{
 				Amount:   "200000",
 				Currency: "IRR",
 			},
-
 			Total: &pb.Money{
 				Amount:   "20000000",
 				Currency: "IRR",
 			},
-
 			Original: &pb.Money{
 				Amount:   "220000",
 				Currency: "IRR",
 			},
-
 			Special: &pb.Money{
 				Amount:   "200000",
 				Currency: "IRR",
 			},
-
 			Discount: &pb.Money{
 				Amount:   "20000",
 				Currency: "IRR",
 			},
-
-			SellerCommission: 10,
+			ItemCommission: 10,
+			Vat: &pb.ItemInvoice_SellerVAT{
+				Value:     9,
+				IsObliged: true,
+			},
 		},
 	}
 	pkg.Items = append(pkg.Items, item)
@@ -417,27 +446,27 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 				Amount:   "100000",
 				Currency: "IRR",
 			},
-
 			Total: &pb.Money{
 				Amount:   "10000000",
 				Currency: "IRR",
 			},
-
 			Original: &pb.Money{
 				Amount:   "120000",
 				Currency: "IRR",
 			},
-
 			Special: &pb.Money{
 				Amount:   "100000",
 				Currency: "IRR",
 			},
-
 			Discount: &pb.Money{
 				Amount:   "10000",
 				Currency: "IRR",
 			},
-			SellerCommission: 5,
+			ItemCommission: 10,
+			Vat: &pb.ItemInvoice_SellerVAT{
+				Value:     9,
+				IsObliged: true,
+			},
 		},
 	}
 	pkg.Items = append(pkg.Items, item)
@@ -467,10 +496,13 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 				Amount:   "9734234",
 				Currency: "IRR",
 			},
-
 			ShipmentPrice: &pb.Money{
 				Amount:   "23123",
 				Currency: "IRR",
+			},
+			Sso: &pb.PackageInvoice_SellerSSO{
+				Value:     16.67,
+				IsObliged: true,
 			},
 		},
 	}
@@ -492,28 +524,27 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 				Amount:   "200000",
 				Currency: "IRR",
 			},
-
 			Total: &pb.Money{
 				Amount:   "20000000",
 				Currency: "IRR",
 			},
-
 			Original: &pb.Money{
 				Amount:   "220000",
 				Currency: "IRR",
 			},
-
 			Special: &pb.Money{
 				Amount:   "200000",
 				Currency: "IRR",
 			},
-
 			Discount: &pb.Money{
 				Amount:   "20000",
 				Currency: "IRR",
 			},
-
-			SellerCommission: 8,
+			ItemCommission: 10,
+			Vat: &pb.ItemInvoice_SellerVAT{
+				Value:     9,
+				IsObliged: true,
+			},
 		},
 	}
 	pkg.Items = append(pkg.Items, item)
@@ -533,28 +564,27 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 				Amount:   "100000",
 				Currency: "IRR",
 			},
-
 			Total: &pb.Money{
 				Amount:   "10000000",
 				Currency: "IRR",
 			},
-
 			Original: &pb.Money{
 				Amount:   "120000",
 				Currency: "IRR",
 			},
-
 			Special: &pb.Money{
 				Amount:   "100000",
 				Currency: "IRR",
 			},
-
 			Discount: &pb.Money{
 				Amount:   "10000",
 				Currency: "IRR",
 			},
-
-			SellerCommission: 3,
+			ItemCommission: 10,
+			Vat: &pb.ItemInvoice_SellerVAT{
+				Value:     9,
+				IsObliged: true,
+			},
 		},
 	}
 
@@ -842,7 +872,7 @@ func TestSchedulerSellerShipmentPending(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -952,7 +982,7 @@ func TestSchedulerDeliveryPending_Notification(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 
@@ -1065,7 +1095,7 @@ func TestSchedulerDeliveryPending_Delivered(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
 	newOrder := value.(*entities.Order)
 

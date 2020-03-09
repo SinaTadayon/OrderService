@@ -14,6 +14,7 @@ import (
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
+	"gitlab.faza.io/order-project/order-service/infrastructure/utils/calculate"
 	"text/template"
 	"time"
 )
@@ -276,6 +277,18 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 
 		if findFlag {
 			state.SetOrderStatus(ctx, order, states.OrderClosedStatus)
+		}
+
+		calcOrder, err := calculate.New().FinanceCalc(ctx, *order,
+			calculate.SHARE_CALC, calculate.SELLER_FINANCE)
+
+		if err != nil {
+			app.Globals.Logger.FromContext(ctx).Error("Finance calculation of seller failed",
+				"fn", "Process",
+				"state", state.Name(),
+				"order", order,
+				"error", err)
+
 			err := app.Globals.OrderRepository.UpdateStatus(ctx, order)
 			if err != nil {
 				app.Globals.Logger.FromContext(ctx).Error("update order status to closed failed",
@@ -289,7 +302,22 @@ func (state payToSellerState) Process(ctx context.Context, iFrame frame.IFrame) 
 					"state", state.Name(),
 					"oid", order.OrderId)
 			}
+		} else {
+			_, err := app.Globals.OrderRepository.Save(ctx, *calcOrder)
+			if err != nil {
+				app.Globals.Logger.FromContext(ctx).Error("update order after finance recalculation failed",
+					"fn", "Process",
+					"state", state.Name(),
+					"oid", order.OrderId,
+					"error", err)
+			} else {
+				app.Globals.Logger.FromContext(ctx).Debug("update order after finance recalculation success",
+					"fn", "Process",
+					"state", state.Name(),
+					"oid", order.OrderId)
+			}
 		}
+
 	} else {
 		app.Globals.Logger.FromContext(ctx).Error("Frame Header/Body Invalid",
 			"fn", "Process",

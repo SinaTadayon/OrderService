@@ -555,6 +555,448 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 	return response, nil
 }
 
+func (server *Server) operatorOrderInvoiceDetailHandler(ctx context.Context, oid uint64) (*pb.MessageResponse, error) {
+
+	order, err := app.Globals.OrderRepository.FindById(ctx, oid)
+
+	if err != nil {
+		app.Globals.Logger.FromContext(ctx).Error("FindById failed",
+			"fn", "operatorOrderInvoiceDetailHandler",
+			"oid", oid,
+			"error", err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	packagesInvoiceDetail := make([]*pb.OperatorOrderInvoiceDetail_PackageFinance, 0, len(order.Packages))
+	for i := 0; i < len(order.Packages); i++ {
+		itemsInvoiceDetail := make([]*pb.OperatorOrderInvoiceDetail_PackageFinance_ItemFinance, 0, 32)
+		for j := 0; j < len(order.Packages[i].Subpackages); j++ {
+			for k := 0; k < len(order.Packages[i].Subpackages[j].Items); k++ {
+				itemFinance := &pb.OperatorOrderInvoiceDetail_PackageFinance_ItemFinance{
+					SId:         order.Packages[i].Subpackages[j].SId,
+					Status:      order.Packages[i].Subpackages[j].Status,
+					SKU:         order.Packages[i].Subpackages[j].Items[k].SKU,
+					InventoryId: order.Packages[i].Subpackages[j].Items[k].InventoryId,
+					Quantity:    order.Packages[i].Subpackages[j].Items[k].Quantity,
+					Invoice: &pb.OperatorOrderInvoiceDetail_PackageFinance_ItemFinance_ItemInvoice{
+						Unit:       order.Packages[i].Subpackages[j].Items[k].Invoice.Unit.Amount,
+						Total:      order.Packages[i].Subpackages[j].Items[k].Invoice.Total.Amount,
+						Original:   order.Packages[i].Subpackages[j].Items[k].Invoice.Original.Amount,
+						Special:    order.Packages[i].Subpackages[j].Items[k].Invoice.Special.Amount,
+						Discount:   order.Packages[i].Subpackages[j].Items[k].Invoice.Discount.Amount,
+						Commission: nil,
+						Share:      nil,
+						Voucher:    nil,
+						Sso:        nil,
+						Vat:        nil,
+					},
+				}
+
+				if order.Packages[i].Subpackages[j].Items[k].Invoice.Commission != nil {
+					itemFinance.Invoice.Commission = &pb.OperatorOrderInvoiceDetail_PackageFinance_ItemFinance_ItemInvoice_ItemCommission{
+						Commission: order.Packages[i].Subpackages[j].Items[k].Invoice.Commission.ItemCommission,
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Commission.RawUnitPrice != nil {
+						itemFinance.Invoice.Commission.RawUnitPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.Commission.RawUnitPrice.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Commission.RoundupUnitPrice != nil {
+						itemFinance.Invoice.Commission.RoundupUnitPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.Commission.RoundupUnitPrice.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Commission.RawTotalPrice != nil {
+						itemFinance.Invoice.Commission.RawTotalPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.Commission.RawTotalPrice.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Commission.RoundupTotalPrice != nil {
+						itemFinance.Invoice.Commission.RoundupTotalPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.Commission.RoundupTotalPrice.Amount
+					}
+				}
+
+				if order.Packages[i].Subpackages[j].Items[k].Invoice.Share != nil {
+					itemFinance.Invoice.Share = &pb.OperatorOrderInvoiceDetail_PackageFinance_ItemFinance_ItemInvoice_ItemShare{}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RawItemGross != nil {
+						itemFinance.Invoice.Share.RawItemGross = order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RawItemGross.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RoundupItemGross != nil {
+						itemFinance.Invoice.Share.RoundupItemGross = order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RoundupItemGross.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RawTotalGross != nil {
+						itemFinance.Invoice.Share.RawTotalGross = order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RawTotalGross.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RoundupTotalGross != nil {
+						itemFinance.Invoice.Share.RoundupTotalGross = order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RoundupTotalGross.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RawItemNet != nil {
+						itemFinance.Invoice.Share.RawItemNet = order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RawItemNet.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RoundupItemNet != nil {
+						itemFinance.Invoice.Share.RoundupItemNet = order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RoundupItemNet.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RawTotalNet != nil {
+						itemFinance.Invoice.Share.RawTotalNet = order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RawTotalNet.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RoundupTotalNet != nil {
+						itemFinance.Invoice.Share.RoundupTotalNet = order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RoundupTotalNet.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RawUnitBusinessShare != nil {
+						itemFinance.Invoice.Share.RawUnitBusinessShare = order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RawUnitBusinessShare.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RoundupUnitBusinessShare != nil {
+						itemFinance.Invoice.Share.RoundupUnitBusinessShare = order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RoundupUnitBusinessShare.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RawTotalBusinessShare != nil {
+						itemFinance.Invoice.Share.RawTotalBusinessShare = order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RawTotalBusinessShare.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RoundupTotalBusinessShare != nil {
+						itemFinance.Invoice.Share.RoundupTotalBusinessShare = order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RoundupTotalBusinessShare.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RawUnitSellerShare != nil {
+						itemFinance.Invoice.Share.RawUnitSellerShare = order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RawUnitSellerShare.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RoundupUnitSellerShare != nil {
+						itemFinance.Invoice.Share.RoundupUnitSellerShare = order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RoundupUnitSellerShare.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RawTotalSellerShare != nil {
+						itemFinance.Invoice.Share.RawTotalSellerShare = order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RawTotalSellerShare.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RoundupTotalSellerShare != nil {
+						itemFinance.Invoice.Share.RoundupTotalSellerShare = order.Packages[i].Subpackages[j].Items[k].Invoice.Share.RoundupTotalSellerShare.Amount
+					}
+				}
+
+				if order.Packages[i].Subpackages[j].Items[k].Invoice.Voucher != nil {
+					itemFinance.Invoice.Voucher = &pb.OperatorOrderInvoiceDetail_PackageFinance_ItemFinance_ItemInvoice_ItemVoucher{}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Voucher.RawUnitPrice != nil {
+						itemFinance.Invoice.Voucher.RawUnitPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.Voucher.RawUnitPrice.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Voucher.RoundupUnitPrice != nil {
+						itemFinance.Invoice.Voucher.RoundupUnitPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.Voucher.RoundupUnitPrice.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Voucher.RawTotalPrice != nil {
+						itemFinance.Invoice.Voucher.RawTotalPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.Voucher.RawTotalPrice.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.Voucher.RoundupTotalPrice != nil {
+						itemFinance.Invoice.Voucher.RoundupTotalPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.Voucher.RoundupTotalPrice.Amount
+					}
+				}
+
+				if order.Packages[i].Subpackages[j].Items[k].Invoice.SSO != nil {
+					itemFinance.Invoice.Sso = &pb.OperatorOrderInvoiceDetail_PackageFinance_ItemFinance_ItemInvoice_ItemSSO{}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.SSO.RawUnitPrice != nil {
+						itemFinance.Invoice.Sso.RawUnitPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.SSO.RawUnitPrice.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.SSO.RoundupUnitPrice != nil {
+						itemFinance.Invoice.Sso.RoundupUnitPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.SSO.RoundupUnitPrice.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.SSO.RawTotalPrice != nil {
+						itemFinance.Invoice.Sso.RawTotalPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.SSO.RawTotalPrice.Amount
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.SSO.RoundupTotalPrice != nil {
+						itemFinance.Invoice.Sso.RoundupTotalPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.SSO.RoundupTotalPrice.Amount
+					}
+				}
+
+				if order.Packages[i].Subpackages[j].Items[k].Invoice.VAT != nil {
+					itemFinance.Invoice.Vat = &pb.OperatorOrderInvoiceDetail_PackageFinance_ItemFinance_ItemInvoice_ItemVAT{}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.SellerVat != nil {
+						itemFinance.Invoice.Vat.SellerVat = &pb.OperatorOrderInvoiceDetail_PackageFinance_ItemFinance_ItemInvoice_ItemVAT_ItemSellerVAT{
+							Rate:      order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.SellerVat.Rate,
+							IsObliged: order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.SellerVat.IsObliged,
+						}
+
+						if order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.SellerVat.RawUnitPrice != nil {
+							itemFinance.Invoice.Vat.SellerVat.RawUnitPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.SellerVat.RawUnitPrice.Amount
+						}
+
+						if order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.SellerVat.RoundupUnitPrice != nil {
+							itemFinance.Invoice.Vat.SellerVat.RoundupUnitPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.SellerVat.RoundupUnitPrice.Amount
+						}
+
+						if order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.SellerVat.RawTotalPrice != nil {
+							itemFinance.Invoice.Vat.SellerVat.RawTotalPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.SellerVat.RawTotalPrice.Amount
+						}
+
+						if order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.SellerVat.RoundupTotalPrice != nil {
+							itemFinance.Invoice.Vat.SellerVat.RoundupTotalPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.SellerVat.RoundupTotalPrice.Amount
+						}
+					}
+
+					if order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.BusinessVat != nil {
+						itemFinance.Invoice.Vat.BusinessVat = &pb.OperatorOrderInvoiceDetail_PackageFinance_ItemFinance_ItemInvoice_ItemVAT_ItemBusinessVAT{
+							Rate: order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.BusinessVat.Rate,
+						}
+
+						if order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.BusinessVat.RawUnitPrice != nil {
+							itemFinance.Invoice.Vat.BusinessVat.RawUnitPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.BusinessVat.RawUnitPrice.Amount
+						}
+
+						if order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.BusinessVat.RoundupUnitPrice != nil {
+							itemFinance.Invoice.Vat.BusinessVat.RoundupUnitPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.BusinessVat.RoundupUnitPrice.Amount
+						}
+
+						if order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.BusinessVat.RawTotalPrice != nil {
+							itemFinance.Invoice.Vat.BusinessVat.RawTotalPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.BusinessVat.RawTotalPrice.Amount
+						}
+
+						if order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.BusinessVat.RoundupTotalPrice != nil {
+							itemFinance.Invoice.Vat.BusinessVat.RoundupTotalPrice = order.Packages[i].Subpackages[j].Items[k].Invoice.VAT.BusinessVat.RoundupTotalPrice.Amount
+						}
+					}
+				}
+
+				itemsInvoiceDetail = append(itemsInvoiceDetail, itemFinance)
+			}
+		}
+
+		packageFinance := &pb.OperatorOrderInvoiceDetail_PackageFinance{
+			PID:    order.Packages[i].PId,
+			Status: order.Packages[i].Status,
+			Invoice: &pb.OperatorOrderInvoiceDetail_PackageFinance_PackageInvoice{
+				Subtotal:       order.Packages[i].Invoice.Subtotal.Amount,
+				Discount:       order.Packages[i].Invoice.Discount.Amount,
+				ShipmentAmount: order.Packages[i].Invoice.ShipmentAmount.Amount,
+				Share:          nil,
+				Commission:     nil,
+				Voucher:        nil,
+				Sso:            nil,
+				Vat:            nil,
+			},
+			Items: itemsInvoiceDetail,
+		}
+
+		if order.Packages[i].Invoice.Share != nil {
+			packageFinance.Invoice.Share = &pb.OperatorOrderInvoiceDetail_PackageFinance_PackageInvoice_PackageShare{}
+
+			if order.Packages[i].Invoice.Share.RawBusinessShare != nil {
+				packageFinance.Invoice.Share.RawBusinessShare = order.Packages[i].Invoice.Share.RawBusinessShare.Amount
+			}
+
+			if order.Packages[i].Invoice.Share.RoundupBusinessShare != nil {
+				packageFinance.Invoice.Share.RoundupBusinessShare = order.Packages[i].Invoice.Share.RoundupBusinessShare.Amount
+			}
+
+			if order.Packages[i].Invoice.Share.RawSellerShare != nil {
+				packageFinance.Invoice.Share.RawSellerShare = order.Packages[i].Invoice.Share.RawSellerShare.Amount
+			}
+
+			if order.Packages[i].Invoice.Share.RoundupSellerShare != nil {
+				packageFinance.Invoice.Share.RoundupSellerShare = order.Packages[i].Invoice.Share.RoundupSellerShare.Amount
+			}
+		}
+
+		if order.Packages[i].Invoice.Commission != nil {
+			packageFinance.Invoice.Commission = &pb.OperatorOrderInvoiceDetail_PackageFinance_PackageInvoice_PackageCommission{}
+
+			if order.Packages[i].Invoice.Commission.RawTotalPrice != nil {
+				packageFinance.Invoice.Commission.RawTotalPrice = order.Packages[i].Invoice.Commission.RawTotalPrice.Amount
+			}
+
+			if order.Packages[i].Invoice.Commission.RoundupTotalPrice != nil {
+				packageFinance.Invoice.Commission.RoundupTotalPrice = order.Packages[i].Invoice.Commission.RoundupTotalPrice.Amount
+			}
+		}
+
+		if order.Packages[i].Invoice.Voucher != nil {
+			packageFinance.Invoice.Voucher = &pb.OperatorOrderInvoiceDetail_PackageFinance_PackageInvoice_PackageVoucher{}
+
+			if order.Packages[i].Invoice.Voucher.RawTotal != nil {
+				packageFinance.Invoice.Voucher.RawTotal = order.Packages[i].Invoice.Voucher.RawTotal.Amount
+			}
+
+			if order.Packages[i].Invoice.Voucher.RoundupTotal != nil {
+				packageFinance.Invoice.Voucher.RoundupTotal = order.Packages[i].Invoice.Voucher.RoundupTotal.Amount
+			}
+
+			if order.Packages[i].Invoice.Voucher.RawCalcShipmentPrice != nil {
+				packageFinance.Invoice.Voucher.RawCalcShipmentPrice = order.Packages[i].Invoice.Voucher.RawCalcShipmentPrice.Amount
+			}
+
+			if order.Packages[i].Invoice.Voucher.RoundupCalcShipmentPrice != nil {
+				packageFinance.Invoice.Voucher.RoundupCalcShipmentPrice = order.Packages[i].Invoice.Voucher.RoundupCalcShipmentPrice.Amount
+			}
+		}
+
+		if order.Packages[i].Invoice.SSO != nil {
+			packageFinance.Invoice.Sso = &pb.OperatorOrderInvoiceDetail_PackageFinance_PackageInvoice_PackageSSO{
+				Rate:      order.Packages[i].Invoice.SSO.Rate,
+				IsObliged: order.Packages[i].Invoice.SSO.IsObliged,
+			}
+
+			if order.Packages[i].Invoice.SSO.RawTotal != nil {
+				packageFinance.Invoice.Sso.RawTotal = order.Packages[i].Invoice.SSO.RawTotal.Amount
+			}
+
+			if order.Packages[i].Invoice.SSO.RoundupTotal != nil {
+				packageFinance.Invoice.Sso.RoundupTotal = order.Packages[i].Invoice.SSO.RoundupTotal.Amount
+			}
+		}
+
+		if order.Packages[i].Invoice.VAT != nil {
+			packageFinance.Invoice.Vat = &pb.OperatorOrderInvoiceDetail_PackageFinance_PackageInvoice_PackageVAT{}
+
+			if order.Packages[i].Invoice.VAT.SellerVAT != nil {
+				packageFinance.Invoice.Vat.SellerVat = &pb.OperatorOrderInvoiceDetail_PackageFinance_PackageInvoice_PackageVAT_PackageSellerVAT{}
+
+				if order.Packages[i].Invoice.VAT.SellerVAT.RawTotal != nil {
+					packageFinance.Invoice.Vat.SellerVat.RawTotal = order.Packages[i].Invoice.VAT.SellerVAT.RawTotal.Amount
+				}
+
+				if order.Packages[i].Invoice.VAT.SellerVAT.RoundupTotal != nil {
+					packageFinance.Invoice.Vat.SellerVat.RoundupTotal = order.Packages[i].Invoice.VAT.SellerVAT.RoundupTotal.Amount
+				}
+			}
+
+			if order.Packages[i].Invoice.VAT.BusinessVAT != nil {
+				packageFinance.Invoice.Vat.BusinessVat = &pb.OperatorOrderInvoiceDetail_PackageFinance_PackageInvoice_PackageVAT_PackageBusinessVAT{}
+
+				if order.Packages[i].Invoice.VAT.BusinessVAT.RawTotal != nil {
+					packageFinance.Invoice.Vat.BusinessVat.RawTotal = order.Packages[i].Invoice.VAT.BusinessVAT.RawTotal.Amount
+				}
+
+				if order.Packages[i].Invoice.VAT.BusinessVAT.RoundupTotal != nil {
+					packageFinance.Invoice.Vat.BusinessVat.RoundupTotal = order.Packages[i].Invoice.VAT.BusinessVAT.RoundupTotal.Amount
+				}
+			}
+		}
+
+		packagesInvoiceDetail = append(packagesInvoiceDetail, packageFinance)
+	}
+
+	orderInvoiceDetail := &pb.OperatorOrderInvoiceDetail{
+		OrderId: order.OrderId,
+		Status:  order.Status,
+		Invoice: &pb.OperatorOrderInvoiceDetail_Invoice{
+			GrandTotal:    order.Invoice.GrandTotal.Amount,
+			Subtotal:      order.Invoice.Subtotal.Amount,
+			Discount:      order.Invoice.Discount.Amount,
+			ShipmentTotal: order.Invoice.ShipmentTotal.Amount,
+		},
+		Packages: packagesInvoiceDetail,
+	}
+
+	if order.Invoice.Share != nil {
+		orderInvoiceDetail.Invoice.Share = &pb.OperatorOrderInvoiceDetail_Invoice_Share{}
+		if order.Invoice.Share.RawTotalShare != nil {
+			orderInvoiceDetail.Invoice.Share.RawTotalShare = order.Invoice.Share.RawTotalShare.Amount
+		}
+
+		if order.Invoice.Share.RoundupTotalShare != nil {
+			orderInvoiceDetail.Invoice.Share.RoundupTotalShare = order.Invoice.Share.RoundupTotalShare.Amount
+		}
+	}
+
+	if order.Invoice.Commission != nil {
+		orderInvoiceDetail.Invoice.Commission = &pb.OperatorOrderInvoiceDetail_Invoice_Commission{}
+
+		if order.Invoice.Commission.RawTotalPrice != nil {
+			orderInvoiceDetail.Invoice.Commission.RawTotalPrice = order.Invoice.Commission.RawTotalPrice.Amount
+		}
+
+		if order.Invoice.Commission.RoundupTotalPrice != nil {
+			orderInvoiceDetail.Invoice.Commission.RoundupTotalPrice = order.Invoice.Commission.RoundupTotalPrice.Amount
+		}
+	}
+
+	if order.Invoice.Voucher != nil {
+		orderInvoiceDetail.Invoice.Voucher = &pb.OperatorOrderInvoiceDetail_Invoice_Voucher{}
+		orderInvoiceDetail.Invoice.Voucher.Percent = float32(order.Invoice.Voucher.Percent)
+
+		if order.Invoice.Voucher.AppliedPrice != nil {
+			orderInvoiceDetail.Invoice.Voucher.AppliedPrice = order.Invoice.Voucher.AppliedPrice.Amount
+		}
+
+		if order.Invoice.Voucher.RoundupAppliedPrice != nil {
+			orderInvoiceDetail.Invoice.Voucher.RoundupAppliedPrice = order.Invoice.Voucher.RoundupAppliedPrice.Amount
+		}
+
+		if order.Invoice.Voucher.RawShipmentAppliedPrice != nil {
+			orderInvoiceDetail.Invoice.Voucher.RawShipmentAppliedPrice = order.Invoice.Voucher.RawShipmentAppliedPrice.Amount
+		}
+
+		if order.Invoice.Voucher.RoundupShipmentAppliedPrice != nil {
+			orderInvoiceDetail.Invoice.Voucher.RoundupShipmentAppliedPrice = order.Invoice.Voucher.RoundupShipmentAppliedPrice.Amount
+		}
+
+		if order.Invoice.Voucher.Price != nil {
+			orderInvoiceDetail.Invoice.Voucher.Price = order.Invoice.Voucher.Price.Amount
+		}
+
+		orderInvoiceDetail.Invoice.Voucher.Price = order.Invoice.Voucher.Code
+	}
+
+	if order.Invoice.SSO != nil {
+		orderInvoiceDetail.Invoice.Sso = &pb.OperatorOrderInvoiceDetail_Invoice_SSO{}
+
+		if order.Invoice.SSO.RawTotal != nil {
+			orderInvoiceDetail.Invoice.Sso.RawTotal = order.Invoice.SSO.RawTotal.Amount
+		}
+
+		if order.Invoice.SSO.RoundupTotal != nil {
+			orderInvoiceDetail.Invoice.Sso.RoundupTotal = order.Invoice.SSO.RoundupTotal.Amount
+		}
+	}
+
+	if order.Invoice.VAT != nil {
+		orderInvoiceDetail.Invoice.Vat = &pb.OperatorOrderInvoiceDetail_Invoice_VAT{}
+		orderInvoiceDetail.Invoice.Vat.Rate = order.Invoice.VAT.Rate
+
+		if order.Invoice.VAT.RawTotal != nil {
+			orderInvoiceDetail.Invoice.Vat.RawTotal = order.Invoice.VAT.RawTotal.Amount
+		}
+
+		if order.Invoice.VAT.RoundupTotal != nil {
+			orderInvoiceDetail.Invoice.Vat.RoundupTotal = order.Invoice.VAT.RoundupTotal.Amount
+		}
+	}
+
+	serializedData, e := proto.Marshal(orderInvoiceDetail)
+	if e != nil {
+		app.Globals.Logger.FromContext(ctx).Error("marshal orderInvoiceDetail failed",
+			"fn", "operatorOrderInvoiceDetailHandler",
+			"oid", orderInvoiceDetail.OrderId,
+			"error", e)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "OperatorOrderInvoiceDetail",
+		Meta:   nil,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(orderInvoiceDetail),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
 func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint64, filter FilterValue) (*pb.MessageResponse, error) {
 
 	findOrder, err := app.Globals.OrderRepository.FindById(ctx, oid)
