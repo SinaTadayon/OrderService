@@ -205,7 +205,7 @@ func createOrder() *entities.Order {
 			CartRule: nil,
 			SSO:      nil,
 			VAT: &entities.VAT{
-				Rate:         9,
+				Rate:         0,
 				RawTotal:     nil,
 				RoundupTotal: nil,
 				CreatedAt:    &timestamp,
@@ -237,8 +237,8 @@ func createOrder() *entities.Order {
 					Voucher:  nil,
 					CartRule: nil,
 					SSO: &entities.PackageSSO{
-						Rate:         16.67,
-						IsObliged:    true,
+						Rate:         0,
+						IsObliged:    false,
 						RawTotal:     nil,
 						RoundupTotal: nil,
 						CreatedAt:    &timestamp,
@@ -389,7 +389,7 @@ func createOrder() *entities.Order {
 									},
 									SellerCommission: 0,
 									Commission: &entities.ItemCommission{
-										ItemCommission:    10,
+										ItemCommission:    0,
 										RawUnitPrice:      nil,
 										RoundupUnitPrice:  nil,
 										RawTotalPrice:     nil,
@@ -405,8 +405,8 @@ func createOrder() *entities.Order {
 									SSO:               nil,
 									VAT: &entities.ItemVAT{
 										SellerVat: &entities.SellerVAT{
-											Rate:              9,
-											IsObliged:         true,
+											Rate:              0,
+											IsObliged:         false,
 											RawUnitPrice:      nil,
 											RoundupUnitPrice:  nil,
 											RawTotalPrice:     nil,
@@ -416,7 +416,7 @@ func createOrder() *entities.Order {
 											Extended:          nil,
 										},
 										BusinessVat: &entities.BusinessVAT{
-											Rate:              9,
+											Rate:              0,
 											RawUnitPrice:      nil,
 											RoundupUnitPrice:  nil,
 											RawTotalPrice:     nil,
@@ -489,7 +489,7 @@ func createOrder() *entities.Order {
 									},
 									SellerCommission: 0,
 									Commission: &entities.ItemCommission{
-										ItemCommission:    10,
+										ItemCommission:    0,
 										RawUnitPrice:      nil,
 										RoundupUnitPrice:  nil,
 										RawTotalPrice:     nil,
@@ -505,8 +505,8 @@ func createOrder() *entities.Order {
 									SSO:               nil,
 									VAT: &entities.ItemVAT{
 										SellerVat: &entities.SellerVAT{
-											Rate:              9,
-											IsObliged:         true,
+											Rate:              0,
+											IsObliged:         false,
 											RawUnitPrice:      nil,
 											RoundupUnitPrice:  nil,
 											RawTotalPrice:     nil,
@@ -516,7 +516,7 @@ func createOrder() *entities.Order {
 											Extended:          nil,
 										},
 										BusinessVat: &entities.BusinessVAT{
-											Rate:              9,
+											Rate:              0,
 											RawUnitPrice:      nil,
 											RoundupUnitPrice:  nil,
 											RawTotalPrice:     nil,
@@ -663,7 +663,7 @@ func createOrder() *entities.Order {
 									},
 									SellerCommission: 0,
 									Commission: &entities.ItemCommission{
-										ItemCommission:    10,
+										ItemCommission:    0,
 										RawUnitPrice:      nil,
 										RoundupUnitPrice:  nil,
 										RawTotalPrice:     nil,
@@ -679,8 +679,8 @@ func createOrder() *entities.Order {
 									SSO:               nil,
 									VAT: &entities.ItemVAT{
 										SellerVat: &entities.SellerVAT{
-											Rate:              9,
-											IsObliged:         true,
+											Rate:              0,
+											IsObliged:         false,
 											RawUnitPrice:      nil,
 											RoundupUnitPrice:  nil,
 											RawTotalPrice:     nil,
@@ -690,7 +690,7 @@ func createOrder() *entities.Order {
 											Extended:          nil,
 										},
 										BusinessVat: &entities.BusinessVAT{
-											Rate:              9,
+											Rate:              0,
 											RawUnitPrice:      nil,
 											RoundupUnitPrice:  nil,
 											RawTotalPrice:     nil,
@@ -761,7 +761,7 @@ func createOrder() *entities.Order {
 									},
 									SellerCommission: 0,
 									Commission: &entities.ItemCommission{
-										ItemCommission:    10,
+										ItemCommission:    0,
 										RawUnitPrice:      nil,
 										RoundupUnitPrice:  nil,
 										RawTotalPrice:     nil,
@@ -777,8 +777,8 @@ func createOrder() *entities.Order {
 									SSO:               nil,
 									VAT: &entities.ItemVAT{
 										SellerVat: &entities.SellerVAT{
-											Rate:              9,
-											IsObliged:         true,
+											Rate:              0,
+											IsObliged:         false,
 											RawUnitPrice:      nil,
 											RoundupUnitPrice:  nil,
 											RawTotalPrice:     nil,
@@ -788,7 +788,7 @@ func createOrder() *entities.Order {
 											Extended:          nil,
 										},
 										BusinessVat: &entities.BusinessVAT{
-											Rate:              9,
+											Rate:              0,
 											RawUnitPrice:      nil,
 											RoundupUnitPrice:  nil,
 											RawTotalPrice:     nil,
@@ -1594,18 +1594,22 @@ func TestFinanceConvertToOrder(t *testing.T) {
 	require.Nil(t, err)
 }
 
-//func TestFinanceOrderCalc(t *testing.T) {
-//	ctx := context.Background()
-//	order, err := app.Globals.OrderRepository.FindById(ctx, 199277900)
-//	require.Nil(t, err)
-//
-//	calcOrder, e := New().FinanceCalc(ctx, *order, Set(SHARE_CALC, VOUCHER_CALC), ORDER_FINANCE)
-//	require.Nil(t, e)
-//	require.NotNil(t, calcOrder)
-//
-//	_, err = app.Globals.OrderRepository.Save(ctx, *calcOrder)
-//	require.Nil(t, err)
-//}
+func TestFinanceOrderCalc(t *testing.T) {
+	ctx := context.Background()
+	newOrder := createOrder()
+
+	newOrder.Status = "NEW"
+
+	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err)
+
+	calcOrder, e := New().FinanceCalc(ctx, *order, Set(SHARE_CALC, VOUCHER_CALC), ORDER_FINANCE)
+	require.Nil(t, e)
+	require.NotNil(t, calcOrder)
+
+	_, err = app.Globals.OrderRepository.Save(ctx, *calcOrder)
+	require.Nil(t, err)
+}
 
 //
 //func TestFinanceSellerVatCalc(t *testing.T) {
