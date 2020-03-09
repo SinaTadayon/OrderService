@@ -397,10 +397,10 @@ func (finance financeCalculatorImpl) sellerVatCalc(decorator financeCalcFunc) fi
 						itemFinance.Invoice.VAT.SellerVat.UpdatedAt = finance.timestamp
 
 					} else {
-						//itemFinance.Invoice.VAT.SellerVat.RawUnitPrice = &decimal.Zero
-						//itemFinance.Invoice.VAT.SellerVat.RawTotalPrice = &decimal.Zero
-						//itemFinance.Invoice.VAT.SellerVat.RoundupUnitPrice = &decimal.Zero
-						//itemFinance.Invoice.VAT.SellerVat.RoundupTotalPrice = &decimal.Zero
+						itemFinance.Invoice.VAT.SellerVat.RawUnitPrice = &decimal.Zero
+						itemFinance.Invoice.VAT.SellerVat.RawTotalPrice = &decimal.Zero
+						itemFinance.Invoice.VAT.SellerVat.RoundupUnitPrice = &decimal.Zero
+						itemFinance.Invoice.VAT.SellerVat.RoundupTotalPrice = &decimal.Zero
 
 						rawItemNet := *itemFinance.Invoice.Share.RawItemGross
 						itemFinance.Invoice.Share.RawItemNet = &rawItemNet
