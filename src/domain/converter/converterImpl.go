@@ -468,8 +468,8 @@ func convert(ctx context.Context, newOrderDto *ordersrv.RequestNewOrder) (*entit
 				return nil, errors.New("itemDto.Invoice.Vat of RequestNewOrder invalid")
 			}
 
-			if itemDto.Invoice.ItemCommission <= 0 {
-				applog.GLog.Logger.FromContext(ctx).Error("itemDto.Invoice.ItemCommission of RequestNewOrder is nil",
+			if itemDto.Invoice.ItemCommission < 0 {
+				applog.GLog.Logger.FromContext(ctx).Error("itemDto.Invoice.ItemCommission of RequestNewOrder is negative",
 					"fn", "convert")
 				return nil, errors.New("itemDto.Invoice.ItemCommission of RequestNewOrder invalid")
 			}
