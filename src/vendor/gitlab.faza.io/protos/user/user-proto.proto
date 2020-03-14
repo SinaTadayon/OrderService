@@ -10,6 +10,7 @@ service User {
     rpc Logout (EmptyRequest) returns (Result) {}
     rpc Register (RegisterRequest) returns (Result) {}
     rpc RegisterVerify (RegisterVerifyRequest) returns (LoginResponse) {}
+    rpc RegisterOperator (RegisterOperatorRequest) returns (Result) {}
     rpc UserEdit (UserEditRequest) returns (LoginResponse) {} // because on success, we produce new access token and refresh token
     rpc TokenVerify (EmptyRequest) returns (Result) {}
     rpc TokenRefresh (TokenRefreshRequest) returns (LoginResponse) {}
@@ -43,6 +44,18 @@ service User {
     rpc ListProvinces(ListProvincesRequest) returns (ListProvincesResponse) {}
     rpc ListCities(ListCitiesRequest) returns (ListCitiesResponse) {}
     rpc ListNeighborhoods(ListNeighborsRequest) returns (ListNeighborsResponse) {}
+
+    rpc AddUserType(ChangeUserTypeRequest) returns (ChangeUserTypeResponse) {}
+    rpc RemoveUserType(ChangeUserTypeRequest) returns (ChangeUserTypeResponse) {}
+}
+
+message ChangeUserTypeRequest {
+    string userId   = 1 ;
+    string userType = 2 ;
+}
+
+message ChangeUserTypeResponse {
+
 }
 
 message ValidationError {
@@ -235,6 +248,10 @@ message GeneralSellerInfo {
 
     bool	isVATObliged = 14;
     string	VATCertificationImageURL = 15;
+
+    bool    ssoEligible = 16;
+    // @inject_tag: validate:"gte=0,lt=100"
+    float   ssoPercentage = 17;
 }
 
 message CorporateSellerInfo {
@@ -434,6 +451,18 @@ message CheckVerificationCodeRequest {
     // @inject_tag: validate:"required,max=64"
     string code = 2;
 }
+
+message RegisterOperatorRequest {
+    // @inject_tag: validate:"omitempty,email,max=128"
+    string email = 3;
+
+    // @inject_tag: validate:"required,min=6"
+    string password = 6;
+
+    repeated string roles = 8;
+}
+
+
 
 
 message RegisterRequest {

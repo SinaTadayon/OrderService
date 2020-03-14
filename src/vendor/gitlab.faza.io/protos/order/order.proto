@@ -9,6 +9,7 @@ service OrderService {
     rpc SchedulerMessageHandler(MessageRequest) returns (MessageResponse);
     rpc NewOrder (RequestNewOrder) returns (ResponseNewOrder);
     rpc ReportOrderItems(RequestReportOrderItems) returns(stream ResponseDownloadFile);
+    rpc ReasonsList(ReasonsListRequest) returns (ReasonsListResponse);
 }
 
 message ResponseDownloadFile {
