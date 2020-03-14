@@ -2,6 +2,9 @@ package grpc_server
 
 import (
 	"context"
+	"strconv"
+	"time"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/shopspring/decimal"
@@ -14,8 +17,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"strconv"
-	"time"
 )
 
 func (server *Server) buyerGeneratePipelineFilter(ctx context.Context, filter FilterValue) []interface{} {
@@ -910,7 +911,7 @@ func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId ui
 						Returnable:      orderList[i].Packages[j].Subpackages[z].Items[t].Returnable,
 						Quantity:        orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
 						Attributes:      nil,
-						Reason:          "",
+						Reason:          nil,
 						ReturnRequestAt: "",
 						Invoice: &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Invoice{
 							Unit:     0,
@@ -1006,7 +1007,7 @@ func (server *Server) buyerAllReturnOrdersHandler(ctx context.Context, userId ui
 					returnItemPackageDetail.Invoice.Discount = uint64(discount.IntPart())
 
 					if orderList[i].Packages[j].Subpackages[z].Items[t].Reasons != nil {
-						returnItemPackageDetail.Reason = orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0]
+						returnItemPackageDetail.Reason = orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0].ToRPC()
 					}
 
 					if orderList[i].Packages[j].Subpackages[z].Shipments != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt != nil {
@@ -1191,7 +1192,7 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 						Returnable:      orderList[i].Packages[j].Subpackages[z].Items[t].Returnable,
 						Quantity:        orderList[i].Packages[j].Subpackages[z].Items[t].Quantity,
 						Attributes:      nil,
-						Reason:          "",
+						Reason:          nil,
 						ReturnRequestAt: "",
 						Invoice: &pb.BuyerReturnOrderDetailList_ReturnOrderDetail_ReturnPackageDetail_Item_Invoice{
 							Unit:     0,
@@ -1287,7 +1288,7 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 					returnItemPackageDetail.Invoice.Discount = uint64(discount.IntPart())
 
 					if orderList[i].Packages[j].Subpackages[z].Items[t].Reasons != nil {
-						returnItemPackageDetail.Reason = orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0]
+						returnItemPackageDetail.Reason = orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0].ToRPC()
 					}
 
 					if orderList[i].Packages[j].Subpackages[z].Shipments != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt != nil {
