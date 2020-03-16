@@ -4,6 +4,11 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"io"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/pkg/errors"
 	"gitlab.faza.io/order-project/order-service/app"
 	buyer_action "gitlab.faza.io/order-project/order-service/domain/actions/buyer"
@@ -47,10 +52,6 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	"go.mongodb.org/mongo-driver/bson"
-	"io"
-	"os"
-	"strconv"
-	"time"
 
 	//"github.com/pkg/errors"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"

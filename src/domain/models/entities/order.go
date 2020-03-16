@@ -1,10 +1,11 @@
 package entities
 
 import (
-	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"math/rand"
 	"time"
+
+	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -13,7 +14,7 @@ const (
 )
 
 const (
-	DocumentVersion string = "1.0.6"
+	DocumentVersion string = "1.0.7"
 )
 
 func init() {

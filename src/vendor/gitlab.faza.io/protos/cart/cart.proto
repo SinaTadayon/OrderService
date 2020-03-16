@@ -117,21 +117,43 @@ message UpdateQuantityRequest {
     int32 count = 3;
 }
 
+message Attribute {
+    map<string, string> keyTrans   = 1;
+    map<string, string> valueTrans = 2;
+}
+
 message Items {
-    string inventoryId = 1;
-    string title = 2;
-    string model = 3;
-    string seller = 4;
-    map<string, string> variationAttributes = 5;
-    int32 quantity = 6;
-    string guaranty = 7;
-    string img = 8;
-    Price price = 9;
+    string                  inventoryId = 1;
+    string                  title       = 2;
+    string                  model       = 3;
+    string                  seller      = 4;
+    map<string,Attribute>   attributes  = 5;
+    int32                   quantity    = 6;
+    string                  guaranty    = 7;
+    string                  img         = 8;
+    Price                   price       = 9;
+}
+
+message OutofStockError {
+    string  inventoryId = 1;
+    int32   requested   = 2;
+    int32   available   = 3;
+}
+
+message PriceMismatchError {
+    string  inventoryId     = 1;
+    Price   requestedPrice  = 2;
+    Price   newPrice        = 3;
+}
+
+message CartError {
+    repeated OutofStockError    stockError = 1;
+    repeated PriceMismatchError priceError = 2;
 }
 
 message Cart {
-    string identifier = 1;
-    repeated Items items = 2;
+    string          identifier  = 1;
+    repeated Items  items       = 2;
 }
 
 message DeleteItemRequest {
