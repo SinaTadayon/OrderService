@@ -470,6 +470,7 @@ message BuyerOrderDetailList {
                 uint64 shipmentAmount = 3;
                 string carrierName = 4;
                 string trackingNumber = 5;
+                uint32 reactionTime = 6;
             }
 
             repeated Item items = 3;

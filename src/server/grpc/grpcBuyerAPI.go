@@ -273,31 +273,31 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 					ShipmentInfo: nil,
 				}
 
+				packageDetail.ShipmentInfo = &pb.BuyerOrderDetailList_OrderDetail_Package_Shipment{}
+				if orderList[i].Packages[j].ShipmentSpec.ShippingCost != nil {
+					shippingCost, err := decimal.NewFromString(orderList[i].Packages[j].ShipmentSpec.ShippingCost.Amount)
+					if err != nil {
+						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, package ShippingCost.Amount invalid",
+							"fn", "buyerOrderDetailListHandler",
+							"ShippingCost", orderList[i].Packages[j].ShipmentSpec.ShippingCost,
+							"oid", orderList[i].Packages[j].Subpackages[z].OrderId,
+							"pid", orderList[i].Packages[j].Subpackages[z].PId,
+							"sid", orderList[i].Packages[j].Subpackages[z].SId,
+							"error", err)
+						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+					}
+
+					packageDetail.ShipmentInfo.ShipmentAmount = uint64(shippingCost.IntPart())
+					packageDetail.ShipmentInfo.ReactionTime = uint32(orderList[i].Packages[j].ShipmentSpec.ReactionTime)
+					// packageDetail.ShipmentInfo.
+				}
+
 				if orderList[i].Packages[j].Subpackages[z].Shipments != nil &&
 					orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail != nil {
-					packageDetail.ShipmentInfo = &pb.BuyerOrderDetailList_OrderDetail_Package_Shipment{
-						DeliveryAt:     "",
-						ShippedAt:      orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601),
-						ShipmentAmount: 0,
-						CarrierName:    orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.CourierName,
-						TrackingNumber: orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.TrackingNumber,
-					}
-
-					if orderList[i].Packages[j].ShipmentSpec.ShippingCost != nil {
-						shippingCost, err := decimal.NewFromString(orderList[i].Packages[j].ShipmentSpec.ShippingCost.Amount)
-						if err != nil {
-							app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, package ShippingCost.Amount invalid",
-								"fn", "buyerOrderDetailListHandler",
-								"ShippingCost", orderList[i].Packages[j].ShipmentSpec.ShippingCost,
-								"oid", orderList[i].Packages[j].Subpackages[z].OrderId,
-								"pid", orderList[i].Packages[j].Subpackages[z].PId,
-								"sid", orderList[i].Packages[j].Subpackages[z].SId,
-								"error", err)
-							return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-						}
-
-						packageDetail.ShipmentInfo.ShipmentAmount = uint64(shippingCost.IntPart())
-					}
+					packageDetail.ShipmentInfo.DeliveryAt = ""
+					packageDetail.ShipmentInfo.ShippedAt = orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601)
+					packageDetail.ShipmentInfo.CarrierName = orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.CourierName
+					packageDetail.ShipmentInfo.TrackingNumber = orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.TrackingNumber
 
 					packageDetail.ShipmentInfo.DeliveryAt = orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.
 						Add(time.Duration(orderList[i].Packages[j].ShipmentSpec.ShippingTime) * time.Hour).Format(ISO8601)
