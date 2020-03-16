@@ -563,31 +563,29 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 				ShipmentInfo: nil,
 			}
 
+			packageDetail.ShipmentInfo = &pb.BuyerOrderDetailList_OrderDetail_Package_Shipment{}
+			if order.Packages[j].ShipmentSpec.ShippingCost != nil {
+				shippingCost, err := decimal.NewFromString(order.Packages[j].ShipmentSpec.ShippingCost.Amount)
+				if err != nil {
+					app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, package ShippingCost.Amount invalid",
+						"fn", "buyerGetOrderDetailByIdHandler",
+						"ShippingCost", order.Packages[j].ShipmentSpec.ShippingCost,
+						"oid", order.Packages[j].Subpackages[z].OrderId,
+						"pid", order.Packages[j].Subpackages[z].PId,
+						"sid", order.Packages[j].Subpackages[z].SId,
+						"error", err)
+					return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+				}
+
+				packageDetail.ShipmentInfo.ShipmentAmount = uint64(shippingCost.IntPart())
+				packageDetail.ShipmentInfo.ReactionTime = uint32(order.Packages[j].ShipmentSpec.ReactionTime)
+			}
+
 			if order.Packages[j].Subpackages[z].Shipments != nil &&
 				order.Packages[j].Subpackages[z].Shipments.ShipmentDetail != nil {
-				packageDetail.ShipmentInfo = &pb.BuyerOrderDetailList_OrderDetail_Package_Shipment{
-					DeliveryAt:     "",
-					ShippedAt:      order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601),
-					ShipmentAmount: 0,
-					CarrierName:    order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.CourierName,
-					TrackingNumber: order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.TrackingNumber,
-				}
-
-				if order.Packages[j].ShipmentSpec.ShippingCost != nil {
-					shippingCost, err := decimal.NewFromString(order.Packages[j].ShipmentSpec.ShippingCost.Amount)
-					if err != nil {
-						app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, package ShippingCost.Amount invalid",
-							"fn", "buyerGetOrderDetailByIdHandler",
-							"ShippingCost", order.Packages[j].ShipmentSpec.ShippingCost,
-							"oid", order.Packages[j].Subpackages[z].OrderId,
-							"pid", order.Packages[j].Subpackages[z].PId,
-							"sid", order.Packages[j].Subpackages[z].SId,
-							"error", err)
-						return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
-					}
-
-					packageDetail.ShipmentInfo.ShipmentAmount = uint64(shippingCost.IntPart())
-				}
+				packageDetail.ShipmentInfo.ShippedAt = order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601)
+				packageDetail.ShipmentInfo.CarrierName = order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.CourierName
+				packageDetail.ShipmentInfo.TrackingNumber = order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.TrackingNumber
 
 				packageDetail.ShipmentInfo.DeliveryAt = order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.
 					Add(time.Duration(order.Packages[j].ShipmentSpec.ShippingTime) * time.Hour).Format(ISO8601)
