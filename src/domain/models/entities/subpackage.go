@@ -35,6 +35,7 @@ type ShippingDetail struct {
 	Description    string                 `bson:"description"`
 	ShippedAt      *time.Time             `bson:"shippedDate"`
 	CreatedAt      time.Time              `bson:"createdAt"`
+	UpdatedAt      time.Time              `bson:"updatedAt"`
 	Extended       map[string]interface{} `bson:"ext"`
 }
 
@@ -47,6 +48,7 @@ type ReturnShippingDetail struct {
 	ShippedAt      *time.Time             `bson:"shippedDate"`
 	RequestedAt    *time.Time             `bson:"requestedAt"`
 	CreatedAt      time.Time              `bson:"createdAt"`
+	UpdatedAt      time.Time              `bson:"updatedAt"`
 	Extended       map[string]interface{} `bson:"ext"`
 }
 
@@ -684,6 +686,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 				Description:    subpackage.Shipments.ShipmentDetail.Description,
 				ShippedAt:      subpackage.Shipments.ShipmentDetail.ShippedAt,
 				CreatedAt:      subpackage.Shipments.ShipmentDetail.CreatedAt,
+				UpdatedAt:      subpackage.Shipments.ShipmentDetail.UpdatedAt,
 				Extended:       subpackage.Shipments.ShipmentDetail.Extended,
 			}
 		}
@@ -697,6 +700,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 				Description:    subpackage.Shipments.ReturnShipmentDetail.Description,
 				ShippedAt:      subpackage.Shipments.ReturnShipmentDetail.ShippedAt,
 				CreatedAt:      subpackage.Shipments.ReturnShipmentDetail.CreatedAt,
+				UpdatedAt:      subpackage.Shipments.ReturnShipmentDetail.UpdatedAt,
 				Extended:       subpackage.Shipments.ReturnShipmentDetail.Extended,
 			}
 		}
