@@ -645,6 +645,8 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 								ShippedAt:      nil,
 								RequestedAt:    &returnRequestAt,
 								CreatedAt:      returnRequestAt,
+								UpdatedAt:      returnRequestAt,
+								Extended:       nil,
 							}
 						} else {
 							app.Globals.Logger.FromContext(ctx).Error("subpackage.Shipments is nil",
@@ -664,6 +666,7 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 									ShippedAt:      nil,
 									RequestedAt:    &returnRequestAt,
 									CreatedAt:      returnRequestAt,
+									UpdatedAt:      returnRequestAt,
 								},
 							}
 						}

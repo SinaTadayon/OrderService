@@ -14,7 +14,7 @@ const (
 )
 
 const (
-	DocumentVersion string = "1.0.7"
+	DocumentVersion string = "1.0.8"
 )
 
 func init() {
