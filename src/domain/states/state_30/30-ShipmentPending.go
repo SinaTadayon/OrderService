@@ -547,7 +547,7 @@ func (state shipmentPendingState) Process(ctx context.Context, iFrame frame.IFra
 								Description:    "",
 								ShippedAt:      &shipmentTime,
 								CreatedAt:      shipmentTime,
-								UpdatedAt:      shipmentTime,
+								UpdatedAt:      &shipmentTime,
 							},
 						}
 					}

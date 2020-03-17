@@ -35,7 +35,7 @@ type ShippingDetail struct {
 	Description    string                 `bson:"description"`
 	ShippedAt      *time.Time             `bson:"shippedDate"`
 	CreatedAt      time.Time              `bson:"createdAt"`
-	UpdatedAt      time.Time              `bson:"updatedAt"`
+	UpdatedAt      *time.Time             `bson:"updatedAt"`
 	Extended       map[string]interface{} `bson:"ext"`
 }
 
@@ -48,7 +48,7 @@ type ReturnShippingDetail struct {
 	ShippedAt      *time.Time             `bson:"shippedDate"`
 	RequestedAt    *time.Time             `bson:"requestedAt"`
 	CreatedAt      time.Time              `bson:"createdAt"`
-	UpdatedAt      time.Time              `bson:"updatedAt"`
+	UpdatedAt      *time.Time             `bson:"updatedAt"`
 	Extended       map[string]interface{} `bson:"ext"`
 }
 

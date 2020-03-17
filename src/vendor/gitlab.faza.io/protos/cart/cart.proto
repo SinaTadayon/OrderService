@@ -97,6 +97,8 @@ message CouponTemplate {
     repeated string sellers = 11;
     bool isFirstPurchase = 12;
     CouponDiscount couponDiscount = 13;
+    bool isUsed = 14;
+    int32 usageCount = 15;
 }
 
 message CouponDiscount {

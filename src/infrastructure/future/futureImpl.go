@@ -64,24 +64,24 @@ func (futureData iDataFutureImpl) Error() IErrorFuture {
 }
 
 type iErrorFutureImpl struct {
-	code    ErrorCode
-	message string
-	reason  error
+	ErrCode   ErrorCode
+	ErrMsg    string
+	ErrReason error
 }
 
 func (errorFuture iErrorFutureImpl) Code() ErrorCode {
-	return errorFuture.code
+	return errorFuture.ErrCode
 }
 
 func (errorFuture iErrorFutureImpl) Message() string {
-	return errorFuture.message
+	return errorFuture.ErrMsg
 }
 
 func (errorFuture iErrorFutureImpl) Reason() error {
-	return errorFuture.reason
+	return errorFuture.ErrReason
 }
 
 func (errorFuture iErrorFutureImpl) Error() string {
-	return fmt.Sprintf("err code: %d, message: %s, reason: %s", errorFuture.code,
-		errorFuture.message, errorFuture.reason)
+	return fmt.Sprintf("err code: %d, message: %s, reason: %s", errorFuture.ErrCode,
+		errorFuture.ErrMsg, errorFuture.ErrReason)
 }

@@ -587,6 +587,28 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, oid uin
 						Discount:         0,
 						SellerCommission: pkgItem.Subpackages[i].Items[j].Invoice.SellerCommission,
 					},
+					ShipmentDetail: nil,
+				}
+
+				if pkgItem.Subpackages[i].Shipments != nil && pkgItem.Subpackages[i].Shipments.ShipmentDetail != nil {
+					itemDetail.ShipmentDetail = &pb.SellerOrderDetail_ItemDetail_ShipmentInfo{
+						CourierName:    pkgItem.Subpackages[i].Shipments.ShipmentDetail.CourierName,
+						ShippingMethod: pkgItem.Subpackages[i].Shipments.ShipmentDetail.ShippingMethod,
+						TrackingNumber: pkgItem.Subpackages[i].Shipments.ShipmentDetail.TrackingNumber,
+						Image:          pkgItem.Subpackages[i].Shipments.ShipmentDetail.Image,
+						Description:    pkgItem.Subpackages[i].Shipments.ShipmentDetail.Description,
+						ShippedAt:      "",
+						CreatedAt:      pkgItem.Subpackages[i].Shipments.ShipmentDetail.CreatedAt.Format(ISO8601),
+						UpdatedAt:      "",
+					}
+
+					if pkgItem.Subpackages[i].Shipments.ShipmentDetail.ShippedAt != nil {
+						itemDetail.ShipmentDetail.ShippedAt = pkgItem.Subpackages[i].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601)
+					}
+
+					if pkgItem.Subpackages[i].Shipments.ShipmentDetail.UpdatedAt != nil {
+						itemDetail.ShipmentDetail.UpdatedAt = pkgItem.Subpackages[i].Shipments.ShipmentDetail.UpdatedAt.Format(ISO8601)
+					}
 				}
 
 				if pkgItem.Subpackages[i].Items[j].Attributes != nil {
@@ -713,6 +735,28 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, oid uin
 								Discount:         0,
 								SellerCommission: pkgItem.Subpackages[i].Items[j].Invoice.SellerCommission,
 							},
+							ShipmentDetail: nil,
+						}
+
+						if pkgItem.Subpackages[i].Shipments != nil && pkgItem.Subpackages[i].Shipments.ShipmentDetail != nil {
+							itemDetail.ShipmentDetail = &pb.SellerOrderDetail_ItemDetail_ShipmentInfo{
+								CourierName:    pkgItem.Subpackages[i].Shipments.ShipmentDetail.CourierName,
+								ShippingMethod: pkgItem.Subpackages[i].Shipments.ShipmentDetail.ShippingMethod,
+								TrackingNumber: pkgItem.Subpackages[i].Shipments.ShipmentDetail.TrackingNumber,
+								Image:          pkgItem.Subpackages[i].Shipments.ShipmentDetail.Image,
+								Description:    pkgItem.Subpackages[i].Shipments.ShipmentDetail.Description,
+								ShippedAt:      "",
+								CreatedAt:      pkgItem.Subpackages[i].Shipments.ShipmentDetail.CreatedAt.Format(ISO8601),
+								UpdatedAt:      "",
+							}
+
+							if pkgItem.Subpackages[i].Shipments.ShipmentDetail.ShippedAt != nil {
+								itemDetail.ShipmentDetail.ShippedAt = pkgItem.Subpackages[i].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601)
+							}
+
+							if pkgItem.Subpackages[i].Shipments.ShipmentDetail.UpdatedAt != nil {
+								itemDetail.ShipmentDetail.UpdatedAt = pkgItem.Subpackages[i].Shipments.ShipmentDetail.UpdatedAt.Format(ISO8601)
+							}
 						}
 
 						if pkgItem.Subpackages[i].Items[j].Attributes != nil {
@@ -1003,14 +1047,14 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 		itemDetailList = nil
 		for j := 0; j < len(pkgList[i].Subpackages); j++ {
 			for _, filterState := range server.sellerFilterStates[filter] {
-				if pkgList[i].Subpackages[i].Status == filterState.actualState.StateName() {
+				if pkgList[i].Subpackages[j].Status == filterState.actualState.StateName() {
 					var statusName string
 					if len(filterState.expectedState) == 1 {
 						statusName = filterState.expectedState[0].StateName()
 					} else {
-						length := len(pkgList[i].Subpackages[i].Tracking.History)
+						length := len(pkgList[i].Subpackages[j].Tracking.History)
 						for _, state := range filterState.expectedState {
-							if pkgList[i].Subpackages[i].Tracking.History[length-2].Name == state.StateName() {
+							if pkgList[i].Subpackages[j].Tracking.History[length-2].Name == state.StateName() {
 								statusName = state.StateName()
 							}
 						}
@@ -1023,17 +1067,15 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 							Status: statusName,
 							SIdx:   int32(states.FromString(pkgList[i].Subpackages[j].Status).StateIndex()),
 							Detail: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item_Detail{
-								InventoryId:     pkgList[i].Subpackages[j].Items[z].InventoryId,
-								Title:           pkgList[i].Subpackages[j].Items[z].Title,
-								Brand:           pkgList[i].Subpackages[j].Items[z].Brand,
-								Category:        pkgList[i].Subpackages[j].Items[z].Category,
-								Guaranty:        pkgList[i].Subpackages[j].Items[z].Guaranty,
-								Image:           pkgList[i].Subpackages[j].Items[z].Image,
-								Returnable:      pkgList[i].Subpackages[j].Items[z].Returnable,
-								Quantity:        pkgList[i].Subpackages[j].Items[z].Quantity,
-								Attributes:      nil,
-								ReturnRequestAt: "",
-								ReturnShippedAt: "",
+								InventoryId: pkgList[i].Subpackages[j].Items[z].InventoryId,
+								Title:       pkgList[i].Subpackages[j].Items[z].Title,
+								Brand:       pkgList[i].Subpackages[j].Items[z].Brand,
+								Category:    pkgList[i].Subpackages[j].Items[z].Category,
+								Guaranty:    pkgList[i].Subpackages[j].Items[z].Guaranty,
+								Image:       pkgList[i].Subpackages[j].Items[z].Image,
+								Returnable:  pkgList[i].Subpackages[j].Items[z].Returnable,
+								Quantity:    pkgList[i].Subpackages[j].Items[z].Quantity,
+								Attributes:  nil,
 								Invoice: &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item_Detail_Invoice{
 									Unit:             0,
 									Total:            0,
@@ -1043,6 +1085,7 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 									SellerCommission: pkgList[i].Subpackages[j].Items[z].Invoice.SellerCommission,
 									Currency:         "IRR",
 								},
+								ShipmentDetail: nil,
 							},
 						}
 
@@ -1129,13 +1172,30 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 						}
 						itemOrder.Detail.Invoice.Discount = uint64(discount.IntPart())
 
-						if pkgList[i].Subpackages[j].Shipments != nil &&
-							pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail != nil {
-							if pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.RequestedAt != nil {
-								itemOrder.Detail.ReturnRequestAt = pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.RequestedAt.Format(ISO8601)
+						if pkgList[i].Subpackages[j].Shipments != nil && pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail != nil {
+
+							itemOrder.Detail.ShipmentDetail = &pb.SellerReturnOrderDetailList_ReturnOrderDetail_Item_Detail_ReturnShipmentInfo{
+								CourierName:    pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.CourierName,
+								ShippingMethod: pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.ShippingMethod,
+								TrackingNumber: pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.TrackingNumber,
+								Image:          pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.Image,
+								Description:    pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.Description,
+								ShippedAt:      "",
+								RequestedAt:    "",
+								CreatedAt:      pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.CreatedAt.Format(ISO8601),
+								UpdatedAt:      "",
 							}
+
+							if pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.RequestedAt != nil {
+								itemOrder.Detail.ShipmentDetail.RequestedAt = pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.RequestedAt.Format(ISO8601)
+							}
+
 							if pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.ShippedAt != nil {
-								itemOrder.Detail.ReturnShippedAt = pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.ShippedAt.Format(ISO8601)
+								itemOrder.Detail.ShipmentDetail.ShippedAt = pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.ShippedAt.Format(ISO8601)
+							}
+
+							if pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.UpdatedAt != nil {
+								itemOrder.Detail.ShipmentDetail.UpdatedAt = pkgList[i].Subpackages[j].Shipments.ReturnShipmentDetail.UpdatedAt.Format(ISO8601)
 							}
 						}
 
@@ -1193,6 +1253,7 @@ func (server *Server) sellerOrderReturnDetailListHandler(ctx context.Context, pi
 				"filterValue", filter,
 				"page", page,
 				"perPage", perPage)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
 		}
 	}
 

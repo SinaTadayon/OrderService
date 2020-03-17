@@ -169,7 +169,7 @@ message SellerOrderDetail {
     uint64 OID = 1;
     uint64 PID = 2;
     uint64 amount = 3;
-    string RequestAt = 6;
+    string RequestAt = 4;
     message ShipmentAddress {
         string firstName = 1;
         string lastName = 2;
@@ -184,7 +184,7 @@ message SellerOrderDetail {
         string long = 11;
         string zipCode = 12;
     }
-    ShipmentAddress address = 7;
+    ShipmentAddress address = 5;
 
     message ItemDetail {
         uint64 SID = 1;
@@ -214,9 +214,21 @@ message SellerOrderDetail {
             string currency = 7;
         };
         Invoice invoice = 14;
+
+        message ShipmentInfo {
+            string CourierName = 1;
+            string ShippingMethod = 2;
+            string TrackingNumber = 3;
+            string Image = 4;
+            string Description = 5;
+            string ShippedAt = 6;
+            string CreatedAt = 7;
+            string UpdatedAt = 8;
+        }
+        ShipmentInfo shipmentDetail = 15;
     }
 
-    repeated ItemDetail items = 8;
+    repeated ItemDetail items = 6;
 }
 
 message SellerOrderDashboardReports {
@@ -370,8 +382,6 @@ message SellerReturnOrderDetailList {
                     map<string, string> valueTranslates = 2;
                 }
                 map<string,Attribute> attributes = 9;
-                string ReturnRequestAt = 10;
-                string ReturnShippedAt = 11;
                 message Invoice {
                     uint64 unit = 1;
                     uint64 total = 2;
@@ -381,7 +391,20 @@ message SellerReturnOrderDetailList {
                     float sellerCommission = 6;
                     string currency = 7;
                 };
-                Invoice invoice = 12;
+                Invoice invoice = 10;
+
+                message ReturnShipmentInfo {
+                    string CourierName = 1;
+                    string ShippingMethod = 2;
+                    string TrackingNumber = 3;
+                    string Image = 4;
+                    string Description = 5;
+                    string ShippedAt = 6;
+                    string RequestedAt = 7;
+                    string CreatedAt = 8;
+                    string UpdatedAt = 9;
+                }
+                ReturnShipmentInfo shipmentDetail = 11;
             }
 
             Detail detail = 5;

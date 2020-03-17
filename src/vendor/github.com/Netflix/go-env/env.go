@@ -89,7 +89,7 @@ func Unmarshal(es EnvSet, v interface{}) error {
 
 		var (
 			envValue string
-			ok bool
+			ok       bool
 		)
 		for _, envKey := range envKeys {
 			envValue, ok = es[envKey]
