@@ -136,7 +136,8 @@ const (
 	//SellerAllOrders             		RequestName = "SellerAllOrders"
 	SellerOrderList                   RequestName = "SellerOrderList"
 	SellerOrderDetail                 RequestName = "SellerOrderDetail"
-	SellerReturnOrderDetailList       RequestName = "SellerReturnOrderDetailList"
+	SellerReturnOrderList             RequestName = "SellerReturnOrderList"
+	SellerReturnOrderDetail           RequestName = "SellerReturnOrderDetail"
 	SellerOrderDashboardReports       RequestName = "SellerOrderDashboardReports"
 	SellerOrderShipmentReports        RequestName = "SellerOrderShipmentReports"
 	SellerOrderDeliveredReports       RequestName = "SellerOrderDeliveredReports"
@@ -403,7 +404,20 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		AllOrdersFilter,
 	}
 
-	reqFilters[SellerReturnOrderDetailList] = []FilterValue{
+	reqFilters[SellerReturnOrderList] = []FilterValue{
+		ReturnRequestPendingFilter,
+		ReturnRequestRejectedFilter,
+		ReturnCanceledFilter,
+		ReturnShipmentPendingFilter,
+		ReturnShippedFilter,
+		ReturnDeliveryPendingFilter,
+		ReturnDeliveryDelayedFilter,
+		ReturnDeliveredFilter,
+		ReturnDeliveryFailedFilter,
+		ReturnRejectedFilter,
+	}
+
+	reqFilters[SellerReturnOrderDetail] = []FilterValue{
 		ReturnRequestPendingFilter,
 		ReturnRequestRejectedFilter,
 		ReturnCanceledFilter,
@@ -660,7 +674,7 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 	//	return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with filter")
 	//}
 
-	//if (reqName == SellerReturnOrderDetailList || reqName == BuyerReturnOrderDetailList) && filterType != OrderReturnStateFilter {
+	//if (reqName == SellerReturnOrderList || reqName == BuyerReturnOrderDetailList) && filterType != OrderReturnStateFilter {
 	//	logger.Err("requestDataHandler() => request name %s mismatch with %s filterType, request: %v", reqName, filterType, req)
 	//	return nil, status.Error(codes.Code(future.BadRequest), "Mismatch Request name with filterType")
 	//}
@@ -668,7 +682,8 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 	if userType == SellerUser &&
 		reqName != SellerOrderList &&
 		reqName != SellerOrderDetail &&
-		reqName != SellerReturnOrderDetailList &&
+		reqName != SellerReturnOrderList &&
+		reqName != SellerReturnOrderDetail &&
 		reqName != SellerOrderDeliveredReports &&
 		reqName != SellerOrderReturnReports &&
 		reqName != SellerOrderShipmentReports &&
@@ -772,8 +787,10 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 		return server.sellerOrderListHandler(ctx, req.Meta.OID, req.Meta.PID, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
 	case SellerOrderDetail:
 		return server.sellerOrderDetailHandler(ctx, req.Meta.PID, req.Meta.OID, filterValue)
-	case SellerReturnOrderDetailList:
-		return server.sellerOrderReturnDetailListHandler(ctx, req.Meta.PID, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+	case SellerReturnOrderList:
+		return server.sellerReturnOrderListHandler(ctx, req.Meta.PID, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+	case SellerReturnOrderDetail:
+		return server.sellerReturnOrderDetailHandler(ctx, req.Meta.PID, req.Meta.OID, filterValue)
 
 	case SellerOrderDashboardReports:
 		return server.sellerOrderDashboardReportsHandler(ctx, req.Meta.UID)

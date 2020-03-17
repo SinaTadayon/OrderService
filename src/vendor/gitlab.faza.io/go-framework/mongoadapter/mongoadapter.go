@@ -32,7 +32,7 @@ type MongoConfig struct {
 	MinPoolSize     uint64
 	WriteConcernW   string
 	WriteConcernJ   string
-	RetryWrites     bool
+	RetryWrites		bool
 }
 
 type Mongo struct {

@@ -1662,7 +1662,7 @@ func TestSellerReturnOrderDetailList(t *testing.T) {
 	assert.Nil(t, err)
 
 	request := &pb.MessageRequest{
-		Name:   string(SellerReturnOrderDetailList),
+		Name:   string(SellerReturnOrderList),
 		Type:   string(DataReqType),
 		ADT:    string(ListType),
 		Method: string(GetMethod),
@@ -1698,13 +1698,90 @@ func TestSellerReturnOrderDetailList(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	var sellerReturnOrderDetailList pb.SellerReturnOrderDetailList
-	err = ptypes.UnmarshalAny(response.Data, &sellerReturnOrderDetailList)
+	var sellerReturnOrderList pb.SellerReturnOrderList
+	err = ptypes.UnmarshalAny(response.Data, &sellerReturnOrderList)
 	require.Nil(t, err)
 
-	require.NotNil(t, sellerReturnOrderDetailList)
-	require.Equal(t, 1, len(sellerReturnOrderDetailList.ReturnOrderDetail))
-	require.Equal(t, uint64(1000002), sellerReturnOrderDetailList.PID)
+	require.NotNil(t, sellerReturnOrderList)
+	require.Equal(t, 1, len(sellerReturnOrderList.Items))
+	require.Equal(t, uint64(1000002), sellerReturnOrderList.PID)
+}
+
+func TestSellerReturnOrderDetail(t *testing.T) {
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestPending)
+	savedOrder, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   string(SellerReturnOrderDetail),
+		Type:   string(DataReqType),
+		ADT:    string(SingleType),
+		Method: string(GetMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       1000002,
+			UTP:       string(SellerUser),
+			OID:       savedOrder.OrderId,
+			PID:       1000002,
+			SIDs:      nil,
+			Page:      1,
+			PerPage:   2,
+			IpAddress: "",
+			Action:    nil,
+			Sorts: []*pb.MetaSorts{
+				{
+					Name:      "createdAt",
+					Direction: "ASC",
+				},
+			},
+			Filters: []*pb.MetaFilter{
+				{
+					Type:  string(OrderStateFilterType),
+					Opt:   "eq",
+					Value: string(ReturnRequestPendingFilter),
+				},
+			},
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+
+	var sellerReturnOrderDetail pb.SellerReturnOrderDetail
+	err = ptypes.UnmarshalAny(response.Data, &sellerReturnOrderDetail)
+	require.Nil(t, err)
+
+	require.NotNil(t, sellerReturnOrderDetail)
+	require.Equal(t, uint64(1000002), sellerReturnOrderDetail.PID)
 }
 
 func TestSellerOrderReturnReports(t *testing.T) {

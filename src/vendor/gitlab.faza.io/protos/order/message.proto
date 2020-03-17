@@ -315,105 +315,105 @@ message SellerAllOrderReports {
     CancelReport cancelReport = 6;
 }
 
-//message SellerOrderReturnList {
-//    message ItemOrderList {
-//        uint64 OID = 1;
+message SellerReturnOrderList {
+    uint64 PID  = 1;
+    message ItemList {
+        uint64 OID = 1;
 //        uint64 SID = 2;
 //        string sku = 3;
 //        string inventoryId = 4;
-//        string orderRequestTimestamp = 5;
-//        string returnRequestTimestamp = 6;
-//        uint64 amount = 7;
+        string requestAt = 5;
+//        string returnRequestAt = 6;
+        uint64 amount = 7;
 //        string title = 8;
 //        string brand = 9;
-//        int32 quantity = 10;
+//        string category = 10;
+//        int32 quantity = 11;
 //        message ShipmentAddress {
 //            string firstName = 1;
 //            string lastName = 2;
 //            string address = 3;
-//            string country = 4;
-//            string city = 5;
-//            string province = 6;
-//            string neighbourhood = 7;
+//            string phone = 4;
+//            string mobile = 5;
+//            string country = 6;
+//            string city = 7;
+//            string province = 8;
+//            string neighbourhood = 9;
 //        }
-//        ShipmentAddress address = 11;
-//    };
-//    repeated ItemOrderList items = 1;
-//}
+//        ShipmentAddress address = 12;
+    };
+    repeated ItemList items = 2;
+}
 
-message SellerReturnOrderDetailList {
+message SellerReturnOrderDetail {
     uint64 PID = 1;
-    message ReturnOrderDetail {
-        uint64 OID = 1;
-        uint64 amount = 2;
-        string RequestAt = 3;
-        message ShipmentAddress {
-            string firstName = 1;
-            string lastName = 2;
-            string address = 3;
-            string phone = 4;
-            string mobile = 5;
-            string country = 6;
-            string city = 7;
-            string province = 8;
-            string neighbourhood = 9;
-            string lat = 10;
-            string long = 11;
-            string zipCode = 12;
-        }
-        ShipmentAddress address = 4;
+    uint64 OID = 2;
+    uint64 amount = 3;
+    string requestAt = 4;
+    message ShipmentAddress {
+        string firstName = 1;
+        string lastName = 2;
+        string address = 3;
+        string phone = 4;
+        string mobile = 5;
+        string country = 6;
+        string city = 7;
+        string province = 8;
+        string neighbourhood = 9;
+        string lat = 10;
+        string long = 11;
+        string zipCode = 12;
+    }
+    ShipmentAddress address = 6;
 
-        message Item {
-            uint64 SID = 1;
-            string sku = 2;
-            string status = 3;
-            int32  sIdx = 4;
-            message Detail {
-                string inventoryId = 1;
-                string title = 2;
-                string brand = 3;
-                string category = 4;
-                string guaranty = 5;
-                string image = 6;
-                bool returnable = 7;
-                int32 quantity = 8;
-                message Attribute {
-                    map<string, string> keyTranslates = 1;
-                    map<string, string> valueTranslates = 2;
-                }
-                map<string,Attribute> attributes = 9;
-                message Invoice {
-                    uint64 unit = 1;
-                    uint64 total = 2;
-                    uint64 original = 3;
-                    uint64 special = 4;
-                    uint64 discount = 5;
-                    float sellerCommission = 6;
-                    string currency = 7;
-                };
-                Invoice invoice = 10;
-
-                message ReturnShipmentInfo {
-                    string CourierName = 1;
-                    string ShippingMethod = 2;
-                    string TrackingNumber = 3;
-                    string Image = 4;
-                    string Description = 5;
-                    string ShippedAt = 6;
-                    string RequestedAt = 7;
-                    string CreatedAt = 8;
-                    string UpdatedAt = 9;
-                }
-                ReturnShipmentInfo shipmentDetail = 11;
+    message Item {
+        uint64 SID = 1;
+        string sku = 2;
+        string status = 3;
+        int32  sIdx = 4;
+        message Detail {
+            string inventoryId = 1;
+            string title = 2;
+            string brand = 3;
+            string category = 4;
+            string guaranty = 5;
+            string image = 6;
+            bool returnable = 7;
+            int32 quantity = 8;
+            message Attribute {
+                map<string, string> keyTranslates = 1;
+                map<string, string> valueTranslates = 2;
             }
+            map<string,Attribute> attributes = 9;
+            message Invoice {
+                uint64 unit = 1;
+                uint64 total = 2;
+                uint64 original = 3;
+                uint64 special = 4;
+                uint64 discount = 5;
+                float sellerCommission = 6;
+                string currency = 7;
+            };
+            Invoice invoice = 10;
 
-            Detail detail = 5;
+            message ReturnShipmentInfo {
+                string CourierName = 1;
+                string ShippingMethod = 2;
+                string TrackingNumber = 3;
+                string Image = 4;
+                string Description = 5;
+                string ShippedAt = 6;
+                string RequestedAt = 7;
+                string CreatedAt = 8;
+                string UpdatedAt = 9;
+            }
+            ReturnShipmentInfo returnShipmentDetail = 11;
         }
 
-        repeated Item items = 8;
+        Detail detail = 5;
     }
 
-    repeated ReturnOrderDetail returnOrderDetail = 2;
+    repeated Item items = 7;
 }
 
 /////////////////////////////////////////////////////////////
