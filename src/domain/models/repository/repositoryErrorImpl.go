@@ -1,31 +1,31 @@
 package repository
 
 type iRepoError struct {
-	code    ErrorCode
-	message string
-	reason  error
+	ErrCode   ErrorCode
+	ErrMsg    string
+	ErrReason error
 }
 
 func ErrorFactory(code ErrorCode, message string, reason error) IRepoError {
 	return &iRepoError{
-		code:    code,
-		message: message,
-		reason:  reason,
+		ErrCode:   code,
+		ErrMsg:    message,
+		ErrReason: reason,
 	}
 }
 
 func (iRepo *iRepoError) Code() ErrorCode {
-	return iRepo.code
+	return iRepo.ErrCode
 }
 
 func (iRepo *iRepoError) Message() string {
-	return iRepo.message
+	return iRepo.ErrMsg
 }
 
 func (iRepo *iRepoError) Reason() error {
-	return iRepo.reason
+	return iRepo.ErrReason
 }
 
 func (iRepo *iRepoError) Error() string {
-	return iRepo.reason.Error()
+	return iRepo.ErrReason.Error()
 }

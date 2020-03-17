@@ -645,7 +645,7 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 								ShippedAt:      nil,
 								RequestedAt:    &returnRequestAt,
 								CreatedAt:      returnRequestAt,
-								UpdatedAt:      returnRequestAt,
+								UpdatedAt:      &returnRequestAt,
 								Extended:       nil,
 							}
 						} else {
@@ -666,7 +666,7 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 									ShippedAt:      nil,
 									RequestedAt:    &returnRequestAt,
 									CreatedAt:      returnRequestAt,
-									UpdatedAt:      returnRequestAt,
+									UpdatedAt:      &returnRequestAt,
 								},
 							}
 						}

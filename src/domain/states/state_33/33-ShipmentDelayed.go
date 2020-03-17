@@ -604,7 +604,7 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 								Description:    "",
 								ShippedAt:      &shipmentTime,
 								CreatedAt:      shipmentTime,
-								UpdatedAt:      shipmentTime,
+								UpdatedAt:      &shipmentTime,
 							},
 							ReturnShipmentDetail: nil,
 						}

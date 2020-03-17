@@ -44,9 +44,9 @@ func (builder Builder) SetData(data interface{}) Builder {
 
 func (builder Builder) SetError(code ErrorCode, message string, reason error) Builder {
 	builder.errorFuture = &iErrorFutureImpl{}
-	builder.errorFuture.code = code
-	builder.errorFuture.message = message
-	builder.errorFuture.reason = reason
+	builder.errorFuture.ErrCode = code
+	builder.errorFuture.ErrMsg = message
+	builder.errorFuture.ErrReason = reason
 
 	if builder.dataFuture == nil {
 		builder.dataFuture = &iDataFutureImpl{}
@@ -58,9 +58,9 @@ func (builder Builder) SetError(code ErrorCode, message string, reason error) Bu
 
 func (builder Builder) SetErrorOf(errorFuture IErrorFuture) Builder {
 	builder.errorFuture = &iErrorFutureImpl{}
-	builder.errorFuture.code = errorFuture.Code()
-	builder.errorFuture.message = errorFuture.Message()
-	builder.errorFuture.reason = errorFuture.Reason()
+	builder.errorFuture.ErrCode = errorFuture.Code()
+	builder.errorFuture.ErrMsg = errorFuture.Message()
+	builder.errorFuture.ErrReason = errorFuture.Reason()
 
 	if builder.dataFuture == nil {
 		builder.dataFuture = &iDataFutureImpl{}

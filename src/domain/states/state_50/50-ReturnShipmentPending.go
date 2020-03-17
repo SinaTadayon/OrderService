@@ -526,7 +526,7 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 							newSubPackages[i].Shipments.ReturnShipmentDetail.TrackingNumber = actionData.TrackingNumber
 							newSubPackages[i].Shipments.ReturnShipmentDetail.CourierName = actionData.Carrier
 							newSubPackages[i].Shipments.ReturnShipmentDetail.ShippedAt = &shipmentTime
-							newSubPackages[i].Shipments.ReturnShipmentDetail.UpdatedAt = shipmentTime
+							newSubPackages[i].Shipments.ReturnShipmentDetail.UpdatedAt = &shipmentTime
 						} else {
 							app.Globals.Logger.FromContext(ctx).Error("subpackage.Shipments is nil",
 								"fn", "Process",
@@ -545,7 +545,7 @@ func (state returnShipmentPendingState) Process(ctx context.Context, iFrame fram
 									ShippedAt:      &shipmentTime,
 									RequestedAt:    &shipmentTime,
 									CreatedAt:      shipmentTime,
-									UpdatedAt:      shipmentTime,
+									UpdatedAt:      &shipmentTime,
 								},
 							}
 						}
