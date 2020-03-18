@@ -43,6 +43,7 @@ func TestMain(m *testing.M) {
 
 	// Running Tests
 	code := m.Run()
+	removeCollection()
 	os.Exit(code)
 }
 
@@ -1596,6 +1597,8 @@ func TestFinanceConvertToOrder(t *testing.T) {
 
 func TestFinanceOrderCalc(t *testing.T) {
 	ctx := context.Background()
+
+	defer removeCollection()
 	newOrder := createOrder()
 
 	newOrder.Status = "NEW"
@@ -1603,6 +1606,31 @@ func TestFinanceOrderCalc(t *testing.T) {
 	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
 	require.Nil(t, err)
 
+	calcOrder, e := New().FinanceCalc(ctx, *order, Set(SHARE_CALC, VOUCHER_CALC), ORDER_FINANCE)
+	require.Nil(t, e)
+	require.NotNil(t, calcOrder)
+
+	_, err = app.Globals.OrderRepository.Save(ctx, *calcOrder)
+	require.Nil(t, err)
+}
+
+func TestFinanceOrderCalcWithCommissionZero(t *testing.T) {
+	ctx := context.Background()
+	defer removeCollection()
+	newOrder := createOrder()
+
+	newOrder.Status = "NEW"
+
+	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err)
+
+	for i := 0; i < len(order.Packages); i++ {
+		for j := 0; j < len(order.Packages[i].Subpackages); j++ {
+			for z := 0; z < len(order.Packages[i].Subpackages[j].Items); z++ {
+				order.Packages[i].Subpackages[j].Items[z].Invoice.Commission.ItemCommission = 0
+			}
+		}
+	}
 	calcOrder, e := New().FinanceCalc(ctx, *order, Set(SHARE_CALC, VOUCHER_CALC), ORDER_FINANCE)
 	require.Nil(t, e)
 	require.NotNil(t, calcOrder)
@@ -1676,3 +1704,9 @@ func TestFinanceOrderCalc(t *testing.T) {
 //	_, err = app.Globals.OrderRepository.Save(ctx, *calcOrder)
 //	require.Nil(t, err)
 //}
+
+func removeCollection() {
+	ctx, _ := context.WithCancel(context.Background())
+	if err := app.Globals.OrderRepository.RemoveAll(ctx); err != nil {
+	}
+}
