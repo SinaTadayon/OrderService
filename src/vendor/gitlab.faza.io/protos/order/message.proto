@@ -6,10 +6,16 @@ package ordersrv;
 import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
 
+message ReasonsListRequest {}
+
+message ReasonsListResponse {
+    repeated ReasonDetail reasons = 1;
+}
+
 message ResponseMetadata {
-   uint32 total = 1;
-   uint32 page =  2;
-   uint32 perPage = 3;
+    uint32 total = 1;
+    uint32 page =  2;
+    uint32 perPage = 3;
 }
 
 message MessageResponse {
@@ -86,13 +92,33 @@ message ActionResponse {
     repeated uint64 SIDs = 2;
 }
 
+message ReasonDetail {
+	string  key             = 1;
+	string  translation     = 2;
+    bool    hasDescription  = 3;
+    bool    cancel          = 4;
+    bool    return          = 5; 
+    bool    isActive        = 6;
+    enum Responsible {
+        NONE = 0;
+        BUYER = 1;
+        SELLER = 2;
+    }
+    Responsible responsible = 7;
+}
+
+message Reason {
+	string key          = 1;
+	string description  = 2;
+}
+
 message ActionData {
     message Subpackage {
         uint64 SID = 1;
         message Item {
             string  inventoryId = 1;
             int32   quantity = 2;
-            repeated string reasons = 3;
+            repeated Reason reasons = 3;
         }
         repeated Item items = 2;
     }
@@ -526,7 +552,7 @@ message BuyerReturnOrderDetailList {
                     string currency = 7;
                 };
                 Invoice invoice = 13;
-                string reason = 14;
+                Reason reason = 14;
                 string returnRequestAt = 15;
             }
 
@@ -668,3 +694,195 @@ message OperatorOrderDetail {
     repeated Subpackage subpackages = 8;
 }
 
+message OperatorOrderInvoiceDetail {
+
+    uint64 OrderId = 1;
+    string Status = 2;
+    message Invoice {
+        string GrandTotal = 1;
+        string Subtotal = 2;
+        string Discount = 3;
+        string ShipmentTotal = 4;
+
+        message Share {
+            string RawTotalShare = 1;
+            string RoundupTotalShare = 2;
+        }
+        Share share = 5;
+
+        message Commission {
+            string RawTotalPrice = 1;
+            string RoundupTotalPrice = 2;
+        }
+        Commission commission = 6;
+
+        message Voucher {
+            float Percent = 1;
+            string AppliedPrice = 2;
+            string RoundupAppliedPrice = 3;
+            string RawShipmentAppliedPrice = 4;
+            string RoundupShipmentAppliedPrice = 5;
+            string Price = 6;
+            string Code = 7;
+        }
+        Voucher voucher = 7;
+
+        message SSO {
+            string RawTotal = 1;
+            string RoundupTotal = 2;
+        }
+        SSO Sso = 8;
+
+        message VAT {
+            float Rate = 1;
+            string RawTotal = 2;
+            string RoundupTotal = 3;
+        }
+        VAT Vat = 9;
+    }
+    Invoice invoice = 3;
+
+    message PackageFinance {
+        uint64 PID = 1;
+        string Status = 2;
+
+        message PackageInvoice {
+            string Subtotal = 1;
+            string Discount = 2;
+            string ShipmentAmount = 3;
+
+            message PackageShare {
+                string RawBusinessShare = 1;
+                string RoundupBusinessShare = 2;
+                string RawSellerShare = 3;
+                string RoundupSellerShare = 4;
+            }
+            PackageShare share = 4;
+
+            message PackageCommission {
+                string RawTotalPrice = 1;
+                string RoundupTotalPrice = 2;
+            }
+            PackageCommission commission = 5;
+
+            message PackageVoucher {
+                string RawTotal = 1;
+                string RoundupTotal = 2;
+                string RawCalcShipmentPrice = 3;
+                string RoundupCalcShipmentPrice = 4;
+            }
+            PackageVoucher Voucher = 6;
+
+            message PackageSSO {
+                float Rate = 1;
+                bool IsObliged = 2;
+                string RawTotal = 3;
+                string RoundupTotal = 4;
+            }
+            PackageSSO Sso = 7;
+
+            message PackageVAT {
+                message PackageSellerVAT {
+                    string RawTotal = 1;
+                    string RoundupTotal = 2;
+                }
+                PackageSellerVAT SellerVat = 1;
+
+                message PackageBusinessVAT {
+                    string RawTotal = 1;
+                    string RoundupTotal = 2;
+                }
+                PackageBusinessVAT BusinessVat = 2;
+            }
+            PackageVAT Vat = 8;
+        }
+        PackageInvoice Invoice = 3;
+
+        message ItemFinance {
+            uint64 SId = 1;
+            string Status = 2;
+            string SKU = 3;
+            string InventoryId = 4;
+            int32 Quantity = 5;
+
+            message ItemInvoice {
+                string Unit = 1;
+                string Total = 2;
+                string Original = 3;
+                string Special = 4;
+                string Discount = 5;
+
+                message ItemCommission {
+                    float Commission = 1;
+                    string RawUnitPrice = 2;
+                    string RoundupUnitPrice = 3;
+                    string RawTotalPrice = 4;
+                    string RoundupTotalPrice = 5;
+                }
+                ItemCommission commission = 6;
+
+                message ItemShare {
+                    string RawItemGross = 1;
+                    string RoundupItemGross = 2;
+                    string RawTotalGross = 3;
+                    string RoundupTotalGross = 4;
+                    string RawItemNet = 5;
+                    string RoundupItemNet = 6;
+                    string RawTotalNet = 7;
+                    string RoundupTotalNet = 8;
+                    string RawUnitBusinessShare = 9;
+                    string RoundupUnitBusinessShare = 10;
+                    string RawTotalBusinessShare = 11;
+                    string RoundupTotalBusinessShare = 12;
+                    string RawUnitSellerShare = 13;
+                    string RoundupUnitSellerShare = 14;
+                    string RawTotalSellerShare = 15;
+                    string RoundupTotalSellerShare = 16;
+                }
+                ItemShare share = 7;
+
+                message ItemVoucher {
+                    string RawUnitPrice = 1;
+                    string RoundupUnitPrice = 2;
+                    string RawTotalPrice = 3;
+                    string RoundupTotalPrice = 4;
+                }
+                ItemVoucher voucher = 8;
+
+                message ItemSSO {
+                    string RawUnitPrice = 1;
+                    string RoundupUnitPrice = 2;
+                    string RawTotalPrice = 3;
+                    string RoundupTotalPrice = 4;
+                }
+                ItemSSO Sso = 9;
+
+                message ItemVAT {
+                    message ItemSellerVAT {
+                        float Rate = 1;
+                        bool IsObliged = 2;
+                        string RawUnitPrice = 3;
+                        string RoundupUnitPrice = 4;
+                        string RawTotalPrice = 5;
+                        string RoundupTotalPrice = 6;
+                    }
+                    ItemSellerVAT SellerVat = 1;
+
+                    message ItemBusinessVAT {
+                        float Rate = 1;
+                        string RawUnitPrice = 2;
+                        string RoundupUnitPrice = 3;
+                        string RawTotalPrice = 4;
+                        string RoundupTotalPrice = 5;
+                    }
+                    ItemBusinessVAT BusinessVat = 2;
+                }
+                ItemVAT Vat = 10;
+            }
+
+            ItemInvoice Invoice = 6;
+        }
+        repeated ItemFinance Items = 4;
+    }
+    repeated PackageFinance Packages = 4;
+}

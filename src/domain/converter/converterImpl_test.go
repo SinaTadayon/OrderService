@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"context"
 	"github.com/stretchr/testify/require"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	pb "gitlab.faza.io/protos/order"
@@ -8,9 +9,10 @@ import (
 )
 
 func TestOrderConverter(t *testing.T) {
+	ctx := context.Background()
 	converter := NewConverter()
 	RequestNewOrder := createRequestNewOrder()
-	out, err := converter.Map(RequestNewOrder, entities.Order{})
+	out, err := converter.Map(ctx, RequestNewOrder, entities.Order{})
 	require.NoError(t, err, "mapping order request to order failed")
 	order, ok := out.(*entities.Order)
 	require.True(t, ok, "mapping order request to order failed")
@@ -40,6 +42,10 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Currency: "IRR",
 	}
 
+	order.Invoice.Vat = &pb.Invoice_BusinessVAT{
+		Value: 9,
+	}
+
 	order.Invoice.PaymentMethod = "IPG"
 	order.Invoice.PaymentGateway = "AAP"
 	order.Invoice.PaymentOption = nil
@@ -49,7 +55,11 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 	}
 	order.Invoice.Voucher = &pb.Voucher{
 		Percent: 0,
-		AppliedPrice: &pb.Money{
+		RawAppliedPrice: &pb.Money{
+			Amount:   "40000",
+			Currency: "IRR",
+		},
+		RoundupAppliedPrice: &pb.Money{
 			Amount:   "40000",
 			Currency: "IRR",
 		},
@@ -127,15 +137,17 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 				Amount:   "9238443",
 				Currency: "IRR",
 			},
-
 			Discount: &pb.Money{
 				Amount:   "9734234",
 				Currency: "IRR",
 			},
-
 			ShipmentPrice: &pb.Money{
 				Amount:   "23123",
 				Currency: "IRR",
+			},
+			Sso: &pb.PackageInvoice_SellerSSO{
+				Value:     9,
+				IsObliged: true,
 			},
 		},
 	}
@@ -174,28 +186,27 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 				Amount:   "200000",
 				Currency: "IRR",
 			},
-
 			Total: &pb.Money{
 				Amount:   "20000000",
 				Currency: "IRR",
 			},
-
 			Original: &pb.Money{
 				Amount:   "220000",
 				Currency: "IRR",
 			},
-
 			Special: &pb.Money{
 				Amount:   "200000",
 				Currency: "IRR",
 			},
-
 			Discount: &pb.Money{
 				Amount:   "20000",
 				Currency: "IRR",
 			},
-
-			SellerCommission: 10,
+			ItemCommission: 10,
+			Vat: &pb.ItemInvoice_SellerVAT{
+				Value:     9,
+				IsObliged: true,
+			},
 		},
 	}
 	pkg.Items = append(pkg.Items, item)
@@ -215,27 +226,27 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 				Amount:   "100000",
 				Currency: "IRR",
 			},
-
 			Total: &pb.Money{
 				Amount:   "10000000",
 				Currency: "IRR",
 			},
-
 			Original: &pb.Money{
 				Amount:   "120000",
 				Currency: "IRR",
 			},
-
 			Special: &pb.Money{
 				Amount:   "100000",
 				Currency: "IRR",
 			},
-
 			Discount: &pb.Money{
 				Amount:   "10000",
 				Currency: "IRR",
 			},
-			SellerCommission: 5,
+			ItemCommission: 10,
+			Vat: &pb.ItemInvoice_SellerVAT{
+				Value:     9,
+				IsObliged: true,
+			},
 		},
 	}
 	pkg.Items = append(pkg.Items, item)
@@ -265,10 +276,13 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 				Amount:   "9734234",
 				Currency: "IRR",
 			},
-
 			ShipmentPrice: &pb.Money{
 				Amount:   "23123",
 				Currency: "IRR",
+			},
+			Sso: &pb.PackageInvoice_SellerSSO{
+				Value:     16.67,
+				IsObliged: true,
 			},
 		},
 	}
@@ -290,28 +304,27 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 				Amount:   "200000",
 				Currency: "IRR",
 			},
-
 			Total: &pb.Money{
 				Amount:   "20000000",
 				Currency: "IRR",
 			},
-
 			Original: &pb.Money{
 				Amount:   "220000",
 				Currency: "IRR",
 			},
-
 			Special: &pb.Money{
 				Amount:   "200000",
 				Currency: "IRR",
 			},
-
 			Discount: &pb.Money{
 				Amount:   "20000",
 				Currency: "IRR",
 			},
-
-			SellerCommission: 8,
+			ItemCommission: 10,
+			Vat: &pb.ItemInvoice_SellerVAT{
+				Value:     9,
+				IsObliged: true,
+			},
 		},
 	}
 	pkg.Items = append(pkg.Items, item)
@@ -331,28 +344,27 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 				Amount:   "100000",
 				Currency: "IRR",
 			},
-
 			Total: &pb.Money{
 				Amount:   "10000000",
 				Currency: "IRR",
 			},
-
 			Original: &pb.Money{
 				Amount:   "120000",
 				Currency: "IRR",
 			},
-
 			Special: &pb.Money{
 				Amount:   "100000",
 				Currency: "IRR",
 			},
-
 			Discount: &pb.Money{
 				Amount:   "10000",
 				Currency: "IRR",
 			},
-
-			SellerCommission: 3,
+			ItemCommission: 10,
+			Vat: &pb.ItemInvoice_SellerVAT{
+				Value:     9,
+				IsObliged: true,
+			},
 		},
 	}
 

@@ -1,10 +1,11 @@
 package entities
 
 import (
-	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"math/rand"
 	"time"
+
+	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -13,7 +14,7 @@ const (
 )
 
 const (
-	DocumentVersion string = "1.0.5"
+	DocumentVersion string = "1.0.7"
 )
 
 func init() {
@@ -79,6 +80,8 @@ type Invoice struct {
 	PaymentMethod  string                 `bson:"paymentMethod"`
 	PaymentGateway string                 `bson:"paymentGateway"`
 	PaymentOption  *PaymentOption         `bson:"paymentOption"`
+	Share          *OrderShare            `bson:"share"`
+	Commission     *Commission            `bson:"commission"`
 	Voucher        *Voucher               `bson:"voucher"`
 	CartRule       *CartRule              `bson:"cartRule"`
 	SSO            *SSO                   `bson:"sso"`
@@ -90,27 +93,56 @@ type Invoice struct {
 type PaymentOption struct {
 }
 
+type Commission struct {
+	RawTotalPrice     *Money                 `bson:"rawTotalPrice"`
+	RoundupTotalPrice *Money                 `bson:"roundupTotalPrice"`
+	CreatedAt         *time.Time             `bson:"createdAt"`
+	UpdatedAt         *time.Time             `bson:"updatedAt"`
+	Extended          map[string]interface{} `bson:"ext"`
+}
+
+type OrderShare struct {
+	RawTotalShare     *Money                 `bson:"rawTotalShare"`
+	RoundupTotalShare *Money                 `bson:"roundupTotalShare"`
+	CreatedAt         *time.Time             `bson:"createdAt"`
+	UpdatedAt         *time.Time             `bson:"updatedAt"`
+	Extended          map[string]interface{} `bson:"ext"`
+}
+
 type Voucher struct {
-	Percent      float64                `bson:"percent"`
-	AppliedPrice *Money                 `bson:"appliedPrice"`
-	Price        *Money                 `bson:"price"`
-	Code         string                 `bson:"code"`
-	Details      *VoucherDetails        `bson:"details"`
-	Settlement   string                 `bson:"settlement"`
-	SettlementAt *time.Time             `bson:"settlementAt"`
-	Reserved     string                 `bson:"reserved"`
-	ReservedAt   *time.Time             `bson:"reservedAt"`
-	Extended     map[string]interface{} `bson:"ext"`
+	Percent                     float64                `bson:"percent"`
+	AppliedPrice                *Money                 `bson:"appliedPrice"`
+	RoundupAppliedPrice         *Money                 `bson:"roundupAppliedPrice"`
+	RawShipmentAppliedPrice     *Money                 `bson:"rawShipmentAppliedPrice"`
+	RoundupShipmentAppliedPrice *Money                 `bson:"roundupShipmentAppliedPrice"`
+	Price                       *Money                 `bson:"price"`
+	Code                        string                 `bson:"code"`
+	Details                     *VoucherDetails        `bson:"details"`
+	Settlement                  string                 `bson:"settlement"`
+	SettlementAt                *time.Time             `bson:"settlementAt"`
+	Reserved                    string                 `bson:"reserved"`
+	ReservedAt                  *time.Time             `bson:"reservedAt"`
+	Extended                    map[string]interface{} `bson:"ext"`
 }
 
 type CartRule struct {
-	//Amount uint64 `bson:"amount"`
 }
 
 type SSO struct {
+	RawTotal     *Money                 `bson:"rawTotal"`
+	RoundupTotal *Money                 `bson:"roundupTotal"`
+	CreatedAt    *time.Time             `bson:"createdAt"`
+	UpdatedAt    *time.Time             `bson:"updatedAt"`
+	Extended     map[string]interface{} `bson:"ext"`
 }
 
 type VAT struct {
+	Rate         float32                `bson:"rate"`
+	RawTotal     *Money                 `bson:"rawTotal"`
+	RoundupTotal *Money                 `bson:"roundupTotal"`
+	CreatedAt    *time.Time             `bson:"createdAt"`
+	UpdatedAt    *time.Time             `bson:"updatedAt"`
+	Extended     map[string]interface{} `bson:"ext"`
 }
 
 type TAX struct {

@@ -16,12 +16,13 @@ message MPGValidateRequest {
 	string  HostResponse     =  2; 
 	string  HostResponseSign =  3; 
 	int64   StatusCode       =  4; 
-	int64   UniqueTranID     =  5; 
+	string  UniqueTranID     =  5; 
 	string  PaymentID        =  7; 
 }
 
 message MPGValidateResponse {
   bool    Success = 1;
+  string  OrderID = 2;
 }
 
 message MPGStartRequest {

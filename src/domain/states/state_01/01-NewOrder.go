@@ -11,6 +11,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
+	"gitlab.faza.io/order-project/order-service/infrastructure/utils/calculate"
 	"time"
 )
 
@@ -73,9 +74,26 @@ func (state newOrderState) Process(ctx context.Context, iFrame frame.IFrame) {
 			Send()
 
 	} else {
+		calcOrder, err := calculate.New().FinanceCalc(ctx, *newOrder,
+			calculate.Set(calculate.SHARE_CALC, calculate.VOUCHER_CALC),
+			calculate.ORDER_FINANCE)
+
+		if err != nil {
+			app.Globals.Logger.FromContext(ctx).Error("FinanceCalc failed",
+				"fn", "Process",
+				"state", state.Name(),
+				"order", order,
+				"error", err)
+			state.releasedStock(ctx, newOrder)
+			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+				SetError(future.BadRequest, "Finance Calculation Failed", err).
+				Send()
+			return
+		}
+
 		newFrame := frame.Factory().
 			SetFuture(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-			SetOrderId(newOrder.OrderId).SetBody(newOrder).Build()
+			SetOrderId(newOrder.OrderId).SetBody(calcOrder).Build()
 
 		state.StatesMap()[state.Actions()[0]].Process(ctx, newFrame)
 	}

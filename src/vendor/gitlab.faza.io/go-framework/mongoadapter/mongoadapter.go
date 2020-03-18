@@ -315,6 +315,22 @@ func (m *Mongo) AddUniqueIndexSparse(db, coll, indexKey string) (string, error) 
 	return m.conn.Database(db).Collection(coll).Indexes().CreateOne(ctx, indexModel)
 }
 
+func (m *Mongo) AddUniqueIndexWithPartialFilterExpression(db, coll, indexKey string, partialExpression interface{}) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), m.writeTimeout*time.Second)
+	defer cancel()
+	indexModel := mongo.IndexModel{
+		Keys:    bsonx.Doc{{indexKey, bsonx.Int32(1)}},
+		Options: options.Index().SetUnique(true).SetPartialFilterExpression(partialExpression),
+	}
+	return m.conn.Database(db).Collection(coll).Indexes().CreateOne(ctx, indexModel)
+}
+
+func (m *Mongo) DropIndex(db, coll, indexKey string) (bson.Raw, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), m.writeTimeout*time.Second)
+	defer cancel()
+	return m.conn.Database(db).Collection(coll).Indexes().DropOne(ctx, indexKey)
+}
+
 func (m *Mongo) AddTextV3Index(db, coll, indexKey string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), m.writeTimeout*time.Second)
 	defer cancel()

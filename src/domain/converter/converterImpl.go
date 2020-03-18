@@ -1,8 +1,10 @@
 package converter
 
 import (
+	"context"
 	"github.com/pkg/errors"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	ordersrv "gitlab.faza.io/protos/order"
 	"strconv"
 	"time"
@@ -21,61 +23,92 @@ func NewConverter() IConverter {
 }
 
 // Get *ordersrv.RequestNewOrder then map to *entities.Order
-func (iconv iConverterImpl) Map(in interface{}, out interface{}) (interface{}, error) {
+func (iconv iConverterImpl) Map(ctx context.Context, in interface{}, out interface{}) (interface{}, error) {
 
 	var ok bool
 	var newOrderDto *ordersrv.RequestNewOrder
 	newOrderDto, ok = in.(*ordersrv.RequestNewOrder)
 	if ok == false {
+		applog.GLog.Logger.FromContext(ctx).Error("mapping from input type not supported",
+			"fn", "Map",
+			"in", in)
 		return nil, errors.New("mapping from input type not supported")
 	}
 
 	_, ok = out.(entities.Order)
 	if ok == false {
+		applog.GLog.Logger.FromContext(ctx).Error("mapping to output type not supported",
+			"fn", "Map",
+			"in", in)
 		return nil, errors.New("mapping to output type not supported")
 	}
 
-	return convert(newOrderDto)
+	return convert(ctx, newOrderDto)
 }
 
-func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
+func convert(ctx context.Context, newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 
 	var order entities.Order
+	timestamp := time.Now().UTC()
 
 	if newOrderDto.Buyer == nil {
+		applog.GLog.Logger.FromContext(ctx).Error("Buyer of RequestNewOrder is nil",
+			"fn", "convert")
 		return nil, errors.New("Buyer of RequestNewOrder invalid")
 	}
 
 	if newOrderDto.Packages == nil || len(newOrderDto.Packages) == 0 {
+		applog.GLog.Logger.FromContext(ctx).Error("Packages of RequestNewOrder empty",
+			"fn", "convert")
 		return nil, errors.New("Packages of RequestNewOrder empty")
 	}
 
 	if newOrderDto.Buyer.BuyerId <= 0 {
+		applog.GLog.Logger.FromContext(ctx).Error("BuyerId of NewOrder invalid",
+			"fn", "convert")
 		return nil, errors.New("BuyerId of NewOrder invalid")
 	}
 
 	if newOrderDto.Invoice == nil {
+		applog.GLog.Logger.FromContext(ctx).Error("Invoice of RequestNewOrder is nil",
+			"fn", "convert")
 		return nil, errors.New("Invoice of RequestNewOrder invalid")
 	}
 
 	if newOrderDto.Invoice.Discount == nil {
+		applog.GLog.Logger.FromContext(ctx).Error("Invoice.Discount of RequestNewOrder is nil",
+			"fn", "convert")
 		return nil, errors.New("Invoice.Discount of RequestNewOrder invalid")
 	}
 
 	if newOrderDto.Invoice.GrandTotal == nil {
+		applog.GLog.Logger.FromContext(ctx).Error("Invoice.GrandTotal of RequestNewOrder is nil",
+			"fn", "convert")
 		return nil, errors.New("Invoice.GrandTotal of RequestNewOrder invalid")
 	}
 
 	if newOrderDto.Invoice.Subtotal == nil {
+		applog.GLog.Logger.FromContext(ctx).Error("Invoice.Subtotal of RequestNewOrder is nil",
+			"fn", "convert")
 		return nil, errors.New("Invoice.Subtotal of RequestNewOrder invalid")
 	}
 
 	if newOrderDto.Invoice.ShipmentTotal == nil {
+		applog.GLog.Logger.FromContext(ctx).Error("Invoice.ShipmentTotal of RequestNewOrder is nil",
+			"fn", "convert")
 		return nil, errors.New("Invoice.ShipmentTotal of RequestNewOrder invalid")
+	}
+
+	if newOrderDto.Invoice.Vat == nil {
+		applog.GLog.Logger.FromContext(ctx).Error("Invoice.Vat of RequestNewOrder is nil",
+			"fn", "convert")
+		return nil, errors.New("Invoice.Vat of RequestNewOrder invalid")
 	}
 
 	order.Platform = newOrderDto.Platform
 	order.DocVersion = entities.DocumentVersion
+	order.CreatedAt = timestamp
+	order.UpdatedAt = timestamp
 
 	order.BuyerInfo.BuyerId = newOrderDto.Buyer.BuyerId
 	order.BuyerInfo.FirstName = newOrderDto.Buyer.FirstName
@@ -96,6 +129,8 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	}
 
 	if newOrderDto.Buyer.ShippingAddress == nil {
+		applog.GLog.Logger.FromContext(ctx).Error("buyer.shippingAddress of RequestNewOrder is nil",
+			"fn", "convert")
 		return nil, errors.New("buyer.shippingAddress of RequestNewOrder invalid")
 	}
 
@@ -111,10 +146,14 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	order.BuyerInfo.ShippingAddress.ZipCode = newOrderDto.Buyer.ShippingAddress.ZipCode
 	err := setOrderLocation(newOrderDto.Buyer.ShippingAddress.Lat, newOrderDto.Buyer.ShippingAddress.Long, &order)
 	if err != nil {
+		applog.GLog.Logger.FromContext(ctx).Error("Lat/Long ShippingAddress invalid",
+			"fn", "convert")
 		return nil, errors.New("Lat/Long ShippingAddress Invalid")
 	}
 
 	if newOrderDto.Invoice == nil {
+		applog.GLog.Logger.FromContext(ctx).Error("invoice of RequestNewOrder is nil",
+			"fn", "convert")
 		return nil, errors.New("invoice of RequestNewOrder invalid")
 	}
 
@@ -142,6 +181,21 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	order.Invoice.PaymentGateway = newOrderDto.Invoice.PaymentGateway
 	order.Invoice.PaymentOption = nil
 
+	//order.Invoice.Share =
+	//order.Invoice.Commission =
+	//order.Invoice.Voucher =
+	//order.Invoice.CartRule =
+	//order.Invoice.SSO =
+	//order.Invoice.TAX =
+	order.Invoice.VAT = &entities.VAT{
+		Rate:         newOrderDto.Invoice.Vat.Value,
+		RawTotal:     nil,
+		RoundupTotal: nil,
+		CreatedAt:    &timestamp,
+		UpdatedAt:    &timestamp,
+		Extended:     nil,
+	}
+
 	if newOrderDto.Invoice.Voucher != nil {
 		order.Invoice.Voucher = &entities.Voucher{
 			Percent:      float64(newOrderDto.Invoice.Voucher.Percent),
@@ -156,10 +210,17 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 			Extended:     nil,
 		}
 
-		if newOrderDto.Invoice.Voucher.AppliedPrice != nil {
+		if newOrderDto.Invoice.Voucher.RawAppliedPrice != nil {
 			order.Invoice.Voucher.AppliedPrice = &entities.Money{
-				Amount:   newOrderDto.Invoice.Voucher.AppliedPrice.Amount,
-				Currency: newOrderDto.Invoice.Voucher.AppliedPrice.Currency,
+				Amount:   newOrderDto.Invoice.Voucher.RawAppliedPrice.Amount,
+				Currency: newOrderDto.Invoice.Voucher.RawAppliedPrice.Currency,
+			}
+		}
+
+		if newOrderDto.Invoice.Voucher.RoundupAppliedPrice != nil {
+			order.Invoice.Voucher.RoundupAppliedPrice = &entities.Money{
+				Amount:   newOrderDto.Invoice.Voucher.RoundupAppliedPrice.Amount,
+				Currency: newOrderDto.Invoice.Voucher.RoundupAppliedPrice.Currency,
 			}
 		}
 
@@ -190,16 +251,24 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 
 			temp, err := time.Parse(ISO8601, newOrderDto.Invoice.Voucher.Details.StartDate)
 			if err != nil {
+				applog.GLog.Logger.FromContext(ctx).Error("Voucher startDate of RequestNewOrder Invalid",
+					"fn", "convert",
+					"startDate", newOrderDto.Invoice.Voucher.Details.StartDate)
 				return nil, errors.New("Voucher startDate Invalid")
 			}
 			order.Invoice.Voucher.Details.StartDate = temp
 
 			temp, err = time.Parse(ISO8601, newOrderDto.Invoice.Voucher.Details.EndDate)
 			if err != nil {
+				applog.GLog.Logger.FromContext(ctx).Error("Voucher EndDate of RequestNewOrder Invalid",
+					"fn", "convert",
+					"EndDate", newOrderDto.Invoice.Voucher.Details.EndDate)
 				return nil, errors.New("Voucher endDate Invalid")
 			}
 			order.Invoice.Voucher.Details.EndDate = temp
 		} else {
+			applog.GLog.Logger.FromContext(ctx).Error("voucher detail of RequestNewOrder is nil",
+				"fn", "convert")
 			return nil, errors.New("voucher detail is nil")
 		}
 	}
@@ -208,31 +277,51 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 	for _, pkgDto := range newOrderDto.Packages {
 
 		if pkgDto.SellerId <= 0 {
-			return nil, errors.New("PId of RequestNewOrder invalid")
+			applog.GLog.Logger.FromContext(ctx).Error("SellerId of RequestNewOrder invalid",
+				"fn", "convert")
+			return nil, errors.New("SellerId of RequestNewOrder invalid")
 		}
 
 		if pkgDto.Invoice == nil {
+			applog.GLog.Logger.FromContext(ctx).Error("Invoice of RequestNewOrder is nil",
+				"fn", "convert")
 			return nil, errors.New("Invoice of RequestNewOrder is nil")
 		}
 
 		if pkgDto.Shipment == nil {
-			return nil, errors.New("Shipment of RequestNewOrder is nil")
+			applog.GLog.Logger.FromContext(ctx).Error("Package Shipment of RequestNewOrder is nil",
+				"fn", "convert")
+			return nil, errors.New("Package Shipment of RequestNewOrder is nil")
 		}
 
 		if pkgDto.Items == nil || len(pkgDto.Items) == 0 {
-			return nil, errors.New("Items of RequestNewOrder is empty")
+			applog.GLog.Logger.FromContext(ctx).Error("Package Items of RequestNewOrder is empty",
+				"fn", "convert")
+			return nil, errors.New("Package Items of RequestNewOrder is empty")
 		}
 
 		if pkgDto.Invoice.ShipmentPrice == nil {
-			return nil, errors.New("ShipmentPrice of Invoice is nil")
+			applog.GLog.Logger.FromContext(ctx).Error("ShipmentPrice of Package Invoice is nil",
+				"fn", "convert")
+			return nil, errors.New("ShipmentPrice of Package Invoice is nil")
 		}
 
 		if pkgDto.Invoice.Discount == nil {
-			return nil, errors.New("Discount of Invoice is nil")
+			applog.GLog.Logger.FromContext(ctx).Error("Discount of Package Invoice is nil",
+				"fn", "convert")
+			return nil, errors.New("Discount of Package Invoice is nil")
 		}
 
 		if pkgDto.Invoice.Subtotal == nil {
-			return nil, errors.New("Subtotal of Invoice is nil")
+			applog.GLog.Logger.FromContext(ctx).Error("Subtotal of Package Invoice is nil",
+				"fn", "convert")
+			return nil, errors.New("Subtotal of Package Invoice is nil")
+		}
+
+		if pkgDto.Invoice.Sso == nil {
+			applog.GLog.Logger.FromContext(ctx).Error("SSO of Package Invoice is nil",
+				"fn", "convert")
+			return nil, errors.New("SSO of Package Invoice is nil")
 		}
 
 		var pkgItem = &entities.PackageItem{
@@ -244,8 +333,8 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 			PayToSeller: nil,
 			Subpackages: nil,
 			Status:      "",
-			CreatedAt:   time.Now().UTC(),
-			UpdatedAt:   time.Now().UTC(),
+			CreatedAt:   timestamp,
+			UpdatedAt:   timestamp,
 			DeletedAt:   nil,
 			Extended:    nil,
 
@@ -269,16 +358,30 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 					Amount:   pkgDto.Invoice.Subtotal.Amount,
 					Currency: pkgDto.Invoice.Subtotal.Currency,
 				},
-
 				Discount: entities.Money{
 					Amount:   pkgDto.Invoice.Discount.Amount,
 					Currency: pkgDto.Invoice.Discount.Currency,
 				},
-
 				ShipmentAmount: entities.Money{
 					Amount:   pkgDto.Invoice.ShipmentPrice.Amount,
 					Currency: pkgDto.Invoice.ShipmentPrice.Currency,
 				},
+				Share:      nil,
+				Commission: nil,
+				Voucher:    nil,
+				CartRule:   nil,
+				SSO: &entities.PackageSSO{
+					Rate:         pkgDto.Invoice.Sso.Value,
+					IsObliged:    pkgDto.Invoice.Sso.IsObliged,
+					RawTotal:     nil,
+					RoundupTotal: nil,
+					CreatedAt:    &timestamp,
+					UpdatedAt:    &timestamp,
+					Extended:     nil,
+				},
+				VAT:      nil,
+				TAX:      nil,
+				Extended: nil,
 			},
 
 			ShipmentSpec: entities.ShipmentSpec{
@@ -302,41 +405,83 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 
 		pkgItem.Subpackages = []*entities.Subpackage{
 			{
-				PId:   pkgDto.SellerId,
-				Items: make([]*entities.Item, 0, len(pkgDto.Items)),
+				PId:       pkgDto.SellerId,
+				CreatedAt: timestamp,
+				UpdatedAt: timestamp,
+				Items:     make([]*entities.Item, 0, len(pkgDto.Items)),
 			},
 		}
 		for _, itemDto := range pkgDto.Items {
 			if len(itemDto.InventoryId) == 0 {
+				applog.GLog.Logger.FromContext(ctx).Error("InventoryId of RequestNewOrder invalid",
+					"fn", "convert",
+					"inventoryId", itemDto.InventoryId)
 				return nil, errors.New("InventoryId of RequestNewOrder invalid")
 			}
 
 			if itemDto.Quantity <= 0 {
+				applog.GLog.Logger.FromContext(ctx).Error("Items Quantity of RequestNewOrder invalid",
+					"fn", "convert",
+					"Quantity", itemDto.Quantity)
 				return nil, errors.New("Items Quantity of RequestNewOrder invalid")
 			}
 
 			if itemDto.Invoice == nil {
+				applog.GLog.Logger.FromContext(ctx).Error("itemDto.Invoice of RequestNewOrder is nil",
+					"fn", "convert")
 				return nil, errors.New("itemDto.Invoice of RequestNewOrder invalid")
 			}
 
 			if itemDto.Invoice.Unit == nil {
+				applog.GLog.Logger.FromContext(ctx).Error("itemDto.Invoice.Unit of RequestNewOrder is nil",
+					"fn", "convert")
 				return nil, errors.New("itemDto.Invoice.Unit of RequestNewOrder invalid")
 			}
 
 			if itemDto.Invoice.Discount == nil {
+				applog.GLog.Logger.FromContext(ctx).Error("itemDto.Invoice.Discount of RequestNewOrder is nil",
+					"fn", "convert")
 				return nil, errors.New("itemDto.Invoice.Discount of RequestNewOrder invalid")
 			}
 
 			if itemDto.Invoice.Special == nil {
+				applog.GLog.Logger.FromContext(ctx).Error("itemDto.Invoice.Special of RequestNewOrder is nil",
+					"fn", "convert")
 				return nil, errors.New("itemDto.Invoice.Special of RequestNewOrder invalid")
 			}
 
 			if itemDto.Invoice.Original == nil {
+				applog.GLog.Logger.FromContext(ctx).Error("itemDto.Invoice.Original of RequestNewOrder is nil",
+					"fn", "convert")
 				return nil, errors.New("itemDto.Invoice.Original of RequestNewOrder invalid")
 			}
 
 			if itemDto.Invoice.Total == nil {
+				applog.GLog.Logger.FromContext(ctx).Error("itemDto.Invoice.Total of RequestNewOrder is nil",
+					"fn", "convert")
 				return nil, errors.New("itemDto.Invoice.Total of RequestNewOrder invalid")
+			}
+
+			if itemDto.Invoice.Vat == nil {
+				applog.GLog.Logger.FromContext(ctx).Error("itemDto.Invoice.Vat of RequestNewOrder is nil",
+					"fn", "convert")
+				return nil, errors.New("itemDto.Invoice.Vat of RequestNewOrder invalid")
+			}
+
+			if itemDto.Invoice.ItemCommission < 0 {
+				applog.GLog.Logger.FromContext(ctx).Error("itemDto.Invoice.ItemCommission of RequestNewOrder is negative",
+					"fn", "convert")
+				return nil, errors.New("itemDto.Invoice.ItemCommission of RequestNewOrder invalid")
+			}
+
+			if itemDto.Invoice.Unit.Amount != itemDto.Invoice.Special.Amount &&
+				itemDto.Invoice.Unit.Amount != itemDto.Invoice.Original.Amount {
+				applog.GLog.Logger.FromContext(ctx).Error("itemDto.Invoice.Unit of RequestNewOrder doesn't equal to special or original",
+					"fn", "convert",
+					"unit", itemDto.Invoice.Unit,
+					"special", itemDto.Invoice.Special,
+					"original", itemDto.Invoice.Original)
+				return nil, errors.New("itemDto.Invoice.Unit of RequestNewOrder invalid")
 			}
 
 			var item = &entities.Item{
@@ -355,17 +500,14 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 						Amount:   itemDto.Invoice.Unit.Amount,
 						Currency: itemDto.Invoice.Unit.Currency,
 					},
-
 					Total: entities.Money{
 						Amount:   itemDto.Invoice.Total.Amount,
 						Currency: itemDto.Invoice.Total.Currency,
 					},
-
 					Original: entities.Money{
 						Amount:   itemDto.Invoice.Original.Amount,
 						Currency: itemDto.Invoice.Original.Currency,
 					},
-
 					Special: entities.Money{
 						Amount:   itemDto.Invoice.Special.Amount,
 						Currency: itemDto.Invoice.Special.Currency,
@@ -374,13 +516,53 @@ func convert(newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
 						Amount:   itemDto.Invoice.Discount.Amount,
 						Currency: itemDto.Invoice.Discount.Currency,
 					},
-
-					SellerCommission:  itemDto.Invoice.SellerCommission,
+					SellerCommission: 0,
+					Commission: &entities.ItemCommission{
+						ItemCommission:    itemDto.Invoice.ItemCommission,
+						RawUnitPrice:      nil,
+						RoundupUnitPrice:  nil,
+						RawTotalPrice:     nil,
+						RoundupTotalPrice: nil,
+						CreatedAt:         &timestamp,
+						UpdatedAt:         &timestamp,
+						Extended:          nil,
+					},
+					Share: nil,
+					//SellerCommission:  itemDto.Invoice.SellerCommission,
 					ApplicableVoucher: false,
+					Voucher:           nil,
+					CartRule:          nil,
+					SSO:               nil,
+					VAT: &entities.ItemVAT{
+						SellerVat: &entities.SellerVAT{
+							Rate:              itemDto.Invoice.Vat.Value,
+							IsObliged:         itemDto.Invoice.Vat.IsObliged,
+							RawUnitPrice:      nil,
+							RoundupUnitPrice:  nil,
+							RawTotalPrice:     nil,
+							RoundupTotalPrice: nil,
+							CreatedAt:         &timestamp,
+							UpdatedAt:         &timestamp,
+							Extended:          nil,
+						},
+						BusinessVat: &entities.BusinessVAT{
+							Rate:              newOrderDto.Invoice.Vat.Value,
+							RawUnitPrice:      nil,
+							RoundupUnitPrice:  nil,
+							RawTotalPrice:     nil,
+							RoundupTotalPrice: nil,
+							CreatedAt:         &timestamp,
+							UpdatedAt:         &timestamp,
+							Extended:          nil,
+						},
+						Extended: nil,
+					},
+					TAX:      nil,
+					Extended: nil,
 				},
 			}
 
-			if newOrderDto.Invoice.Voucher != nil && (newOrderDto.Invoice.Voucher.Price != nil || newOrderDto.Invoice.Voucher.Percent > 0) {
+			if newOrderDto.Invoice.Voucher != nil && (newOrderDto.Invoice.Voucher.RoundupAppliedPrice != nil) {
 				item.Invoice.ApplicableVoucher = true
 			}
 

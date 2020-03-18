@@ -1,8 +1,4 @@
-# github.com/BurntSushi/toml v0.3.1
-github.com/BurntSushi/toml
-# github.com/DataDog/zstd v1.4.4
-github.com/DataDog/zstd
-# github.com/Netflix/go-env v0.0.0-20180529183433-1e80ef5003ef
+# github.com/Netflix/go-env v0.0.0-20200312172415-986dfe862277
 github.com/Netflix/go-env
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
@@ -16,7 +12,7 @@ github.com/devfeel/mapper
 github.com/dgrijalva/jwt-go
 # github.com/go-stack/stack v1.8.0
 github.com/go-stack/stack
-# github.com/golang/protobuf v1.3.2
+# github.com/golang/protobuf v1.3.5
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
@@ -26,40 +22,46 @@ github.com/golang/protobuf/ptypes/timestamp
 github.com/golang/snappy
 # github.com/google/uuid v1.1.1
 github.com/google/uuid
-# github.com/grpc-ecosystem/go-grpc-middleware v1.1.0
+# github.com/grpc-ecosystem/go-grpc-middleware v1.2.0
 github.com/grpc-ecosystem/go-grpc-middleware
 github.com/grpc-ecosystem/go-grpc-middleware/recovery
 # github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 github.com/grpc-ecosystem/go-grpc-prometheus
 # github.com/joho/godotenv v1.3.0
 github.com/joho/godotenv
-# github.com/konsorten/go-windows-terminal-sequences v1.0.1
+# github.com/klauspost/compress v1.10.3
+github.com/klauspost/compress/fse
+github.com/klauspost/compress/huff0
+github.com/klauspost/compress/snappy
+github.com/klauspost/compress/zstd
+github.com/klauspost/compress/zstd/internal/xxhash
+# github.com/konsorten/go-windows-terminal-sequences v1.0.2
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/matryer/resync v0.0.0-20161211202428-d39c09a11215
 github.com/matryer/resync
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
 github.com/matttproud/golang_protobuf_extensions/pbutil
-# github.com/pkg/errors v0.8.1
+# github.com/pkg/errors v0.9.1
 github.com/pkg/errors
 # github.com/pmezard/go-difflib v1.0.0
 github.com/pmezard/go-difflib/difflib
-# github.com/prometheus/client_golang v1.3.0
+# github.com/prometheus/client_golang v1.5.0
 github.com/prometheus/client_golang/prometheus
 github.com/prometheus/client_golang/prometheus/internal
 github.com/prometheus/client_golang/prometheus/promhttp
-# github.com/prometheus/client_model v0.1.0
+# github.com/prometheus/client_model v0.2.0
 github.com/prometheus/client_model/go
-# github.com/prometheus/common v0.7.0
+# github.com/prometheus/common v0.9.1
 github.com/prometheus/common/expfmt
 github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
 github.com/prometheus/common/model
-# github.com/prometheus/procfs v0.0.8
+# github.com/prometheus/procfs v0.0.10
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
 # github.com/rs/xid v1.2.1
 github.com/rs/xid
-# github.com/shopspring/decimal v0.0.0-20191130220710-360f2bc03045
+# github.com/shopspring/decimal v0.0.0-20200227202807-02e2044944cc
 github.com/shopspring/decimal
 # github.com/sirupsen/logrus v1.4.2
 github.com/sirupsen/logrus
@@ -74,23 +76,23 @@ github.com/xdg/stringprep
 gitlab.faza.io/go-framework/acl
 # gitlab.faza.io/go-framework/logger v0.0.12
 gitlab.faza.io/go-framework/logger
-# gitlab.faza.io/go-framework/mongoadapter v0.0.9
+# gitlab.faza.io/go-framework/mongoadapter v0.0.10
 gitlab.faza.io/go-framework/mongoadapter
-# gitlab.faza.io/protos/cart v0.0.14
+# gitlab.faza.io/protos/cart v0.0.17
 gitlab.faza.io/protos/cart
-# gitlab.faza.io/protos/notification v0.0.3
+# gitlab.faza.io/protos/notification v0.0.4
 gitlab.faza.io/protos/notification
-# gitlab.faza.io/protos/order v0.0.61
+# gitlab.faza.io/protos/order v0.0.68
 gitlab.faza.io/protos/order
-# gitlab.faza.io/protos/payment-gateway v0.0.14
+# gitlab.faza.io/protos/payment-gateway v0.0.16
 gitlab.faza.io/protos/payment-gateway
 # gitlab.faza.io/protos/stock-proto.git v0.0.8
 gitlab.faza.io/protos/stock-proto.git
-# gitlab.faza.io/protos/user v0.0.41
+# gitlab.faza.io/protos/user v0.0.48
 gitlab.faza.io/protos/user
-# gitlab.faza.io/services/user-app-client v0.0.20
+# gitlab.faza.io/services/user-app-client v0.0.24
 gitlab.faza.io/services/user-app-client
-# go.mongodb.org/mongo-driver v1.2.0
+# go.mongodb.org/mongo-driver v1.3.1
 go.mongodb.org/mongo-driver/bson
 go.mongodb.org/mongo-driver/bson/bsoncodec
 go.mongodb.org/mongo-driver/bson/bsonoptions
@@ -122,25 +124,23 @@ go.mongodb.org/mongo-driver/x/mongo/driver/session
 go.mongodb.org/mongo-driver/x/mongo/driver/topology
 go.mongodb.org/mongo-driver/x/mongo/driver/uuid
 go.mongodb.org/mongo-driver/x/mongo/driver/wiremessage
-# go.uber.org/atomic v1.5.0
+# go.uber.org/atomic v1.6.0
 go.uber.org/atomic
-# go.uber.org/multierr v1.3.0
+# go.uber.org/multierr v1.5.0
 go.uber.org/multierr
-# go.uber.org/tools v0.0.0-20190618225709-2cfd321de3ee
-go.uber.org/tools/update-license
-# go.uber.org/zap v1.13.0
+# go.uber.org/zap v1.14.0
 go.uber.org/zap
 go.uber.org/zap/buffer
 go.uber.org/zap/internal/bufferpool
 go.uber.org/zap/internal/color
 go.uber.org/zap/internal/exit
 go.uber.org/zap/zapcore
-# golang.org/x/crypto v0.0.0-20191219195013-becbf705a915
+# golang.org/x/crypto v0.0.0-20200311171314-f7b00557c8c4
 golang.org/x/crypto/pbkdf2
-# golang.org/x/lint v0.0.0-20190930215403-16217165b5de
+# golang.org/x/lint v0.0.0-20200302205851-738671d3881b
 golang.org/x/lint
 golang.org/x/lint/golint
-# golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553
+# golang.org/x/net v0.0.0-20200301022130-244492dfa37a
 golang.org/x/net/context
 golang.org/x/net/http/httpguts
 golang.org/x/net/http2
@@ -150,7 +150,7 @@ golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
 # golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20191220142924-d4481acd189f
+# golang.org/x/sys v0.0.0-20200302150141-5c8b2ff67527
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 # golang.org/x/text v0.3.2
@@ -158,25 +158,13 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# golang.org/x/tools v0.0.0-20191029190741-b9c20aec41a5
-golang.org/x/tools/go/analysis
-golang.org/x/tools/go/analysis/passes/inspect
+# golang.org/x/tools v0.0.0-20200312194400-c312e98713c2
 golang.org/x/tools/go/ast/astutil
-golang.org/x/tools/go/ast/inspector
-golang.org/x/tools/go/buildutil
 golang.org/x/tools/go/gcexportdata
 golang.org/x/tools/go/internal/gcimporter
-golang.org/x/tools/go/internal/packagesdriver
-golang.org/x/tools/go/packages
-golang.org/x/tools/go/types/objectpath
-golang.org/x/tools/go/types/typeutil
-golang.org/x/tools/internal/fastwalk
-golang.org/x/tools/internal/gopathwalk
-golang.org/x/tools/internal/semver
-golang.org/x/tools/internal/span
-# google.golang.org/genproto v0.0.0-20191216205247-b31c10ee225f
+# google.golang.org/genproto v0.0.0-20200312145019-da6875a35672
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.26.0
+# google.golang.org/grpc v1.28.0
 google.golang.org/grpc
 google.golang.org/grpc/attributes
 google.golang.org/grpc/backoff
@@ -198,8 +186,10 @@ google.golang.org/grpc/internal/binarylog
 google.golang.org/grpc/internal/buffer
 google.golang.org/grpc/internal/channelz
 google.golang.org/grpc/internal/envconfig
+google.golang.org/grpc/internal/grpclog
 google.golang.org/grpc/internal/grpcrand
 google.golang.org/grpc/internal/grpcsync
+google.golang.org/grpc/internal/grpcutil
 google.golang.org/grpc/internal/resolver/dns
 google.golang.org/grpc/internal/resolver/passthrough
 google.golang.org/grpc/internal/syscall
@@ -213,31 +203,5 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-# gopkg.in/yaml.v2 v2.2.2
+# gopkg.in/yaml.v2 v2.2.5
 gopkg.in/yaml.v2
-# honnef.co/go/tools v0.0.1-2019.2.3
-honnef.co/go/tools/arg
-honnef.co/go/tools/cmd/staticcheck
-honnef.co/go/tools/config
-honnef.co/go/tools/deprecated
-honnef.co/go/tools/facts
-honnef.co/go/tools/functions
-honnef.co/go/tools/go/types/typeutil
-honnef.co/go/tools/internal/cache
-honnef.co/go/tools/internal/passes/buildssa
-honnef.co/go/tools/internal/renameio
-honnef.co/go/tools/internal/sharedcheck
-honnef.co/go/tools/lint
-honnef.co/go/tools/lint/lintdsl
-honnef.co/go/tools/lint/lintutil
-honnef.co/go/tools/lint/lintutil/format
-honnef.co/go/tools/loader
-honnef.co/go/tools/printf
-honnef.co/go/tools/simple
-honnef.co/go/tools/ssa
-honnef.co/go/tools/ssautil
-honnef.co/go/tools/staticcheck
-honnef.co/go/tools/staticcheck/vrp
-honnef.co/go/tools/stylecheck
-honnef.co/go/tools/unused
-honnef.co/go/tools/version

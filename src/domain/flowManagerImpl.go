@@ -4,6 +4,11 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"io"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/pkg/errors"
 	"gitlab.faza.io/order-project/order-service/app"
 	buyer_action "gitlab.faza.io/order-project/order-service/domain/actions/buyer"
@@ -47,10 +52,6 @@ import (
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	"go.mongodb.org/mongo-driver/bson"
-	"io"
-	"os"
-	"strconv"
-	"time"
 
 	//"github.com/pkg/errors"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
@@ -501,11 +502,12 @@ func (flowManager iFlowManagerImpl) MessageHandler(ctx context.Context, iFrame f
 func (flowManager iFlowManagerImpl) newOrderHandler(ctx context.Context, iFrame frame.IFrame) {
 
 	requestNewOrder := iFrame.Header().Value(string(frame.HeaderNewOrder))
-	value, err := app.Globals.Converter.Map(requestNewOrder, entities.Order{})
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("Converter.Map requestNewOrder to order object failed",
 			"fn", "newOrderHandler",
-			"error", err, "requestNewOrder", requestNewOrder)
+			"requestNewOrder", requestNewOrder,
+			"error", err)
 		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
 			SetError(future.BadRequest, "Received requestNewOrder invalid", err).
 			Send()

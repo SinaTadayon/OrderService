@@ -9,6 +9,7 @@ service OrderService {
     rpc SchedulerMessageHandler(MessageRequest) returns (MessageResponse);
     rpc NewOrder (RequestNewOrder) returns (ResponseNewOrder);
     rpc ReportOrderItems(RequestReportOrderItems) returns(stream ResponseDownloadFile);
+    rpc ReasonsList(ReasonsListRequest) returns (ReasonsListResponse);
 }
 
 message ResponseDownloadFile {
@@ -65,6 +66,12 @@ message PackageInvoice {
     Money subtotal = 1;
     Money discount = 2;
     Money shipmentPrice = 3;
+    message SellerSSO {
+        float value = 1;
+        bool isObliged = 2;
+    }
+
+    SellerSSO   sso = 4;
 }
 
 message Invoice {
@@ -76,16 +83,21 @@ message Invoice {
     string  paymentGateway  = 8;
     PaymentOption  paymentOption   = 9;
     Voucher voucher         = 10;
+    message BusinessVAT {
+        float value = 1;
+    }
+    BusinessVAT     vat             = 11;
 }
 
 message PaymentOption {}
 
 message Voucher {
     float   percent = 1;
-    Money   AppliedPrice = 2;
-    Money   Price   = 3;
-    string  code    = 4;
-    VoucherDetails details = 5;
+    Money   RawAppliedPrice = 2;
+    Money   RoundupAppliedPrice = 3;
+    Money   Price   = 4;
+    string  code    = 5;
+    VoucherDetails details = 6;
 }
 
 message VoucherDetails {
@@ -167,7 +179,13 @@ message ItemInvoice {
     Money original = 3;
     Money special = 4;
     Money discount = 5;
-    float  sellerCommission = 6;
+    float  itemCommission = 6;
+    message SellerVAT {
+        float value = 1;
+        bool isObliged = 2;
+    }
+
+    SellerVAT vat = 7;
 }
 
 message ShippingSpec {

@@ -2,6 +2,11 @@ package grpc_server
 
 import (
 	"context"
+	"path"
+	"runtime/debug"
+	"strconv"
+	"time"
+
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -11,15 +16,12 @@ import (
 	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
 	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
 	"gitlab.faza.io/order-project/order-service/domain/events"
+	"gitlab.faza.io/order-project/order-service/domain/models"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
-	"path"
-	"runtime/debug"
-	"strconv"
-	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
@@ -32,11 +34,12 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"net"
+
 	"gitlab.faza.io/go-framework/logger"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
-	"net"
 )
 
 type RequestADT string
@@ -58,19 +61,6 @@ const (
 const (
 	OrderStateFilterType FilterType = "OrderState"
 )
-
-//const (
-//	ApprovalPendingFilter       FilterValue = "ApprovalPending"
-//	ShipmentPendingFilter       FilterValue = "ShipmentPending"
-//	ShippedFilter               FilterValue = "Shipped"
-//	DeliveredFilter             FilterValue = "Delivered"
-//	DeliveryFailedFilter        FilterValue = "DeliveryFailed"
-//	ReturnRequestPendingFilter  FilterValue = "ReturnRequestPending"
-//	ReturnShipmentPendingFilter FilterValue = "ReturnShipmentPending"
-//	ReturnShippedFilter         FilterValue = "ReturnShipped"
-//	ReturnDeliveredFilter       FilterValue = "ReturnDelivered"
-//	ReturnDeliveryFailedFilter  FilterValue = "ReturnDeliveryFailed"
-//)
 
 const (
 	NewOrderFilter                 FilterValue = "NewOrder"
@@ -162,8 +152,9 @@ const (
 	BuyerReturnOrderDetailList RequestName = "BuyerReturnOrderDetailList"
 
 	//OperatorAllOrders	RequestName = "OperatorAllOrders"
-	OperatorOrderList   RequestName = "OperatorOrderList"
-	OperatorOrderDetail RequestName = "OperatorOrderDetail"
+	OperatorOrderList          RequestName = "OperatorOrderList"
+	OperatorOrderDetail        RequestName = "OperatorOrderDetail"
+	OperatorOrderInvoiceDetail RequestName = "OperatorOrderInvoiceDetail"
 )
 
 const (
@@ -205,6 +196,7 @@ type Server struct {
 	operatorFilterStates map[FilterValue][]FilterState
 	queryPathStates      map[FilterValue]FilterQueryState
 	actionStates         map[UserType][]actions.IAction
+	reasonsMap           reasonsMap
 }
 
 func NewServer(address string, port uint16, flowManager domain.IFlowManager) Server {
@@ -475,7 +467,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		ReturnDeliveryFailedFilter,
 		ReturnRejectedFilter,
 	}
-
+	rp := createReasonsMap()
 	return Server{
 		flowManager: flowManager, address: address, port: port,
 		requestFilters:       reqFilters,
@@ -485,6 +477,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		operatorFilterStates: operatorFilterStatesMap,
 		queryPathStates:      queryPathStatesMap,
 		actionStates:         actionStateMap,
+		reasonsMap:           rp,
 	}
 }
 
@@ -693,7 +686,8 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 		return nil, status.Error(codes.Code(future.BadRequest), "RN UTP Invalid")
 	} else if userType == OperatorUser &&
 		reqName != OperatorOrderList &&
-		reqName != OperatorOrderDetail {
+		reqName != OperatorOrderDetail &&
+		reqName != OperatorOrderInvoiceDetail {
 		app.Globals.Logger.FromContext(ctx).Error("RequestName with userType mismatch", "fn", "requestDataHandler", "rn", reqName, "utp", userType, "request", req)
 		return nil, status.Error(codes.Code(future.BadRequest), "RN UTP Invalid")
 	}
@@ -807,6 +801,8 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 		return server.operatorOrderListHandler(ctx, req.Meta.OID, buyerMobile, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
 	case OperatorOrderDetail:
 		return server.operatorOrderDetailHandler(ctx, req.Meta.OID)
+	case OperatorOrderInvoiceDetail:
+		return server.operatorOrderInvoiceDetailHandler(ctx, req.Meta.OID)
 	}
 
 	return nil, status.Error(codes.Code(future.BadRequest), "Invalid Request")
@@ -860,9 +856,23 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 				Quantity:    item.Quantity,
 			}
 			if item.Reasons != nil {
-				actionItem.Reasons = make([]string, 0, len(item.Reasons))
+				actionItem.Reasons = make([]models.Reason, 0, len(item.Reasons))
 				for _, reason := range item.Reasons {
-					actionItem.Reasons = append(actionItem.Reasons, reason)
+					rscnf, ok := server.reasonsMap[reason.Key]
+					if !ok {
+						return nil, status.Error(codes.Code(future.BadRequest), "reason not allowed")
+					}
+					rs := models.Reason{
+						Key:         rscnf.Key,
+						Translation: rscnf.Translation,
+						Cancel:      rscnf.Cancel,
+						Return:      rscnf.Return,
+						Responsible: rscnf.Responsible,
+					}
+					if rscnf.HasDescription {
+						rs.Description = reason.Description
+					}
+					actionItem.Reasons = append(actionItem.Reasons, rs)
 				}
 			}
 			subpackage.Items = append(subpackage.Items, actionItem)
@@ -997,6 +1007,14 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 	}
 
 	return &responseNewOrder, nil
+}
+
+func (server Server) ReasonsList(ctx context.Context, in *pb.ReasonsListRequest) (list *pb.ReasonsListResponse, err error) {
+	ls := server.reasonsMap.toGRPC()
+	list = &pb.ReasonsListResponse{
+		Reasons: ls,
+	}
+	return
 }
 
 func (server Server) ReportOrderItems(req *pb.RequestReportOrderItems, srv pb.OrderService_ReportOrderItemsServer) error {

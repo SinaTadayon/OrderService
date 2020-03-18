@@ -39,6 +39,7 @@ type AccessTokenClaims struct {
 	FirstName   string   `json:"firstName"`
 	LastName    string   `json:"lastName"`
 	Mobile      string   `json:"mobile"`
+	Email       string   `json:"email"`
 	Audience    string   `json:"aud,omitempty"`
 	ExpiresAt   float64  `json:"exp,omitempty"`
 	ID          string   `json:"jti,omitempty"`
@@ -100,6 +101,18 @@ func (c *Client) Connect(ctx context.Context, dialOptions ...grpc.DialOption) (p
 		}
 	}
 	return c.client, nil
+}
+
+// AddUserType .
+func (c *Client) AddUserType(ctx context.Context, req *pb1.ChangeUserTypeRequest) (res *pb1.ChangeUserTypeResponse, err error) {
+	res, err = c.client.AddUserType(ctx, req)
+	return
+}
+
+// RemoveUserType .
+func (c *Client) RemoveUserType(ctx context.Context, req *pb1.ChangeUserTypeRequest) (res *pb1.ChangeUserTypeResponse, err error) {
+	res, err = c.client.RemoveUserType(ctx, req)
+	return
 }
 
 // pass a username and password
@@ -714,6 +727,24 @@ func (c *Client) VerifyAndGetUserFromContextToken(ctx context.Context) (*acl.Acl
 	}
 	acl.SetUser(tokenClaims)
 	return acl, nil
+}
+
+func (c *Client) RegisterOperator(email, password string, roles []string, jwtAccessToken string, ctx context.Context, grpcCallOptions ...grpc.CallOption) (*pb1.Result, error) {
+	ctxConn := c.createContext(nil)
+	conn, err := c.Connect(ctxConn)
+	if err != nil {
+		return nil, errors.New("failed to connect to GRPC server, got error " + err.Error())
+	}
+	ctx = CreateAuthorizationBearerInContext(jwtAccessToken, ctx)
+	var req = &pb1.RegisterOperatorRequest{}
+	req.Email = email
+	req.Password = password
+	req.Roles = roles
+	res, err := conn.RegisterOperator(ctx, req, grpcCallOptions...)
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 // checks to see if given context is nil or not,

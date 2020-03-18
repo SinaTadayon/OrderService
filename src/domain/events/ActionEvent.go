@@ -1,5 +1,7 @@
 package events
 
+import "gitlab.faza.io/order-project/order-service/domain/models"
+
 type ActionData struct {
 	SubPackages    []ActionSubpackage
 	Carrier        string
@@ -14,7 +16,7 @@ type ActionSubpackage struct {
 type ActionItem struct {
 	InventoryId string
 	Quantity    int32
-	Reasons     []string
+	Reasons     []models.Reason
 }
 
 type ActionResponse struct {
