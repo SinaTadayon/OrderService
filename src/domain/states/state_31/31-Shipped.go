@@ -1,19 +1,23 @@
 package state_31
 
 import (
+	"bytes"
 	"context"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
+	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
+	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"strconv"
+	"text/template"
 	"time"
 )
 
@@ -69,6 +73,112 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 				"sids", sids,
 				"iframe", iFrame)
 			return
+		}
+
+		var buyerNotificationAction = &entities.Action{
+			Name:      system_action.BuyerNotification.ActionName(),
+			Type:      "",
+			UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+			UTP:       actions.System.ActionName(),
+			Perm:      "",
+			Priv:      "",
+			Policy:    "",
+			Result:    string(states.ActionFail),
+			Reasons:   nil,
+			Note:      "",
+			Data:      nil,
+			CreatedAt: time.Now().UTC(),
+			Extended:  nil,
+		}
+
+		var templateData struct {
+			OrderId  uint64
+			ShopName string
+		}
+
+		templateData.OrderId = pkgItem.OrderId
+		templateData.ShopName = pkgItem.ShopName
+
+		smsTemplate, err := template.New("SMS").Parse(app.Globals.SMSTemplate.OrderNotifyBuyerShippedState)
+		if err != nil {
+			app.Globals.Logger.FromContext(ctx).Error("smsTemplate.Parse failed",
+				"fn", "Process",
+				"state", state.Name(),
+				"oid", pkgItem.OrderId,
+				"pid", pkgItem.PId,
+				"sids", sids,
+				"message", app.Globals.SMSTemplate.OrderNotifyBuyerShippedState,
+				"error", err)
+		} else {
+			var buf bytes.Buffer
+			err = smsTemplate.Execute(&buf, templateData)
+			newBuf := bytes.NewBuffer(bytes.Replace(buf.Bytes(), []byte("\\n"), []byte{10}, -1))
+			if err != nil {
+				app.Globals.Logger.FromContext(ctx).Error("smsTemplate.Execute failed",
+					"fn", "Process",
+					"state", state.Name(),
+					"oid", pkgItem.OrderId,
+					"pid", pkgItem.PId,
+					"sids", sids,
+					"message", app.Globals.SMSTemplate.OrderNotifyBuyerShippedState,
+					"error", err)
+			} else {
+				buyerNotify := notify_service.SMSRequest{
+					Phone: pkgItem.ShippingAddress.Mobile,
+					Body:  newBuf.String(),
+					User:  notify_service.BuyerUser,
+				}
+
+				buyerFutureData := app.Globals.NotifyService.NotifyBySMS(ctx, buyerNotify).Get()
+				if buyerFutureData.Error() != nil {
+					app.Globals.Logger.FromContext(ctx).Error("NotifyService.NotifyBySMS failed",
+						"fn", "Process",
+						"state", state.Name(),
+						"oid", pkgItem.OrderId,
+						"pid", pkgItem.PId,
+						"sids", sids,
+						"request", buyerNotify,
+						"error", buyerFutureData.Error().Reason())
+					buyerNotificationAction = &entities.Action{
+						Name:      system_action.BuyerNotification.ActionName(),
+						Type:      "",
+						UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+						UTP:       actions.System.ActionName(),
+						Perm:      "",
+						Priv:      "",
+						Policy:    "",
+						Result:    string(states.ActionFail),
+						Reasons:   nil,
+						Note:      "",
+						Data:      nil,
+						CreatedAt: time.Now().UTC(),
+						Extended:  nil,
+					}
+				} else {
+					app.Globals.Logger.FromContext(ctx).Debug("NotifyService.NotifyBySMS success",
+						"fn", "Process",
+						"state", state.Name(),
+						"oid", pkgItem.OrderId,
+						"pid", pkgItem.PId,
+						"request", buyerNotify,
+						"sids", sids)
+					buyerNotificationAction = &entities.Action{
+						Name:      system_action.BuyerNotification.ActionName(),
+						Type:      "",
+						UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+						UTP:       actions.System.ActionName(),
+						Perm:      "",
+						Priv:      "",
+						Policy:    "",
+						Result:    string(states.ActionSuccess),
+						Reasons:   nil,
+						Note:      "",
+						Data:      nil,
+						CreatedAt: time.Now().UTC(),
+						Extended:  nil,
+					}
+				}
+			}
 		}
 
 		var expireTime time.Time
@@ -144,7 +254,7 @@ func (state shippedState) Process(ctx context.Context, iFrame frame.IFrame) {
 							nil,
 						},
 					}
-					state.UpdateSubPackageWithScheduler(ctx, pkgItem.Subpackages[j], schedulers, nil)
+					state.UpdateSubPackageWithScheduler(ctx, pkgItem.Subpackages[j], schedulers, buyerNotificationAction)
 				}
 			}
 		}

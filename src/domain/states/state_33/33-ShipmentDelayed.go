@@ -579,105 +579,9 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 					state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
 				}
 
-				//if event.Action().ActionEnum() == seller_action.Cancel ||
-				//	event.Action().ActionEnum() == buyer_action.Cancel {
-				//	var rejectedSubtotal int64 = 0
-				//	var rejectedDiscount int64 = 0
-				//
-				//	for i := 0; i < len(newSubPackages); i++ {
-				//		for j := 0; j < len(newSubPackages[i].Items); j++ {
-				//			amount, err := decimal.NewFromString(newSubPackages[i].Items[j].Invoice.Total.Amount)
-				//			if err != nil {
-				//				app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, Total.Amount invalid",
-				//					"fn", "Process",
-				//					"state", state.Name(),
-				//					"oid", newSubPackages[i].OrderId,
-				//					"pid", newSubPackages[i].PId,
-				//					"sid", newSubPackages[i].SId,
-				//					"total", newSubPackages[i].Items[j].Invoice.Total.Amount,
-				//					"event", event)
-				//				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				//					SetError(future.InternalError, "Unknown Error", errors.New("Subpackage Total Invalid")).Send()
-				//				return
-				//			}
-				//
-				//			discount, err := decimal.NewFromString(newSubPackages[i].Items[j].Invoice.Discount.Amount)
-				//			if err != nil {
-				//				app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, Invoice.Discount invalid",
-				//					"fn", "Process",
-				//					"state", state.Name(),
-				//					"oid", newSubPackages[i].OrderId,
-				//					"pid", newSubPackages[i].PId,
-				//					"sid", newSubPackages[i].SId,
-				//					"discount", newSubPackages[i].Items[j].Invoice.Discount,
-				//					"event", event)
-				//				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				//					SetError(future.InternalError, "Unknown Error", errors.New("Subpackage Discount Invalid")).Send()
-				//				return
-				//			}
-				//
-				//			rejectedSubtotal += amount.IntPart()
-				//			rejectedDiscount += discount.IntPart()
-				//		}
-				//	}
-				//
-				//	subtotal, err := decimal.NewFromString(pkgItem.Invoice.Subtotal.Amount)
-				//	if err != nil {
-				//		app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, Subtotal.Amount invalid",
-				//			"fn", "Process",
-				//			"state", state.Name(),
-				//			"oid", pkgItem.OrderId,
-				//			"pid", pkgItem.PId,
-				//			"subtotal", pkgItem.Invoice.Subtotal.Amount,
-				//			"event", event)
-				//		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				//			SetError(future.InternalError, "Unknown Error", errors.New("Package Invoice Invalid")).Send()
-				//		return
-				//	}
-				//
-				//	pkgDiscount, err := decimal.NewFromString(pkgItem.Invoice.Discount.Amount)
-				//	if err != nil {
-				//		app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, Pkg Discount.Amount invalid",
-				//			"fn", "Process",
-				//			"state", state.Name(),
-				//			"oid", pkgItem.OrderId,
-				//			"pid", pkgItem.PId,
-				//			"pkg discount", pkgItem.Invoice.Discount.Amount,
-				//			"event", event)
-				//		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				//			SetError(future.InternalError, "Unknown Error", errors.New("Package Invoice Invalid")).Send()
-				//		return
-				//	}
-				//
-				//	if rejectedSubtotal < subtotal.IntPart() && rejectedDiscount < pkgDiscount.IntPart() {
-				//		pkgItem.Invoice.Subtotal.Amount = strconv.Itoa(int(subtotal.IntPart() - rejectedSubtotal))
-				//		pkgItem.Invoice.Discount.Amount = strconv.Itoa(int(pkgDiscount.IntPart() - rejectedDiscount))
-				//		app.Globals.Logger.FromContext(ctx).Info("calculate package invoice success",
-				//			"fn", "Process",
-				//			"state", state.Name(),
-				//			"oid", pkgItem.OrderId,
-				//			"pid", pkgItem.PId,
-				//			"action", event.Action().ActionEnum().ActionName(),
-				//			"subtotal", pkgItem.Invoice.Subtotal.Amount,
-				//			"discount", pkgItem.Invoice.Discount.Amount)
-				//	} else if rejectedSubtotal > subtotal.IntPart() || rejectedDiscount > pkgDiscount.IntPart() {
-				//		app.Globals.Logger.FromContext(ctx).Error("calculate package invoice failed",
-				//			"fn", "Process",
-				//			"state", state.Name(),
-				//			"oid", pkgItem.OrderId,
-				//			"pid", pkgItem.PId,
-				//			"action", event.Action().ActionEnum().ActionName(),
-				//			"subtotal", pkgItem.Invoice.Subtotal.Amount,
-				//			"discount", pkgItem.Invoice.Discount.Amount)
-				//		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				//			SetError(future.InternalError, "Unknown Error", errors.New("Package Invoice Invalid")).Send()
-				//		return
-				//	}
-
-				//} else if event.Action().ActionEnum() == seller_action.EnterShipmentDetail {
 				if event.Action().ActionEnum() == seller_action.EnterShipmentDetail {
-					if actionData.TrackingNumber == "" || actionData.Carrier == "" {
-						app.Globals.Logger.FromContext(ctx).Error("TrackingNumber, Carrier of event data invalid",
+					if actionData.Carrier == "" {
+						app.Globals.Logger.FromContext(ctx).Error("Carrier is empty",
 							"fn", "Process",
 							"state", state.Name(),
 							"oid", pkgItem.OrderId,
@@ -685,7 +589,7 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 							"sids", sids,
 							"event", event)
 						future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-							SetError(future.BadRequest, "TrackingNumber or Carrier invalid", errors.New("Event Action Data Invalid")).Send()
+							SetError(future.BadRequest, "Carrier is empty", errors.New("Event Action Data Invalid")).Send()
 						return
 					}
 
@@ -700,6 +604,7 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 								Description:    "",
 								ShippedAt:      &shipmentTime,
 								CreatedAt:      shipmentTime,
+								UpdatedAt:      &shipmentTime,
 							},
 							ReturnShipmentDetail: nil,
 						}

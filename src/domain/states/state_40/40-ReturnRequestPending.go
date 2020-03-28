@@ -620,19 +620,6 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 				}
 
 				if event.Action().ActionEnum() == buyer_action.SubmitReturnRequest {
-					if actionData.TrackingNumber == "" || actionData.Carrier == "" {
-						app.Globals.Logger.FromContext(ctx).Error("TrackingNumber, Carrier of event data invalid",
-							"fn", "Process",
-							"state", state.Name(),
-							"oid", pkgItem.OrderId,
-							"pid", pkgItem.PId,
-							"sids", sids,
-							"event", event)
-						future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-							SetError(future.BadRequest, "TrackingNumber or Carrier Invalid", errors.New("TrackingNumber or Carrier Invalid")).Send()
-						return
-					}
-
 					returnRequestAt := time.Now().UTC()
 					for i := 0; i < len(newSubPackages); i++ {
 						if newSubPackages[i].Shipments != nil {
@@ -645,6 +632,8 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 								ShippedAt:      nil,
 								RequestedAt:    &returnRequestAt,
 								CreatedAt:      returnRequestAt,
+								UpdatedAt:      &returnRequestAt,
+								Extended:       nil,
 							}
 						} else {
 							app.Globals.Logger.FromContext(ctx).Error("subpackage.Shipments is nil",
@@ -664,6 +653,7 @@ func (state returnRequestPendingState) Process(ctx context.Context, iFrame frame
 									ShippedAt:      nil,
 									RequestedAt:    &returnRequestAt,
 									CreatedAt:      returnRequestAt,
+									UpdatedAt:      &returnRequestAt,
 								},
 							}
 						}
