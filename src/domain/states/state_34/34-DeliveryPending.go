@@ -8,6 +8,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
+	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/events"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
@@ -257,6 +258,126 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 				return
 			}
 
+			if event.Action().ActionEnum() == seller_action.EnterShipmentDetail {
+				if actionData.Carrier == "" {
+					app.Globals.Logger.FromContext(ctx).Error("Carrier is empty",
+						"fn", "Process",
+						"state", state.Name(),
+						"oid", pkgItem.OrderId,
+						"pid", pkgItem.PId,
+						"event", event)
+					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+						SetError(future.BadRequest, "Carrier is empty", errors.New("Event Action Data Invalid")).Send()
+					return
+				}
+
+				enterShipmentDetailAction := &entities.Action{
+					Name:      seller_action.EnterShipmentDetail.ActionName(),
+					Type:      "",
+					UId:       ctx.Value(string(utils.CtxUserID)).(uint64),
+					UTP:       actions.Seller.ActionName(),
+					Perm:      "",
+					Priv:      "",
+					Policy:    "",
+					Result:    string(states.ActionSuccess),
+					Reasons:   nil,
+					Note:      "",
+					Data:      nil,
+					CreatedAt: time.Now().UTC(),
+					Extended:  nil,
+				}
+
+				var sids = make([]uint64, 0, 32)
+				shipmentTime := time.Now().UTC()
+				var findSubPkg = false
+				var isPkgUpdated = false
+				for _, eventSubPkg := range actionData.SubPackages {
+					findSubPkg = false
+					for i := 0; i < len(pkgItem.Subpackages); i++ {
+						if eventSubPkg.SId == pkgItem.Subpackages[i].SId && pkgItem.Subpackages[i].Status == state.Name() {
+							findSubPkg = true
+							isPkgUpdated = true
+							if pkgItem.Subpackages[i].Shipments == nil {
+								app.Globals.Logger.FromContext(ctx).Warn("Shipment is nil",
+									"fn", "Process",
+									"state", state.Name(),
+									"oid", pkgItem.OrderId,
+									"pid", pkgItem.PId,
+									"sid", pkgItem.Subpackages[i].SId,
+									"event", event)
+
+								pkgItem.Subpackages[i].Shipments = &entities.Shipment{
+									ShipmentDetail: &entities.ShippingDetail{
+										CourierName:    actionData.Carrier,
+										ShippingMethod: "",
+										TrackingNumber: actionData.TrackingNumber,
+										Image:          "",
+										Description:    "",
+										ShippedAt:      &shipmentTime,
+										CreatedAt:      shipmentTime,
+										UpdatedAt:      &shipmentTime,
+										Extended:       nil,
+									},
+									ReturnShipmentDetail: nil,
+								}
+							} else {
+								pkgItem.Subpackages[i].Shipments.ShipmentDetail.CourierName = actionData.Carrier
+								pkgItem.Subpackages[i].Shipments.ShipmentDetail.TrackingNumber = actionData.TrackingNumber
+								pkgItem.Subpackages[i].Shipments.ShipmentDetail.UpdatedAt = &shipmentTime
+							}
+
+							sids = append(sids, eventSubPkg.SId)
+							state.UpdateSubPackage(ctx, pkgItem.Subpackages[i], enterShipmentDetailAction)
+						}
+					}
+
+					if !findSubPkg {
+						app.Globals.Logger.FromContext(ctx).Warn("Action SId not found or subpackage status not equal with current state",
+							"fn", "Process",
+							"state", state.Name(),
+							"oid", pkgItem.OrderId,
+							"pid", pkgItem.PId,
+							"sid", eventSubPkg.SId,
+							"event", event)
+					}
+				}
+
+				if isPkgUpdated {
+					_, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
+					if err != nil {
+						app.Globals.Logger.FromContext(ctx).Error("PkgItemRepository.Update failed",
+							"fn", "Process",
+							"state", state.Name(),
+							"oid", pkgItem.OrderId,
+							"pid", pkgItem.PId,
+							"sids", sids,
+							"error", err)
+						future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+							SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).Send()
+						return
+					}
+
+					response := events.ActionResponse{
+						OrderId: pkgItem.OrderId,
+						SIds:    sids,
+					}
+
+					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+						SetData(response).Send()
+				} else {
+					app.Globals.Logger.FromContext(ctx).Info("Action could not applied to Pkg",
+						"fn", "Process",
+						"state", state.Name(),
+						"oid", pkgItem.OrderId,
+						"pid", pkgItem.PId,
+						"event", event)
+					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+						SetError(future.BadRequest, "Action Data Invalid", errors.New("Action Data Invalid")).Send()
+				}
+
+				return
+			}
+
 			if event.Action().ActionType() == actions.Scheduler &&
 				(event.Action().ActionEnum() == scheduler_action.Notification ||
 					event.Action().ActionEnum() == scheduler_action.Deliver) {
@@ -295,12 +416,17 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 
 				var sids = make([]uint64, 0, 32)
 				var isSendSMSEnabled = false
+				var findSubPkg = false
+				var isPkgUpdated = false
 				for _, eventSubPkg := range actionData.SubPackages {
+					findSubPkg = false
 					for i := 0; i < len(pkgItem.Subpackages); i++ {
 						if eventSubPkg.SId == pkgItem.Subpackages[i].SId && pkgItem.Subpackages[i].Status == state.Name() {
+							findSubPkg = true
 							if pkgItem.Subpackages[i].Tracking.State.Schedulers != nil {
 								for _, schedulerData := range pkgItem.Subpackages[i].Tracking.State.Schedulers {
 									if schedulerData.Type == string(states.SchedulerSubpackageStateNotify) && schedulerData.Enabled {
+										isPkgUpdated = true
 										schedulerData.Enabled = false
 										sids = append(sids, pkgItem.Subpackages[i].SId)
 										var buyerNotify notify_service.SMSRequest
@@ -405,30 +531,51 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 							}
 						}
 					}
-				}
 
-				if event.Action().ActionEnum() == scheduler_action.Notification {
-					_, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
-					if err != nil {
-						app.Globals.Logger.FromContext(ctx).Error("PkgItemRepository.Update failed",
+					if !findSubPkg {
+						app.Globals.Logger.FromContext(ctx).Warn("Action SId not found or subpackage status not equal with current state",
 							"fn", "Process",
 							"state", state.Name(),
 							"oid", pkgItem.OrderId,
 							"pid", pkgItem.PId,
-							"sids", sids,
-							"error", err)
+							"sid", eventSubPkg.SId,
+							"event", event)
+					}
+				}
+
+				if event.Action().ActionEnum() == scheduler_action.Notification {
+					if isPkgUpdated {
+						_, err := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
+						if err != nil {
+							app.Globals.Logger.FromContext(ctx).Error("PkgItemRepository.Update failed",
+								"fn", "Process",
+								"state", state.Name(),
+								"oid", pkgItem.OrderId,
+								"pid", pkgItem.PId,
+								"sids", sids,
+								"error", err)
+							future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+								SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).Send()
+							return
+						}
+
+						response := events.ActionResponse{
+							OrderId: pkgItem.OrderId,
+							SIds:    sids,
+						}
+
 						future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-							SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).Send()
-						return
+							SetData(response).Send()
+					} else {
+						app.Globals.Logger.FromContext(ctx).Info("Action could not applied to Pkg",
+							"fn", "Process",
+							"state", state.Name(),
+							"oid", pkgItem.OrderId,
+							"pid", pkgItem.PId,
+							"event", event)
+						future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+							SetError(future.BadRequest, "Action Data Invalid", errors.New("Action Data Invalid")).Send()
 					}
-
-					response := events.ActionResponse{
-						OrderId: pkgItem.OrderId,
-						SIds:    sids,
-					}
-
-					future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-						SetData(response).Send()
 
 					return
 				}
@@ -438,7 +585,6 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 			var requestAction *entities.Action
 			var newSubPkg *entities.Subpackage
 			var fullItems []*entities.Item
-			var fullSubPackages []*entities.Subpackage
 			var nextActionState states.IState
 			var actionState actions.IAction
 
@@ -466,8 +612,10 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 		loop:
 			// iterate subpackages
 			for _, eventSubPkg := range actionData.SubPackages {
+				findSubPkg := false
 				for i := 0; i < len(pkgItem.Subpackages); i++ {
 					if eventSubPkg.SId == pkgItem.Subpackages[i].SId && pkgItem.Subpackages[i].Status == state.Name() {
+						findSubPkg = true
 						newSubPkg = nil
 						fullItems = nil
 						var findItem = false
@@ -554,16 +702,12 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 
 										// calculate subpackages diff
 										if len(pkgItem.Subpackages[i].Items) == 0 {
-											if fullSubPackages == nil {
-												fullSubPackages = make([]*entities.Subpackage, 0, len(pkgItem.Subpackages))
-											}
-
 											if newSubPackages == nil {
 												newSubPackages = make([]*entities.Subpackage, 0, len(actionData.SubPackages))
 											}
 
 											pkgItem.Subpackages[i].Items = fullItems
-											fullSubPackages = append(fullSubPackages, pkgItem.Subpackages[i])
+											newSubPackages = append(newSubPackages, pkgItem.Subpackages[i])
 											continue loop
 										}
 									}
@@ -598,12 +742,19 @@ func (state DeliveryPendingState) Process(ctx context.Context, iFrame frame.IFra
 						}
 					}
 				}
+
+				if !findSubPkg {
+					app.Globals.Logger.FromContext(ctx).Warn("Action SId not found or subpackage status not equal with current state",
+						"fn", "Process",
+						"state", state.Name(),
+						"oid", pkgItem.OrderId,
+						"pid", pkgItem.PId,
+						"sid", eventSubPkg.SId,
+						"event", event)
+				}
 			}
 
 			if newSubPackages != nil {
-				if fullSubPackages != nil {
-					newSubPackages = append(newSubPackages, fullSubPackages...)
-				}
 				var sids = make([]uint64, 0, 32)
 				for i := 0; i < len(newSubPackages); i++ {
 					if newSubPackages[i].SId == 0 {

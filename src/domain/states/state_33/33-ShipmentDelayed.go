@@ -390,7 +390,6 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 			var requestAction *entities.Action
 			var newSubPkg *entities.Subpackage
 			var fullItems []*entities.Item
-			var fullSubPackages []*entities.Subpackage
 			var nextActionState states.IState
 			var actionState actions.IAction
 
@@ -418,8 +417,10 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 		loop:
 			// iterate subpackages
 			for _, eventSubPkg := range actionData.SubPackages {
+				findSubPkg := false
 				for i := 0; i < len(pkgItem.Subpackages); i++ {
 					if eventSubPkg.SId == pkgItem.Subpackages[i].SId && pkgItem.Subpackages[i].Status == state.Name() {
+						findSubPkg = true
 						newSubPkg = nil
 						fullItems = nil
 						var findItem = false
@@ -506,16 +507,12 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 
 										// calculate subpackages diff
 										if len(pkgItem.Subpackages[i].Items) == 0 {
-											if fullSubPackages == nil {
-												fullSubPackages = make([]*entities.Subpackage, 0, len(pkgItem.Subpackages))
-											}
-
 											if newSubPackages == nil {
 												newSubPackages = make([]*entities.Subpackage, 0, len(actionData.SubPackages))
 											}
 
 											pkgItem.Subpackages[i].Items = fullItems
-											fullSubPackages = append(fullSubPackages, pkgItem.Subpackages[i])
+											newSubPackages = append(newSubPackages, pkgItem.Subpackages[i])
 											continue loop
 										}
 									}
@@ -550,12 +547,19 @@ func (state shipmentDelayedState) Process(ctx context.Context, iFrame frame.IFra
 						}
 					}
 				}
+
+				if !findSubPkg {
+					app.Globals.Logger.FromContext(ctx).Warn("Action SId not found or subpackage status not equal with current state",
+						"fn", "Process",
+						"state", state.Name(),
+						"oid", pkgItem.OrderId,
+						"pid", pkgItem.PId,
+						"sid", eventSubPkg.SId,
+						"event", event)
+				}
 			}
 
 			if newSubPackages != nil {
-				if fullSubPackages != nil {
-					newSubPackages = append(newSubPackages, fullSubPackages...)
-				}
 				var sids = make([]uint64, 0, 32)
 				for i := 0; i < len(newSubPackages); i++ {
 					if newSubPackages[i].SId == 0 {
