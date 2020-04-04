@@ -698,6 +698,86 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 	return response, nil
 }
 
+func (server *Server) buyerAllOrderReportsHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
+
+	returnFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"$or": bson.A{
+				bson.M{server.queryPathStates[ReturnRequestPendingFilter].queryPath: server.queryPathStates[ReturnRequestPendingFilter].state.StateName()},
+				bson.M{server.queryPathStates[ReturnRequestRejectedFilter].queryPath: server.queryPathStates[ReturnRequestRejectedFilter].state.StateName()},
+				bson.M{server.queryPathStates[ReturnShipmentPendingFilter].queryPath: server.queryPathStates[ReturnShipmentPendingFilter].state.StateName()},
+				bson.M{server.queryPathStates[ReturnShippedFilter].queryPath: server.queryPathStates[ReturnShippedFilter].state.StateName()},
+				bson.M{server.queryPathStates[ReturnDeliveredFilter].queryPath: server.queryPathStates[ReturnDeliveredFilter].state.StateName()},
+				bson.M{server.queryPathStates[ReturnDeliveryDelayedFilter].queryPath: server.queryPathStates[ReturnDeliveryDelayedFilter].state.StateName()},
+				bson.M{server.queryPathStates[ReturnDeliveryPendingFilter].queryPath: server.queryPathStates[ReturnDeliveryPendingFilter].state.StateName()},
+				bson.M{server.queryPathStates[ReturnDeliveryFailedFilter].queryPath: server.queryPathStates[ReturnDeliveryFailedFilter].state.StateName()}}}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	orderFilter := func() interface{} {
+		return []bson.M{
+			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"$or": bson.A{
+				bson.D{{server.queryPathStates[PaymentFailedFilter].queryPath, server.queryPathStates[PaymentFailedFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[ApprovalPendingFilter].queryPath, server.queryPathStates[ApprovalPendingFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[ShipmentPendingFilter].queryPath, server.queryPathStates[ShipmentPendingFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[ShipmentDelayedFilter].queryPath, server.queryPathStates[ShipmentDelayedFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[ShippedFilter].queryPath, server.queryPathStates[ShippedFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[DeliveryPendingFilter].queryPath, server.queryPathStates[DeliveryPendingFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[DeliveryDelayedFilter].queryPath, server.queryPathStates[DeliveryDelayedFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[DeliveredFilter].queryPath, server.queryPathStates[DeliveredFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[DeliveryFailedFilter].queryPath, server.queryPathStates[DeliveryFailedFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[PayToBuyerFilter].queryPath, server.queryPathStates[PayToBuyerFilter].state.StateName()}},
+				bson.D{{server.queryPathStates[PayToSellerFilter].queryPath, server.queryPathStates[PayToSellerFilter].state.StateName()}}}}},
+			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
+			{"$project": bson.M{"_id": 0, "count": 1}},
+		}
+	}
+
+	returnOrdersCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnFilter)
+	if err != nil {
+		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnFilter failed", "fn", "buyerAllOrderReportsHandler", "uid", userId, "error", err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	OrdersCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, orderFilter)
+	if err != nil {
+		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnFilter failed", "fn", "buyerAllOrderReportsHandler", "uid", userId, "error", err)
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	buyerAllOrderReports := &pb.BuyerAllOrderReports{
+		BuyerId:      userId,
+		Orders:       int32(OrdersCount),
+		ReturnOrders: int32(returnOrdersCount),
+	}
+
+	serializedData, e := proto.Marshal(buyerAllOrderReports)
+	if e != nil {
+		app.Globals.Logger.FromContext(ctx).Error("marshal buyerAllOrderReports failed", "fn", "buyerAllOrderReportsHandler", "uid", userId, "error", e)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "BuyerAllOrderReports",
+		Meta:   nil,
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(buyerAllOrderReports),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
 func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
 
 	queryPathReturnRequestPendingState := server.queryPathStates[ReturnRequestPendingFilter]

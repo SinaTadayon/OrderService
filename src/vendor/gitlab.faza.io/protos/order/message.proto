@@ -505,6 +505,12 @@ message BuyerOrderDetailList {
     repeated OrderDetail orderDetails = 2;
 }
 
+message BuyerAllOrderReports {
+    uint64 buyerId = 1;
+    int32  orders = 2;
+    int32  returnOrders = 3;
+}
+
 message BuyerReturnOrderReports {
     uint64 buyerId = 1;
     int32 returnRequestPending = 3;

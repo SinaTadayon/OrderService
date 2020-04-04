@@ -147,8 +147,9 @@ const (
 	SellerApprovalPendingOrderReports RequestName = "SellerApprovalPendingOrderReports"
 
 	//BuyerAllOrders			   RequestName = "BuyerAllOrders"
-	BuyerAllReturnOrders       RequestName = "BuyerAllReturnOrders"
+	//BuyerAllReturnOrders       RequestName = "BuyerAllReturnOrders"
 	BuyerOrderDetailList       RequestName = "BuyerOrderDetailList"
+	BuyerAllOrderReports       RequestName = "BuyerAllOrderReports"
 	BuyerReturnOrderReports    RequestName = "BuyerReturnOrderReports"
 	BuyerReturnOrderDetailList RequestName = "BuyerReturnOrderDetailList"
 
@@ -458,7 +459,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		PayToSellerFilter,
 	}
 
-	reqFilters[BuyerReturnOrderReports] = []FilterValue{}
+	//reqFilters[BuyerReturnOrderReports] = []FilterValue{}
 
 	reqFilters[BuyerReturnOrderDetailList] = []FilterValue{
 		ReturnRequestPendingFilter,
@@ -469,18 +470,18 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		AllOrdersFilter,
 	}
 
-	reqFilters[BuyerAllReturnOrders] = []FilterValue{
-		ReturnRequestPendingFilter,
-		ReturnRequestRejectedFilter,
-		ReturnCanceledFilter,
-		ReturnShipmentPendingFilter,
-		ReturnShippedFilter,
-		ReturnDeliveryPendingFilter,
-		ReturnDeliveryDelayedFilter,
-		ReturnDeliveredFilter,
-		ReturnDeliveryFailedFilter,
-		ReturnRejectedFilter,
-	}
+	//reqFilters[BuyerAllReturnOrders] = []FilterValue{
+	//	ReturnRequestPendingFilter,
+	//	ReturnRequestRejectedFilter,
+	//	ReturnCanceledFilter,
+	//	ReturnShipmentPendingFilter,
+	//	ReturnShippedFilter,
+	//	ReturnDeliveryPendingFilter,
+	//	ReturnDeliveryDelayedFilter,
+	//	ReturnDeliveredFilter,
+	//	ReturnDeliveryFailedFilter,
+	//	ReturnRejectedFilter,
+	//}
 	rp := createReasonsMap()
 	return Server{
 		flowManager: flowManager, address: address, port: port,
@@ -695,6 +696,7 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 		return nil, status.Error(codes.Code(future.BadRequest), "RN UTP Invalid")
 	} else if userType == BuyerUser &&
 		reqName != BuyerOrderDetailList &&
+		reqName != BuyerAllOrderReports &&
 		reqName != BuyerReturnOrderReports &&
 		reqName != BuyerReturnOrderDetailList {
 		app.Globals.Logger.FromContext(ctx).Error("RequestName with userType mismatch", "fn", "requestDataHandler", "rn", reqName, "utp", userType, "request", req)
@@ -717,7 +719,7 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 	//	return nil, status.Error(codes.Code(future.BadRequest), "Mismatch OrderId with Request name")
 	//}
 
-	if userType == BuyerUser && reqName != BuyerReturnOrderReports {
+	if userType == BuyerUser && reqName != BuyerAllOrderReports && reqName != BuyerReturnOrderReports {
 		if reqName == BuyerOrderDetailList {
 			if filterValue != "" {
 				var findFlag = false
@@ -809,6 +811,8 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 
 	case BuyerOrderDetailList:
 		return server.buyerOrderDetailListHandler(ctx, req.Meta.OID, req.Meta.UID, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+	case BuyerAllOrderReports:
+		return server.buyerAllOrderReportsHandler(ctx, req.Meta.UID)
 	case BuyerReturnOrderReports:
 		return server.buyerReturnOrderReportsHandler(ctx, req.Meta.UID)
 	case BuyerReturnOrderDetailList:
