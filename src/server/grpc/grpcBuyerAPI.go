@@ -28,7 +28,7 @@ func (server *Server) buyerGeneratePipelineFilter(ctx context.Context, filter Fi
 
 	newFilter := make([]interface{}, 2)
 
-	if filter == AllReturnOrdersFilter || filter == AllReportFilter {
+	if filter == AllOrdersFilter || filter == AllReportFilter {
 		newFilter[0] = "$or"
 		filterList := make([]interface{}, 0, 10)
 		filterList = append(filterList, map[string]string{server.queryPathStates[ReturnRequestPendingFilter].queryPath: server.queryPathStates[ReturnRequestPendingFilter].state.StateName()})
@@ -1149,7 +1149,7 @@ func (server *Server) buyerAllReturnOrderItemsHandler(ctx context.Context, userI
 	}
 
 	var returnFilter bson.M
-	genFilter := server.buyerGeneratePipelineFilter(ctx, AllReturnOrdersFilter)
+	genFilter := server.buyerGeneratePipelineFilter(ctx, AllOrdersFilter)
 	returnFilter = make(bson.M, 3)
 	returnFilter["buyerInfo.buyerId"] = userId
 	returnFilter["deletedAt"] = nil
@@ -1741,7 +1741,7 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 		return nil, status.Error(codes.Code(future.BadRequest), "Page/PerPage invalid")
 	}
 
-	if filter == AllReturnOrdersFilter {
+	if filter == AllOrdersFilter {
 		return server.buyerAllReturnOrderItemsHandler(ctx, userId, page, perPage, sortName, direction)
 	}
 

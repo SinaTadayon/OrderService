@@ -94,7 +94,6 @@ const (
 	PayToSellerFilter              FilterValue = "PayToSeller"
 
 	AllOrdersFilter             FilterValue = "AllOrders"
-	AllReturnOrdersFilter       FilterValue = "AllReturnOrders"
 	AllCanceledFilter           FilterValue = "AllCanceled"
 	DashboardReportFilter       FilterValue = "DashboardReport"
 	ShipmentReportFilter        FilterValue = "ShipmentReport"
@@ -513,7 +512,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		ReturnShippedFilter,
 		ReturnDeliveredFilter,
 		ReturnDeliveryFailedFilter,
-		AllReturnOrdersFilter,
+		AllOrdersFilter,
 	}
 
 	//reqFilters[BuyerAllReturnOrders] = []FilterValue{

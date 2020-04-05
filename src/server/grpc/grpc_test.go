@@ -2515,7 +2515,7 @@ func TestBuyerReturnAllOrderDetailList(t *testing.T) {
 				{
 					Type:  string(OrderStateFilterType),
 					Opt:   "eq",
-					Value: string(AllReturnOrdersFilter),
+					Value: string(AllOrdersFilter),
 				},
 			},
 		},
