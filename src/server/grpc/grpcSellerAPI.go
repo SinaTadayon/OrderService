@@ -1916,7 +1916,7 @@ func (server *Server) sellerOrderCancelReportsHandler(ctx context.Context, userI
 	return response, nil
 }
 
-func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
+func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
 
 	queryPathApprovalPendingFilterState := server.queryPathStates[ApprovalPendingFilter]
 	approvalPendingFilter := func() interface{} {
@@ -2119,7 +2119,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	approvalPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, approvalPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for cancelByBuyerFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2127,7 +2127,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	shipmentPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shipmentPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for shipmentPendingFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2135,7 +2135,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	shipmentDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shipmentDelayedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for shipmentDelayedFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2143,7 +2143,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	shippedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shippedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for shippedFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2151,7 +2151,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	returnRequestPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnRequestPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnRequestPendingFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2159,7 +2159,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	returnShipmentPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnShipmentPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnShipmentPendingFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2167,7 +2167,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	returnShippedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnShippedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnShippedFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2175,7 +2175,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	returnDeliveredCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveredFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnDeliveredFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2183,7 +2183,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	returnDeliveryFailedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveryFailedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnDeliveryFailedFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2191,7 +2191,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	returnRequestRejectedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnRequestRejectedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnRequestRejectedFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2199,7 +2199,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	returnDeliveryPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveryPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnDeliveryPendingFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2207,7 +2207,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	returnDeliveryDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveryDelayedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnDeliveryDelayedFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2215,7 +2215,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	deliveryPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveryPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for deliveryPendingFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2223,7 +2223,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	deliveryDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveryDelayedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for deliveryDelayedFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2231,7 +2231,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	deliveredCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveredFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for deliveredFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2239,7 +2239,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	deliveryFailedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveryFailedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for deliveryFailedFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2247,7 +2247,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	canceledByBuyerCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, cancelByBuyerFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for cancelByBuyerFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2255,7 +2255,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	canceledBySellerCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, cancelBySellerFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for cancelBySellerFilter failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
@@ -2293,7 +2293,7 @@ func (server *Server) sellerAllOrderHandler(ctx context.Context, userId uint64) 
 	serializedData, e := proto.Marshal(sellerAllOrderReports)
 	if e != nil {
 		app.Globals.Logger.FromContext(ctx).Error("marshal sellerAllOrderReports failed",
-			"fn", "sellerAllOrderHandler",
+			"fn", "sellerAllOrderReportsHandler",
 			"uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 

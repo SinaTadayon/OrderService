@@ -2515,7 +2515,7 @@ func TestBuyerReturnAllOrderDetailList(t *testing.T) {
 				{
 					Type:  string(OrderStateFilterType),
 					Opt:   "eq",
-					Value: string(AllOrdersFilter),
+					Value: string(AllReturnOrdersFilter),
 				},
 			},
 		},
@@ -2526,12 +2526,12 @@ func TestBuyerReturnAllOrderDetailList(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	var buyerReturnOrderDetailList pb.BuyerReturnOrderDetailList
+	var buyerReturnOrderDetailList pb.BuyerReturnOrderItemDetailList
 	err = ptypes.UnmarshalAny(response.Data, &buyerReturnOrderDetailList)
 	require.Nil(t, err)
 
 	require.NotNil(t, buyerReturnOrderDetailList)
-	require.Equal(t, 1, len(buyerReturnOrderDetailList.ReturnOrderDetail))
+	require.Equal(t, 4, len(buyerReturnOrderDetailList.ReturnOrderItemDetailList))
 	require.Equal(t, uint64(1000002), buyerReturnOrderDetailList.BuyerId)
 }
 
