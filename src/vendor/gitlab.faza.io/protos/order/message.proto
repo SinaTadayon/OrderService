@@ -446,7 +446,7 @@ message BuyerOrderDetailList {
             string long = 11;
             string zipCode = 12;
         }
-        BuyerAddress address = 1;
+        uint64 orderId = 1;
         int32 packageCount = 2;
         uint64 totalAmount = 3;
         uint64 payableAmount = 4;
@@ -454,6 +454,7 @@ message BuyerOrderDetailList {
         uint64 shipmentAmount = 6;
         bool isPaymentSuccess = 7;
         string RequestAt = 8;
+        BuyerAddress address = 9;
 
         message Package {
             uint64 PID = 1;
@@ -500,7 +501,7 @@ message BuyerOrderDetailList {
             Shipment shipmentInfo = 4;
         }
 
-        repeated Package Packages = 9;
+        repeated Package Packages = 10;
     }
     repeated OrderDetail orderDetails = 2;
 }

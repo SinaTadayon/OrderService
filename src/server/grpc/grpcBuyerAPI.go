@@ -537,7 +537,19 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 			}
 		}
 
+		if len(packageDetailList) <= 0 {
+			continue
+		}
+
 		orderDetail := &pb.BuyerOrderDetailList_OrderDetail{
+			OrderId:          orderList[i].OrderId,
+			PackageCount:     int32(len(orderList[i].Packages)),
+			TotalAmount:      0,
+			PayableAmount:    0,
+			Discounts:        0,
+			ShipmentAmount:   0,
+			IsPaymentSuccess: false,
+			RequestAt:        orderList[i].CreatedAt.Format(ISO8601),
 			Address: &pb.BuyerOrderDetailList_OrderDetail_BuyerAddress{
 				FirstName:     orderList[i].BuyerInfo.ShippingAddress.FirstName,
 				LastName:      orderList[i].BuyerInfo.ShippingAddress.LastName,
@@ -552,14 +564,7 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 				Long:          "",
 				ZipCode:       orderList[i].BuyerInfo.ShippingAddress.ZipCode,
 			},
-			PackageCount:     int32(len(orderList[i].Packages)),
-			TotalAmount:      0,
-			PayableAmount:    0,
-			Discounts:        0,
-			ShipmentAmount:   0,
-			IsPaymentSuccess: false,
-			RequestAt:        orderList[i].CreatedAt.Format(ISO8601),
-			Packages:         packageDetailList,
+			Packages: packageDetailList,
 		}
 
 		grandTotal, err := decimal.NewFromString(orderList[i].Invoice.GrandTotal.Amount)
@@ -826,6 +831,14 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 	}
 
 	orderDetail := &pb.BuyerOrderDetailList_OrderDetail{
+		OrderId:          order.OrderId,
+		PackageCount:     int32(len(order.Packages)),
+		TotalAmount:      0,
+		PayableAmount:    0,
+		Discounts:        0,
+		ShipmentAmount:   0,
+		IsPaymentSuccess: false,
+		RequestAt:        order.CreatedAt.Format(ISO8601),
 		Address: &pb.BuyerOrderDetailList_OrderDetail_BuyerAddress{
 			FirstName:     order.BuyerInfo.ShippingAddress.FirstName,
 			LastName:      order.BuyerInfo.ShippingAddress.LastName,
@@ -840,14 +853,7 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 			Long:          "",
 			ZipCode:       order.BuyerInfo.ShippingAddress.ZipCode,
 		},
-		PackageCount:     int32(len(order.Packages)),
-		TotalAmount:      0,
-		PayableAmount:    0,
-		Discounts:        0,
-		ShipmentAmount:   0,
-		IsPaymentSuccess: false,
-		RequestAt:        order.CreatedAt.Format(ISO8601),
-		Packages:         packageDetailList,
+		Packages: packageDetailList,
 	}
 
 	grandTotal, e := decimal.NewFromString(order.Invoice.GrandTotal.Amount)
@@ -953,24 +959,23 @@ func (server *Server) buyerAllOrderReportsHandler(ctx context.Context, userId ui
 
 	//getFilter = server.buyerGeneratePipelineFilter(ctx, DefaultBuyerOrderDetailListFilter)
 	orderFilter := func() interface{} {
-		return []bson.M{
-			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil}},
-			{"$unwind": "$packages"},
-			{"$unwind": "$packages.subpackages"},
-			//{"$match": bson.M{getFilter[0].(string): getFilter[1]}},
-			{"$match": bson.M{"$or": bson.A{
-				bson.D{{server.queryPathStates[PaymentFailedFilter].queryPath, server.queryPathStates[PaymentFailedFilter].state.StateName()}},
-				bson.D{{server.queryPathStates[ApprovalPendingFilter].queryPath, server.queryPathStates[ApprovalPendingFilter].state.StateName()}},
-				bson.D{{server.queryPathStates[ShipmentPendingFilter].queryPath, server.queryPathStates[ShipmentPendingFilter].state.StateName()}},
-				bson.D{{server.queryPathStates[ShipmentDelayedFilter].queryPath, server.queryPathStates[ShipmentDelayedFilter].state.StateName()}},
-				bson.D{{server.queryPathStates[ShippedFilter].queryPath, server.queryPathStates[ShippedFilter].state.StateName()}},
-				bson.D{{server.queryPathStates[DeliveryPendingFilter].queryPath, server.queryPathStates[DeliveryPendingFilter].state.StateName()}},
-				bson.D{{server.queryPathStates[DeliveryDelayedFilter].queryPath, server.queryPathStates[DeliveryDelayedFilter].state.StateName()}},
-				bson.D{{server.queryPathStates[DeliveredFilter].queryPath, server.queryPathStates[DeliveredFilter].state.StateName()}},
-				bson.D{{server.queryPathStates[DeliveryFailedFilter].queryPath, server.queryPathStates[DeliveryFailedFilter].state.StateName()}},
-				bson.D{{server.queryPathStates[PayToBuyerFilter].queryPath, server.queryPathStates[PayToBuyerFilter].state.StateName()}}}}},
-			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
-			{"$project": bson.M{"_id": 0, "count": 1}},
+		return bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "$or": bson.A{
+			bson.D{{server.queryPathStates[NewOrderFilter].queryPath, server.queryPathStates[NewOrderFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[PaymentPendingFilter].queryPath, server.queryPathStates[PaymentPendingFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[PaymentSuccessFilter].queryPath, server.queryPathStates[PaymentSuccessFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[PaymentFailedFilter].queryPath, server.queryPathStates[PaymentFailedFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[OrderVerificationPendingFilter].queryPath, server.queryPathStates[OrderVerificationPendingFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[OrderVerificationSuccessFilter].queryPath, server.queryPathStates[OrderVerificationSuccessFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[OrderVerificationFailedFilter].queryPath, server.queryPathStates[OrderVerificationFailedFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[ApprovalPendingFilter].queryPath, server.queryPathStates[ApprovalPendingFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[ShipmentPendingFilter].queryPath, server.queryPathStates[ShipmentPendingFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[ShipmentDelayedFilter].queryPath, server.queryPathStates[ShipmentDelayedFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[ShippedFilter].queryPath, server.queryPathStates[ShippedFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[DeliveryPendingFilter].queryPath, server.queryPathStates[DeliveryPendingFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[DeliveryDelayedFilter].queryPath, server.queryPathStates[DeliveryDelayedFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[DeliveredFilter].queryPath, server.queryPathStates[DeliveredFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[DeliveryFailedFilter].queryPath, server.queryPathStates[DeliveryFailedFilter].state.StateName()}},
+			bson.D{{server.queryPathStates[PayToBuyerFilter].queryPath, server.queryPathStates[PayToBuyerFilter].state.StateName()}}},
 		}
 	}
 
@@ -980,9 +985,9 @@ func (server *Server) buyerAllOrderReportsHandler(ctx context.Context, userId ui
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	OrdersCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, orderFilter)
+	OrdersCount, err := app.Globals.OrderRepository.CountWithFilter(ctx, orderFilter)
 	if err != nil {
-		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnFilter failed", "fn", "buyerAllOrderReportsHandler", "uid", userId, "error", err)
+		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for orderFilter failed", "fn", "buyerAllOrderReportsHandler", "uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
