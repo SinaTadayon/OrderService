@@ -42,23 +42,23 @@ func (server *Server) buyerGeneratePipelineFilter(ctx context.Context, filter Fi
 		newFilter[1] = bson.A(filterList)
 	} else if filter == DefaultBuyerOrderDetailListFilter {
 		newFilter[0] = "$or"
-		filterList := make([]interface{}, 0, 10)
-		filterList = append(filterList, map[string]string{server.queryPathStates[NewOrderFilter].queryPath: server.queryPathStates[NewOrderFilter].state.StateName()})
-		filterList = append(filterList, map[string]string{server.queryPathStates[PaymentPendingFilter].queryPath: server.queryPathStates[PaymentPendingFilter].state.StateName()})
-		filterList = append(filterList, map[string]string{server.queryPathStates[PaymentSuccessFilter].queryPath: server.queryPathStates[PaymentSuccessFilter].state.StateName()})
-		filterList = append(filterList, map[string]string{server.queryPathStates[PaymentFailedFilter].queryPath: server.queryPathStates[PaymentFailedFilter].state.StateName()})
-		filterList = append(filterList, map[string]string{server.queryPathStates[OrderVerificationPendingFilter].queryPath: server.queryPathStates[OrderVerificationPendingFilter].state.StateName()})
-		filterList = append(filterList, map[string]string{server.queryPathStates[OrderVerificationSuccessFilter].queryPath: server.queryPathStates[OrderVerificationSuccessFilter].state.StateName()})
-		filterList = append(filterList, map[string]string{server.queryPathStates[OrderVerificationFailedFilter].queryPath: server.queryPathStates[OrderVerificationFailedFilter].state.StateName()})
-		filterList = append(filterList, map[string]string{server.queryPathStates[ApprovalPendingFilter].queryPath: server.queryPathStates[ApprovalPendingFilter].state.StateName()})
-		filterList = append(filterList, map[string]string{server.queryPathStates[ShipmentPendingFilter].queryPath: server.queryPathStates[ShipmentPendingFilter].state.StateName()})
-		filterList = append(filterList, map[string]string{server.queryPathStates[ShipmentDelayedFilter].queryPath: server.queryPathStates[ShipmentDelayedFilter].state.StateName()})
-		filterList = append(filterList, map[string]string{server.queryPathStates[ShippedFilter].queryPath: server.queryPathStates[ShippedFilter].state.StateName()})
-		filterList = append(filterList, map[string]string{server.queryPathStates[DeliveryPendingFilter].queryPath: server.queryPathStates[DeliveryPendingFilter].state.StateName()})
-		filterList = append(filterList, map[string]string{server.queryPathStates[DeliveryDelayedFilter].queryPath: server.queryPathStates[DeliveryDelayedFilter].state.StateName()})
-		filterList = append(filterList, map[string]string{server.queryPathStates[DeliveredFilter].queryPath: server.queryPathStates[DeliveredFilter].state.StateName()})
-		filterList = append(filterList, map[string]string{server.queryPathStates[DeliveryFailedFilter].queryPath: server.queryPathStates[DeliveryFailedFilter].state.StateName()})
-		filterList = append(filterList, map[string]string{server.queryPathStates[PayToBuyerFilter].queryPath: server.queryPathStates[PayToBuyerFilter].state.StateName()})
+		filterList := make([]interface{}, 0, 16)
+		filterList = append(filterList, bson.D{{server.queryPathStates[NewOrderFilter].queryPath, server.queryPathStates[NewOrderFilter].state.StateName()}})
+		filterList = append(filterList, bson.D{{server.queryPathStates[PaymentPendingFilter].queryPath, server.queryPathStates[PaymentPendingFilter].state.StateName()}})
+		//filterList = append(filterList, bson.D{{server.queryPathStates[PaymentSuccessFilter].queryPath, server.queryPathStates[PaymentSuccessFilter].state.StateName()}})
+		filterList = append(filterList, bson.D{{server.queryPathStates[PaymentFailedFilter].queryPath, server.queryPathStates[PaymentFailedFilter].state.StateName()}})
+		filterList = append(filterList, bson.D{{server.queryPathStates[OrderVerificationPendingFilter].queryPath, server.queryPathStates[OrderVerificationPendingFilter].state.StateName()}})
+		//filterList = append(filterList, bson.D{{server.queryPathStates[OrderVerificationSuccessFilter].queryPath, server.queryPathStates[OrderVerificationSuccessFilter].state.StateName()}})
+		filterList = append(filterList, bson.D{{server.queryPathStates[OrderVerificationFailedFilter].queryPath, server.queryPathStates[OrderVerificationFailedFilter].state.StateName()}})
+		filterList = append(filterList, bson.D{{server.queryPathStates[ApprovalPendingFilter].queryPath, server.queryPathStates[ApprovalPendingFilter].state.StateName()}})
+		filterList = append(filterList, bson.D{{server.queryPathStates[ShipmentPendingFilter].queryPath, server.queryPathStates[ShipmentPendingFilter].state.StateName()}})
+		filterList = append(filterList, bson.D{{server.queryPathStates[ShipmentDelayedFilter].queryPath, server.queryPathStates[ShipmentDelayedFilter].state.StateName()}})
+		filterList = append(filterList, bson.D{{server.queryPathStates[ShippedFilter].queryPath, server.queryPathStates[ShippedFilter].state.StateName()}})
+		filterList = append(filterList, bson.D{{server.queryPathStates[DeliveryPendingFilter].queryPath, server.queryPathStates[DeliveryPendingFilter].state.StateName()}})
+		filterList = append(filterList, bson.D{{server.queryPathStates[DeliveryDelayedFilter].queryPath, server.queryPathStates[DeliveryDelayedFilter].state.StateName()}})
+		filterList = append(filterList, bson.D{{server.queryPathStates[DeliveredFilter].queryPath, server.queryPathStates[DeliveredFilter].state.StateName()}})
+		filterList = append(filterList, bson.D{{server.queryPathStates[DeliveryFailedFilter].queryPath, server.queryPathStates[DeliveryFailedFilter].state.StateName()}})
+		filterList = append(filterList, bson.D{{server.queryPathStates[PayToBuyerFilter].queryPath, server.queryPathStates[PayToBuyerFilter].state.StateName()}})
 		newFilter[1] = bson.A(filterList)
 	} else {
 		queryPathState := server.queryPathStates[filter]
@@ -140,12 +140,12 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 		return nil, status.Error(codes.Code(future.BadRequest), "Page/PerPage Invalid")
 	}
 
-	var buyerFilter bson.M
+	var buyerFilter bson.D
 	genFilter := server.buyerGeneratePipelineFilter(ctx, DefaultBuyerOrderDetailListFilter)
-	buyerFilter = make(bson.M, 3)
-	buyerFilter["buyerInfo.buyerId"] = userId
-	buyerFilter["deletedAt"] = nil
-	buyerFilter[genFilter[0].(string)] = genFilter[1]
+	buyerFilter = make(bson.D, 0, 3)
+	buyerFilter = append(buyerFilter, bson.E{Key: "buyerInfo.buyerId", Value: userId})
+	buyerFilter = append(buyerFilter, bson.E{Key: "deletedAt", Value: nil})
+	buyerFilter = append(buyerFilter, bson.E{Key: genFilter[0].(string), Value: genFilter[1]})
 
 	var orderList []*entities.Order
 	var total int64
@@ -160,18 +160,6 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 
 		orderFilter := func() (interface{}, string, int) {
 			return buyerFilter, sortName, sortDirect
-			//return bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
-			//		bson.D{{server.queryPathStates[PaymentFailedFilter].queryPath, server.queryPathStates[PaymentFailedFilter].state.StateName()}},
-			//		bson.D{{server.queryPathStates[ApprovalPendingFilter].queryPath, server.queryPathStates[ApprovalPendingFilter].state.StateName()}},
-			//		bson.D{{server.queryPathStates[ShipmentPendingFilter].queryPath, server.queryPathStates[ShipmentPendingFilter].state.StateName()}},
-			//		bson.D{{server.queryPathStates[ShipmentDelayedFilter].queryPath, server.queryPathStates[ShipmentDelayedFilter].state.StateName()}},
-			//		bson.D{{server.queryPathStates[ShippedFilter].queryPath, server.queryPathStates[ShippedFilter].state.StateName()}},
-			//		bson.D{{server.queryPathStates[DeliveryPendingFilter].queryPath, server.queryPathStates[DeliveryPendingFilter].state.StateName()}},
-			//		bson.D{{server.queryPathStates[DeliveryDelayedFilter].queryPath, server.queryPathStates[DeliveryDelayedFilter].state.StateName()}},
-			//		bson.D{{server.queryPathStates[DeliveredFilter].queryPath, server.queryPathStates[DeliveredFilter].state.StateName()}},
-			//		bson.D{{server.queryPathStates[DeliveryFailedFilter].queryPath, server.queryPathStates[DeliveryFailedFilter].state.StateName()}},
-			//		bson.D{{server.queryPathStates[PayToBuyerFilter].queryPath, server.queryPathStates[PayToBuyerFilter].state.StateName()}}}}},
-
 		}
 		orderList, total, err = app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
 		if err != nil {
@@ -181,17 +169,6 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 	} else {
 		orderFilter := func() interface{} {
 			return buyerFilter
-			//return bson.D{{"buyerInfo.buyerId", userId}, {"deletedAt", nil}, {"$or", bson.A{
-			//	bson.D{{server.queryPathStates[PaymentFailedFilter].queryPath, server.queryPathStates[PaymentFailedFilter].state.StateName()}},
-			//	bson.D{{server.queryPathStates[ApprovalPendingFilter].queryPath, server.queryPathStates[ApprovalPendingFilter].state.StateName()}},
-			//	bson.D{{server.queryPathStates[ShipmentPendingFilter].queryPath, server.queryPathStates[ShipmentPendingFilter].state.StateName()}},
-			//	bson.D{{server.queryPathStates[ShipmentDelayedFilter].queryPath, server.queryPathStates[ShipmentDelayedFilter].state.StateName()}},
-			//	bson.D{{server.queryPathStates[ShippedFilter].queryPath, server.queryPathStates[ShippedFilter].state.StateName()}},
-			//	bson.D{{server.queryPathStates[DeliveryPendingFilter].queryPath, server.queryPathStates[DeliveryPendingFilter].state.StateName()}},
-			//	bson.D{{server.queryPathStates[DeliveryDelayedFilter].queryPath, server.queryPathStates[DeliveryDelayedFilter].state.StateName()}},
-			//	bson.D{{server.queryPathStates[DeliveredFilter].queryPath, server.queryPathStates[DeliveredFilter].state.StateName()}},
-			//	bson.D{{server.queryPathStates[DeliveryFailedFilter].queryPath, server.queryPathStates[DeliveryFailedFilter].state.StateName()}},
-			//	bson.D{{server.queryPathStates[PayToBuyerFilter].queryPath, server.queryPathStates[PayToBuyerFilter].state.StateName()}}}}}
 		}
 		orderList, total, err = app.Globals.OrderRepository.FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
 		if err != nil {
@@ -936,47 +913,19 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 
 func (server *Server) buyerAllOrderReportsHandler(ctx context.Context, userId uint64) (*pb.MessageResponse, error) {
 
-	//getFilter := server.buyerGeneratePipelineFilter(ctx, AllReportFilter)
 	returnFilter := func() interface{} {
 		return []bson.M{
 			{"$match": bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil}},
 			{"$unwind": "$packages"},
 			{"$unwind": "$packages.subpackages"},
-			//{"$match": bson.M{getFilter[0].(string): getFilter[1]}},
-			{"$match": bson.M{"$or": bson.A{
-				bson.M{server.queryPathStates[ReturnRequestPendingFilter].queryPath: server.queryPathStates[ReturnRequestPendingFilter].state.StateName()},
-				bson.M{server.queryPathStates[ReturnRequestRejectedFilter].queryPath: server.queryPathStates[ReturnRequestRejectedFilter].state.StateName()},
-				bson.M{server.queryPathStates[ReturnShipmentPendingFilter].queryPath: server.queryPathStates[ReturnShipmentPendingFilter].state.StateName()},
-				bson.M{server.queryPathStates[ReturnShippedFilter].queryPath: server.queryPathStates[ReturnShippedFilter].state.StateName()},
-				bson.M{server.queryPathStates[ReturnDeliveredFilter].queryPath: server.queryPathStates[ReturnDeliveredFilter].state.StateName()},
-				bson.M{server.queryPathStates[ReturnDeliveryDelayedFilter].queryPath: server.queryPathStates[ReturnDeliveryDelayedFilter].state.StateName()},
-				bson.M{server.queryPathStates[ReturnDeliveryPendingFilter].queryPath: server.queryPathStates[ReturnDeliveryPendingFilter].state.StateName()},
-				bson.M{server.queryPathStates[ReturnDeliveryFailedFilter].queryPath: server.queryPathStates[ReturnDeliveryFailedFilter].state.StateName()}}}},
+			{"$match": bson.M{"$or": server.buyerGeneratePipelineFilter(ctx, AllReportFilter)[1]}},
 			{"$group": bson.M{"_id": nil, "count": bson.M{"$sum": 1}}},
 			{"$project": bson.M{"_id": 0, "count": 1}},
 		}
 	}
 
-	//getFilter = server.buyerGeneratePipelineFilter(ctx, DefaultBuyerOrderDetailListFilter)
 	orderFilter := func() interface{} {
-		return bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "$or": bson.A{
-			bson.D{{server.queryPathStates[NewOrderFilter].queryPath, server.queryPathStates[NewOrderFilter].state.StateName()}},
-			bson.D{{server.queryPathStates[PaymentPendingFilter].queryPath, server.queryPathStates[PaymentPendingFilter].state.StateName()}},
-			bson.D{{server.queryPathStates[PaymentSuccessFilter].queryPath, server.queryPathStates[PaymentSuccessFilter].state.StateName()}},
-			bson.D{{server.queryPathStates[PaymentFailedFilter].queryPath, server.queryPathStates[PaymentFailedFilter].state.StateName()}},
-			bson.D{{server.queryPathStates[OrderVerificationPendingFilter].queryPath, server.queryPathStates[OrderVerificationPendingFilter].state.StateName()}},
-			bson.D{{server.queryPathStates[OrderVerificationSuccessFilter].queryPath, server.queryPathStates[OrderVerificationSuccessFilter].state.StateName()}},
-			bson.D{{server.queryPathStates[OrderVerificationFailedFilter].queryPath, server.queryPathStates[OrderVerificationFailedFilter].state.StateName()}},
-			bson.D{{server.queryPathStates[ApprovalPendingFilter].queryPath, server.queryPathStates[ApprovalPendingFilter].state.StateName()}},
-			bson.D{{server.queryPathStates[ShipmentPendingFilter].queryPath, server.queryPathStates[ShipmentPendingFilter].state.StateName()}},
-			bson.D{{server.queryPathStates[ShipmentDelayedFilter].queryPath, server.queryPathStates[ShipmentDelayedFilter].state.StateName()}},
-			bson.D{{server.queryPathStates[ShippedFilter].queryPath, server.queryPathStates[ShippedFilter].state.StateName()}},
-			bson.D{{server.queryPathStates[DeliveryPendingFilter].queryPath, server.queryPathStates[DeliveryPendingFilter].state.StateName()}},
-			bson.D{{server.queryPathStates[DeliveryDelayedFilter].queryPath, server.queryPathStates[DeliveryDelayedFilter].state.StateName()}},
-			bson.D{{server.queryPathStates[DeliveredFilter].queryPath, server.queryPathStates[DeliveredFilter].state.StateName()}},
-			bson.D{{server.queryPathStates[DeliveryFailedFilter].queryPath, server.queryPathStates[DeliveryFailedFilter].state.StateName()}},
-			bson.D{{server.queryPathStates[PayToBuyerFilter].queryPath, server.queryPathStates[PayToBuyerFilter].state.StateName()}}},
-		}
+		return bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "$or": server.buyerGeneratePipelineFilter(ctx, DefaultBuyerOrderDetailListFilter)[1]}
 	}
 
 	returnOrdersCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnFilter)

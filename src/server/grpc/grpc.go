@@ -236,7 +236,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	buyerAllStatesMapping[states.PaymentFailed.StateName()] = []states.IEnumState{states.PaymentFailed}
 	buyerAllStatesMapping[states.OrderVerificationPending.StateName()] = []states.IEnumState{states.OrderVerificationPending}
 	buyerAllStatesMapping[states.OrderVerificationSuccess.StateName()] = []states.IEnumState{states.OrderVerificationSuccess}
-	//buyerAllStatesMapping[states.OrderVerificationFailed.StateName()] = []states.IEnumState{states.PayToBuyer}
+	buyerAllStatesMapping[states.OrderVerificationFailed.StateName()] = []states.IEnumState{states.PayToBuyer}
 	buyerAllStatesMapping[states.ApprovalPending.StateName()] = []states.IEnumState{states.ApprovalPending}
 	buyerAllStatesMapping[states.ShipmentPending.StateName()] = []states.IEnumState{states.ShipmentPending}
 	buyerAllStatesMapping[states.ShipmentDelayed.StateName()] = []states.IEnumState{states.ShipmentDelayed}
@@ -244,7 +244,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	buyerAllStatesMapping[states.DeliveryPending.StateName()] = []states.IEnumState{states.DeliveryPending}
 	buyerAllStatesMapping[states.DeliveryDelayed.StateName()] = []states.IEnumState{states.DeliveryDelayed}
 	buyerAllStatesMapping[states.Delivered.StateName()] = []states.IEnumState{states.Delivered}
-	buyerAllStatesMapping[states.PayToBuyer.StateName()] = []states.IEnumState{states.ReturnRejected, states.ReturnDelivered, states.OrderVerificationFailed}
+	buyerAllStatesMapping[states.PayToBuyer.StateName()] = []states.IEnumState{states.PayToBuyer}
 
 	buyerReturnStatesMapping := make(map[string][]states.IEnumState, 16)
 	buyerReturnStatesMapping[states.ReturnRequestPending.StateName()] = []states.IEnumState{states.ReturnRequestPending}
@@ -333,10 +333,10 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	queryPathStatesMap := make(map[FilterValue]FilterQueryState, 30)
 	queryPathStatesMap[NewOrderFilter] = FilterQueryState{states.NewOrder, "packages.subpackages.status"}
 	queryPathStatesMap[PaymentPendingFilter] = FilterQueryState{states.PaymentPending, "packages.subpackages.status"}
-	queryPathStatesMap[PaymentSuccessFilter] = FilterQueryState{states.PaymentSuccess, "packages.subpackages.tracking.history.name"}
+	queryPathStatesMap[PaymentSuccessFilter] = FilterQueryState{states.PaymentSuccess, "packages.subpackages.status"}
 	queryPathStatesMap[PaymentFailedFilter] = FilterQueryState{states.PaymentFailed, "packages.subpackages.status"}
-	queryPathStatesMap[OrderVerificationPendingFilter] = FilterQueryState{states.OrderVerificationPending, "packages.subpackages.tracking.history.name"}
-	queryPathStatesMap[OrderVerificationSuccessFilter] = FilterQueryState{states.OrderVerificationSuccess, "packages.subpackages.tracking.history.name"}
+	queryPathStatesMap[OrderVerificationPendingFilter] = FilterQueryState{states.OrderVerificationPending, "packages.subpackages.status"}
+	queryPathStatesMap[OrderVerificationSuccessFilter] = FilterQueryState{states.OrderVerificationSuccess, "packages.subpackages.status"}
 	queryPathStatesMap[OrderVerificationFailedFilter] = FilterQueryState{states.OrderVerificationFailed, "packages.subpackages.tracking.history.name"}
 	queryPathStatesMap[ApprovalPendingFilter] = FilterQueryState{states.ApprovalPending, "packages.subpackages.status"}
 	queryPathStatesMap[CanceledBySellerFilter] = FilterQueryState{states.CanceledBySeller, "packages.subpackages.tracking.history.name"}
@@ -398,27 +398,6 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	}
 
 	reqFilters := make(map[RequestName][]FilterValue, 8)
-	//reqFilters[SellerAllOrders] = []FilterValue{
-	//	ApprovalPendingFilter,
-	//	CanceledBySellerFilter,
-	//	CanceledByBuyerFilter,
-	//	ShipmentPendingFilter,
-	//	ShipmentDelayedFilter,
-	//	ShippedFilter,
-	//	DeliveryPendingFilter,
-	//	DeliveredFilter,
-	//	DeliveryFailedFilter,
-	//	ReturnRequestPendingFilter,
-	//	ReturnRequestRejectedFilter,
-	//	ReturnShipmentPendingFilter,
-	//	ReturnShippedFilter,
-	//	ReturnDeliveryPendingFilter,
-	//	ReturnDeliveryDelayedFilter,
-	//	ReturnDeliveredFilter,
-	//	ReturnDeliveryFailedFilter,
-	//	PayToSellerFilter,
-	//}
-
 	reqFilters[SellerOrderList] = []FilterValue{
 		ApprovalPendingFilter,
 		CanceledBySellerFilter,
