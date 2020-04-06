@@ -192,14 +192,19 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 			order.Invoice.PaymentStatus = "pending"
 		}
 
+		orderItemMap := map[string]int32{}
 		for j := 0; j < len(orderList[i].Packages); j++ {
 			for z := 0; z < len(orderList[i].Packages[j].Subpackages); z++ {
 				for t := 0; t < len(orderList[i].Packages[j].Subpackages[z].Items); t++ {
-					order.BasketSize += orderList[i].Packages[j].Subpackages[z].Items[t].Quantity
+					if _, ok := orderItemMap[orderList[i].Packages[j].Subpackages[z].Items[t].InventoryId]; !ok {
+						orderItemMap[orderList[i].Packages[j].Subpackages[z].Items[t].InventoryId] = 1
+					}
+					//order.BasketSize += orderList[i].Packages[j].Subpackages[z].Items[t].Quantity
 				}
 			}
 		}
 
+		order.BasketSize = int32(len(orderItemMap))
 		operatorOrders = append(operatorOrders, order)
 	}
 
@@ -1109,14 +1114,19 @@ func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint6
 		order.Invoice.PaymentStatus = "pending"
 	}
 
+	orderItemMap := map[string]int32{}
 	for j := 0; j < len(findOrder.Packages); j++ {
 		for z := 0; z < len(findOrder.Packages[j].Subpackages); z++ {
 			for t := 0; t < len(findOrder.Packages[j].Subpackages[z].Items); t++ {
-				order.BasketSize += findOrder.Packages[j].Subpackages[z].Items[t].Quantity
+				if _, ok := orderItemMap[findOrder.Packages[j].Subpackages[z].Items[t].InventoryId]; !ok {
+					orderItemMap[findOrder.Packages[j].Subpackages[z].Items[t].InventoryId] = 1
+				}
+				//order.BasketSize += findOrder.Packages[j].Subpackages[z].Items[t].Quantity
 			}
 		}
 	}
 
+	order.BasketSize = int32(len(orderItemMap))
 	operatorOrders = append(operatorOrders, order)
 
 	operatorOrderList := &pb.OperatorOrderList{
@@ -1310,14 +1320,18 @@ func (server *Server) operatorGetOrdersByMobileHandler(ctx context.Context, buye
 			order.Invoice.PaymentStatus = "pending"
 		}
 
+		orderItemMap := map[string]int32{}
 		for j := 0; j < len(orderList[i].Packages); j++ {
 			for z := 0; z < len(orderList[i].Packages[j].Subpackages); z++ {
 				for t := 0; t < len(orderList[i].Packages[j].Subpackages[z].Items); t++ {
-					order.BasketSize += orderList[i].Packages[j].Subpackages[z].Items[t].Quantity
+					if _, ok := orderItemMap[orderList[i].Packages[j].Subpackages[z].Items[t].InventoryId]; !ok {
+						orderItemMap[orderList[i].Packages[j].Subpackages[z].Items[t].InventoryId] = 1
+					}
+					//order.BasketSize += orderList[i].Packages[j].Subpackages[z].Items[t].Quantity
 				}
 			}
 		}
-
+		order.BasketSize = int32(len(orderItemMap))
 		operatorOrders = append(operatorOrders, order)
 	}
 
