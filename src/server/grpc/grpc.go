@@ -1096,6 +1096,24 @@ func (server Server) ReportOrderItems(req *pb.RequestReportOrderItems, srv pb.Or
 	return nil
 }
 
+func (server Server) VerifyUserSuccessOrder(ctx context.Context, req *pb.VerifyUserOrderRequest) (*pb.VerifyUserOrderResponse, error) {
+	futureData := server.flowManager.VerifyUserSuccessOrder(ctx, req.UserId).Get()
+
+	if futureData.Error() != nil {
+		return nil, status.Error(codes.Code(futureData.Error().Code()), futureData.Error().Message())
+	}
+
+	app.Globals.Logger.FromContext(ctx).Debug("VerifyUserSuccessOrder received",
+		"fn", "VerifyUserSuccessOrder",
+		"uid", req.UserId,
+		"IsSuccessOrder", futureData.Data().(bool))
+
+	return &pb.VerifyUserOrderResponse{
+		UserId:         req.UserId,
+		IsSuccessOrder: futureData.Data().(bool),
+	}, nil
+}
+
 func (server Server) Start() {
 	port := strconv.Itoa(int(server.port))
 	lis, err := net.Listen("tcp", server.address+":"+port)
