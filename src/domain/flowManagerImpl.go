@@ -891,3 +891,32 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 
 	return future.Factory().SetCapacity(1).BuildAndSend()
 }
+
+func (flowManager iFlowManagerImpl) VerifyUserSuccessOrder(ctx context.Context, uid uint64) future.IFuture {
+
+	filter := func() interface{} {
+		return bson.D{{"buyerInfo.buyerId", uid},
+			{"deletedAt", nil},
+			{"orderPayment.paymentResult.result", true}}
+	}
+
+	count, err := app.Globals.OrderRepository.CountWithFilter(ctx, filter)
+	var iFuture future.IFuture
+	if err != nil {
+		app.Globals.Logger.FromContext(ctx).Error("OrderRepository.CountWithFilter failed",
+			"fn", "VerifyUserSuccessOrder",
+			"uid", uid,
+			"error", err)
+		iFuture = future.Factory().SetCapacity(1).
+			SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).BuildAndSend()
+		return iFuture
+	}
+
+	if count > 0 {
+		iFuture = future.Factory().SetCapacity(1).SetData(true).BuildAndSend()
+	} else {
+		iFuture = future.Factory().SetCapacity(1).SetData(false).BuildAndSend()
+	}
+
+	return iFuture
+}

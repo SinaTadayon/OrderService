@@ -10,6 +10,18 @@ service OrderService {
     rpc NewOrder (RequestNewOrder) returns (ResponseNewOrder);
     rpc ReportOrderItems(RequestReportOrderItems) returns(stream ResponseDownloadFile);
     rpc ReasonsList(ReasonsListRequest) returns (ReasonsListResponse);
+
+    // issue Seller-83
+    rpc VerifyUserSuccessOrder(VerifyUserOrderRequest) returns (VerifyUserOrderResponse);
+}
+
+message VerifyUserOrderRequest {
+    uint64 userId = 1;
+}
+
+message VerifyUserOrderResponse {
+    uint64 userId = 1;
+    bool   isSuccessOrder = 2;
 }
 
 message ResponseDownloadFile {
