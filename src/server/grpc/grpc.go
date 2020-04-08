@@ -93,12 +93,15 @@ const (
 	PayToBuyerFilter               FilterValue = "PayToBuyer"
 	PayToSellerFilter              FilterValue = "PayToSeller"
 
-	AllOrdersFilter       FilterValue = "AllOrders"
-	AllCanceledFilter     FilterValue = "AllCanceled"
-	ShipmentReportFilter  FilterValue = "ShipmentReport"
-	ReturnReportFilter    FilterValue = "ReturnReport"
-	DeliveredReportFilter FilterValue = "DeliveredReport"
-	CanceledReportFilter  FilterValue = "CanceledReport"
+	AllOrdersFilter             FilterValue = "AllOrders"
+	AllCanceledFilter           FilterValue = "AllCanceled"
+	DashboardReportFilter       FilterValue = "DashboardReport"
+	ShipmentReportFilter        FilterValue = "ShipmentReport"
+	ReturnReportFilter          FilterValue = "ReturnReport"
+	DeliveredReportFilter       FilterValue = "DeliveredReport"
+	CanceledReportFilter        FilterValue = "CanceledReport"
+	AllReportFilter             FilterValue = "AllReport"
+	ApprovalPendingReportFilter FilterValue = "ApprovalPendingReport"
 )
 
 const (
@@ -147,8 +150,9 @@ const (
 	SellerApprovalPendingOrderReports RequestName = "SellerApprovalPendingOrderReports"
 
 	//BuyerAllOrders			   RequestName = "BuyerAllOrders"
-	BuyerAllReturnOrders       RequestName = "BuyerAllReturnOrders"
+	//BuyerAllReturnOrders       RequestName = "BuyerAllReturnOrders"
 	BuyerOrderDetailList       RequestName = "BuyerOrderDetailList"
+	BuyerAllOrderReports       RequestName = "BuyerAllOrderReports"
 	BuyerReturnOrderReports    RequestName = "BuyerReturnOrderReports"
 	BuyerReturnOrderDetailList RequestName = "BuyerReturnOrderDetailList"
 
@@ -192,6 +196,8 @@ type Server struct {
 	port                 uint16
 	requestFilters       map[RequestName][]FilterValue
 	buyerFilterStates    map[FilterValue][]FilterState
+	buyerAllStatesMap    map[string][]states.IEnumState
+	buyerReturnStatesMap map[string][]states.IEnumState
 	sellerFilterStates   map[FilterValue][]FilterState
 	sellerStatesMap      map[string][]states.IEnumState
 	operatorFilterStates map[FilterValue][]FilterState
@@ -202,8 +208,18 @@ type Server struct {
 
 func NewServer(address string, port uint16, flowManager domain.IFlowManager) Server {
 	buyerStatesMap := make(map[FilterValue][]FilterState, 8)
+	buyerStatesMap[NewOrderFilter] = []FilterState{{[]states.IEnumState{states.NewOrder}, states.NewOrder}}
+	buyerStatesMap[PaymentPendingFilter] = []FilterState{{[]states.IEnumState{states.PaymentPending}, states.PaymentPending}}
+	buyerStatesMap[PaymentSuccessFilter] = []FilterState{{[]states.IEnumState{states.PaymentSuccess}, states.ApprovalPending}}
+	buyerStatesMap[PaymentFailedFilter] = []FilterState{{[]states.IEnumState{states.PaymentFailed}, states.PaymentFailed}}
+	buyerStatesMap[OrderVerificationPendingFilter] = []FilterState{{[]states.IEnumState{states.OrderVerificationPending}, states.ApprovalPending}}
+	buyerStatesMap[OrderVerificationSuccessFilter] = []FilterState{{[]states.IEnumState{states.OrderVerificationSuccess}, states.ApprovalPending}}
+	buyerStatesMap[OrderVerificationFailedFilter] = []FilterState{{[]states.IEnumState{states.OrderVerificationFailed}, states.PayToBuyer}}
 	buyerStatesMap[ApprovalPendingFilter] = []FilterState{{[]states.IEnumState{states.ApprovalPending}, states.ApprovalPending}}
-	buyerStatesMap[ShipmentPendingFilter] = []FilterState{{[]states.IEnumState{states.ShipmentPending}, states.ShipmentDelayed}}
+	buyerStatesMap[CanceledBySellerFilter] = []FilterState{{[]states.IEnumState{states.CanceledBySeller}, states.PayToBuyer}}
+	buyerStatesMap[CanceledByBuyerFilter] = []FilterState{{[]states.IEnumState{states.CanceledByBuyer}, states.PayToBuyer}}
+	buyerStatesMap[ShipmentPendingFilter] = []FilterState{{[]states.IEnumState{states.ShipmentPending}, states.ShipmentPending}}
+	buyerStatesMap[ShipmentDelayedFilter] = []FilterState{{[]states.IEnumState{states.ShipmentDelayed}, states.ShipmentDelayed}}
 	buyerStatesMap[ShippedFilter] = []FilterState{{[]states.IEnumState{states.Shipped}, states.Shipped}}
 	buyerStatesMap[DeliveredFilter] = []FilterState{{[]states.IEnumState{states.DeliveryPending}, states.DeliveryPending}, {[]states.IEnumState{states.DeliveryDelayed}, states.DeliveryDelayed}, {[]states.IEnumState{states.Delivered}, states.Delivered}}
 	buyerStatesMap[DeliveryFailedFilter] = []FilterState{{[]states.IEnumState{states.DeliveryFailed}, states.PayToBuyer}}
@@ -212,6 +228,34 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	buyerStatesMap[ReturnShippedFilter] = []FilterState{{[]states.IEnumState{states.ReturnShipped}, states.ReturnShipped}}
 	buyerStatesMap[ReturnDeliveredFilter] = []FilterState{{[]states.IEnumState{states.ReturnDeliveryPending}, states.ReturnDeliveryPending}, {[]states.IEnumState{states.ReturnDeliveryDelayed}, states.ReturnDeliveryDelayed}, {[]states.IEnumState{states.ReturnDelivered}, states.ReturnDelivered}}
 	buyerStatesMap[ReturnDeliveryFailedFilter] = []FilterState{{[]states.IEnumState{states.ReturnDeliveryFailed}, states.PayToSeller}}
+
+	buyerAllStatesMapping := make(map[string][]states.IEnumState, 16)
+	buyerAllStatesMapping[states.NewOrder.StateName()] = []states.IEnumState{states.NewOrder}
+	buyerAllStatesMapping[states.PaymentPending.StateName()] = []states.IEnumState{states.PaymentPending}
+	buyerAllStatesMapping[states.PaymentSuccess.StateName()] = []states.IEnumState{states.PaymentSuccess}
+	buyerAllStatesMapping[states.PaymentFailed.StateName()] = []states.IEnumState{states.PaymentFailed}
+	buyerAllStatesMapping[states.OrderVerificationPending.StateName()] = []states.IEnumState{states.OrderVerificationPending}
+	buyerAllStatesMapping[states.OrderVerificationSuccess.StateName()] = []states.IEnumState{states.OrderVerificationSuccess}
+	buyerAllStatesMapping[states.OrderVerificationFailed.StateName()] = []states.IEnumState{states.PayToBuyer}
+	buyerAllStatesMapping[states.ApprovalPending.StateName()] = []states.IEnumState{states.ApprovalPending}
+	buyerAllStatesMapping[states.ShipmentPending.StateName()] = []states.IEnumState{states.ShipmentPending}
+	buyerAllStatesMapping[states.ShipmentDelayed.StateName()] = []states.IEnumState{states.ShipmentDelayed}
+	buyerAllStatesMapping[states.Shipped.StateName()] = []states.IEnumState{states.Shipped}
+	buyerAllStatesMapping[states.DeliveryPending.StateName()] = []states.IEnumState{states.DeliveryPending}
+	buyerAllStatesMapping[states.DeliveryDelayed.StateName()] = []states.IEnumState{states.DeliveryDelayed}
+	buyerAllStatesMapping[states.Delivered.StateName()] = []states.IEnumState{states.Delivered}
+	buyerAllStatesMapping[states.PayToBuyer.StateName()] = []states.IEnumState{states.PayToBuyer}
+
+	buyerReturnStatesMapping := make(map[string][]states.IEnumState, 16)
+	buyerReturnStatesMapping[states.ReturnRequestPending.StateName()] = []states.IEnumState{states.ReturnRequestPending}
+	buyerReturnStatesMapping[states.ReturnRequestRejected.StateName()] = []states.IEnumState{states.ReturnRequestRejected}
+	buyerReturnStatesMapping[states.ReturnShipmentPending.StateName()] = []states.IEnumState{states.ReturnShipmentPending}
+	buyerReturnStatesMapping[states.ReturnShipped.StateName()] = []states.IEnumState{states.ReturnShipped}
+	buyerReturnStatesMapping[states.ReturnDeliveryPending.StateName()] = []states.IEnumState{states.ReturnDeliveryPending}
+	buyerReturnStatesMapping[states.ReturnDeliveryDelayed.StateName()] = []states.IEnumState{states.ReturnDeliveryDelayed}
+	buyerReturnStatesMapping[states.ReturnDelivered.StateName()] = []states.IEnumState{states.ReturnDelivered}
+	buyerReturnStatesMapping[states.ReturnRejected.StateName()] = []states.IEnumState{states.ReturnRejected}
+	buyerReturnStatesMapping[states.PayToBuyer.StateName()] = []states.IEnumState{states.ReturnRejected, states.ReturnDelivered}
 
 	operatorFilterStatesMap := make(map[FilterValue][]FilterState, 30)
 	operatorFilterStatesMap[NewOrderFilter] = []FilterState{{[]states.IEnumState{states.NewOrder}, states.NewOrder}}
@@ -289,10 +333,10 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	queryPathStatesMap := make(map[FilterValue]FilterQueryState, 30)
 	queryPathStatesMap[NewOrderFilter] = FilterQueryState{states.NewOrder, "packages.subpackages.status"}
 	queryPathStatesMap[PaymentPendingFilter] = FilterQueryState{states.PaymentPending, "packages.subpackages.status"}
-	queryPathStatesMap[PaymentSuccessFilter] = FilterQueryState{states.PaymentSuccess, "packages.subpackages.tracking.history.name"}
+	queryPathStatesMap[PaymentSuccessFilter] = FilterQueryState{states.PaymentSuccess, "packages.subpackages.status"}
 	queryPathStatesMap[PaymentFailedFilter] = FilterQueryState{states.PaymentFailed, "packages.subpackages.status"}
-	queryPathStatesMap[OrderVerificationPendingFilter] = FilterQueryState{states.OrderVerificationPending, "packages.subpackages.tracking.history.name"}
-	queryPathStatesMap[OrderVerificationSuccessFilter] = FilterQueryState{states.OrderVerificationSuccess, "packages.subpackages.tracking.history.name"}
+	queryPathStatesMap[OrderVerificationPendingFilter] = FilterQueryState{states.OrderVerificationPending, "packages.subpackages.status"}
+	queryPathStatesMap[OrderVerificationSuccessFilter] = FilterQueryState{states.OrderVerificationSuccess, "packages.subpackages.status"}
 	queryPathStatesMap[OrderVerificationFailedFilter] = FilterQueryState{states.OrderVerificationFailed, "packages.subpackages.tracking.history.name"}
 	queryPathStatesMap[ApprovalPendingFilter] = FilterQueryState{states.ApprovalPending, "packages.subpackages.status"}
 	queryPathStatesMap[CanceledBySellerFilter] = FilterQueryState{states.CanceledBySeller, "packages.subpackages.tracking.history.name"}
@@ -354,27 +398,6 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	}
 
 	reqFilters := make(map[RequestName][]FilterValue, 8)
-	//reqFilters[SellerAllOrders] = []FilterValue{
-	//	ApprovalPendingFilter,
-	//	CanceledBySellerFilter,
-	//	CanceledByBuyerFilter,
-	//	ShipmentPendingFilter,
-	//	ShipmentDelayedFilter,
-	//	ShippedFilter,
-	//	DeliveryPendingFilter,
-	//	DeliveredFilter,
-	//	DeliveryFailedFilter,
-	//	ReturnRequestPendingFilter,
-	//	ReturnRequestRejectedFilter,
-	//	ReturnShipmentPendingFilter,
-	//	ReturnShippedFilter,
-	//	ReturnDeliveryPendingFilter,
-	//	ReturnDeliveryDelayedFilter,
-	//	ReturnDeliveredFilter,
-	//	ReturnDeliveryFailedFilter,
-	//	PayToSellerFilter,
-	//}
-
 	reqFilters[SellerOrderList] = []FilterValue{
 		ApprovalPendingFilter,
 		CanceledBySellerFilter,
@@ -439,6 +462,8 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	reqFilters[SellerAllOrderReports] = []FilterValue{}
 
 	reqFilters[BuyerOrderDetailList] = []FilterValue{
+		NewOrderFilter,
+		PaymentPendingFilter,
 		PaymentSuccessFilter,
 		PaymentFailedFilter,
 		OrderVerificationPendingFilter,
@@ -455,10 +480,10 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		DeliveredFilter,
 		DeliveryFailedFilter,
 		PayToBuyerFilter,
-		PayToSellerFilter,
+		AllOrdersFilter,
 	}
 
-	reqFilters[BuyerReturnOrderReports] = []FilterValue{}
+	//reqFilters[BuyerReturnOrderReports] = []FilterValue{}
 
 	reqFilters[BuyerReturnOrderDetailList] = []FilterValue{
 		ReturnRequestPendingFilter,
@@ -469,23 +494,27 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		AllOrdersFilter,
 	}
 
-	reqFilters[BuyerAllReturnOrders] = []FilterValue{
-		ReturnRequestPendingFilter,
-		ReturnRequestRejectedFilter,
-		ReturnCanceledFilter,
-		ReturnShipmentPendingFilter,
-		ReturnShippedFilter,
-		ReturnDeliveryPendingFilter,
-		ReturnDeliveryDelayedFilter,
-		ReturnDeliveredFilter,
-		ReturnDeliveryFailedFilter,
-		ReturnRejectedFilter,
-	}
+	//reqFilters[BuyerAllReturnOrders] = []FilterValue{
+	//	ReturnRequestPendingFilter,
+	//	ReturnRequestRejectedFilter,
+	//	ReturnCanceledFilter,
+	//	ReturnShipmentPendingFilter,
+	//	ReturnShippedFilter,
+	//	ReturnDeliveryPendingFilter,
+	//	ReturnDeliveryDelayedFilter,
+	//	ReturnDeliveredFilter,
+	//	ReturnDeliveryFailedFilter,
+	//	ReturnRejectedFilter,
+	//}
 	rp := createReasonsMap()
 	return Server{
-		flowManager: flowManager, address: address, port: port,
+		flowManager:          flowManager,
+		address:              address,
+		port:                 port,
 		requestFilters:       reqFilters,
 		buyerFilterStates:    buyerStatesMap,
+		buyerAllStatesMap:    buyerAllStatesMapping,
+		buyerReturnStatesMap: buyerReturnStatesMapping,
 		sellerFilterStates:   sellerFilterStatesMap,
 		sellerStatesMap:      sellerStatesMapping,
 		operatorFilterStates: operatorFilterStatesMap,
@@ -695,6 +724,7 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 		return nil, status.Error(codes.Code(future.BadRequest), "RN UTP Invalid")
 	} else if userType == BuyerUser &&
 		reqName != BuyerOrderDetailList &&
+		reqName != BuyerAllOrderReports &&
 		reqName != BuyerReturnOrderReports &&
 		reqName != BuyerReturnOrderDetailList {
 		app.Globals.Logger.FromContext(ctx).Error("RequestName with userType mismatch", "fn", "requestDataHandler", "rn", reqName, "utp", userType, "request", req)
@@ -717,7 +747,7 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 	//	return nil, status.Error(codes.Code(future.BadRequest), "Mismatch OrderId with Request name")
 	//}
 
-	if userType == BuyerUser && reqName != BuyerReturnOrderReports {
+	if userType == BuyerUser && reqName != BuyerAllOrderReports && reqName != BuyerReturnOrderReports {
 		if reqName == BuyerOrderDetailList {
 			if filterValue != "" {
 				var findFlag = false
@@ -803,12 +833,14 @@ func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageReq
 	case SellerOrderCancelReports:
 		return server.sellerOrderCancelReportsHandler(ctx, req.Meta.UID)
 	case SellerAllOrderReports:
-		return server.sellerAllOrderHandler(ctx, req.Meta.UID)
+		return server.sellerAllOrderReportsHandler(ctx, req.Meta.UID)
 	case SellerApprovalPendingOrderReports:
 		return server.sellerApprovalPendingOrderReportsHandler(ctx, req.Meta.UID)
 
 	case BuyerOrderDetailList:
 		return server.buyerOrderDetailListHandler(ctx, req.Meta.OID, req.Meta.UID, filterValue, req.Meta.Page, req.Meta.PerPage, sortName, sortDirection)
+	case BuyerAllOrderReports:
+		return server.buyerAllOrderReportsHandler(ctx, req.Meta.UID)
 	case BuyerReturnOrderReports:
 		return server.buyerReturnOrderReportsHandler(ctx, req.Meta.UID)
 	case BuyerReturnOrderDetailList:
