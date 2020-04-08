@@ -12,6 +12,7 @@ import (
 type IFlowManager interface {
 	MessageHandler(ctx context.Context, iFrame frame.IFrame)
 	PaymentGatewayResult(ctx context.Context, req *pg.PaygateHookRequest) future.IFuture
+	VerifyUserSuccessOrder(ctx context.Context, uid uint64) future.IFuture
 	GetState(state states.IEnumState) states.IState
 	ReportOrderItems(ctx context.Context, req *pb.RequestReportOrderItems, srv pb.OrderService_ReportOrderItemsServer) future.IFuture
 }

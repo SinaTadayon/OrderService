@@ -187,12 +187,12 @@ gitlab.faza.io/go-framework/logger v0.0.12/go.mod h1:nB18r4xYKyF6DWB18wzqv0rAnyG
 gitlab.faza.io/go-framework/mongoadapter v0.0.6/go.mod h1:QVQUMgtEeUTTkCNp0S4/wNiH6cwsv8BM4E+wyFuarWQ=
 gitlab.faza.io/go-framework/mongoadapter v0.0.10 h1:2djpCOyDZue9lf8AF+q2KN0exaTf2FukCnIr5Mb2HvU=
 gitlab.faza.io/go-framework/mongoadapter v0.0.10/go.mod h1:cd15CIUT4zvQxlMuG4Mp6d9RyEcyiK5f9HqRy20X/FI=
-gitlab.faza.io/protos/cart v0.0.18 h1:Taf/PeboiQAt8cEf8b9U5/+l0RLRbMY7dUwa/5BgTJs=
-gitlab.faza.io/protos/cart v0.0.18/go.mod h1:pemvjJkxFsjd629ESQjWKO7ZJZS6ARDU4sCLGprH7NE=
+gitlab.faza.io/protos/cart v0.0.23 h1:4I2Fjk3qDvdeHKaEAM0s3hq3kiVNH0RdHB6EBrtFPc8=
+gitlab.faza.io/protos/cart v0.0.23/go.mod h1:pemvjJkxFsjd629ESQjWKO7ZJZS6ARDU4sCLGprH7NE=
 gitlab.faza.io/protos/notification v0.0.4 h1:7d/ledaetgrPq0jwlg7D5apTEzPP5myKaLVz7YawnhE=
 gitlab.faza.io/protos/notification v0.0.4/go.mod h1:qby43vdLlc43kTxassHtDYyqdrdf4cHKLz8OEK7Zo0s=
-gitlab.faza.io/protos/order v0.0.75 h1:6DBmk0MZ+ZTQgwp41OfbUZXRrE9Us1PosEprlKBinqI=
-gitlab.faza.io/protos/order v0.0.75/go.mod h1:mdK2jO7EiUBmd7x86Vp2g/cJ3W63G+q49vo+z7ABS1w=
+gitlab.faza.io/protos/order v0.0.76 h1:/xh01gutUckTLynrb0wjBEQZJ5nWRpNZv0CQeIRqmS8=
+gitlab.faza.io/protos/order v0.0.76/go.mod h1:mdK2jO7EiUBmd7x86Vp2g/cJ3W63G+q49vo+z7ABS1w=
 gitlab.faza.io/protos/payment-gateway v0.0.16 h1:qaJNjlVe62VqsGKJKyd84eq20aYLkdMVMm9LoLzxUKA=
 gitlab.faza.io/protos/payment-gateway v0.0.16/go.mod h1:UERc408Li0bb4ynMXnvJ6PySsgbOws1GvIQzJ5MJkzE=
 gitlab.faza.io/protos/stock-proto.git v0.0.8 h1:TA9/sMQe+acPsu7LmM8zdKV02/0VJUCQntGgnpCvynM=

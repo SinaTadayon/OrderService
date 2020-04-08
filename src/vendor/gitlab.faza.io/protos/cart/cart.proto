@@ -21,6 +21,40 @@ service CouponService {
     rpc GetVoucherByTemplateName(GetVoucherByTemplateNameRequest) returns (GetVoucherByTemplateNameResponse);
     rpc DisableVouchersByCode(DisableVouchersByCodeRequest) returns (DisableVouchersByCodeResponse);
 
+    // Issue Seller-83
+    rpc VoucherVerification(VoucherCode) returns (VoucherInfo);
+}
+
+message VoucherInfo {
+    message CouponTemplate {
+        string title = 1;
+        string prefix = 2;
+        int32 useLimit = 3;
+        int32 count = 4;
+        int32 length = 5;
+        string startDate = 6;
+        string endDate = 7;
+        bool isFirstPurchase = 8;
+        CouponDiscount couponDiscount = 9;
+        message CouponInfo {
+            repeated string categories = 1;
+            repeated string products = 2;
+            repeated string users = 3;
+            repeated string sellers = 4;
+        }
+        CouponInfo info = 10;
+    }
+
+    CouponTemplate voucherTemplate = 1;
+    string      Code = 2;
+    bool        isFirstPurchase = 3;
+	string      CreatedAt = 4;
+	string      DeletedAt = 5;
+    enum State {
+        ACTIVE = 0;
+        INACTIVE = 1;
+    }
+    State state = 6;
 }
 
 message DisableVouchersByCodeResponse{
@@ -33,6 +67,7 @@ message DisableVouchersByCodeRequest{
 message GetAllVoucherTemplatesRequest {
     int32 page = 1;
     int32 perpage = 2;
+    map<string, int32> sorting = 3;
  }
 
  message ListMeta {
@@ -68,6 +103,7 @@ message Coupon {
     CouponDiscount couponDiscount = 5;
     repeated Usage usage = 6;
 }
+
 message Usage {
     string user = 1;
     string orderNum = 2;
@@ -91,14 +127,18 @@ message CouponTemplate {
     int32 length = 5;
     string startDate = 6;
     string endDate = 7;
-    repeated string categories = 8;
-    repeated string products = 9;
-    repeated string users = 10;
-    repeated string sellers = 11;
-    bool isFirstPurchase = 12;
-    CouponDiscount couponDiscount = 13;
-    bool isUsed = 14;
-    int32 usageCount = 15;
+    bool isFirstPurchase = 8;
+    CouponDiscount couponDiscount = 9;
+    bool isUsed = 10;
+    int32 usageCount = 11;
+    string createdAt = 12;
+    message CouponInfo {
+        repeated string categories = 1;
+        repeated string products = 2;
+        repeated string users = 3;
+        repeated string sellers = 4;
+    }
+    CouponInfo info = 13;
 }
 
 message CouponDiscount {
