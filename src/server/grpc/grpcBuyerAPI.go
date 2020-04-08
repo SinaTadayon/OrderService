@@ -178,8 +178,39 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 	}
 
 	if total == 0 || orderList == nil || len(orderList) == 0 {
-		app.Globals.Logger.FromContext(ctx).Info("oid not found", "fn", "buyerOrderDetailListHandler", "oid", oid, "uid", userId, "filter", filter)
-		return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
+		//app.Globals.Logger.FromContext(ctx).Info("oid not found", "fn", "buyerOrderDetailListHandler", "oid", oid, "uid", userId, "filter", filter)
+		//return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
+
+		buyerOrderDetailList := &pb.BuyerOrderDetailList{
+			BuyerId:      userId,
+			OrderDetails: nil,
+		}
+
+		serializedData, e := proto.Marshal(buyerOrderDetailList)
+		if e != nil {
+			app.Globals.Logger.FromContext(ctx).Error("could not marshal buyerOrderDetailList",
+				"fn", "buyerOrderDetailListHandler",
+				"oid", oid,
+				"uid", userId,
+				"error", err)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+
+		response := &pb.MessageResponse{
+			Entity: "buyerOrderDetailList",
+			Meta: &pb.ResponseMetadata{
+				Total:   0,
+				Page:    page,
+				PerPage: perPage,
+			},
+			Data: &any.Any{
+				TypeUrl: "baman.io/" + proto.MessageName(buyerOrderDetailList),
+				Value:   serializedData,
+			},
+		}
+
+		return response, nil
+
 	}
 
 	orderDetailList := make([]*pb.BuyerOrderDetailList_OrderDetail, 0, len(orderList))
@@ -1143,8 +1174,34 @@ func (server *Server) buyerAllReturnOrderItemsHandler(ctx context.Context, userI
 	}
 
 	if total == 0 || orderList == nil || len(orderList) == 0 {
-		app.Globals.Logger.FromContext(ctx).Info("order not found", "fn", "buyerAllReturnOrderItemsHandler", "uid", userId)
-		return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
+		//app.Globals.Logger.FromContext(ctx).Info("order not found", "fn", "buyerAllReturnOrderItemsHandler", "uid", userId)
+		//return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
+
+		BuyerReturnOrderItemDetailList := &pb.BuyerReturnOrderItemDetailList{
+			BuyerId:                   userId,
+			ReturnOrderItemDetailList: nil,
+		}
+
+		serializedData, e := proto.Marshal(BuyerReturnOrderItemDetailList)
+		if e != nil {
+			app.Globals.Logger.FromContext(ctx).Error("marshal BuyerReturnOrderItemDetailList failed", "fn", "buyerAllReturnOrderItemsHandler", "uid", userId, "error", e)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+
+		response := &pb.MessageResponse{
+			Entity: "BuyerReturnOrderItemDetailList",
+			Meta: &pb.ResponseMetadata{
+				Total:   0,
+				Page:    page,
+				PerPage: perPage,
+			},
+			Data: &any.Any{
+				TypeUrl: "baman.io/" + proto.MessageName(BuyerReturnOrderItemDetailList),
+				Value:   serializedData,
+			},
+		}
+
+		return response, nil
 	}
 
 	returnOrderItemDetailList := make([]*pb.BuyerReturnOrderItemDetailList_ReturnOrderItemDetail, 0, len(orderList)*2)
@@ -1753,8 +1810,34 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 	}
 
 	if total == 0 || orderList == nil || len(orderList) == 0 {
-		app.Globals.Logger.FromContext(ctx).Error("oid not found, userId: %d, filter:%s", userId, filter)
-		return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
+		//app.Globals.Logger.FromContext(ctx).Error("oid not found, userId: %d, filter:%s", userId, filter)
+		//return nil, status.Error(codes.Code(future.NotFound), "Order Not Found")
+
+		buyerReturnOrderDetailList := &pb.BuyerReturnOrderDetailList{
+			BuyerId:           userId,
+			ReturnOrderDetail: nil,
+		}
+
+		serializedData, e := proto.Marshal(buyerReturnOrderDetailList)
+		if e != nil {
+			app.Globals.Logger.FromContext(ctx).Error("marshal buyerReturnOrderDetailList failed", "fn", "buyerReturnOrderDetailListHandler", "uid", userId, "filter", filter, "error", e)
+			return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+		}
+
+		response := &pb.MessageResponse{
+			Entity: "buyerReturnOrderDetailList",
+			Meta: &pb.ResponseMetadata{
+				Total:   0,
+				Page:    page,
+				PerPage: perPage,
+			},
+			Data: &any.Any{
+				TypeUrl: "baman.io/" + proto.MessageName(buyerReturnOrderDetailList),
+				Value:   serializedData,
+			},
+		}
+
+		return response, nil
 	}
 
 	returnOrderDetailList := make([]*pb.BuyerReturnOrderDetailList_ReturnOrderDetail, 0, len(orderList))
