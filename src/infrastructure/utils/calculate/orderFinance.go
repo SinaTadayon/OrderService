@@ -226,7 +226,7 @@ func FactoryFromOrder(ctx context.Context, order *entities.Order) (*OrderFinance
 		if order.Invoice.Voucher.Price != nil {
 			price, err := decimal.NewFromString(order.Invoice.Voucher.Price.Amount)
 			if err != nil {
-				applog.GLog.Logger.FromContext(ctx).Error("order.Invoice.Voucher.Price.Amount invalid",
+				applog.GLog.Logger.FromContext(ctx).Error("order.Invoice.Voucher.UnitPrice.Amount invalid",
 					"fn", "FactoryFromOrder",
 					"price", order.Invoice.Voucher.Price.Amount,
 					"oid", order.OrderId,
