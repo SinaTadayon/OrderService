@@ -154,7 +154,7 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 				if orderList[i].Invoice.Voucher.Price != nil {
 					voucherAmount, err = decimal.NewFromString(orderList[i].Invoice.Voucher.Price.Amount)
 					if err != nil {
-						app.Globals.Logger.FromContext(ctx).Error("order.Invoice.Voucher.Price.Amount invalid",
+						app.Globals.Logger.FromContext(ctx).Error("order.Invoice.Voucher.UnitPrice.Amount invalid",
 							"fn", "operatorOrderListHandler",
 							"price", orderList[i].Invoice.Voucher.Price.Amount,
 							"oid", order.OrderId,
@@ -320,7 +320,7 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 			if order.Invoice.Voucher.Price != nil {
 				voucherAmount, e = decimal.NewFromString(order.Invoice.Voucher.Price.Amount)
 				if e != nil {
-					app.Globals.Logger.FromContext(ctx).Error("order.Invoice.Voucher.Price.Amount invalid",
+					app.Globals.Logger.FromContext(ctx).Error("order.Invoice.Voucher.UnitPrice.Amount invalid",
 						"fn", "operatorOrderDetailHandler",
 						"price", order.Invoice.Voucher.Price.Amount,
 						"oid", order.OrderId,
@@ -1076,7 +1076,7 @@ func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint6
 			if findOrder.Invoice.Voucher.Price != nil {
 				voucherAmount, e = decimal.NewFromString(findOrder.Invoice.Voucher.Price.Amount)
 				if e != nil {
-					app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, order.Invoice.Voucher.Price.Amount invalid",
+					app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, order.Invoice.Voucher.UnitPrice.Amount invalid",
 						"fn", "operatorGetOrderByIdHandler",
 						"price", findOrder.Invoice.Voucher.Price.Amount,
 						"oid", order.OrderId,
@@ -1282,7 +1282,7 @@ func (server *Server) operatorGetOrdersByMobileHandler(ctx context.Context, buye
 				if orderList[i].Invoice.Voucher.Price != nil {
 					voucherAmount, err = decimal.NewFromString(orderList[i].Invoice.Voucher.Price.Amount)
 					if err != nil {
-						app.Globals.Logger.FromContext(ctx).Error("order.Invoice.Voucher.Price.Amount invalid",
+						app.Globals.Logger.FromContext(ctx).Error("order.Invoice.Voucher.UnitPrice.Amount invalid",
 							"fn", "operatorGetOrdersByMobileHandler",
 							"price", orderList[i].Invoice.Voucher.Price.Amount,
 							"oid", order.OrderId,

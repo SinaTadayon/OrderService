@@ -8,7 +8,7 @@ type ExportOrderItems struct {
 	BuyerPhone        string
 	SellerId          uint64
 	SellerDisplayName string
-	Price             string
+	UnitPrice         string
 	VoucherAmount     string
 	VoucherCode       string
 	ShippingCost      string

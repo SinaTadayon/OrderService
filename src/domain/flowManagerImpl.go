@@ -709,7 +709,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 							BuyerPhone:        orders[i].BuyerInfo.Mobile,
 							SellerId:          orders[i].Packages[j].PId,
 							SellerDisplayName: orders[i].Packages[j].ShopName,
-							Price:             orders[i].Invoice.Subtotal.Amount,
+							UnitPrice:         orders[i].Packages[j].Subpackages[k].Items[z].Invoice.Unit.Amount,
 							VoucherAmount:     "0",
 							VoucherCode:       "",
 							ShippingCost:      orders[i].Packages[j].Invoice.ShipmentAmount.Amount,
@@ -763,7 +763,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 	csvReports := make([][]string, 0, len(orderReports))
 	csvHeadLines := []string{
 		"SId", "InventoryId", "SKU", "BuyerId", "BuyerMobile", "SellerId",
-		"ShopDisplayName", "Price", "VoucherAmount", "VoucherCode", "ShippingCost", "Status", "CreatedAt", "UpdatedAt",
+		"ShopDisplayName", "UnitPrice", "VoucherAmount", "VoucherCode", "ShippingCost", "Status", "CreatedAt", "UpdatedAt",
 	}
 
 	csvReports = append(csvReports, csvHeadLines)
@@ -776,7 +776,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 			itemReport.BuyerPhone,
 			strconv.Itoa(int(itemReport.SellerId)),
 			itemReport.SellerDisplayName,
-			fmt.Sprint(itemReport.Price),
+			fmt.Sprint(itemReport.UnitPrice),
 			itemReport.VoucherAmount,
 			itemReport.VoucherCode,
 			itemReport.ShippingCost,
