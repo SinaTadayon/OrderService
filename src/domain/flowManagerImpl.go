@@ -702,6 +702,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 				for z := 0; z < len(orders[i].Packages[j].Subpackages[k].Items); z++ {
 					for y := 0; y < int(orders[i].Packages[j].Subpackages[k].Items[z].Quantity); y++ {
 						itemReport := &reports.ExportOrderItems{
+							OId:               orders[i].OrderId,
 							SId:               orders[i].Packages[j].Subpackages[k].SId,
 							InventoryId:       orders[i].Packages[j].Subpackages[k].Items[z].InventoryId,
 							SKU:               orders[i].Packages[j].Subpackages[k].Items[z].SKU,
@@ -762,13 +763,14 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 
 	csvReports := make([][]string, 0, len(orderReports))
 	csvHeadLines := []string{
-		"SId", "InventoryId", "SKU", "BuyerId", "BuyerMobile", "SellerId",
+		"OId", "SId", "InventoryId", "SKU", "BuyerId", "BuyerMobile", "SellerId",
 		"ShopDisplayName", "UnitPrice", "VoucherAmount", "VoucherCode", "ShippingCost", "Status", "CreatedAt", "UpdatedAt",
 	}
 
 	csvReports = append(csvReports, csvHeadLines)
 	for _, itemReport := range orderReports {
 		csvRecord := []string{
+			strconv.Itoa(int(itemReport.OId)),
 			strconv.Itoa(int(itemReport.SId)),
 			itemReport.InventoryId,
 			itemReport.SKU,

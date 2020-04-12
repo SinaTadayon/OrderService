@@ -1,6 +1,7 @@
 package reports
 
 type ExportOrderItems struct {
+	OId               uint64
 	SId               uint64
 	InventoryId       string
 	SKU               string
