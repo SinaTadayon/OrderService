@@ -661,7 +661,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 
 func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *pb.RequestReportOrderItems, srv pb.OrderService_ReportOrderItemsServer) future.IFuture {
 
-	app.Globals.Logger.Debug("received new request . . .",
+	app.Globals.Logger.FromContext(ctx).Debug("received new request . . .",
 		"fn", "ReportOrderItems",
 		"startTime", req.StartDateTime,
 		"endTime", req.EndDataTime)
@@ -676,13 +676,60 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 		return future.Factory().SetCapacity(1).SetError(future.BadRequest, "EndDateTime Invalid", err).BuildAndSend()
 	}
 
-	orders, _, e := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, func() (interface{}, string, int) {
-		return bson.D{{"createdAt", bson.D{{"$gte", startTime.UTC()}, {"$lte", endTime.UTC()}}}},
-			"createdAt", -1
-	}, int64(1), int64(2000))
+	var filter func() (interface{}, string, int)
+	if req.Status == pb.RequestReportOrderItems_SUCCESS {
+		filter = func() (interface{}, string, int) {
+			return bson.D{{"createdAt",
+					bson.D{{"$gte", startTime.UTC()}, {"$lte", endTime.UTC()}}},
+					{"$or", bson.A{
+						bson.D{{"orderPayment.paymentResult.result", true}},
+						bson.D{{"$and", bson.A{
+							bson.D{{"orderPayment.paymentResult", nil}},
+							bson.D{{"status", "CLOSED"}},
+							bson.D{{"orderPayment.paymentResponse.result", true}}}}},
+					}}},
+				"createdAt", -1
+		}
+	} else if req.Status == pb.RequestReportOrderItems_FAIL {
+		filter = func() (interface{}, string, int) {
+			return bson.D{{"createdAt",
+					bson.D{{"$gte", startTime.UTC()}, {"$lte", endTime.UTC()}}},
+					{"$or", bson.A{
+						bson.D{{"orderPayment.paymentResult.result", false}},
+						bson.D{{"$and", bson.A{
+							bson.D{{"orderPayment.paymentResult", nil}},
+							bson.D{{"status", "CLOSED"}},
+							bson.D{{"$or", bson.A{
+								bson.D{{"orderPayment.paymentResponse", nil}},
+								bson.D{{"orderPayment.paymentResponse.result", false}},
+							}}},
+						}}},
+					}}},
+				"createdAt", -1
+		}
+	} else if req.Status == pb.RequestReportOrderItems_PENDING {
+		filter = func() (interface{}, string, int) {
+			return bson.D{{"createdAt",
+					bson.D{{"$gte", startTime.UTC()}, {"$lte", endTime.UTC()}}},
+					{"$or", bson.A{
+						bson.D{{"orderPayment", nil}},
+						bson.D{{"$and", bson.A{
+							bson.D{{"orderPayment.paymentResult", nil}},
+							bson.D{{"status", bson.D{{"$ne", "CLOSED"}}}}}}},
+					}}},
+				"createdAt", -1
+		}
+	} else {
+		filter = func() (interface{}, string, int) {
+			return bson.D{{"createdAt", bson.D{{"$gte", startTime.UTC()}, {"$lte", endTime.UTC()}}}},
+				"createdAt", -1
+		}
+	}
+
+	orders, _, e := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, filter, int64(1), int64(2000))
 
 	if e != nil {
-		app.Globals.Logger.Error("OrderRepository.FindByFilter failed",
+		app.Globals.Logger.FromContext(ctx).Error("OrderRepository.FindByFilter failed",
 			"fn", "ReportOrderItems",
 			"startDateTime", startTime,
 			"endDateTime", endTime,
@@ -790,7 +837,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 	fileName := fmt.Sprintf("Report-%s.csv", fmt.Sprintf("%d", startTime.UnixNano()))
 	f, err := os.Create("/tmp/" + fileName)
 	if err != nil {
-		app.Globals.Logger.Error("create file failed",
+		app.Globals.Logger.FromContext(ctx).Error("create file failed",
 			"fn", "ReportOrderItems",
 			"startDateTime", startTime,
 			"endDateTime", endTime,
@@ -801,7 +848,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 	w := csv.NewWriter(f)
 	// calls Flush internally
 	if err := w.WriteAll(csvReports); err != nil {
-		app.Globals.Logger.Error("write csv to file failed",
+		app.Globals.Logger.FromContext(ctx).Error("write csv to file failed",
 			"fn", "ReportOrderItems",
 			"startDateTime", startTime,
 			"endDateTime", endTime,
@@ -810,7 +857,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 	}
 
 	if err := f.Close(); err != nil {
-		app.Globals.Logger.Error("file close failed",
+		app.Globals.Logger.FromContext(ctx).Error("file close failed",
 			"fn", "ReportOrderItems",
 			"filename", fileName,
 			"startDateTime", startTime,
@@ -820,7 +867,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 
 	file, err := os.Open("/tmp/" + fileName)
 	if err != nil {
-		app.Globals.Logger.Error("read csv from file failed",
+		app.Globals.Logger.FromContext(ctx).Error("read csv from file failed",
 			"fn", "ReportOrderItems",
 			"filename", fileName,
 			"startDateTime", startTime,
@@ -848,7 +895,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 	}
 
 	if err := file.Close(); err != nil {
-		app.Globals.Logger.Warn("file close failed",
+		app.Globals.Logger.FromContext(ctx).Warn("file close failed",
 			"fn", "ReportOrderItems",
 			"filename", fileName,
 			"startDateTime", startTime,
@@ -857,7 +904,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 	}
 
 	if err := os.Remove("/tmp/" + fileName); err != nil {
-		app.Globals.Logger.Warn("remove file failed",
+		app.Globals.Logger.FromContext(ctx).Warn("remove file failed",
 			"fn", "ReportOrderItems",
 			"filename", fileName,
 			"startDateTime", startTime,
@@ -866,7 +913,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 	}
 
 	if fileErr != nil {
-		app.Globals.Logger.Warn("read csv from file failed",
+		app.Globals.Logger.FromContext(ctx).Warn("read csv from file failed",
 			"fn", "ReportOrderItems",
 			"filename", fileName,
 			"startDateTime", startTime,
@@ -876,7 +923,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 	}
 
 	if grpcErr != nil {
-		app.Globals.Logger.Error("send cvs file failed",
+		app.Globals.Logger.FromContext(ctx).Error("send cvs file failed",
 			"fn", "ReportOrderItems",
 			"filename", fileName,
 			"startDateTime", startTime,
@@ -884,7 +931,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 			"error", err)
 		return future.Factory().SetCapacity(1).SetError(future.InternalError, "Unknown Error", errors.Wrap(err, "")).BuildAndSend()
 	}
-	app.Globals.Logger.Debug("generate csv file success . . .",
+	app.Globals.Logger.FromContext(ctx).Debug("generate csv file success . . .",
 		"fn", "ReportOrderItems",
 		"startTime", req.StartDateTime,
 		"endTime", req.EndDataTime)

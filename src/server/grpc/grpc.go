@@ -1068,24 +1068,24 @@ func (server Server) ReasonsList(ctx context.Context, in *pb.ReasonsListRequest)
 
 func (server Server) ReportOrderItems(req *pb.RequestReportOrderItems, srv pb.OrderService_ReportOrderItemsServer) error {
 
-	userAcl, err := app.Globals.UserService.AuthenticateContextToken(srv.Context())
-	if err != nil {
-		app.Globals.Logger.Error("UserService.AuthenticateContextToken failed",
-			"fn", "ReportOrderItems",
-			"error", err)
-		return status.Error(codes.Code(future.Forbidden), "User Not Authorized")
-	}
+	//userAcl, err := app.Globals.UserService.AuthenticateContextToken(srv.Context())
+	//if err != nil {
+	//	app.Globals.Logger.Error("UserService.AuthenticateContextToken failed",
+	//		"fn", "ReportOrderItems",
+	//		"error", err)
+	//	return status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+	//}
 
-	if userAcl.User().UserID <= 0 {
-		app.Globals.Logger.Error("Token userId not authorized",
-			"fn", "ReportOrderItems",
-			"userId", userAcl.User().UserID)
-		return status.Error(codes.Code(future.Forbidden), "User token not authorized")
-	}
-
-	if !userAcl.UserPerm().Has("order.state.all.view") || !userAcl.UserPerm().Has("order.state.all.action") {
-		return status.Error(codes.Code(future.Forbidden), "User Not Permitted")
-	}
+	//if userAcl.User().UserID <= 0 {
+	//	app.Globals.Logger.Error("Token userId not authorized",
+	//		"fn", "ReportOrderItems",
+	//		"userId", userAcl.User().UserID)
+	//	return status.Error(codes.Code(future.Forbidden), "User token not authorized")
+	//}
+	//
+	//if !userAcl.UserPerm().Has("order.state.all.view") || !userAcl.UserPerm().Has("order.state.all.action") {
+	//	return status.Error(codes.Code(future.Forbidden), "User Not Permitted")
+	//}
 
 	iFuture := server.flowManager.ReportOrderItems(srv.Context(), req, srv).Get()
 
