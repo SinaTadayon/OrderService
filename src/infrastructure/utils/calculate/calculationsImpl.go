@@ -799,8 +799,9 @@ func (finance financeCalculatorImpl) shareCalc(decorator financeCalcFunc) financ
 					// business share raw
 					var rawUnitBusinessShare = decimal.Zero
 					if itemFinance.Invoice.Commission != nil && itemFinance.Invoice.Commission.ItemCommission > 0 {
-						rawUnitBusinessShare = (*itemFinance.Invoice.Commission.RawUnitPrice).
-							Add(*itemFinance.Invoice.VAT.BusinessVat.RawUnitPrice)
+						// issue Seller-89
+						rawUnitBusinessShare = *itemFinance.Invoice.Commission.RawUnitPrice
+						//Add(*itemFinance.Invoice.VAT.BusinessVat.RawUnitPrice)
 
 						if itemFinance.Invoice.SSO != nil && itemFinance.Invoice.SSO.RawUnitPrice != nil {
 							rawUnitBusinessShare = rawUnitBusinessShare.Sub(*itemFinance.Invoice.SSO.RawUnitPrice)
@@ -814,8 +815,9 @@ func (finance financeCalculatorImpl) shareCalc(decorator financeCalcFunc) financ
 					// business share roundup
 					var roundupUnitBusinessShare = decimal.Zero
 					if itemFinance.Invoice.Commission != nil && itemFinance.Invoice.Commission.ItemCommission > 0 {
-						roundupUnitBusinessShare = (*itemFinance.Invoice.Commission.RoundupUnitPrice).
-							Add(*itemFinance.Invoice.VAT.BusinessVat.RoundupUnitPrice)
+						// issue Seller-89
+						roundupUnitBusinessShare = *itemFinance.Invoice.Commission.RoundupUnitPrice
+						//Add(*itemFinance.Invoice.VAT.BusinessVat.RoundupUnitPrice)
 
 						if itemFinance.Invoice.SSO != nil && itemFinance.Invoice.SSO.RoundupUnitPrice != nil {
 							roundupUnitBusinessShare = roundupUnitBusinessShare.Sub(*itemFinance.Invoice.SSO.RoundupUnitPrice)
