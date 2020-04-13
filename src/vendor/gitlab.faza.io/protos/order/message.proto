@@ -727,7 +727,8 @@ message OperatorOrderDetail {
             string Name = 1;
             int32 Index = 2;
             string UTP = 3;
-            string CreatedAt = 4;
+            Reason reason = 4;
+            string CreatedAt = 5;
         }
         uint64 SID = 1;
         uint64 PID = 2;

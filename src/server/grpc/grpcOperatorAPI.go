@@ -380,6 +380,7 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 					Name:      order.Packages[i].Subpackages[j].Tracking.History[x].Name,
 					Index:     int32(order.Packages[i].Subpackages[j].Tracking.History[x].Index),
 					UTP:       "",
+					Reason:    nil,
 					CreatedAt: order.Packages[i].Subpackages[j].Tracking.History[x].CreatedAt.Format(ISO8601),
 				}
 
@@ -387,6 +388,16 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 					state.UTP = order.Packages[i].Subpackages[j].Tracking.History[x].Actions[len(order.Packages[i].Subpackages[j].Tracking.History[x].Actions)-1].UTP
 					//state.CreatedAt = order.Packages[i].Subpackages[j].Tracking.History[x].Actions[len(order.Packages[i].Subpackages[j].Tracking.History[x].Actions)-1].CreatedAt.Format(ISO8601)
 				}
+
+				if order.Packages[i].Subpackages[j].Tracking.History[x].Name == "Return_Request_Pending" ||
+					order.Packages[i].Subpackages[j].Tracking.History[x].Name == "Canceled_By_Buyer" {
+					for _, action := range order.Packages[i].Subpackages[j].Tracking.History[x-1].Actions {
+						if action.Name == "Cancel" || action.Name == "SubmitReturnRequest" {
+							state.Reason = action.Reasons[0].ToRPC()
+						}
+					}
+				}
+
 				subpackage.States = append(subpackage.States, state)
 			}
 
