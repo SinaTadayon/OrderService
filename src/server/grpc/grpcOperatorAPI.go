@@ -390,7 +390,7 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 					//state.CreatedAt = order.Packages[i].Subpackages[j].Tracking.History[x].Actions[len(order.Packages[i].Subpackages[j].Tracking.History[x].Actions)-1].CreatedAt.Format(ISO8601)
 				}
 
-				if order.Packages[i].Subpackages[j].Tracking.History[x].Name == states.ReturnRequestRejected.String() ||
+				if order.Packages[i].Subpackages[j].Tracking.History[x].Name == states.ReturnRequestPending.String() ||
 					order.Packages[i].Subpackages[j].Tracking.History[x].Name == states.CanceledByBuyer.String() {
 					for _, action := range order.Packages[i].Subpackages[j].Tracking.History[x-1].Actions {
 						if action.Name == buyer_action.Cancel.String() ||
