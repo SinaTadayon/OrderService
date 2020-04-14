@@ -377,6 +377,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		buyer_action.New(buyer_action.SubmitReturnRequest),
 		buyer_action.New(buyer_action.EnterShipmentDetail),
 	}
+
 	actionStateMap[OperatorUser] = []actions.IAction{
 		operator_action.New(operator_action.DeliveryDelay),
 		operator_action.New(operator_action.Deliver),
@@ -384,7 +385,9 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		operator_action.New(operator_action.Accept),
 		operator_action.New(operator_action.Reject),
 		operator_action.New(operator_action.Deliver),
+		operator_action.New(operator_action.Cancel),
 	}
+
 	actionStateMap[SchedulerUser] = []actions.IAction{
 		scheduler_action.New(scheduler_action.Cancel),
 		scheduler_action.New(scheduler_action.Close),
