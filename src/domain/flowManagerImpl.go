@@ -275,6 +275,14 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	// add to flowManager maps
 	flowManager.statesMap[states.DeliveryDelayed] = state
 
+	//==================================================================
+	// Post initialize state 32
+	baseState := flowManager.statesMap[states.Delivered].(states.IBaseState).BaseState()
+	baseActionMap := baseState.StatesMap()
+	baseActionMap[operator_action.New(operator_action.DeliveryDelay)] = flowManager.statesMap[states.DeliveryDelayed]
+	baseState.SetStatesMap(baseActionMap)
+
+	//==================================================================
 	////////////////////////////////////////////////////////////////////
 	actionStateMap = map[actions.IAction]states.IState{
 		scheduler_action.New(scheduler_action.Deliver):       flowManager.statesMap[states.Delivered],
@@ -295,9 +303,11 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	actionStateMap = map[actions.IAction]states.IState{
 		scheduler_action.New(scheduler_action.DeliveryPending): flowManager.statesMap[states.DeliveryPending],
 		seller_action.New(seller_action.EnterShipmentDetail):   nil,
+		operator_action.New(operator_action.DeliveryDelay):     flowManager.statesMap[states.DeliveryDelayed],
 	}
 	childStates = []states.IState{
 		flowManager.statesMap[states.DeliveryPending],
+		flowManager.statesMap[states.DeliveryDelayed],
 	}
 	state = state_31.New(childStates, emptyState, actionStateMap)
 	// add to flowManager maps
