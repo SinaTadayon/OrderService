@@ -7,6 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
+	buyer_action "gitlab.faza.io/order-project/order-service/domain/actions/buyer"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/models/repository"
 	"gitlab.faza.io/order-project/order-service/domain/states"
@@ -380,6 +381,7 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 					Name:      order.Packages[i].Subpackages[j].Tracking.History[x].Name,
 					Index:     int32(order.Packages[i].Subpackages[j].Tracking.History[x].Index),
 					UTP:       "",
+					Reason:    nil,
 					CreatedAt: order.Packages[i].Subpackages[j].Tracking.History[x].CreatedAt.Format(ISO8601),
 				}
 
@@ -387,6 +389,17 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 					state.UTP = order.Packages[i].Subpackages[j].Tracking.History[x].Actions[len(order.Packages[i].Subpackages[j].Tracking.History[x].Actions)-1].UTP
 					//state.CreatedAt = order.Packages[i].Subpackages[j].Tracking.History[x].Actions[len(order.Packages[i].Subpackages[j].Tracking.History[x].Actions)-1].CreatedAt.Format(ISO8601)
 				}
+
+				if order.Packages[i].Subpackages[j].Tracking.History[x].Name == states.ReturnRequestPending.String() ||
+					order.Packages[i].Subpackages[j].Tracking.History[x].Name == states.CanceledByBuyer.String() {
+					for _, action := range order.Packages[i].Subpackages[j].Tracking.History[x-1].Actions {
+						if action.Name == buyer_action.Cancel.String() ||
+							action.Name == buyer_action.SubmitReturnRequest.String() {
+							state.Reason = action.Reasons[0].ToRPC()
+						}
+					}
+				}
+
 				subpackage.States = append(subpackage.States, state)
 			}
 
