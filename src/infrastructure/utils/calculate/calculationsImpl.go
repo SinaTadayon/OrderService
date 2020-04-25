@@ -762,8 +762,8 @@ func (finance financeCalculatorImpl) shareCalc(decorator financeCalcFunc) financ
 						}
 
 						rawUnitSellerShare = rawUnitSellerShare.Add(*itemFinance.Invoice.Share.RawItemNet).
-							Sub(*itemFinance.Invoice.Commission.RawUnitPrice).
-							Sub(*itemFinance.Invoice.VAT.BusinessVat.RawUnitPrice)
+							Sub(*itemFinance.Invoice.Commission.RawUnitPrice)
+						//Sub(*itemFinance.Invoice.VAT.BusinessVat.RawUnitPrice)
 					} else {
 						rawUnitSellerShare = *itemFinance.Invoice.Share.RawItemNet
 					}
@@ -784,8 +784,8 @@ func (finance financeCalculatorImpl) shareCalc(decorator financeCalcFunc) financ
 						}
 
 						roundupUnitSellerShare = roundupUnitSellerShare.Add(*itemFinance.Invoice.Share.RoundupItemNet).
-							Sub(*itemFinance.Invoice.Commission.RoundupUnitPrice).
-							Sub(*itemFinance.Invoice.VAT.BusinessVat.RoundupUnitPrice)
+							Sub(*itemFinance.Invoice.Commission.RoundupUnitPrice)
+						//Sub(*itemFinance.Invoice.VAT.BusinessVat.RoundupUnitPrice)
 					} else {
 						roundupUnitSellerShare = *itemFinance.Invoice.Share.RoundupItemNet
 					}

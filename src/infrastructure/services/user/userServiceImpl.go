@@ -156,10 +156,12 @@ func (userService *iUserServiceImpl) UserLogin(ctx context.Context, username, pa
 		BuildAndSend()
 }
 
-func (userService iUserServiceImpl) AuthenticateContextToken(ctx context.Context) (*acl.Acl, error) {
+func (userService iUserServiceImpl) AuthenticateContextToken(ctx context.Context) future.IFuture {
 	ctx1, _ := context.WithCancel(context.Background())
 	if err := userService.getUserService(ctx1); err != nil {
-		return nil, err
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "UnknownError", errors.Wrap(err, "Connect to UserService Failed")).
+			BuildAndSend()
 	}
 
 	var outCtx context.Context
@@ -193,6 +195,9 @@ func (userService iUserServiceImpl) AuthenticateContextToken(ctx context.Context
 	case <-timeoutTimer.C:
 		applog.GLog.Logger.FromContext(ctx).Error("userService.client.VerifyAndGetUserFromContextToken timeout",
 			"fn", "AuthenticateContextToken")
+		return future.Factory().SetCapacity(1).
+			SetError(future.InternalError, "UnknownError", errors.New("UserLogin Timeout")).
+			BuildAndSend()
 	}
 
 	if err, ok := obj.(error); ok {
@@ -200,13 +205,17 @@ func (userService iUserServiceImpl) AuthenticateContextToken(ctx context.Context
 			applog.GLog.Logger.FromContext(ctx).Error("userService.client.AuthenticateContextToken failed",
 				"fn", "AuthenticateContextToken",
 				"error", err)
-			return nil, err
+			return future.Factory().SetCapacity(1).
+				SetError(future.InternalError, "UnknownError", errors.Wrap(err, "Connect to UserService Failed")).
+				BuildAndSend()
 		}
 	} else if result, ok := obj.(*acl.Acl); ok {
-		return result, nil
+		return future.Factory().SetCapacity(1).SetData(result).BuildAndSend()
 	}
 
-	return nil, errors.New("AuthenticateContextToken Failed")
+	return future.Factory().SetCapacity(1).
+		SetError(future.Forbidden, "Authenticate Token Failed", errors.New("AuthenticateContextToken failed")).
+		BuildAndSend()
 }
 
 func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, sellerId string) future.IFuture {
