@@ -2,6 +2,7 @@ package grpc_server
 
 import (
 	"context"
+	"gitlab.faza.io/go-framework/acl"
 	"path"
 	"runtime/debug"
 	"strconv"
@@ -526,12 +527,15 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 
 func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
 
-	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
-	if err != nil {
-		app.Globals.Logger.FromContext(ctx).Error("UserService.AuthenticateContextToken failed", "fn", "RequestHandler", "error", err)
-		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+	iFuture := app.Globals.UserService.AuthenticateContextToken(ctx).Get()
+	//userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
+	if iFuture.Error() != nil {
+		app.Globals.Logger.FromContext(ctx).Error("UserService.AuthenticateContextToken failed",
+			"fn", "RequestHandler", "error", iFuture.Error().Reason())
+		return nil, status.Error(codes.Code(iFuture.Error().Code()), iFuture.Error().Message())
 	}
 
+	userAcl := iFuture.Data().(*acl.Acl)
 	if uint64(userAcl.User().UserID) != req.Meta.UID {
 		app.Globals.Logger.FromContext(ctx).Error("request userId mismatch with token userId", "fn", "RequestHandler",
 			"userId", req.Meta.UID, "token", userAcl.User().UserID)
@@ -990,15 +994,15 @@ func (server *Server) PaymentGatewayHook(ctx context.Context, req *pg.PaygateHoo
 
 func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb.ResponseNewOrder, error) {
 
-	//ctx, _ = context.WithTimeout(context.Background(), 3*time.Second)
-
-	userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
-	if err != nil {
-		app.Globals.Logger.FromContext(ctx).Error("UserService.AuthenticateContextToken failed", "fn", "NewOrder",
-			"error", err)
-		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+	ifuture := app.Globals.UserService.AuthenticateContextToken(ctx).Get()
+	//userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
+	if ifuture.Error() != nil {
+		app.Globals.Logger.FromContext(ctx).Error("UserService.AuthenticateContextToken failed",
+			"fn", "RequestHandler", "error", ifuture.Error().Reason())
+		return nil, status.Error(codes.Code(ifuture.Error().Code()), ifuture.Error().Message())
 	}
 
+	userAcl := ifuture.Data().(*acl.Acl)
 	if uint64(userAcl.User().UserID) != req.Buyer.BuyerId {
 		app.Globals.Logger.FromContext(ctx).Error("request userId with token userId mismatch", "fn", "NewOrder", "uid", req.Buyer.BuyerId, "token", userAcl.User().UserID)
 		return nil, status.Error(codes.Code(future.Forbidden), "User Not Authorized")
