@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/stretchr/testify/require"
+	"gitlab.faza.io/go-framework/acl"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
@@ -78,9 +79,10 @@ func TestAuthenticationToken(t *testing.T) {
 	md := metadata.New(authorization)
 	ctxToken := metadata.NewIncomingContext(context.Background(), md)
 
-	acl, err := userService.AuthenticateContextToken(ctxToken)
-	require.Nil(t, err)
-	require.Equal(t, acl.User().UserID, int64(1000001))
+	iFuture := userService.AuthenticateContextToken(ctxToken).Get()
+
+	require.Nil(t, iFuture.Error())
+	require.Equal(t, iFuture.Data().(*acl.Acl).User().UserID, int64(1000001))
 }
 
 //func CreateRandomMobileNumber(prefix string) string {
