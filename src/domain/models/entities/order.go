@@ -8,6 +8,19 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type VoucherSponsor string
+type VoucherType string
+
+const (
+	BazliaVoucher = VoucherSponsor("BAZLIA")
+	SellerVoucher = VoucherSponsor("SELLER")
+)
+
+const (
+	PurchaseVoucher = VoucherType("PURCHASE")
+	ShipmentVoucher = VoucherType("SHIPMENT")
+)
+
 const (
 	randomMin int = 100
 	randomMax int = 999
@@ -164,6 +177,8 @@ type VoucherDetails struct {
 	Type             string                 `bson:"type"`
 	MaxDiscountValue uint64                 `bson:"maxDiscountValue"`
 	MinBasketValue   uint64                 `bson:"minBasketValue"`
+	VoucherType      string                 `bson:"voucherType"`
+	VoucherSponsor   string                 `bson:"voucherSponsor"`
 	Extended         map[string]interface{} `bson:"ext"`
 }
 
