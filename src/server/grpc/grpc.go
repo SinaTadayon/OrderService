@@ -425,6 +425,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		ShipmentDelayedFilter,
 		ShippedFilter,
 		DeliveryPendingFilter,
+		DeliveryDelayedFilter,
 		DeliveredFilter,
 		DeliveryFailedFilter,
 		AllCanceledFilter,
