@@ -149,6 +149,10 @@ func (repo iSubPkgRepositoryImpl) FindByOrderAndItemId(ctx context.Context, orde
 		}
 	}
 
+	if subpackage.OrderId == 0 || subpackage.SId == 0 {
+		return nil, repository.ErrorFactory(repository.NotFoundErr, "SubPackage Not Found", errors.New("SubPackage Not Found"))
+	}
+
 	return &subpackage, nil
 }
 
