@@ -135,6 +135,10 @@ func (repo iPkgItemRepositoryImpl) FindById(ctx context.Context, orderId uint64,
 		}
 	}
 
+	if PkgItem.OrderId == 0 || PkgItem.PId == 0 {
+		return nil, repository.ErrorFactory(repository.NotFoundErr, "Package Not Found", errors.New("Package Not Found"))
+	}
+
 	return &PkgItem, nil
 }
 
