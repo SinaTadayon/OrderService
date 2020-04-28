@@ -380,11 +380,10 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 			UseLimit:         0,
 			Count:            0,
 			Length:           0,
-			Categories:       nil,
-			Products:         nil,
-			Users:            nil,
-			Sellers:          nil,
 			IsFirstPurchase:  false,
+			Info:             nil,
+			VoucherType:      pb.VoucherDetails_PURCHASE,
+			VoucherSponsor:   pb.VoucherDetails_BAZLIA,
 		},
 	}
 
@@ -679,7 +678,7 @@ func addStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) error {
 	}
 
 	request := stockProto.StockRequest{
-		Quantity:    requestNewOrder.Packages[0].Items[0].Quantity + 300,
+		Quantity:    requestNewOrder.Packages[0].Items[0].Quantity + 500,
 		InventoryId: requestNewOrder.Packages[0].Items[0].InventoryId,
 	}
 
@@ -692,7 +691,7 @@ func addStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) error {
 	}
 
 	request = stockProto.StockRequest{
-		Quantity:    requestNewOrder.Packages[0].Items[1].Quantity + 300,
+		Quantity:    requestNewOrder.Packages[0].Items[1].Quantity + 500,
 		InventoryId: requestNewOrder.Packages[0].Items[1].InventoryId,
 	}
 
@@ -705,7 +704,7 @@ func addStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) error {
 	}
 
 	request = stockProto.StockRequest{
-		Quantity:    requestNewOrder.Packages[1].Items[0].Quantity + 300,
+		Quantity:    requestNewOrder.Packages[1].Items[0].Quantity + 500,
 		InventoryId: requestNewOrder.Packages[1].Items[0].InventoryId,
 	}
 
@@ -718,7 +717,7 @@ func addStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) error {
 	}
 
 	request = stockProto.StockRequest{
-		Quantity:    requestNewOrder.Packages[1].Items[1].Quantity + 300,
+		Quantity:    requestNewOrder.Packages[1].Items[1].Quantity + 500,
 		InventoryId: requestNewOrder.Packages[1].Items[1].InventoryId,
 	}
 

@@ -238,10 +238,10 @@ func convert(ctx context.Context, newOrderDto *ordersrv.RequestNewOrder) (*entit
 				UseLimit:         newOrderDto.Invoice.Voucher.Details.UseLimit,
 				Count:            newOrderDto.Invoice.Voucher.Details.Count,
 				Length:           newOrderDto.Invoice.Voucher.Details.Length,
-				Categories:       newOrderDto.Invoice.Voucher.Details.Info.Categories,
-				Products:         newOrderDto.Invoice.Voucher.Details.Info.Products,
-				Users:            newOrderDto.Invoice.Voucher.Details.Info.Users,
-				Sellers:          newOrderDto.Invoice.Voucher.Details.Info.Sellers,
+				Categories:       nil,
+				Products:         nil,
+				Users:            nil,
+				Sellers:          nil,
 				IsFirstPurchase:  newOrderDto.Invoice.Voucher.Details.IsFirstPurchase,
 				Type:             newOrderDto.Invoice.Voucher.Details.Type,
 				MaxDiscountValue: newOrderDto.Invoice.Voucher.Details.MaxDiscountValue,
@@ -249,6 +249,13 @@ func convert(ctx context.Context, newOrderDto *ordersrv.RequestNewOrder) (*entit
 				VoucherType:      newOrderDto.Invoice.Voucher.Details.VoucherType.String(),
 				VoucherSponsor:   newOrderDto.Invoice.Voucher.Details.VoucherSponsor.String(),
 				Extended:         nil,
+			}
+
+			if newOrderDto.Invoice.Voucher.Details.Info != nil {
+				order.Invoice.Voucher.Details.Categories = newOrderDto.Invoice.Voucher.Details.Info.Categories
+				order.Invoice.Voucher.Details.Products = newOrderDto.Invoice.Voucher.Details.Info.Products
+				order.Invoice.Voucher.Details.Users = newOrderDto.Invoice.Voucher.Details.Info.Users
+				order.Invoice.Voucher.Details.Sellers = newOrderDto.Invoice.Voucher.Details.Info.Sellers
 			}
 
 			temp, err := time.Parse(ISO8601, newOrderDto.Invoice.Voucher.Details.StartDate)

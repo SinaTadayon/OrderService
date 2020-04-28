@@ -8,26 +8,13 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type VoucherSponsor string
-type VoucherType string
-
-const (
-	BazliaVoucher = VoucherSponsor("BAZLIA")
-	SellerVoucher = VoucherSponsor("SELLER")
-)
-
-const (
-	PurchaseVoucher = VoucherType("PURCHASE")
-	ShipmentVoucher = VoucherType("SHIPMENT")
-)
-
 const (
 	randomMin int = 100
 	randomMax int = 999
 )
 
 const (
-	DocumentVersion string = "1.0.8"
+	DocumentVersion string = "1.0.9"
 )
 
 func init() {
