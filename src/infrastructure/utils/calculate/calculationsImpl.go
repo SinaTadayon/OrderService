@@ -12,6 +12,19 @@ import (
 
 type financeCalcFunc func(ctx context.Context, order *OrderFinance, mode FinanceMode) error
 
+type VoucherSponsor string
+type VoucherType string
+
+const (
+	BazliaVoucher = VoucherSponsor("BAZLIA")
+	SellerVoucher = VoucherSponsor("SELLER")
+)
+
+const (
+	PurchaseVoucher = VoucherType("PURCHASE")
+	ShipmentVoucher = VoucherType("SHIPMENT")
+)
+
 const (
 	newStatus        string = "NEW"
 	inProgressStatus string = "IN_PROGRESS"
@@ -193,111 +206,109 @@ func (finance financeCalculatorImpl) voucherCalc(decorator financeCalcFunc) fina
 			return nil
 		}
 
-		var shipmentVoucherPrice = decimal.Zero
-		if order.Invoice.GrandTotal.IsZero() {
-			if order.Invoice.Voucher.Percent == 0 {
+		if order.Invoice.Voucher.VoucherType == PurchaseVoucher {
+
+			var shipmentVoucherPrice = decimal.Zero
+			if order.Invoice.GrandTotal.IsZero() {
 				shipmentVoucherPrice = *order.Invoice.ShipmentTotal
-			}
-		}
 
-		if !shipmentVoucherPrice.IsZero() {
-			order.Invoice.Voucher.RawShipmentAppliedPrice = &shipmentVoucherPrice
-			roundupShipmentAppliedPrice := shipmentVoucherPrice.Ceil()
-			order.Invoice.Voucher.RoundupShipmentAppliedPrice = &roundupShipmentAppliedPrice
-		}
-
-		var netVoucherAppliedPrice = decimal.Zero
-		if order.Invoice.Voucher.RoundupAppliedPrice != nil {
-			netVoucherAppliedPrice = (*order.Invoice.Voucher.RoundupAppliedPrice).Sub(shipmentVoucherPrice)
-		} else {
-			netVoucherAppliedPrice = (*order.Invoice.Voucher.AppliedPrice).Sub(shipmentVoucherPrice)
-		}
-
-		// calculate item voucher
-		var roundupSum = decimal.Zero
-		for i := 0; i < len(finance.baseItems); i++ {
-			itemFinance := finance.itemsMap[finance.baseItems[i].Sid][finance.baseItems[i].InventoryId]
-			if itemFinance.Invoice.Voucher == nil {
-				itemFinance.Invoice.Voucher = &ItemVoucherFinance{}
-				itemFinance.Invoice.Voucher.CreatedAt = finance.timestamp
+				order.Invoice.Voucher.RawShipmentAppliedPrice = &shipmentVoucherPrice
+				roundupShipmentAppliedPrice := shipmentVoucherPrice.Ceil()
+				order.Invoice.Voucher.RoundupShipmentAppliedPrice = &roundupShipmentAppliedPrice
 			}
 
-			if i == len(finance.baseItems)-1 {
-				lastRawUnitPrice := (netVoucherAppliedPrice).
-					Sub(roundupSum).
-					Div(decimal.NewFromInt(int64(finance.baseItems[i].Quantity)))
-				itemFinance.Invoice.Voucher.RawUnitPrice = &lastRawUnitPrice
-				lastRoundupUnitPrice := lastRawUnitPrice.Ceil()
-				itemFinance.Invoice.Voucher.RoundupUnitPrice = &lastRoundupUnitPrice
-
-				lastRawTotalPrice := (netVoucherAppliedPrice).Sub(roundupSum)
-				itemFinance.Invoice.Voucher.RawTotalPrice = &lastRawTotalPrice
-				lastRoundupTotalPrice := lastRawTotalPrice.Ceil()
-				itemFinance.Invoice.Voucher.RoundupTotalPrice = &lastRoundupTotalPrice
-
-				itemFinance.Invoice.Voucher.UpdatedAt = finance.timestamp
-
+			var netVoucherAppliedPrice = decimal.Zero
+			if order.Invoice.Voucher.RoundupAppliedPrice != nil {
+				netVoucherAppliedPrice = (*order.Invoice.Voucher.RoundupAppliedPrice).Sub(shipmentVoucherPrice)
 			} else {
-				rawUnit := finance.baseItems[i].UnitPrice.Mul(netVoucherAppliedPrice)
-				rawUnit = rawUnit.Div(finance.baseVoucherRatio)
-				itemFinance.Invoice.Voucher.RawUnitPrice = &rawUnit
-				rawTotal := rawUnit.Mul(decimal.NewFromInt(int64(finance.baseItems[i].Quantity)))
-				itemFinance.Invoice.Voucher.RawTotalPrice = &rawTotal
-
-				roundupUnit := (*itemFinance.Invoice.Voucher.RawUnitPrice).Ceil()
-				itemFinance.Invoice.Voucher.RoundupUnitPrice = &roundupUnit
-				roundupTotal := roundupUnit.Mul(decimal.NewFromInt(int64(finance.baseItems[i].Quantity)))
-				itemFinance.Invoice.Voucher.RoundupTotalPrice = &roundupTotal
-
-				itemFinance.Invoice.Voucher.UpdatedAt = finance.timestamp
-
-				roundupSum = roundupSum.Add(roundupTotal)
-			}
-		}
-
-		// calculate package voucher and shipment voucher
-		for i := 0; i < len(finance.basePackages); i++ {
-			pkgFinance := finance.pkgMap[finance.basePackages[i].Pid]
-			if pkgFinance.Invoice.Voucher == nil {
-				pkgFinance.Invoice.Voucher = &PackageVoucherFinance{}
-				pkgFinance.Invoice.Voucher.CreatedAt = finance.timestamp
+				netVoucherAppliedPrice = (*order.Invoice.Voucher.AppliedPrice).Sub(shipmentVoucherPrice)
 			}
 
-			var rawTotal = decimal.Zero
-			var roundupTotal = decimal.Zero
-			for j := 0; j < len(pkgFinance.Subpackages); j++ {
-				for k := 0; k < len(pkgFinance.Subpackages[j].Items); k++ {
-					rawTotal = rawTotal.Add(*pkgFinance.Subpackages[j].Items[k].Invoice.Voucher.RawTotalPrice)
-					roundupTotal = roundupTotal.Add(*pkgFinance.Subpackages[j].Items[k].Invoice.Voucher.RoundupTotalPrice)
+			// calculate item voucher
+			var roundupSum = decimal.Zero
+			for i := 0; i < len(finance.baseItems); i++ {
+				itemFinance := finance.itemsMap[finance.baseItems[i].Sid][finance.baseItems[i].InventoryId]
+				if itemFinance.Invoice.Voucher == nil {
+					itemFinance.Invoice.Voucher = &ItemVoucherFinance{}
+					itemFinance.Invoice.Voucher.CreatedAt = finance.timestamp
 				}
-			}
-			pkgFinance.Invoice.Voucher.RawTotal = &rawTotal
-			pkgFinance.Invoice.Voucher.RoundupTotal = &roundupTotal
-			pkgFinance.Invoice.Voucher.UpdatedAt = finance.timestamp
 
-			if !shipmentVoucherPrice.IsZero() {
-				roundupSum = decimal.Zero
+				if i == len(finance.baseItems)-1 {
+					lastRawUnitPrice := (netVoucherAppliedPrice).
+						Sub(roundupSum).
+						Div(decimal.NewFromInt(int64(finance.baseItems[i].Quantity)))
+					itemFinance.Invoice.Voucher.RawUnitPrice = &lastRawUnitPrice
+					lastRoundupUnitPrice := lastRawUnitPrice.Ceil()
+					itemFinance.Invoice.Voucher.RoundupUnitPrice = &lastRoundupUnitPrice
 
-				if i == len(finance.basePackages)-1 {
-					lastRawShipmentPrice := shipmentVoucherPrice.Sub(roundupSum)
-					pkgFinance.Invoice.Voucher.RawCalcShipmentPrice = &lastRawShipmentPrice
+					lastRawTotalPrice := (netVoucherAppliedPrice).Sub(roundupSum)
+					itemFinance.Invoice.Voucher.RawTotalPrice = &lastRawTotalPrice
+					lastRoundupTotalPrice := lastRawTotalPrice.Ceil()
+					itemFinance.Invoice.Voucher.RoundupTotalPrice = &lastRoundupTotalPrice
 
-					lastRoundupShipmentPrice := lastRawShipmentPrice.Ceil()
-					pkgFinance.Invoice.Voucher.RoundupCalcShipmentPrice = &lastRoundupShipmentPrice
+					itemFinance.Invoice.Voucher.UpdatedAt = finance.timestamp
 
 				} else {
-					rawShipmentPrice := pkgFinance.Invoice.ShipmentAmount.Mul(shipmentVoucherPrice)
-					rawShipmentPrice = rawShipmentPrice.Div(finance.baseShipmentRatio)
-					pkgFinance.Invoice.Voucher.RawCalcShipmentPrice = &rawShipmentPrice
+					rawUnit := finance.baseItems[i].UnitPrice.Mul(netVoucherAppliedPrice)
+					rawUnit = rawUnit.Div(finance.baseVoucherRatio)
+					itemFinance.Invoice.Voucher.RawUnitPrice = &rawUnit
+					rawTotal := rawUnit.Mul(decimal.NewFromInt(int64(finance.baseItems[i].Quantity)))
+					itemFinance.Invoice.Voucher.RawTotalPrice = &rawTotal
 
-					roundupShipmentPrice := rawShipmentPrice.Ceil()
-					pkgFinance.Invoice.Voucher.RawCalcShipmentPrice = &roundupShipmentPrice
+					roundupUnit := (*itemFinance.Invoice.Voucher.RawUnitPrice).Ceil()
+					itemFinance.Invoice.Voucher.RoundupUnitPrice = &roundupUnit
+					roundupTotal := roundupUnit.Mul(decimal.NewFromInt(int64(finance.baseItems[i].Quantity)))
+					itemFinance.Invoice.Voucher.RoundupTotalPrice = &roundupTotal
 
-					roundupSum = roundupSum.Add(roundupShipmentPrice)
+					itemFinance.Invoice.Voucher.UpdatedAt = finance.timestamp
+
+					roundupSum = roundupSum.Add(roundupTotal)
+				}
+			}
+
+			// calculate package voucher and shipment voucher
+			for i := 0; i < len(finance.basePackages); i++ {
+				pkgFinance := finance.pkgMap[finance.basePackages[i].Pid]
+				if pkgFinance.Invoice.Voucher == nil {
+					pkgFinance.Invoice.Voucher = &PackageVoucherFinance{}
+					pkgFinance.Invoice.Voucher.CreatedAt = finance.timestamp
+				}
+
+				var rawTotal = decimal.Zero
+				var roundupTotal = decimal.Zero
+				for j := 0; j < len(pkgFinance.Subpackages); j++ {
+					for k := 0; k < len(pkgFinance.Subpackages[j].Items); k++ {
+						rawTotal = rawTotal.Add(*pkgFinance.Subpackages[j].Items[k].Invoice.Voucher.RawTotalPrice)
+						roundupTotal = roundupTotal.Add(*pkgFinance.Subpackages[j].Items[k].Invoice.Voucher.RoundupTotalPrice)
+					}
+				}
+				pkgFinance.Invoice.Voucher.RawTotal = &rawTotal
+				pkgFinance.Invoice.Voucher.RoundupTotal = &roundupTotal
+				pkgFinance.Invoice.Voucher.UpdatedAt = finance.timestamp
+
+				if !shipmentVoucherPrice.IsZero() {
+					roundupSum = decimal.Zero
+
+					if i == len(finance.basePackages)-1 {
+						lastRawShipmentPrice := shipmentVoucherPrice.Sub(roundupSum)
+						pkgFinance.Invoice.Voucher.RawCalcShipmentPrice = &lastRawShipmentPrice
+
+						lastRoundupShipmentPrice := lastRawShipmentPrice.Ceil()
+						pkgFinance.Invoice.Voucher.RoundupCalcShipmentPrice = &lastRoundupShipmentPrice
+
+					} else {
+						rawShipmentPrice := pkgFinance.Invoice.ShipmentAmount.Mul(shipmentVoucherPrice)
+						rawShipmentPrice = rawShipmentPrice.Div(finance.baseShipmentRatio)
+						pkgFinance.Invoice.Voucher.RawCalcShipmentPrice = &rawShipmentPrice
+
+						roundupShipmentPrice := rawShipmentPrice.Ceil()
+						pkgFinance.Invoice.Voucher.RawCalcShipmentPrice = &roundupShipmentPrice
+
+						roundupSum = roundupSum.Add(roundupShipmentPrice)
+					}
 				}
 			}
 		}
-
 		return nil
 	}
 }
@@ -845,6 +856,42 @@ func (finance financeCalculatorImpl) shareCalc(decorator financeCalcFunc) financ
 
 			order.Packages[i].Invoice.Share.RawSellerShare = &rawPkgSellerShare
 			order.Packages[i].Invoice.Share.RoundupSellerShare = &roundupPkgSellerShare
+
+			if order.Invoice.Voucher != nil {
+				if order.Invoice.Voucher.VoucherSponsor == SellerVoucher {
+					if order.Packages[i].Invoice.Voucher.RawCalcShipmentPrice != nil {
+						rawSellerShippingNet := (*order.Packages[i].Invoice.ShipmentAmount).
+							Sub(*order.Packages[i].Invoice.Voucher.RawCalcShipmentPrice)
+						order.Packages[i].Invoice.Share.RawSellerShippingNet = &rawSellerShippingNet
+					} else {
+						rawSellerShippingNet := *order.Packages[i].Invoice.ShipmentAmount
+						order.Packages[i].Invoice.Share.RawSellerShippingNet = &rawSellerShippingNet
+					}
+
+					if order.Packages[i].Invoice.Voucher.RoundupCalcShipmentPrice != nil {
+						roundupCalcShipmentPrice := (*order.Packages[i].Invoice.ShipmentAmount).
+							Sub(*order.Packages[i].Invoice.Voucher.RoundupCalcShipmentPrice).
+							Ceil()
+						order.Packages[i].Invoice.Share.RoundupSellerShippingNet = &roundupCalcShipmentPrice
+					} else {
+						roundupSellerShippingNet := (*order.Packages[i].Invoice.ShipmentAmount).Ceil()
+						order.Packages[i].Invoice.Share.RoundupSellerShippingNet = &roundupSellerShippingNet
+					}
+				} else if order.Invoice.Voucher.VoucherSponsor == BazliaVoucher {
+					rawSellerShippingNet := *order.Packages[i].Invoice.ShipmentAmount
+					order.Packages[i].Invoice.Share.RawSellerShippingNet = &rawSellerShippingNet
+
+					roundupSellerShippingNet := (*order.Packages[i].Invoice.ShipmentAmount).Ceil()
+					order.Packages[i].Invoice.Share.RoundupSellerShippingNet = &roundupSellerShippingNet
+				}
+
+			} else {
+				rawSellerShippingNet := *order.Packages[i].Invoice.ShipmentAmount
+				order.Packages[i].Invoice.Share.RawSellerShippingNet = &rawSellerShippingNet
+
+				roundupSellerShippingNet := (*order.Packages[i].Invoice.ShipmentAmount).Ceil()
+				order.Packages[i].Invoice.Share.RoundupSellerShippingNet = &roundupSellerShippingNet
+			}
 
 			order.Packages[i].Invoice.Share.UpdatedAt = finance.timestamp
 

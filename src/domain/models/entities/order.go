@@ -14,7 +14,7 @@ const (
 )
 
 const (
-	DocumentVersion string = "1.0.8"
+	DocumentVersion string = "1.0.9"
 )
 
 func init() {
@@ -164,6 +164,8 @@ type VoucherDetails struct {
 	Type             string                 `bson:"type"`
 	MaxDiscountValue uint64                 `bson:"maxDiscountValue"`
 	MinBasketValue   uint64                 `bson:"minBasketValue"`
+	VoucherType      string                 `bson:"voucherType"`
+	VoucherSponsor   string                 `bson:"voucherSponsor"`
 	Extended         map[string]interface{} `bson:"ext"`
 }
 

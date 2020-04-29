@@ -849,6 +849,8 @@ message OperatorOrderInvoiceDetail {
                 string RoundupBusinessShare = 2;
                 string RawSellerShare = 3;
                 string RoundupSellerShare = 4;
+                string RawSellerShippingNet = 5;
+                string RoundupSellerShippingNet = 6;
             }
             PackageShare share = 4;
 
