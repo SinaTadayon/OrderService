@@ -35,12 +35,14 @@ type PackageCommissionFinance struct {
 }
 
 type PackageShareFinance struct {
-	RawBusinessShare     *decimal.Decimal
-	RoundupBusinessShare *decimal.Decimal
-	RawSellerShare       *decimal.Decimal
-	RoundupSellerShare   *decimal.Decimal
-	CreatedAt            *time.Time
-	UpdatedAt            *time.Time
+	RawBusinessShare         *decimal.Decimal
+	RoundupBusinessShare     *decimal.Decimal
+	RawSellerShare           *decimal.Decimal
+	RoundupSellerShare       *decimal.Decimal
+	RawSellerShippingNet     *decimal.Decimal
+	RoundupSellerShippingNet *decimal.Decimal
+	CreatedAt                *time.Time
+	UpdatedAt                *time.Time
 }
 
 type PackageVoucherFinance struct {
@@ -177,6 +179,34 @@ func FactoryFromPkg(ctx context.Context, pkg *entities.PackageItem) (*PackageIte
 				return nil, err
 			}
 			pkgInvoiceFinance.Share.RoundupSellerShare = &roundupSellerShare
+		}
+
+		if pkg.Invoice.Share.RawSellerShippingNet != nil {
+			rawSellerShippingNet, err := decimal.NewFromString(pkg.Invoice.Share.RawSellerShippingNet.Amount)
+			if err != nil {
+				applog.GLog.Logger.FromContext(ctx).Error("pkg.Invoice.Share.RawSellerShippingNet.Amount invalid",
+					"fn", "FactoryFromPkg",
+					"rawSellerShippingNet", pkg.Invoice.Share.RawSellerShippingNet.Amount,
+					"pid", pkg.PId,
+					"oid", pkg.OrderId,
+					"error", err)
+				return nil, err
+			}
+			pkgInvoiceFinance.Share.RawSellerShippingNet = &rawSellerShippingNet
+		}
+
+		if pkg.Invoice.Share.RoundupSellerShippingNet != nil {
+			roundupSellerShippingNet, err := decimal.NewFromString(pkg.Invoice.Share.RoundupSellerShippingNet.Amount)
+			if err != nil {
+				applog.GLog.Logger.FromContext(ctx).Error("pkg.Invoice.Share.RoundupSellerShippingNet.Amount invalid",
+					"fn", "FactoryFromPkg",
+					"roundupSellerShippingNet", pkg.Invoice.Share.RoundupSellerShippingNet.Amount,
+					"pid", pkg.PId,
+					"oid", pkg.OrderId,
+					"error", err)
+				return nil, err
+			}
+			pkgInvoiceFinance.Share.RoundupSellerShippingNet = &roundupSellerShippingNet
 		}
 
 		pkgInvoiceFinance.Share.CreatedAt = pkg.Invoice.Share.CreatedAt
@@ -453,6 +483,20 @@ func ConvertToPkg(ctx context.Context, finance *PackageItemFinance, pkg *entitie
 		if finance.Invoice.Share.RoundupSellerShare != nil {
 			pkg.Invoice.Share.RoundupSellerShare = &entities.Money{
 				Amount:   finance.Invoice.Share.RoundupSellerShare.String(),
+				Currency: "IRR",
+			}
+		}
+
+		if finance.Invoice.Share.RawSellerShippingNet != nil {
+			pkg.Invoice.Share.RawSellerShippingNet = &entities.Money{
+				Amount:   finance.Invoice.Share.RawSellerShippingNet.String(),
+				Currency: "IRR",
+			}
+		}
+
+		if finance.Invoice.Share.RoundupSellerShippingNet != nil {
+			pkg.Invoice.Share.RoundupSellerShippingNet = &entities.Money{
+				Amount:   finance.Invoice.Share.RoundupSellerShippingNet.String(),
 				Currency: "IRR",
 			}
 		}

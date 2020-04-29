@@ -49,6 +49,8 @@ type VoucherFinance struct {
 	RawShipmentAppliedPrice     *decimal.Decimal
 	RoundupShipmentAppliedPrice *decimal.Decimal
 	Price                       *decimal.Decimal
+	VoucherType                 VoucherType
+	VoucherSponsor              VoucherSponsor
 	//Code                        string
 	//Details                     *VoucherDetailsFinance
 }
@@ -234,6 +236,18 @@ func FactoryFromOrder(ctx context.Context, order *entities.Order) (*OrderFinance
 				return nil, err
 			}
 			financeInvoice.Voucher.Price = &price
+		}
+
+		if VoucherType(order.Invoice.Voucher.Details.VoucherType) == PurchaseVoucher {
+			financeInvoice.Voucher.VoucherType = PurchaseVoucher
+		} else {
+			financeInvoice.Voucher.VoucherType = ShipmentVoucher
+		}
+
+		if VoucherSponsor(order.Invoice.Voucher.Details.VoucherSponsor) == BazliaVoucher {
+			financeInvoice.Voucher.VoucherSponsor = BazliaVoucher
+		} else {
+			financeInvoice.Voucher.VoucherSponsor = SellerVoucher
 		}
 	}
 
