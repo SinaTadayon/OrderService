@@ -171,7 +171,7 @@ services:
   redis:
     image: registry.faza.io/redis:5.0
     ports:
-      - 6379:6379
+      - 50079:6379
 
   mongo:
     image: registry.faza.io/mongo:4.2.2
