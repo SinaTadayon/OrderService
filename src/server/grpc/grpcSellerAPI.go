@@ -535,8 +535,7 @@ func (server *Server) sellerAllOrdersHandler(ctx context.Context, pid uint64, pa
 }
 
 func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, oid uint64, filter FilterValue) (*pb.MessageResponse, error) {
-
-	pkgItem, err := app.Globals.PkgItemRepository.FindById(ctx, oid, pid)
+	pkgItem, buyerId, err := app.Globals.PkgItemRepository.FindPkgItmBuyinfById(ctx, oid, pid)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("PkgItemRepository.FindById failed",
 			"fn", "sellerOrderDetailHandler",
@@ -871,6 +870,7 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, oid uin
 			Lat:           "",
 			Long:          "",
 			ZipCode:       pkgItem.ShippingAddress.ZipCode,
+			BuyerId:       buyerId,
 		},
 		Items: sellerOrderDetailItems,
 	}

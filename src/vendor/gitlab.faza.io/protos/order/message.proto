@@ -97,7 +97,7 @@ message ReasonDetail {
 	string  translation     = 2;
     bool    hasDescription  = 3;
     bool    cancel          = 4;
-    bool    return          = 5; 
+    bool    return          = 5;
     bool    isActive        = 6;
     enum Responsible {
         NONE = 0;
@@ -183,6 +183,7 @@ message SellerOrderDetail {
         string lat = 10;
         string long = 11;
         string zipCode = 12;
+        uint64 buyerId = 13;
     }
     ShipmentAddress address = 5;
 

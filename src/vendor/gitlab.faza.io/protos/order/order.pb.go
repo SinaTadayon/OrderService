@@ -1865,7 +1865,9 @@ func init() {
 	proto.RegisterType((*ShippingSpec)(nil), "ordersrv.ShippingSpec")
 }
 
-func init() { proto.RegisterFile("order.proto", fileDescriptor_cd01338c35d87077) }
+func init() {
+	proto.RegisterFile("order.proto", fileDescriptor_cd01338c35d87077)
+}
 
 var fileDescriptor_cd01338c35d87077 = []byte{
 	// 2043 bytes of a gzipped FileDescriptorProto
@@ -2001,11 +2003,11 @@ var fileDescriptor_cd01338c35d87077 = []byte{
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
-var _ grpc.ClientConn
+var _ grpc.ClientConnInterface
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion4
+const _ = grpc.SupportPackageIsVersion6
 
 // OrderServiceClient is the client API for OrderService service.
 //
@@ -2021,10 +2023,10 @@ type OrderServiceClient interface {
 }
 
 type orderServiceClient struct {
-	cc *grpc.ClientConn
+	cc grpc.ClientConnInterface
 }
 
-func NewOrderServiceClient(cc *grpc.ClientConn) OrderServiceClient {
+func NewOrderServiceClient(cc grpc.ClientConnInterface) OrderServiceClient {
 	return &orderServiceClient{cc}
 }
 

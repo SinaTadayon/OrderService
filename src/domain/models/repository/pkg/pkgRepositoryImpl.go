@@ -111,6 +111,53 @@ func (repo iPkgItemRepositoryImpl) UpdateWithUpsert(ctx context.Context, pkgItem
 	return updatedPkgItem, nil
 }
 
+func (repo iPkgItemRepositoryImpl) FindPkgItmBuyinfById(ctx context.Context, orderId uint64, id uint64) (*entities.PackageItem, uint64, repository.IRepoError) {
+	var temp struct {
+		PkgItm []entities.PackageItem `bson:"pkgItm"`
+		BuyId  []struct {
+			BuyerId uint64 `bson:"buyerId"`
+		} `bson:"buyId"`
+	}
+
+	pipeline := []bson.M{
+		{
+			"$facet": bson.M{
+				"pkgItm": []bson.M{ // find package item
+					{"$match": bson.M{"orderId": orderId, "deletedAt": nil}},
+					{"$unwind": "$packages"},
+					{"$match": bson.M{"packages.pid": id}},
+					{"$project": bson.M{"_id": 0, "packages": 1}},
+					{"$replaceRoot": bson.M{"newRoot": "$packages"}},
+				},
+				"buyId": []bson.M{ // find buyerInfo
+					{"$match": bson.M{"orderId": orderId, "deletedAt": nil}},
+					{"$project": bson.M{
+						"buyerId": "$buyerInfo.buyerId",
+					}},
+					{"$project": bson.M{
+						"_id": 0,
+					}},
+				},
+			},
+		},
+	}
+
+	cursor, err := repo.mongoAdapter.Aggregate(repo.database, repo.collection, pipeline)
+	if err != nil {
+		return nil, 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Aggregate Failed"))
+	}
+
+	defer closeCursor(ctx, cursor)
+
+	for cursor.Next(ctx) {
+		if err := cursor.Decode(&temp); err != nil {
+			return nil, 0, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "cursor.Decode failed"))
+		}
+	}
+
+	return &temp.PkgItm[0], temp.BuyId[0].BuyerId, nil
+}
+
 func (repo iPkgItemRepositoryImpl) FindById(ctx context.Context, orderId uint64, id uint64) (*entities.PackageItem, repository.IRepoError) {
 
 	var PkgItem entities.PackageItem
