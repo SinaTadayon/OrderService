@@ -90,7 +90,7 @@ gitlab.faza.io/protos/payment-gateway
 gitlab.faza.io/protos/stock-proto.git
 # gitlab.faza.io/protos/user v0.0.48
 gitlab.faza.io/protos/user
-# gitlab.faza.io/services/user-app-client v0.0.24
+# gitlab.faza.io/services/user-app-client v0.0.25
 gitlab.faza.io/services/user-app-client
 # go.mongodb.org/mongo-driver v1.3.1
 go.mongodb.org/mongo-driver/bson

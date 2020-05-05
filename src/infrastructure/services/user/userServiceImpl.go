@@ -206,8 +206,14 @@ func (userService iUserServiceImpl) AuthenticateContextToken(ctx context.Context
 			applog.GLog.Logger.FromContext(ctx).Error("userService.client.VerifyAndGetUserFromContextToken failed",
 				"fn", "AuthenticateContextToken",
 				"error", err)
+			var errCode future.ErrorCode
+			if err.Error() == "Forbidden" {
+				errCode = future.Forbidden
+			} else {
+				errCode = future.InternalError
+			}
 			return future.Factory().SetCapacity(1).
-				SetError(future.Forbidden, "UnknownError", errors.Wrap(err, "Connect to UserService Failed")).
+				SetError(errCode, "UnknownError", errors.Wrap(err, "Connect to UserService Failed")).
 				BuildAndSend()
 		}
 	} else if result, ok := obj.(*acl.Acl); ok {
