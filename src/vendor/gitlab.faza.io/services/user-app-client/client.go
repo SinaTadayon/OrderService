@@ -718,9 +718,12 @@ func (c *Client) VerifyAndGetUserFromContextToken(ctx context.Context) (*acl.Acl
 	res, err := c.TokenValidate(rawTokenStr, ctx)
 	if err != nil {
 		return nil, err
+	} else if int(res.Code) == 404 {
+		return nil, errors.New("Forbidden")
 	} else if int(res.Code) != 200 {
 		return nil, errors.New(res.Message)
 	}
+
 	tokenClaims, _, err := acl.ParseJWTAccessToken(rawTokenStr)
 	if err != nil {
 		return nil, err
