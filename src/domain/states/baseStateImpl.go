@@ -95,6 +95,17 @@ func (base BaseStateImpl) IsActionValid(action actions.IAction) bool {
 	return false
 }
 
+func (base *BaseStateImpl) SetStatesMap(actionMap map[actions.IAction]IState) {
+
+	actionList := make([]actions.IAction, 0, len(actionMap))
+	for key, _ := range actionMap {
+		actionList = append(actionList, key)
+	}
+
+	base.actionStateMap = actionMap
+	base.actions = actionList
+}
+
 func (base BaseStateImpl) StatesMap() map[actions.IAction]IState {
 	return base.actionStateMap
 }
