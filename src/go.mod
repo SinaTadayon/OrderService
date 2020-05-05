@@ -25,7 +25,7 @@ require (
 	gitlab.faza.io/protos/payment-gateway v0.0.16
 	gitlab.faza.io/protos/stock-proto.git v0.0.8
 	gitlab.faza.io/protos/user v0.0.48
-	gitlab.faza.io/services/user-app-client v0.0.24
+	gitlab.faza.io/services/user-app-client v0.0.25
 	go.mongodb.org/mongo-driver v1.3.1
 	go.uber.org/multierr v1.5.0 // indirect
 	go.uber.org/zap v1.14.0

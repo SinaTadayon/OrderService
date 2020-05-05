@@ -191,8 +191,8 @@ gitlab.faza.io/protos/stock-proto.git v0.0.8/go.mod h1:Gda0ineygX49cKhrjrUyHZv6Q
 gitlab.faza.io/protos/user v0.0.46/go.mod h1:w6omD0TOMlJfOKcNTne7hlKN5FUOBPJzexzFCZmoyQY=
 gitlab.faza.io/protos/user v0.0.48 h1:eKldnNAS/g7joGqPAa72Q4Xunugn2O9P3wr9Vx4tjoI=
 gitlab.faza.io/protos/user v0.0.48/go.mod h1:w6omD0TOMlJfOKcNTne7hlKN5FUOBPJzexzFCZmoyQY=
-gitlab.faza.io/services/user-app-client v0.0.24 h1:UqTRPpL1iH4/w5SSEDlkt1uMMspkZmenqL55bHP1ieY=
-gitlab.faza.io/services/user-app-client v0.0.24/go.mod h1:ZVZDaPGna4e3Jr6hmMpXOQb7UPe8sjZUREo1D/beYXI=
+gitlab.faza.io/services/user-app-client v0.0.25 h1:NaxY9PsRwYUx32AQ+ykHkPGVu8Bz9wrx8mMti51dR/s=
+gitlab.faza.io/services/user-app-client v0.0.25/go.mod h1:ZVZDaPGna4e3Jr6hmMpXOQb7UPe8sjZUREo1D/beYXI=
 go.mongodb.org/mongo-driver v1.1.2/go.mod h1:u7ryQJ+DOzQmeO7zB6MHyr8jkEQvC8vH7qLUO4lqsUM=
 go.mongodb.org/mongo-driver v1.3.0/go.mod h1:MSWZXKOynuguX+JSvwP8i+58jYCXxbia8HS3gZBapIE=
 go.mongodb.org/mongo-driver v1.3.1 h1:op56IfTQiaY2679w922KVWa3qcHdml2K/Io8ayAOUEQ=
