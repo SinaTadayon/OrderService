@@ -263,6 +263,7 @@ func TestUpdatePkgItemWithNewSubPkgRepository(t *testing.T) {
 }
 
 func TestIPkgItemRepositoryImpl_FindPkgItmBuyinfById(t *testing.T) {
+	defer removeCollection()
 	order, err := createOrderAndSave()
 	require.Nil(t, err, "createOrderAndSave failed")
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
@@ -276,7 +277,7 @@ func TestIPkgItemRepositoryImpl_FindPkgItmBuyinfById(t *testing.T) {
 }
 
 func TestFindById(t *testing.T) {
-	// defer removeCollection()
+	defer removeCollection()
 	order, err := createOrderAndSave()
 	require.Nil(t, err, "createOrderAndSave failed")
 	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
