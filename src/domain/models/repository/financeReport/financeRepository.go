@@ -1,4 +1,4 @@
-package financeReport
+package finance_repository
 
 import (
 	"context"

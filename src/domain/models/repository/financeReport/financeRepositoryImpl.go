@@ -1,4 +1,4 @@
-package financeReport
+package finance_repository
 
 import (
 	"context"
@@ -59,37 +59,72 @@ func (repo iFinanceReportRepositoryImpl) FindAllWithPageAndSort(ctx context.Cont
 		return nil, totalCount, repository.ErrorFactory(repository.BadRequestErr, "Request Operation Failed", repository.ErrorTotalCountExceeded)
 	}
 
-	pipeline := []bson.M{
-		{"$match": bson.M{"packages.subpackages.updatedAt": bson.M{"$gte": startTimestamp, "$lte": endTimestamp}, "packages.subpackages.status": state, "packages.deletedAt": nil}},
-		{"$unwind": "$packages"},
-		{"$unwind": "$packages.subpackages"},
-		{"$match": bson.M{"packages.subpackages.updatedAt": bson.M{"$gte": startTimestamp, "$lte": endTimestamp}, "packages.subpackages.status": state, "packages.deletedAt": nil}},
-		{"$addFields": bson.M{
-			"packages.subpackages.shipmentAmount":              "$packages.invoice.shipmentAmount",
-			"packages.subpackages.rawSellerShippingNet":        "$packages.invoice.share.rawSellerShippingNet",
-			"packages.subpackages.roundupSellerShippingNet":    "$packages.invoice.share.roundupSellerShippingNet",
-			"packages.subpackages.orderCreatedAt":              "$createdAt",
-			"packages.subpackages.items.invoice.sso.rate":      "$packages.invoice.sso.rate",
-			"packages.subpackages.items.invoice.sso.isObliged": "$packages.invoice.sso.isObliged"},
-		},
-		{"$project": bson.M{"_id": 0, "packages.subpackages": 1}},
-		{"$project": bson.M{
-			"packages.subpackages.sid":                      1,
-			"packages.subpackages.pid":                      1,
-			"packages.subpackages.orderId":                  1,
-			"packages.subpackages.items":                    1,
-			"packages.subpackages.status":                   1,
-			"packages.subpackages.createdAt":                1,
-			"packages.subpackages.updatedAt":                1,
-			"packages.subpackages.shipmentAmount":           1,
-			"packages.subpackages.rawSellerShippingNet":     1,
-			"packages.subpackages.roundupSellerShippingNet": 1,
-			"packages.subpackages.orderCreatedAt":           1},
-		},
-		{"$replaceWith": "$packages.subpackages"},
-		{"$sort": bson.M{fieldName: direction}},
-		{"$skip": offset},
-		{"$limit": perPage},
+	var pipeline []bson.M
+	if fieldName != "" {
+		pipeline = []bson.M{
+			{"$match": bson.M{"packages.subpackages.updatedAt": bson.M{"$gte": startTimestamp, "$lte": endTimestamp}, "packages.subpackages.status": state, "packages.deletedAt": nil}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.subpackages.updatedAt": bson.M{"$gte": startTimestamp, "$lte": endTimestamp}, "packages.subpackages.status": state, "packages.deletedAt": nil}},
+			{"$addFields": bson.M{
+				"packages.subpackages.shipmentAmount":              "$packages.invoice.shipmentAmount",
+				"packages.subpackages.rawSellerShippingNet":        "$packages.invoice.share.rawSellerShippingNet",
+				"packages.subpackages.roundupSellerShippingNet":    "$packages.invoice.share.roundupSellerShippingNet",
+				"packages.subpackages.orderCreatedAt":              "$createdAt",
+				"packages.subpackages.items.invoice.sso.rate":      "$packages.invoice.sso.rate",
+				"packages.subpackages.items.invoice.sso.isObliged": "$packages.invoice.sso.isObliged"},
+			},
+			{"$project": bson.M{"_id": 0, "packages.subpackages": 1}},
+			{"$project": bson.M{
+				"packages.subpackages.sid":                      1,
+				"packages.subpackages.pid":                      1,
+				"packages.subpackages.orderId":                  1,
+				"packages.subpackages.items":                    1,
+				"packages.subpackages.status":                   1,
+				"packages.subpackages.createdAt":                1,
+				"packages.subpackages.updatedAt":                1,
+				"packages.subpackages.shipmentAmount":           1,
+				"packages.subpackages.rawSellerShippingNet":     1,
+				"packages.subpackages.roundupSellerShippingNet": 1,
+				"packages.subpackages.orderCreatedAt":           1},
+			},
+			{"$replaceWith": "$packages.subpackages"},
+			{"$sort": bson.M{fieldName: direction}},
+			{"$skip": offset},
+			{"$limit": perPage},
+		}
+	} else {
+		pipeline = []bson.M{
+			{"$match": bson.M{"packages.subpackages.updatedAt": bson.M{"$gte": startTimestamp, "$lte": endTimestamp}, "packages.subpackages.status": state, "packages.deletedAt": nil}},
+			{"$unwind": "$packages"},
+			{"$unwind": "$packages.subpackages"},
+			{"$match": bson.M{"packages.subpackages.updatedAt": bson.M{"$gte": startTimestamp, "$lte": endTimestamp}, "packages.subpackages.status": state, "packages.deletedAt": nil}},
+			{"$addFields": bson.M{
+				"packages.subpackages.shipmentAmount":              "$packages.invoice.shipmentAmount",
+				"packages.subpackages.rawSellerShippingNet":        bson.M{"$ifNull": bson.A{"$packages.invoice.share.rawSellerShippingNet", nil}},
+				"packages.subpackages.roundupSellerShippingNet":    bson.M{"$ifNull": bson.A{"$packages.invoice.share.roundupSellerShippingNet", nil}},
+				"packages.subpackages.orderCreatedAt":              "$createdAt",
+				"packages.subpackages.items.invoice.sso.rate":      "$packages.invoice.sso.rate",
+				"packages.subpackages.items.invoice.sso.isObliged": "$packages.invoice.sso.isObliged"},
+			},
+			{"$project": bson.M{"_id": 0, "packages.subpackages": 1}},
+			{"$project": bson.M{
+				"packages.subpackages.sid":                      1,
+				"packages.subpackages.pid":                      1,
+				"packages.subpackages.orderId":                  1,
+				"packages.subpackages.items":                    1,
+				"packages.subpackages.status":                   1,
+				"packages.subpackages.createdAt":                1,
+				"packages.subpackages.updatedAt":                1,
+				"packages.subpackages.shipmentAmount":           1,
+				"packages.subpackages.rawSellerShippingNet":     1,
+				"packages.subpackages.roundupSellerShippingNet": 1,
+				"packages.subpackages.orderCreatedAt":           1},
+			},
+			{"$replaceWith": "$packages.subpackages"},
+			{"$skip": offset},
+			{"$limit": perPage},
+		}
 	}
 
 	cursor, e := repo.mongoAdapter.Aggregate(repo.database, repo.collection, pipeline)

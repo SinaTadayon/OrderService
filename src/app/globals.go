@@ -6,6 +6,7 @@ import (
 	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain/converter"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository/financeReport"
 	"gitlab.faza.io/order-project/order-service/domain/models/repository/order"
 	pkg_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/pkg"
 	"gitlab.faza.io/order-project/order-service/domain/models/repository/subpackage"
@@ -50,21 +51,22 @@ const (
 )
 
 var Globals struct {
-	MongoDriver       *mongoadapter.Mongo
-	Config            *configs.Config
-	SMSTemplate       *configs.SmsTemplate
-	ZapLogger         *zap.Logger
-	Logger            logger.Logger
-	OrderRepository   order_repository.IOrderRepository
-	PkgItemRepository pkg_repository.IPkgItemRepository
-	SubPkgRepository  subpkg_repository.ISubpackageRepository
-	Converter         converter.IConverter
-	StockService      stock_service.IStockService
-	PaymentService    payment_service.IPaymentService
-	NotifyService     notify_service.INotificationService
-	UserService       user_service.IUserService
-	VoucherService    voucher_service.IVoucherService
-	FlowManagerConfig map[string]interface{}
+	MongoDriver             *mongoadapter.Mongo
+	Config                  *configs.Config
+	SMSTemplate             *configs.SmsTemplate
+	ZapLogger               *zap.Logger
+	Logger                  logger.Logger
+	OrderRepository         order_repository.IOrderRepository
+	PkgItemRepository       pkg_repository.IPkgItemRepository
+	SubPkgRepository        subpkg_repository.ISubpackageRepository
+	FinanceReportRepository finance_repository.IFinanceReportRepository
+	Converter               converter.IConverter
+	StockService            stock_service.IStockService
+	PaymentService          payment_service.IPaymentService
+	NotifyService           notify_service.INotificationService
+	UserService             user_service.IUserService
+	VoucherService          voucher_service.IVoucherService
+	FlowManagerConfig       map[string]interface{}
 }
 
 func SetupMongoDriver(config configs.Config) (*mongoadapter.Mongo, error) {

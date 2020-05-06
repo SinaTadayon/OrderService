@@ -21,24 +21,19 @@ type FinanceOrderItem struct {
 }
 
 type Item struct {
-	SKU         string                 `bson:"sku"`
-	InventoryId string                 `bson:"inventoryId"`
-	Title       string                 `bson:"title"`
-	Brand       string                 `bson:"brand"`
-	Guaranty    string                 `bson:"guaranty"`
-	Category    string                 `bson:"category"`
-	Image       string                 `bson:"image"`
-	Returnable  bool                   `bson:"returnable"`
-	Quantity    int32                  `bson:"quantity"`
-	Reasons     []models.Reason        `bson:"reasons"`
-	Attributes  map[string]*Attribute  `bson:"attributes"`
-	Invoice     ItemInvoice            `bson:"invoice"`
-	Extended    map[string]interface{} `bson:"ext"`
-}
-
-type Attribute struct {
-	KeyTranslate   map[string]string `bson:"keyTranslate"`
-	ValueTranslate map[string]string `bson:"valueTranslate"`
+	SKU         string                         `bson:"sku"`
+	InventoryId string                         `bson:"inventoryId"`
+	Title       string                         `bson:"title"`
+	Brand       string                         `bson:"brand"`
+	Guaranty    string                         `bson:"guaranty"`
+	Category    string                         `bson:"category"`
+	Image       string                         `bson:"image"`
+	Returnable  bool                           `bson:"returnable"`
+	Quantity    int32                          `bson:"quantity"`
+	Reasons     []models.Reason                `bson:"reasons"`
+	Attributes  map[string]*entities.Attribute `bson:"attributes"`
+	Invoice     ItemInvoice                    `bson:"invoice"`
+	Extended    map[string]interface{}         `bson:"ext"`
 }
 
 type ItemInvoice struct {
