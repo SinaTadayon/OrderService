@@ -56,10 +56,12 @@ message RequestMetadata {
     uint32 page = 6;
     uint32 perPage = 7;
     string ipAddress = 8;
-    MetaAction action = 9;
-    repeated MetaSorts sorts = 10;
-    repeated MetaFilter filters = 11;
-    map<string,string> ext = 12;
+    string startTimestamp = 9;
+    string endTimestamp = 10;
+    MetaAction action = 11;
+    repeated MetaSorts sorts = 12;
+    repeated MetaFilter filters = 13;
+    map<string,string> ext = 14;
 }
 
 message MetaAction {
@@ -97,7 +99,7 @@ message ReasonDetail {
 	string  translation     = 2;
     bool    hasDescription  = 3;
     bool    cancel          = 4;
-    bool    return          = 5; 
+    bool    return          = 5;
     bool    isActive        = 6;
     enum Responsible {
         NONE = 0;
@@ -183,6 +185,7 @@ message SellerOrderDetail {
         string lat = 10;
         string long = 11;
         string zipCode = 12;
+        uint64 buyerId = 13;
     }
     ShipmentAddress address = 5;
 

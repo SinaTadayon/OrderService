@@ -11,6 +11,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain"
 	"gitlab.faza.io/order-project/order-service/domain/converter"
 	"gitlab.faza.io/order-project/order-service/domain/converter/documents/v100To102"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository/financeReport"
 	order_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/order"
 	pkg_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/pkg"
 	subpkg_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/subpackage"
@@ -67,6 +68,7 @@ func main() {
 	app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
 	app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
 	app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
+	app.Globals.FinanceReportRepository = finance_repository.NewFinanceReportRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
 
 	if app.Globals.Config.App.ServiceMode == "server" {
 		app.Globals.Logger.Info("Order Service Run in Server Mode . . . ", "fn", "main")
