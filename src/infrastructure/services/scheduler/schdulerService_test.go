@@ -299,11 +299,10 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 			UseLimit:         0,
 			Count:            0,
 			Length:           0,
-			Categories:       nil,
-			Products:         nil,
-			Users:            nil,
-			Sellers:          nil,
 			IsFirstPurchase:  false,
+			Info:             nil,
+			VoucherType:      pb.VoucherDetails_PURCHASE,
+			VoucherSponsor:   pb.VoucherDetails_BAZLIA,
 		},
 	}
 

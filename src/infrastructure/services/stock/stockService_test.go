@@ -44,6 +44,7 @@ func TestMain(m *testing.M) {
 
 	// Running Tests
 	code := m.Run()
+	stock.CloseConnection()
 	os.Exit(code)
 }
 
@@ -177,6 +178,8 @@ func createOrder() *entities.Order {
 					Type:             "Value",
 					MaxDiscountValue: 1000,
 					MinBasketValue:   13450,
+					VoucherType:      "PURCHASE",
+					VoucherSponsor:   "BAZLIA",
 				},
 			},
 		},
@@ -1045,7 +1048,7 @@ func TestStockService_ReservedSuccess(t *testing.T) {
 	err := stock.ConnectToStockService()
 	require.Nil(t, err)
 
-	defer stock.CloseConnection()
+	//defer stock.CloseConnection()
 
 	order := createOrder()
 
@@ -1085,10 +1088,10 @@ func TestStockService_SettlementSuccess(t *testing.T) {
 	err := stock.ConnectToStockService()
 	require.Nil(t, err)
 
-	defer func() {
-		if err := stock.grpcConnection.Close(); err != nil {
-		}
-	}()
+	//defer func() {
+	//	if err := stock.grpcConnection.Close(); err != nil {
+	//	}
+	//}()
 
 	order := createOrder()
 
@@ -1130,10 +1133,10 @@ func TestStockService_ReleaseSuccess(t *testing.T) {
 	err := stock.ConnectToStockService()
 	require.Nil(t, err)
 
-	defer func() {
-		if err := stock.grpcConnection.Close(); err != nil {
-		}
-	}()
+	//defer func() {
+	//	if err := stock.grpcConnection.Close(); err != nil {
+	//	}
+	//}()
 
 	order := createOrder()
 
@@ -1175,7 +1178,7 @@ func TestStockService_SingleReservedSuccess(t *testing.T) {
 	err := stock.ConnectToStockService()
 	require.Nil(t, err)
 
-	defer stock.CloseConnection()
+	//defer stock.CloseConnection()
 
 	order := createOrder()
 
@@ -1212,10 +1215,10 @@ func TestStockService_SingleSettlementSuccess(t *testing.T) {
 	err := stock.ConnectToStockService()
 	require.Nil(t, err)
 
-	defer func() {
-		if err := stock.grpcConnection.Close(); err != nil {
-		}
-	}()
+	//defer func() {
+	//	if err := stock.grpcConnection.Close(); err != nil {
+	//	}
+	//}()
 
 	order := createOrder()
 
@@ -1254,10 +1257,10 @@ func TestStockService_SingleReleaseSuccess(t *testing.T) {
 	err := stock.ConnectToStockService()
 	require.Nil(t, err)
 
-	defer func() {
-		if err := stock.grpcConnection.Close(); err != nil {
-		}
-	}()
+	//defer func() {
+	//	if err := stock.grpcConnection.Close(); err != nil {
+	//	}
+	//}()
 
 	order := createOrder()
 

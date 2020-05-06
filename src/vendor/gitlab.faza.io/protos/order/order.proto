@@ -130,11 +130,26 @@ message VoucherDetails {
     int32 useLimit = 8;
     int32 count = 9;
     int32 length = 10;
-    repeated string categories = 11;
-    repeated string products = 12;
-    repeated string users = 13;
-    repeated string sellers = 14;
-    bool isFirstPurchase = 15;
+    bool isFirstPurchase = 11;
+    message Info {
+        repeated string categories = 1;
+        repeated string products = 2;
+        repeated string users = 3;
+        repeated string sellers = 4;
+    }
+    Info info = 12;
+
+    enum VoucherType {
+        PURCHASE = 0;
+        SHIPMENT = 1;
+    }
+    VoucherType voucherType = 13;
+
+    enum VoucherSponsor {
+        BAZLIA = 0;
+        SELLER = 1;
+    }
+    VoucherSponsor voucherSponsor = 14;
 }
 
 message Item {

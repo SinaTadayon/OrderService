@@ -50,13 +50,15 @@ type PackageCommission struct {
 }
 
 type PackageShare struct {
-	RawBusinessShare     *Money                 `bson:"rawBusinessShare"`
-	RoundupBusinessShare *Money                 `bson:"roundupBusinessShare"`
-	RawSellerShare       *Money                 `bson:"rawSellerShare"`
-	RoundupSellerShare   *Money                 `bson:"roundupSellerShare"`
-	CreatedAt            *time.Time             `bson:"createdAt"`
-	UpdatedAt            *time.Time             `bson:"updatedAt"`
-	Extended             map[string]interface{} `bson:"ext"`
+	RawBusinessShare         *Money                 `bson:"rawBusinessShare"`
+	RoundupBusinessShare     *Money                 `bson:"roundupBusinessShare"`
+	RawSellerShare           *Money                 `bson:"rawSellerShare"`
+	RoundupSellerShare       *Money                 `bson:"roundupSellerShare"`
+	RawSellerShippingNet     *Money                 `bson:"rawSellerShippingNet"`
+	RoundupSellerShippingNet *Money                 `bson:"roundupSellerShippingNet"`
+	CreatedAt                *time.Time             `bson:"createdAt"`
+	UpdatedAt                *time.Time             `bson:"updatedAt"`
+	Extended                 map[string]interface{} `bson:"ext"`
 }
 
 type PackageVoucher struct {

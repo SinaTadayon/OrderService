@@ -4,6 +4,7 @@ package CartService;
 
 service CartService {
     rpc GetCart(Identifier) returns (Cart);
+    rpc GetCartCount(GetCartCountRequest) returns (GetCartCountResponse);
     rpc AddToCart(Cart) returns (Result);
     rpc DeleteItem(DeleteItemRequest) returns (Result);
     rpc PurgeCart(Identifier) returns (Result);
@@ -25,6 +26,16 @@ service CouponService {
     rpc VoucherVerification(VoucherCode) returns (VoucherInfo);
 }
 
+enum CouponType {
+    PURCHASE = 0;
+    SHIPMENT = 1;
+}
+
+enum CouponSponsor {
+    BAZLIA = 0;
+    SELLER = 1;
+}
+
 message VoucherInfo {
     message CouponTemplate {
         string title = 1;
@@ -43,6 +54,8 @@ message VoucherInfo {
             repeated string sellers = 4;
         }
         CouponInfo info = 10;
+        CouponType couponType = 11;
+        CouponSponsor couponSponsor= 12;
     }
 
     CouponTemplate voucherTemplate = 1;
@@ -139,6 +152,8 @@ message CouponTemplate {
         repeated string sellers = 4;
     }
     CouponInfo info = 13;
+    CouponType couponType = 14;
+    CouponSponsor couponSponsor = 15;
 }
 
 message CouponDiscount {
@@ -149,8 +164,12 @@ message CouponDiscount {
 }
 
 message Price {
-    float original = 1;
-    float special  = 2;
+    float original      = 1;
+    float special       = 2;
+    float unitPayable   = 3;
+    float total         = 4;
+    float unitDiscount  = 5;
+    float itemDiscount  = 6;
 }
 
 message UpdateQuantityRequest {
@@ -174,6 +193,11 @@ message Items {
     string                  guaranty    = 7;
     string                  img         = 8;
     Price                   price       = 9;
+    message Warnins{
+        OutofStockError     stockErr    = 1;
+        PriceMismatchError  priceErr    = 2;
+    }
+    Warnins                warning      = 10;
 }
 
 message OutofStockError {
@@ -184,8 +208,9 @@ message OutofStockError {
 
 message PriceMismatchError {
     string  inventoryId     = 1;
-    Price   requestedPrice  = 2;
+    Price   oldPrice        = 2;
     Price   newPrice        = 3;
+    float   priceChange     = 4;
 }
 
 message CartError {
@@ -196,6 +221,14 @@ message CartError {
 message Cart {
     string          identifier  = 1;
     repeated Items  items       = 2;
+}
+
+message GetCartCountResponse {
+    int64 count = 1;
+}
+
+message GetCartCountRequest {
+    string identifier = 1;
 }
 
 message DeleteItemRequest {

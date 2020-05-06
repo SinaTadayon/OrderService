@@ -829,6 +829,14 @@ func (server *Server) operatorOrderInvoiceDetailHandler(ctx context.Context, oid
 			if order.Packages[i].Invoice.Share.RoundupSellerShare != nil {
 				packageFinance.Invoice.Share.RoundupSellerShare = order.Packages[i].Invoice.Share.RoundupSellerShare.Amount
 			}
+
+			if order.Packages[i].Invoice.Share.RawSellerShippingNet != nil {
+				packageFinance.Invoice.Share.RawSellerShippingNet = order.Packages[i].Invoice.Share.RawSellerShippingNet.Amount
+			}
+
+			if order.Packages[i].Invoice.Share.RoundupSellerShippingNet != nil {
+				packageFinance.Invoice.Share.RoundupSellerShippingNet = order.Packages[i].Invoice.Share.RoundupSellerShippingNet.Amount
+			}
 		}
 
 		if order.Packages[i].Invoice.Commission != nil {

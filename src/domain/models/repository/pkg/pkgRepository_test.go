@@ -532,6 +532,8 @@ func createOrder() *entities.Order {
 					Type:             "Value",
 					MaxDiscountValue: 1000,
 					MinBasketValue:   13450,
+					VoucherType:      "PURCHASE",
+					VoucherSponsor:   "BAZLIA",
 				},
 			},
 		},
