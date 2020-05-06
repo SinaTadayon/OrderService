@@ -2,6 +2,9 @@ package user_service
 
 import (
 	"context"
+	"sync"
+	"time"
+
 	"github.com/pkg/errors"
 	"gitlab.faza.io/go-framework/acl"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
@@ -11,8 +14,6 @@ import (
 	userclient "gitlab.faza.io/services/user-app-client"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
-	"sync"
-	"time"
 )
 
 const (
@@ -202,11 +203,17 @@ func (userService iUserServiceImpl) AuthenticateContextToken(ctx context.Context
 
 	if err, ok := obj.(error); ok {
 		if err != nil {
-			applog.GLog.Logger.FromContext(ctx).Error("userService.client.AuthenticateContextToken failed",
+			applog.GLog.Logger.FromContext(ctx).Error("userService.client.VerifyAndGetUserFromContextToken failed",
 				"fn", "AuthenticateContextToken",
 				"error", err)
+			var errCode future.ErrorCode
+			if err.Error() == "Forbidden" {
+				errCode = future.Forbidden
+			} else {
+				errCode = future.InternalError
+			}
 			return future.Factory().SetCapacity(1).
-				SetError(future.InternalError, "UnknownError", errors.Wrap(err, "Connect to UserService Failed")).
+				SetError(errCode, "UnknownError", errors.Wrap(err, "Connect to UserService Failed")).
 				BuildAndSend()
 		}
 	} else if result, ok := obj.(*acl.Acl); ok {
