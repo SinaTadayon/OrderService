@@ -366,7 +366,7 @@ message SellerReturnOrderDetail {
         string lat = 10;
         string long = 11;
         string zipCode = 12;
-        uint64 buyerId = 13;
+        string buyerId = 13;
     }
     ShipmentAddress address = 6;
 
