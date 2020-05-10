@@ -262,6 +262,20 @@ func TestUpdatePkgItemWithNewSubPkgRepository(t *testing.T) {
 	require.Equal(t, "Payment_Pending", packageItem.Status)
 }
 
+func TestIPkgItemRepositoryImpl_FindPkgItmBuyinfById(t *testing.T) {
+	defer removeCollection()
+	order, err := createOrderAndSave()
+	require.Nil(t, err, "createOrderAndSave failed")
+	require.NotEmpty(t, order.OrderId, "createOrderAndSave failed, order id not generated")
+	ctx, _ := context.WithCancel(context.Background())
+	pkgItem, buyId, err := pkgItemRepo.FindPkgItmBuyinfById(ctx, order.OrderId, order.Packages[0].PId)
+	require.Nil(t, err, "pkgItemRepo.FindById failed")
+	require.Equal(t, order.BuyerInfo.BuyerId, buyId)
+	require.Equal(t, order.Packages[0].PId, pkgItem.PId)
+	require.Equal(t, uint64(0), pkgItem.Version)
+	require.Equal(t, "NEW", pkgItem.Status)
+}
+
 func TestFindById(t *testing.T) {
 	defer removeCollection()
 	order, err := createOrderAndSave()
