@@ -19,6 +19,16 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+type OrderCloseStatus string
+
+const (
+	Closed_None           OrderCloseStatus = "Closed-None"
+	Closed_PTS            OrderCloseStatus = "Closed-PTS"
+	Closed_PTB            OrderCloseStatus = "Closed-PTB"
+	Closed_BTS_PTB        OrderCloseStatus = "Closed-BTS_PTB"
+	Closed_Payment_Failed OrderCloseStatus = "Closed-Payment_Failed"
+)
+
 func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, buyerMobile string, filter FilterValue, page, perPage uint32,
 	sortName string, direction SortDirection) (*pb.MessageResponse, error) {
 
@@ -38,7 +48,7 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 		}
 
 		if filter != "" {
-			filters := server.OperatorGeneratePipelineFilter(ctx, filter)
+			filters := server.operatorGeneratePipelineFilter(ctx, filter)
 			if sortName != "" {
 				orderFilter := func() (interface{}, string, int) {
 					return bson.D{{"deletedAt", nil}, {filters[0].(string), filters[1]}},
@@ -113,6 +123,10 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 				PaymentGateway: orderList[i].Invoice.PaymentGateway,
 				Shipment:       0,
 			},
+		}
+
+		if order.Status == string(states.OrderClosedStatus) {
+			order.Status = string(generateOrderCloseStatus(orderList[i]))
 		}
 
 		amount, err := decimal.NewFromString(orderList[i].Invoice.GrandTotal.Amount)
@@ -1194,7 +1208,7 @@ func (server *Server) operatorGetOrdersByMobileHandler(ctx context.Context, buye
 	}
 
 	if filter != "" {
-		filters := server.OperatorGeneratePipelineFilter(ctx, filter)
+		filters := server.operatorGeneratePipelineFilter(ctx, filter)
 		if sortName != "" {
 			orderFilter := func() (interface{}, string, int) {
 				return bson.D{{"deletedAt", nil}, {"buyerInfo.mobile", bson.D{{"$regex", buyerMobile}}}, {filters[0].(string), filters[1]}},
@@ -1387,11 +1401,59 @@ func (server *Server) operatorGetOrdersByMobileHandler(ctx context.Context, buye
 	return response, nil
 }
 
-func (server *Server) OperatorGeneratePipelineFilter(ctx context.Context, filter FilterValue) []interface{} {
+func (server *Server) operatorGeneratePipelineFilter(ctx context.Context, filter FilterValue) []interface{} {
 
 	newFilter := make([]interface{}, 2)
 	queryPathState := server.queryPathStates[filter]
 	newFilter[0] = queryPathState.queryPath
 	newFilter[1] = queryPathState.state.StateName()
 	return newFilter
+}
+
+func generateOrderCloseStatus(order *entities.Order) OrderCloseStatus {
+	var isPaymentFailed = false
+	var isPayToSeller = false
+	var isPayToBuyer = false
+
+	if order.OrderPayment[0].PaymentResult != nil {
+		if !order.OrderPayment[0].PaymentResult.Result {
+			isPaymentFailed = true
+		}
+	} else {
+		if order.OrderPayment[0].PaymentResponse != nil {
+			if !order.OrderPayment[0].PaymentResponse.Result {
+				isPaymentFailed = true
+			}
+		} else {
+			isPaymentFailed = true
+		}
+	}
+
+	if isPaymentFailed {
+		return Closed_Payment_Failed
+	}
+
+	for _, pkg := range order.Packages {
+		if !isPayToSeller || !isPayToBuyer {
+			for _, subPkg := range pkg.Subpackages {
+				if subPkg.Status == states.PayToSeller.String() {
+					isPayToSeller = true
+				} else if subPkg.Status == states.PayToBuyer.String() {
+					isPayToBuyer = true
+				}
+			}
+		} else {
+			break
+		}
+	}
+
+	if isPayToSeller && isPayToBuyer {
+		return Closed_BTS_PTB
+	} else if isPayToSeller {
+		return Closed_PTS
+	} else if isPayToBuyer {
+		return Closed_PTB
+	}
+
+	return Closed_None
 }
