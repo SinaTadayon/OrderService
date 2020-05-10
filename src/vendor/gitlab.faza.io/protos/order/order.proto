@@ -10,9 +10,8 @@ service OrderService {
     rpc NewOrder (RequestNewOrder) returns (ResponseNewOrder);
     rpc ReportOrderItems(RequestReportOrderItems) returns(stream ResponseDownloadFile);
     rpc ReasonsList(ReasonsListRequest) returns (ReasonsListResponse);
-
-    // issue Seller-83
     rpc VerifyUserSuccessOrder(VerifyUserOrderRequest) returns (VerifyUserOrderResponse);
+    rpc FinanceOrderItems (MessageRequest) returns (MessageResponse);
 }
 
 message VerifyUserOrderRequest {
@@ -231,4 +230,76 @@ message ShippingSpec {
     int32 shippingTime = 6;
     int32 returnTime = 7;
     string details = 8;
+}
+
+message FinanceOrderItemDetailList {
+    message OrderItemDetail {
+        uint64 OId = 1;
+        uint64 SellerId = 2;
+        Money ShipmentAmount = 3;
+        Money RawShippingNet = 4;
+        Money RoundupShippingNet = 5;
+
+        message Item {
+            uint64 SId = 1;
+            string Sku = 2;
+            string InventoryId = 3;
+            string Title = 4;
+            string Brand = 5;
+            string Category = 6;
+            string Guaranty = 7;
+            string Image = 8;
+            bool Returnable = 9;
+            int32 Quantity = 10;
+            map<string,attribute> Attributes = 11;
+            message ItemInvoice {
+                message ItemCommission {
+                    float ItemCommission = 1;
+                    Money RawUnitPrice = 2;
+                    Money RoundupUnitPrice = 3;
+                    Money RawTotalPrice = 4;
+                    Money RoundupTotalPrice = 5;
+                }
+                ItemCommission Commission = 1;
+
+                message ItemShare {
+                    Money RawItemNet = 1;
+                    Money RoundupItemNet = 2;
+                    Money RawTotalNet = 3;
+                    Money RoundupTotalNet = 4;
+                    Money RawUnitSellerShare = 5;
+                    Money RoundupUnitSellerShare = 6;
+                    Money RawTotalSellerShare = 7;
+                    Money RoundupTotalSellerShare = 8;
+                }
+                ItemShare Share = 2;
+
+                message ItemSSO {
+                    float Rate = 1;
+                    bool  IsObliged = 2;
+                    Money RawUnitPrice = 3;
+                    Money RoundupUnitPrice = 4;
+                    Money RawTotalPrice = 5;
+                    Money RoundupTotalPrice = 6;
+                }
+                ItemSSO SSO = 3;
+
+                message ItemVAT {
+                    float Rate = 1;
+                    bool  IsObliged = 2;
+                    Money RawUnitPrice = 3;
+                    Money RoundupUnitPrice = 4;
+                    Money RawTotalPrice = 5;
+                    Money RoundupTotalPrice = 6;
+                }
+                ItemVAT VAT = 4;
+            }
+            ItemInvoice invoice = 12;
+        }
+        repeated Item items = 6;
+        string CreatedAt = 7;
+        string UpdatedAt = 8;
+        string OrderCreatedAt = 9;
+    }
+    repeated OrderItemDetail orderItems = 1;
 }
