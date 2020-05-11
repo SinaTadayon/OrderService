@@ -386,7 +386,6 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		operator_action.New(operator_action.DeliveryFail),
 		operator_action.New(operator_action.Accept),
 		operator_action.New(operator_action.Reject),
-		operator_action.New(operator_action.Deliver),
 		operator_action.New(operator_action.Cancel),
 	}
 

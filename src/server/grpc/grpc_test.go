@@ -1086,6 +1086,7 @@ func TestSellerOrderDetail(t *testing.T) {
 
 	require.NotNil(t, sellerOrderDetail)
 	require.Equal(t, 2, len(sellerOrderDetail.Items))
+	require.Equal(t, sellerOrderDetail.Address.BuyerId, uint64(1000002))
 	require.Equal(t, uint64(1000002), sellerOrderDetail.PID)
 }
 
@@ -1794,6 +1795,219 @@ func TestSellerReturnOrderDetailList(t *testing.T) {
 	require.Equal(t, uint64(1000002), sellerReturnOrderList.PID)
 }
 
+func TestOperatorAction_SippedToDelivered(t *testing.T) {
+	// 1 - create connection into order service
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	// 2 - create the new order
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	// 3 - change new order state to shipped state
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
+
+	// 4- save order
+	savedOrder, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+	defer removeCollection()
+
+	// 5 - create authorized context
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	// 6 - create request
+	subpackages := make([]*pb.ActionData_Subpackage, 0, 1)
+	subpackageItems := make([]*pb.ActionData_Subpackage_Item, 0, 2)
+
+	subpackageItem := &pb.ActionData_Subpackage_Item{
+		InventoryId: savedOrder.Packages[0].Subpackages[0].Items[0].InventoryId,
+		Quantity:    savedOrder.Packages[0].Subpackages[0].Items[0].Quantity,
+		Reasons:     nil,
+	}
+	subpackageItems = append(subpackageItems, subpackageItem)
+	subpackageItem = &pb.ActionData_Subpackage_Item{
+		InventoryId: savedOrder.Packages[0].Subpackages[0].Items[1].InventoryId,
+		Quantity:    savedOrder.Packages[0].Subpackages[0].Items[1].Quantity,
+		Reasons:     nil,
+	}
+	subpackageItems = append(subpackageItems, subpackageItem)
+
+	subpackage := &pb.ActionData_Subpackage{
+		SID:   savedOrder.Packages[0].Subpackages[0].SId,
+		Items: subpackageItems,
+	}
+	subpackages = append(subpackages, subpackage)
+
+	actionData := &pb.ActionData{
+		Subpackages:    subpackages,
+		Carrier:        "",
+		TrackingNumber: "",
+	}
+
+	serializedData, err := proto.Marshal(actionData)
+	require.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   "",
+		Type:   string(ActionReqType),
+		ADT:    string(SingleType),
+		Method: string(PostMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       savedOrder.BuyerInfo.BuyerId,
+			UTP:       string(OperatorUser),
+			OID:       savedOrder.OrderId,
+			PID:       savedOrder.Packages[0].PId,
+			SIDs:      nil,
+			Page:      0,
+			PerPage:   0,
+			IpAddress: "",
+			Action: &pb.MetaAction{
+				ActionType:  "",
+				ActionState: "Deliver",
+				StateIndex:  int32(states.Shipped.StateIndex()),
+			},
+			Sorts:   nil,
+			Filters: nil,
+		},
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(actionData),
+			Value:   serializedData,
+		},
+	}
+
+	// 7 - operator change order state to delivered from shipped state
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+	require.NotNil(t, response)
+
+	var actionResponse pb.ActionResponse
+	err = ptypes.UnmarshalAny(response.Data, &actionResponse)
+
+	require.Nil(t, err)
+	require.Equal(t, savedOrder.OrderId, actionResponse.OID)
+}
+
+func TestOperatorAction_DeliveryPendingToDelivered(t *testing.T) {
+	// 1 - create connection into order service
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	// 2 - create the new order
+	requestNewOrder := createRequestNewOrder()
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	// 3 - change new order state to shipped state
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
+
+	// 4- save order
+	savedOrder, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+	defer removeCollection()
+
+	// 5 - create authorized context
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	// 6 - create request
+	subpackages := make([]*pb.ActionData_Subpackage, 0, 1)
+	subpackageItems := make([]*pb.ActionData_Subpackage_Item, 0, 2)
+
+	subpackageItem := &pb.ActionData_Subpackage_Item{
+		InventoryId: savedOrder.Packages[0].Subpackages[0].Items[0].InventoryId,
+		Quantity:    savedOrder.Packages[0].Subpackages[0].Items[0].Quantity,
+		Reasons:     nil,
+	}
+	subpackageItems = append(subpackageItems, subpackageItem)
+	subpackageItem = &pb.ActionData_Subpackage_Item{
+		InventoryId: savedOrder.Packages[0].Subpackages[0].Items[1].InventoryId,
+		Quantity:    savedOrder.Packages[0].Subpackages[0].Items[1].Quantity,
+		Reasons:     nil,
+	}
+	subpackageItems = append(subpackageItems, subpackageItem)
+
+	subpackage := &pb.ActionData_Subpackage{
+		SID:   savedOrder.Packages[0].Subpackages[0].SId,
+		Items: subpackageItems,
+	}
+	subpackages = append(subpackages, subpackage)
+
+	actionData := &pb.ActionData{
+		Subpackages:    subpackages,
+		Carrier:        "",
+		TrackingNumber: "",
+	}
+
+	serializedData, err := proto.Marshal(actionData)
+	require.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   "",
+		Type:   string(ActionReqType),
+		ADT:    string(SingleType),
+		Method: string(PostMethod),
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:       savedOrder.BuyerInfo.BuyerId,
+			UTP:       string(OperatorUser),
+			OID:       savedOrder.OrderId,
+			PID:       savedOrder.Packages[0].PId,
+			SIDs:      nil,
+			Page:      0,
+			PerPage:   0,
+			IpAddress: "",
+			Action: &pb.MetaAction{
+				ActionType:  "",
+				ActionState: "Deliver",
+				StateIndex:  int32(states.DeliveryPending.StateIndex()),
+			},
+			Sorts:   nil,
+			Filters: nil,
+		},
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(actionData),
+			Value:   serializedData,
+		},
+	}
+
+	// 7 - operator change order state to delivered from shipped state
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.RequestHandler(ctx, request)
+	require.Nil(t, err)
+	require.NotNil(t, response)
+
+	var actionResponse pb.ActionResponse
+	err = ptypes.UnmarshalAny(response.Data, &actionResponse)
+
+	require.Nil(t, err)
+	require.Equal(t, savedOrder.OrderId, actionResponse.OID)
+}
+
 func TestSellerReturnOrderDetail(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
@@ -1867,6 +2081,7 @@ func TestSellerReturnOrderDetail(t *testing.T) {
 	err = ptypes.UnmarshalAny(response.Data, &sellerReturnOrderDetail)
 	require.Nil(t, err)
 
+	require.Equal(t, sellerReturnOrderDetail.Address.BuyerId, uint64(1000002))
 	require.NotNil(t, sellerReturnOrderDetail)
 	require.Equal(t, uint64(1000002), sellerReturnOrderDetail.PID)
 }

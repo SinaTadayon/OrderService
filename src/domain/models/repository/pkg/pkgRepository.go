@@ -15,6 +15,8 @@ type IPkgItemRepository interface {
 
 	FindById(ctx context.Context, orderId uint64, id uint64) (*entities.PackageItem, repository.IRepoError)
 
+	FindPkgItmBuyinfById(ctx context.Context, orderId uint64, id uint64) (*entities.PackageItem, uint64, repository.IRepoError)
+
 	FindByFilter(ctx context.Context, supplier func() (filter interface{})) ([]*entities.PackageItem, repository.IRepoError)
 
 	ExistsById(ctx context.Context, orderId uint64, id uint64) (bool, repository.IRepoError)
