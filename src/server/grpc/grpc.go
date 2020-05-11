@@ -385,7 +385,6 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		operator_action.New(operator_action.DeliveryFail),
 		operator_action.New(operator_action.Accept),
 		operator_action.New(operator_action.Reject),
-		operator_action.New(operator_action.Deliver),
 		operator_action.New(operator_action.Cancel),
 	}
 
@@ -530,7 +529,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 }
 
 func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
-
+/*
 	iFuture := app.Globals.UserService.AuthenticateContextToken(ctx).Get()
 	//userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
 	if iFuture.Error() != nil {
@@ -560,7 +559,7 @@ func (server *Server) RequestHandler(ctx context.Context, req *pb.MessageRequest
 		ctx = context.WithValue(ctx, string(utils.CtxUserID), uint64(req.Meta.UID))
 		ctx = context.WithValue(ctx, string(utils.CtxUserACL), userAcl)
 	}
-
+*/
 	reqType := RequestType(req.Type)
 	if reqType == DataReqType {
 		return server.requestDataHandler(ctx, req)
