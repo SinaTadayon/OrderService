@@ -11,8 +11,6 @@ type IPkgItemRepository interface {
 
 	UpdateWithUpsert(ctx context.Context, pkgItem entities.PackageItem) (*entities.PackageItem, repository.IRepoError)
 
-	FindPkgItmBuyinfById(ctx context.Context, orderId uint64, id uint64) (*entities.PackageItem, uint64, repository.IRepoError)
-
 	FindById(ctx context.Context, orderId uint64, id uint64) (*entities.PackageItem, repository.IRepoError)
 
 	FindPkgItmBuyinfById(ctx context.Context, orderId uint64, id uint64) (*entities.PackageItem, uint64, repository.IRepoError)
