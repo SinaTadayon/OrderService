@@ -1843,8 +1843,8 @@ func TestOperatorAction_DeliveryPendingToDelivered(t *testing.T) {
 	defer removeCollection()
 
 	// 5 - create authorized context
-	// ctx, err = createAuthenticatedContext()
-	// assert.Nil(t, err)
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
 
 	// 6 - create request
 	subpackages := make([]*pb.ActionData_Subpackage, 0, 1)
