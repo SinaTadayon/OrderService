@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"gitlab.faza.io/order-project/order-service/domain/models/repository/financeReport"
+	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"net"
 	"os"
 	"strconv"
@@ -939,8 +940,8 @@ func UpdateSubPackage(ctx context.Context, subPkgState states.IEnumState, subpac
 
 func TestFinanceReport(t *testing.T) {
 
-	startTimestamp := time.Now().UTC().Format(ISO8601)
-	endTimestamp := time.Now().UTC().Add(time.Duration(time.Minute)).Format(ISO8601)
+	startTimestamp := time.Now().UTC().Format(utils.ISO8601)
+	endTimestamp := time.Now().UTC().Add(time.Duration(time.Minute)).Format(utils.ISO8601)
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
 		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())

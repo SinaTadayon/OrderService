@@ -720,7 +720,7 @@ func (server *Server) FinanceOrderItems(ctx context.Context, req *pb.MessageRequ
 	}
 
 	if req.Meta.StartTimestamp != "" {
-		temp, err := time.Parse(ISO8601, req.Meta.StartTimestamp)
+		temp, err := time.Parse(utils.ISO8601, req.Meta.StartTimestamp)
 		if err != nil {
 			app.Globals.Logger.Error("StartTimestamp invalid",
 				"fn", "FinanceOrderItems",
@@ -738,7 +738,7 @@ func (server *Server) FinanceOrderItems(ctx context.Context, req *pb.MessageRequ
 	}
 
 	if req.Meta.EndTimestamp != "" {
-		temp, err := time.Parse(ISO8601, req.Meta.EndTimestamp)
+		temp, err := time.Parse(utils.ISO8601, req.Meta.EndTimestamp)
 		if err != nil {
 			app.Globals.Logger.Error("EndTimestamp invalid",
 				"fn", "FinanceOrderItems",
@@ -819,9 +819,9 @@ func (server *Server) FinanceOrderItems(ctx context.Context, req *pb.MessageRequ
 				Currency: finance.RoundupSellerShippingNet.Currency,
 			},
 			Items:          nil,
-			CreatedAt:      finance.CreatedAt.Format(ISO8601),
-			UpdatedAt:      finance.UpdatedAt.Format(ISO8601),
-			OrderCreatedAt: finance.CreatedAt.Format(ISO8601),
+			CreatedAt:      finance.CreatedAt.Format(utils.ISO8601),
+			UpdatedAt:      finance.UpdatedAt.Format(utils.ISO8601),
+			OrderCreatedAt: finance.CreatedAt.Format(utils.ISO8601),
 		}
 
 		financeItemList := make([]*pb.FinanceOrderItemDetailList_OrderItemDetail_Item, 0, len(finance.Items))
