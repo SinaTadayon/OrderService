@@ -5,6 +5,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
+	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	ordersrv "gitlab.faza.io/protos/order"
 	"strconv"
 	"time"
@@ -253,7 +254,7 @@ func convert(ctx context.Context, newOrderDto *ordersrv.RequestNewOrder) (*entit
 				order.Invoice.Voucher.Details.Sellers = newOrderDto.Invoice.Voucher.Details.Info.Sellers
 			}
 
-			temp, err := time.Parse(ISO8601, newOrderDto.Invoice.Voucher.Details.StartDate)
+			temp, err := time.Parse(utils.ISO8601, newOrderDto.Invoice.Voucher.Details.StartDate)
 			if err != nil {
 				applog.GLog.Logger.FromContext(ctx).Error("Voucher startDate of RequestNewOrder Invalid",
 					"fn", "convert",
@@ -262,7 +263,7 @@ func convert(ctx context.Context, newOrderDto *ordersrv.RequestNewOrder) (*entit
 			}
 			order.Invoice.Voucher.Details.StartDate = temp
 
-			temp, err = time.Parse(ISO8601, newOrderDto.Invoice.Voucher.Details.EndDate)
+			temp, err = time.Parse(utils.ISO8601, newOrderDto.Invoice.Voucher.Details.EndDate)
 			if err != nil {
 				applog.GLog.Logger.FromContext(ctx).Error("Voucher EndDate of RequestNewOrder Invalid",
 					"fn", "convert",
