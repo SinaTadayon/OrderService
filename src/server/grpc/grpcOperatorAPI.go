@@ -13,6 +13,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain/models/repository"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
+	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	pb "gitlab.faza.io/protos/order"
 	"go.mongodb.org/mongo-driver/bson"
 	"google.golang.org/grpc/codes"
@@ -108,7 +109,7 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 		order := &pb.OperatorOrderList_Order{
 			OrderId:     orderList[i].OrderId,
 			BuyerId:     orderList[i].BuyerInfo.BuyerId,
-			PurchasedOn: orderList[i].CreatedAt.Format(ISO8601),
+			PurchasedOn: orderList[i].CreatedAt.Format(utils.ISO8601),
 			BasketSize:  0,
 			BillTo:      orderList[i].BuyerInfo.FirstName + " " + orderList[i].BuyerInfo.LastName,
 			BillMobile:  orderList[i].BuyerInfo.Mobile,
@@ -265,7 +266,7 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 
 	orderDetail := &pb.OperatorOrderDetail{
 		OrderId:     order.OrderId,
-		PurchasedOn: order.CreatedAt.Format(ISO8601),
+		PurchasedOn: order.CreatedAt.Format(utils.ISO8601),
 		IP:          order.BuyerInfo.IP,
 		Invoice: &pb.OperatorOrderDetail_Invoice{
 			GrandTotal:     0,
@@ -382,7 +383,7 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 				PID:                  order.Packages[i].Subpackages[j].PId,
 				SellerId:             order.Packages[i].Subpackages[j].PId,
 				ShopName:             order.Packages[i].ShopName,
-				UpdatedAt:            order.Packages[i].Subpackages[j].UpdatedAt.Format(ISO8601),
+				UpdatedAt:            order.Packages[i].Subpackages[j].UpdatedAt.Format(utils.ISO8601),
 				States:               nil,
 				ShipmentDetail:       nil,
 				ReturnShipmentDetail: nil,
@@ -397,12 +398,12 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 					Index:     int32(order.Packages[i].Subpackages[j].Tracking.History[x].Index),
 					UTP:       "",
 					Reason:    nil,
-					CreatedAt: order.Packages[i].Subpackages[j].Tracking.History[x].CreatedAt.Format(ISO8601),
+					CreatedAt: order.Packages[i].Subpackages[j].Tracking.History[x].CreatedAt.Format(utils.ISO8601),
 				}
 
 				if order.Packages[i].Subpackages[j].Tracking.History[x].Actions != nil {
 					state.UTP = order.Packages[i].Subpackages[j].Tracking.History[x].Actions[len(order.Packages[i].Subpackages[j].Tracking.History[x].Actions)-1].UTP
-					//state.CreatedAt = order.Packages[i].Subpackages[j].Tracking.History[x].Actions[len(order.Packages[i].Subpackages[j].Tracking.History[x].Actions)-1].CreatedAt.Format(ISO8601)
+					//state.CreatedAt = order.Packages[i].Subpackages[j].Tracking.History[x].Actions[len(order.Packages[i].Subpackages[j].Tracking.History[x].Actions)-1].CreatedAt.Format(utils.ISO8601)
 				}
 
 				if order.Packages[i].Subpackages[j].Tracking.History[x].Name == states.ReturnRequestPending.String() ||
@@ -426,11 +427,11 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 					TrackingNumber: order.Packages[i].Subpackages[j].Shipments.ShipmentDetail.TrackingNumber,
 					Image:          order.Packages[i].Subpackages[j].Shipments.ShipmentDetail.Image,
 					Description:    order.Packages[i].Subpackages[j].Shipments.ShipmentDetail.Description,
-					CreatedAt:      order.Packages[i].Subpackages[j].Shipments.ShipmentDetail.CreatedAt.Format(ISO8601),
+					CreatedAt:      order.Packages[i].Subpackages[j].Shipments.ShipmentDetail.CreatedAt.Format(utils.ISO8601),
 					ShippedAt:      "",
 				}
 				if order.Packages[i].Subpackages[j].Shipments.ShipmentDetail.ShippedAt != nil {
-					subpackage.ShipmentDetail.ShippedAt = order.Packages[i].Subpackages[j].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601)
+					subpackage.ShipmentDetail.ShippedAt = order.Packages[i].Subpackages[j].Shipments.ShipmentDetail.ShippedAt.Format(utils.ISO8601)
 				}
 			}
 
@@ -443,15 +444,15 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 					Description:    order.Packages[i].Subpackages[j].Shipments.ReturnShipmentDetail.Description,
 					RequestedAt:    "",
 					ShippedAt:      "",
-					CreatedAt:      order.Packages[i].Subpackages[j].Shipments.ReturnShipmentDetail.CreatedAt.Format(ISO8601),
+					CreatedAt:      order.Packages[i].Subpackages[j].Shipments.ReturnShipmentDetail.CreatedAt.Format(utils.ISO8601),
 				}
 
 				if order.Packages[i].Subpackages[j].Shipments.ReturnShipmentDetail.RequestedAt != nil {
-					subpackage.ReturnShipmentDetail.RequestedAt = order.Packages[i].Subpackages[j].Shipments.ReturnShipmentDetail.RequestedAt.Format(ISO8601)
+					subpackage.ReturnShipmentDetail.RequestedAt = order.Packages[i].Subpackages[j].Shipments.ReturnShipmentDetail.RequestedAt.Format(utils.ISO8601)
 				}
 
 				if order.Packages[i].Subpackages[j].Shipments.ReturnShipmentDetail.ShippedAt != nil {
-					subpackage.ReturnShipmentDetail.ShippedAt = order.Packages[i].Subpackages[j].Shipments.ReturnShipmentDetail.ShippedAt.Format(ISO8601)
+					subpackage.ReturnShipmentDetail.ShippedAt = order.Packages[i].Subpackages[j].Shipments.ReturnShipmentDetail.ShippedAt.Format(utils.ISO8601)
 				}
 			}
 
@@ -1053,7 +1054,7 @@ func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint6
 	order := &pb.OperatorOrderList_Order{
 		OrderId:     findOrder.OrderId,
 		BuyerId:     findOrder.BuyerInfo.BuyerId,
-		PurchasedOn: findOrder.CreatedAt.Format(ISO8601),
+		PurchasedOn: findOrder.CreatedAt.Format(utils.ISO8601),
 		BasketSize:  0,
 		BillTo:      findOrder.BuyerInfo.FirstName + " " + findOrder.BuyerInfo.LastName,
 		BillMobile:  findOrder.BuyerInfo.Mobile,
@@ -1261,7 +1262,7 @@ func (server *Server) operatorGetOrdersByMobileHandler(ctx context.Context, buye
 		order := &pb.OperatorOrderList_Order{
 			OrderId:     orderList[i].OrderId,
 			BuyerId:     orderList[i].BuyerInfo.BuyerId,
-			PurchasedOn: orderList[i].CreatedAt.Format(ISO8601),
+			PurchasedOn: orderList[i].CreatedAt.Format(utils.ISO8601),
 			BasketSize:  0,
 			BillTo:      orderList[i].BuyerInfo.FirstName + " " + orderList[i].BuyerInfo.LastName,
 			BillMobile:  orderList[i].BuyerInfo.Mobile,

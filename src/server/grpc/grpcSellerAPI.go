@@ -8,6 +8,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
+	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	pb "gitlab.faza.io/protos/order"
 	"go.mongodb.org/mongo-driver/bson"
 	"google.golang.org/grpc/codes"
@@ -92,7 +93,7 @@ func (server *Server) sellerGetOrderByIdHandler(ctx context.Context, oid uint64,
 	for _, pkgItem := range pkgList {
 		sellerOrderItem := &pb.SellerOrderList_ItemList{
 			OID:       pkgItem.OrderId,
-			RequestAt: pkgItem.CreatedAt.Format(ISO8601),
+			RequestAt: pkgItem.CreatedAt.Format(utils.ISO8601),
 			Amount:    0,
 		}
 
@@ -286,7 +287,7 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, oid, pid uint6
 	for _, pkgItem := range pkgList {
 		sellerOrderItem := &pb.SellerOrderList_ItemList{
 			OID:       pkgItem.OrderId,
-			RequestAt: pkgItem.CreatedAt.Format(ISO8601),
+			RequestAt: pkgItem.CreatedAt.Format(utils.ISO8601),
 			Amount:    0,
 		}
 		subtotal, err := decimal.NewFromString(pkgItem.Invoice.Subtotal.Amount)
@@ -484,7 +485,7 @@ func (server *Server) sellerAllOrdersHandler(ctx context.Context, pid uint64, pa
 	for _, pkgItem := range pkgList {
 		sellerOrderItem := &pb.SellerOrderList_ItemList{
 			OID:       pkgItem.OrderId,
-			RequestAt: pkgItem.CreatedAt.Format(ISO8601),
+			RequestAt: pkgItem.CreatedAt.Format(utils.ISO8601),
 			Amount:    0,
 		}
 		subtotal, err := decimal.NewFromString(pkgItem.Invoice.Subtotal.Amount)
@@ -598,16 +599,16 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, oid uin
 						Image:          pkgItem.Subpackages[i].Shipments.ShipmentDetail.Image,
 						Description:    pkgItem.Subpackages[i].Shipments.ShipmentDetail.Description,
 						ShippedAt:      "",
-						CreatedAt:      pkgItem.Subpackages[i].Shipments.ShipmentDetail.CreatedAt.Format(ISO8601),
+						CreatedAt:      pkgItem.Subpackages[i].Shipments.ShipmentDetail.CreatedAt.Format(utils.ISO8601),
 						UpdatedAt:      "",
 					}
 
 					if pkgItem.Subpackages[i].Shipments.ShipmentDetail.ShippedAt != nil {
-						itemDetail.ShipmentDetail.ShippedAt = pkgItem.Subpackages[i].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601)
+						itemDetail.ShipmentDetail.ShippedAt = pkgItem.Subpackages[i].Shipments.ShipmentDetail.ShippedAt.Format(utils.ISO8601)
 					}
 
 					if pkgItem.Subpackages[i].Shipments.ShipmentDetail.UpdatedAt != nil {
-						itemDetail.ShipmentDetail.UpdatedAt = pkgItem.Subpackages[i].Shipments.ShipmentDetail.UpdatedAt.Format(ISO8601)
+						itemDetail.ShipmentDetail.UpdatedAt = pkgItem.Subpackages[i].Shipments.ShipmentDetail.UpdatedAt.Format(utils.ISO8601)
 					}
 				}
 
@@ -746,16 +747,16 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, oid uin
 								Image:          pkgItem.Subpackages[i].Shipments.ShipmentDetail.Image,
 								Description:    pkgItem.Subpackages[i].Shipments.ShipmentDetail.Description,
 								ShippedAt:      "",
-								CreatedAt:      pkgItem.Subpackages[i].Shipments.ShipmentDetail.CreatedAt.Format(ISO8601),
+								CreatedAt:      pkgItem.Subpackages[i].Shipments.ShipmentDetail.CreatedAt.Format(utils.ISO8601),
 								UpdatedAt:      "",
 							}
 
 							if pkgItem.Subpackages[i].Shipments.ShipmentDetail.ShippedAt != nil {
-								itemDetail.ShipmentDetail.ShippedAt = pkgItem.Subpackages[i].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601)
+								itemDetail.ShipmentDetail.ShippedAt = pkgItem.Subpackages[i].Shipments.ShipmentDetail.ShippedAt.Format(utils.ISO8601)
 							}
 
 							if pkgItem.Subpackages[i].Shipments.ShipmentDetail.UpdatedAt != nil {
-								itemDetail.ShipmentDetail.UpdatedAt = pkgItem.Subpackages[i].Shipments.ShipmentDetail.UpdatedAt.Format(ISO8601)
+								itemDetail.ShipmentDetail.UpdatedAt = pkgItem.Subpackages[i].Shipments.ShipmentDetail.UpdatedAt.Format(utils.ISO8601)
 							}
 						}
 
@@ -857,7 +858,7 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, oid uin
 		OID:       oid,
 		PID:       pid,
 		Amount:    0,
-		RequestAt: pkgItem.CreatedAt.Format(ISO8601),
+		RequestAt: pkgItem.CreatedAt.Format(utils.ISO8601),
 		Address: &pb.SellerOrderDetail_ShipmentAddress{
 			FirstName:     pkgItem.ShippingAddress.FirstName,
 			LastName:      pkgItem.ShippingAddress.LastName,
@@ -871,7 +872,7 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, oid uin
 			Lat:           "",
 			Long:          "",
 			ZipCode:       pkgItem.ShippingAddress.ZipCode,
-			BuyerId: 	   buyerId,
+			BuyerId:       buyerId,
 		},
 		Items: sellerOrderDetailItems,
 	}
@@ -1053,7 +1054,7 @@ func (server *Server) sellerReturnOrderListHandler(ctx context.Context, pid uint
 			//SID: pkgList[i].Subpackages[j].SId,
 			//Sku:             pkgList[i].Subpackages[j].Items[z].SKU,
 			//InventoryId:     pkgList[i].Subpackages[j].Items[z].InventoryId,
-			RequestAt: pkgList[i].CreatedAt.Format(ISO8601),
+			RequestAt: pkgList[i].CreatedAt.Format(utils.ISO8601),
 			//ReturnRequestAt: "",
 			Amount: 0,
 			//Title:           pkgList[i].Subpackages[j].Items[z].Title,
@@ -1198,20 +1199,20 @@ func (server *Server) sellerReturnOrderDetailHandler(ctx context.Context, pid, o
 							Description:    pkgItem.Subpackages[i].Shipments.ReturnShipmentDetail.Description,
 							ShippedAt:      "",
 							RequestedAt:    "",
-							CreatedAt:      pkgItem.Subpackages[i].Shipments.ReturnShipmentDetail.CreatedAt.Format(ISO8601),
+							CreatedAt:      pkgItem.Subpackages[i].Shipments.ReturnShipmentDetail.CreatedAt.Format(utils.ISO8601),
 							UpdatedAt:      "",
 						}
 
 						if pkgItem.Subpackages[i].Shipments.ReturnShipmentDetail.ShippedAt != nil {
-							item.Detail.ReturnShipmentDetail.ShippedAt = pkgItem.Subpackages[i].Shipments.ReturnShipmentDetail.ShippedAt.Format(ISO8601)
+							item.Detail.ReturnShipmentDetail.ShippedAt = pkgItem.Subpackages[i].Shipments.ReturnShipmentDetail.ShippedAt.Format(utils.ISO8601)
 						}
 
 						if pkgItem.Subpackages[i].Shipments.ReturnShipmentDetail.RequestedAt != nil {
-							item.Detail.ReturnShipmentDetail.ShippedAt = pkgItem.Subpackages[i].Shipments.ReturnShipmentDetail.RequestedAt.Format(ISO8601)
+							item.Detail.ReturnShipmentDetail.ShippedAt = pkgItem.Subpackages[i].Shipments.ReturnShipmentDetail.RequestedAt.Format(utils.ISO8601)
 						}
 
 						if pkgItem.Subpackages[i].Shipments.ReturnShipmentDetail.UpdatedAt != nil {
-							item.Detail.ReturnShipmentDetail.UpdatedAt = pkgItem.Subpackages[i].Shipments.ReturnShipmentDetail.UpdatedAt.Format(ISO8601)
+							item.Detail.ReturnShipmentDetail.UpdatedAt = pkgItem.Subpackages[i].Shipments.ReturnShipmentDetail.UpdatedAt.Format(utils.ISO8601)
 						}
 					}
 
@@ -1312,7 +1313,7 @@ func (server *Server) sellerReturnOrderDetailHandler(ctx context.Context, pid, o
 		PID:       pid,
 		OID:       oid,
 		Amount:    0,
-		RequestAt: pkgItem.CreatedAt.Format(ISO8601),
+		RequestAt: pkgItem.CreatedAt.Format(utils.ISO8601),
 		Address: &pb.SellerReturnOrderDetail_ShipmentAddress{
 			FirstName:     pkgItem.ShippingAddress.FirstName,
 			LastName:      pkgItem.ShippingAddress.LastName,

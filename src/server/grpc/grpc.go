@@ -168,11 +168,6 @@ const (
 	DESC SortDirection = "DESC"
 )
 
-const (
-	// ISO8601 standard time format
-	ISO8601 = "2006-01-02T15:04:05-0700"
-)
-
 type stackTraceDisabler struct{}
 
 func (s stackTraceDisabler) Enabled(zapcore.Level) bool {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"io"
 	"os"
 	"strconv"
@@ -61,11 +62,6 @@ import (
 	pg "gitlab.faza.io/protos/payment-gateway"
 
 	"gitlab.faza.io/order-project/order-service/domain/actions"
-)
-
-const (
-	// ISO8601 standard time format
-	ISO8601 = "2006-01-02T15:04:05-0700"
 )
 
 type iFlowManagerImpl struct {
@@ -676,12 +672,12 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 		"startTime", req.StartDateTime,
 		"endTime", req.EndDataTime)
 
-	startTime, err := time.Parse(ISO8601, req.StartDateTime)
+	startTime, err := time.Parse(utils.ISO8601, req.StartDateTime)
 	if err != nil {
 		return future.Factory().SetCapacity(1).SetError(future.BadRequest, "StartDateTime Invalid", err).BuildAndSend()
 	}
 
-	endTime, err := time.Parse(ISO8601, req.EndDataTime)
+	endTime, err := time.Parse(utils.ISO8601, req.EndDataTime)
 	if err != nil {
 		return future.Factory().SetCapacity(1).SetError(future.BadRequest, "EndDateTime Invalid", err).BuildAndSend()
 	}
@@ -772,8 +768,8 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 							VoucherCode:       "",
 							ShippingCost:      orders[i].Packages[j].Invoice.ShipmentAmount.Amount,
 							Status:            orders[i].Packages[j].Subpackages[k].Status,
-							CreatedAt:         orders[i].CreatedAt.Format(ISO8601),
-							UpdatedAt:         orders[i].Packages[j].Subpackages[k].UpdatedAt.Format(ISO8601),
+							CreatedAt:         orders[i].CreatedAt.Format(utils.ISO8601),
+							UpdatedAt:         orders[i].Packages[j].Subpackages[k].UpdatedAt.Format(utils.ISO8601),
 						}
 
 						if orders[i].Invoice.Voucher != nil {
