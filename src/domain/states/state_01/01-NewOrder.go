@@ -77,7 +77,7 @@ func (state newOrderState) Process(ctx context.Context, iFrame frame.IFrame) {
 		app.Globals.Logger.FromContext(ctx).Debug("OrderRepository.Save succeeded",
 			"fn", "Process",
 			"state", state.Name(),
-			"order", order)
+			"newOrder", order)
 		
 		calcOrder, err := calculate.New().FinanceCalc(ctx, *newOrder,
 			calculate.Set(calculate.SHARE_CALC, calculate.VOUCHER_CALC),
