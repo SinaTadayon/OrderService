@@ -2,6 +2,7 @@ package user_service
 
 import (
 	"context"
+	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"sync"
 	"time"
 
@@ -14,11 +15,6 @@ import (
 	userclient "gitlab.faza.io/services/user-app-client"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
-)
-
-const (
-	// ISO8601 standard time format
-	ISO8601 = "2006-01-02T15:04:05-0700"
 )
 
 type iUserServiceImpl struct {
@@ -395,7 +391,7 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 		}
 	}
 
-	timestamp, err := time.Parse(ISO8601, userProfile.Data.CreatedAt)
+	timestamp, err := time.Parse(utils.ISO8601, userProfile.Data.CreatedAt)
 	if err != nil {
 		applog.GLog.Logger.FromContext(ctx).Error("createdAt time parse failed",
 			"fn", "GetSellerProfile",
@@ -404,7 +400,7 @@ func (userService iUserServiceImpl) GetSellerProfile(ctx context.Context, seller
 	}
 
 	sellerProfile.CreatedAt = timestamp
-	timestamp, err = time.Parse(ISO8601, userProfile.Data.UpdatedAt)
+	timestamp, err = time.Parse(utils.ISO8601, userProfile.Data.UpdatedAt)
 	if err != nil {
 		applog.GLog.Logger.FromContext(ctx).Error("updatedAt time parse failed",
 			"fn", "GetSellerProfile",

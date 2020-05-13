@@ -2,6 +2,7 @@ package grpc_server
 
 import (
 	"context"
+	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"strconv"
 	"time"
 
@@ -368,12 +369,12 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 						if orderList[i].Packages[j].Subpackages[z].Shipments != nil &&
 							orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail != nil {
 							packageDetail.ShipmentInfo.DeliveryAt = ""
-							packageDetail.ShipmentInfo.ShippedAt = orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601)
+							packageDetail.ShipmentInfo.ShippedAt = orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(utils.ISO8601)
 							packageDetail.ShipmentInfo.CarrierName = orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.CourierName
 							packageDetail.ShipmentInfo.TrackingNumber = orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.TrackingNumber
 
 							packageDetail.ShipmentInfo.DeliveryAt = orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.
-								Add(time.Duration(orderList[i].Packages[j].ShipmentSpec.ShippingTime) * time.Hour).Format(ISO8601)
+								Add(time.Duration(orderList[i].Packages[j].ShipmentSpec.ShippingTime) * time.Hour).Format(utils.ISO8601)
 						}
 
 						packageDetailList = append(packageDetailList, packageDetail)
@@ -530,12 +531,12 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 							if orderList[i].Packages[j].Subpackages[z].Shipments != nil &&
 								orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail != nil {
 								packageDetail.ShipmentInfo.DeliveryAt = ""
-								packageDetail.ShipmentInfo.ShippedAt = orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601)
+								packageDetail.ShipmentInfo.ShippedAt = orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(utils.ISO8601)
 								packageDetail.ShipmentInfo.CarrierName = orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.CourierName
 								packageDetail.ShipmentInfo.TrackingNumber = orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.TrackingNumber
 
 								packageDetail.ShipmentInfo.DeliveryAt = orderList[i].Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.
-									Add(time.Duration(orderList[i].Packages[j].ShipmentSpec.ShippingTime) * time.Hour).Format(ISO8601)
+									Add(time.Duration(orderList[i].Packages[j].ShipmentSpec.ShippingTime) * time.Hour).Format(utils.ISO8601)
 							}
 
 							packageDetailList = append(packageDetailList, packageDetail)
@@ -557,7 +558,7 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 			Discounts:        0,
 			ShipmentAmount:   0,
 			IsPaymentSuccess: false,
-			RequestAt:        orderList[i].CreatedAt.Format(ISO8601),
+			RequestAt:        orderList[i].CreatedAt.Format(utils.ISO8601),
 			Address: &pb.BuyerOrderDetailList_OrderDetail_BuyerAddress{
 				FirstName:     orderList[i].BuyerInfo.ShippingAddress.FirstName,
 				LastName:      orderList[i].BuyerInfo.ShippingAddress.LastName,
@@ -826,12 +827,12 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 
 			if order.Packages[j].Subpackages[z].Shipments != nil &&
 				order.Packages[j].Subpackages[z].Shipments.ShipmentDetail != nil {
-				packageDetail.ShipmentInfo.ShippedAt = order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(ISO8601)
+				packageDetail.ShipmentInfo.ShippedAt = order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.Format(utils.ISO8601)
 				packageDetail.ShipmentInfo.CarrierName = order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.CourierName
 				packageDetail.ShipmentInfo.TrackingNumber = order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.TrackingNumber
 
 				packageDetail.ShipmentInfo.DeliveryAt = order.Packages[j].Subpackages[z].Shipments.ShipmentDetail.ShippedAt.
-					Add(time.Duration(order.Packages[j].ShipmentSpec.ShippingTime) * time.Hour).Format(ISO8601)
+					Add(time.Duration(order.Packages[j].ShipmentSpec.ShippingTime) * time.Hour).Format(utils.ISO8601)
 			}
 
 			packageDetailList = append(packageDetailList, packageDetail)
@@ -846,7 +847,7 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 		Discounts:        0,
 		ShipmentAmount:   0,
 		IsPaymentSuccess: false,
-		RequestAt:        order.CreatedAt.Format(ISO8601),
+		RequestAt:        order.CreatedAt.Format(utils.ISO8601),
 		Address: &pb.BuyerOrderDetailList_OrderDetail_BuyerAddress{
 			FirstName:     order.BuyerInfo.ShippingAddress.FirstName,
 			LastName:      order.BuyerInfo.ShippingAddress.LastName,
@@ -1240,7 +1241,7 @@ func (server *Server) buyerAllReturnOrderItemsHandler(ctx context.Context, userI
 					for t := 0; t < len(orderList[i].Packages[j].Subpackages[z].Items); t++ {
 						returnOrderItemDetail := &pb.BuyerReturnOrderItemDetailList_ReturnOrderItemDetail{
 							OID:         orderList[i].OrderId,
-							CreatedAt:   orderList[i].CreatedAt.Format(ISO8601),
+							CreatedAt:   orderList[i].CreatedAt.Format(utils.ISO8601),
 							TotalAmount: 0,
 							SellerInfo:  nil,
 							Item: &pb.BuyerReturnOrderItemDetailList_ReturnOrderItemDetail_Item{
@@ -1368,7 +1369,7 @@ func (server *Server) buyerAllReturnOrderItemsHandler(ctx context.Context, userI
 						}
 
 						if orderList[i].Packages[j].Subpackages[z].Shipments != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt != nil {
-							returnOrderItemDetail.Item.ReturnRequestAt = orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt.Format(ISO8601)
+							returnOrderItemDetail.Item.ReturnRequestAt = orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt.Format(utils.ISO8601)
 						}
 
 						if returnOrderItemDetail.Item.Status == states.ReturnRequestPending.StateName() {
@@ -1653,7 +1654,7 @@ func (server *Server) buyerAllReturnOrderItemsHandler(ctx context.Context, userI
 //						}
 //
 //						if orderList[i].Packages[j].Subpackages[z].Shipments != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt != nil {
-//							returnItemPackageDetail.ReturnRequestAt = orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt.Format(ISO8601)
+//							returnItemPackageDetail.ReturnRequestAt = orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt.Format(utils.ISO8601)
 //						}
 //
 //						if returnItemPackageDetail.Status == states.ReturnRequestPending.StateName() {
@@ -1699,7 +1700,7 @@ func (server *Server) buyerAllReturnOrderItemsHandler(ctx context.Context, userI
 //
 //		returnOrderDetail := &pb.BuyerReturnOrderDetailList_ReturnOrderDetail{
 //			OID:                 orderList[i].OrderId,
-//			CreatedAt:           orderList[i].CreatedAt.Format(ISO8601),
+//			CreatedAt:           orderList[i].CreatedAt.Format(utils.ISO8601),
 //			TotalAmount:         0,
 //			ReturnPackageDetail: returnPackageDetailList,
 //		}
@@ -1960,7 +1961,7 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 					}
 
 					if orderList[i].Packages[j].Subpackages[z].Shipments != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt != nil {
-						returnItemPackageDetail.ReturnRequestAt = orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt.Format(ISO8601)
+						returnItemPackageDetail.ReturnRequestAt = orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt.Format(utils.ISO8601)
 					}
 
 					if returnItemPackageDetail.Status == states.ReturnRequestPending.StateName() {
@@ -2005,7 +2006,7 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 
 		returnOrderDetail := &pb.BuyerReturnOrderDetailList_ReturnOrderDetail{
 			OID:                 orderList[i].OrderId,
-			CreatedAt:           orderList[i].CreatedAt.Format(ISO8601),
+			CreatedAt:           orderList[i].CreatedAt.Format(utils.ISO8601),
 			TotalAmount:         0,
 			ReturnPackageDetail: returnPackageDetailList,
 		}
