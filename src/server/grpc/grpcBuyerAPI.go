@@ -326,7 +326,7 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 							itemPackageDetail.Invoice.Discount = uint64(discount.IntPart())
 
 							if itemPackageDetail.Status == states.ApprovalPending.StateName() ||
-								itemPackageDetail.Status == states.ShipmentPending.StateName() ||
+								// itemPackageDetail.Status == states.ShipmentPending.StateName() ||
 								itemPackageDetail.Status == states.ShipmentDelayed.StateName() {
 								itemPackageDetail.IsCancelable = true
 
@@ -488,7 +488,7 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 								itemPackageDetail.Invoice.Discount = uint64(discount.IntPart())
 
 								if itemPackageDetail.Status == states.ApprovalPending.StateName() ||
-									itemPackageDetail.Status == states.ShipmentPending.StateName() ||
+									// itemPackageDetail.Status == states.ShipmentPending.StateName() ||
 									itemPackageDetail.Status == states.ShipmentDelayed.StateName() {
 									itemPackageDetail.IsCancelable = true
 
@@ -786,7 +786,7 @@ func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid ui
 				itemPackageDetail.Invoice.Discount = uint64(discount.IntPart())
 
 				if itemPackageDetail.Status == states.ApprovalPending.StateName() ||
-					itemPackageDetail.Status == states.ShipmentPending.StateName() ||
+					// itemPackageDetail.Status == states.ShipmentPending.StateName() ||
 					itemPackageDetail.Status == states.ShipmentDelayed.StateName() {
 					itemPackageDetail.IsCancelable = true
 
