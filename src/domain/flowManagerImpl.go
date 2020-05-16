@@ -354,12 +354,10 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 		scheduler_action.New(scheduler_action.Cancel):        flowManager.statesMap[states.ShipmentDelayed],
 		seller_action.New(seller_action.Cancel):              flowManager.statesMap[states.CanceledBySeller],
 		seller_action.New(seller_action.EnterShipmentDetail): flowManager.statesMap[states.Shipped],
-		buyer_action.New(buyer_action.Cancel):                flowManager.statesMap[states.CanceledByBuyer],
 	}
 	childStates = []states.IState{
 		flowManager.statesMap[states.ShipmentDelayed],
 		flowManager.statesMap[states.CanceledBySeller],
-		flowManager.statesMap[states.CanceledByBuyer],
 		flowManager.statesMap[states.Shipped],
 	}
 	state = state_30.New(childStates, emptyState, actionStateMap)
