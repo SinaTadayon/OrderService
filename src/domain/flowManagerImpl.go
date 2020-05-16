@@ -283,7 +283,7 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	actionStateMap = map[actions.IAction]states.IState{
 		scheduler_action.New(scheduler_action.Deliver):       flowManager.statesMap[states.Delivered],
 		scheduler_action.New(scheduler_action.Notification):  nil,
-		operator_action.New(operator_action.Deliver): 		  flowManager.statesMap[states.Delivered],
+		operator_action.New(operator_action.Deliver):         flowManager.statesMap[states.Delivered],
 		operator_action.New(operator_action.DeliveryDelay):   flowManager.statesMap[states.DeliveryDelayed],
 		buyer_action.New(buyer_action.DeliveryDelay):         flowManager.statesMap[states.DeliveryDelayed],
 		seller_action.New(seller_action.EnterShipmentDetail): nil,
@@ -301,7 +301,7 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 		scheduler_action.New(scheduler_action.DeliveryPending): flowManager.statesMap[states.DeliveryPending],
 		seller_action.New(seller_action.EnterShipmentDetail):   nil,
 		operator_action.New(operator_action.DeliveryDelay):     flowManager.statesMap[states.DeliveryDelayed],
-		operator_action.New(operator_action.Deliver): 			flowManager.statesMap[states.Delivered],
+		operator_action.New(operator_action.Deliver):           flowManager.statesMap[states.Delivered],
 	}
 	childStates = []states.IState{
 		flowManager.statesMap[states.DeliveryPending],
@@ -354,10 +354,12 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 		scheduler_action.New(scheduler_action.Cancel):        flowManager.statesMap[states.ShipmentDelayed],
 		seller_action.New(seller_action.Cancel):              flowManager.statesMap[states.CanceledBySeller],
 		seller_action.New(seller_action.EnterShipmentDetail): flowManager.statesMap[states.Shipped],
+		buyer_action.New(buyer_action.Cancel):                flowManager.statesMap[states.CanceledByBuyer],
 	}
 	childStates = []states.IState{
 		flowManager.statesMap[states.ShipmentDelayed],
 		flowManager.statesMap[states.CanceledBySeller],
+		flowManager.statesMap[states.CanceledByBuyer],
 		flowManager.statesMap[states.Shipped],
 	}
 	state = state_30.New(childStates, emptyState, actionStateMap)
