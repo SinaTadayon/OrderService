@@ -1576,6 +1576,7 @@ func TestOperatorGetOrderById(t *testing.T) {
 
 	require.NotNil(t, operatorOrderList)
 	require.Equal(t, 1, len(operatorOrderList.Orders))
+	require.Equal(t, "IN_PROGRESS", operatorOrderList.Orders[0].Status)
 	//require.Equal(t, uint64(1000002), sellerOrderList.PID)
 }
 

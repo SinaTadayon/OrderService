@@ -1073,6 +1073,10 @@ func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint6
 		},
 	}
 
+	if order.Status == string(states.OrderClosedStatus) {
+		order.Status = string(generateOrderCloseStatus(findOrder))
+	}
+
 	grandTotal, e := decimal.NewFromString(findOrder.Invoice.GrandTotal.Amount)
 	if e != nil {
 		app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, GrandTotal invalid",
@@ -1277,6 +1281,10 @@ func (server *Server) operatorGetOrdersByMobileHandler(ctx context.Context, buye
 				PaymentGateway: orderList[i].Invoice.PaymentGateway,
 				Shipment:       0,
 			},
+		}
+
+		if order.Status == string(states.OrderClosedStatus) {
+			order.Status = string(generateOrderCloseStatus(orderList[i]))
 		}
 
 		amount, err := decimal.NewFromString(orderList[i].Invoice.GrandTotal.Amount)
