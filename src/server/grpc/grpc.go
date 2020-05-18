@@ -17,7 +17,6 @@ import (
 	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
 	seller_action "gitlab.faza.io/order-project/order-service/domain/actions/seller"
 	"gitlab.faza.io/order-project/order-service/domain/events"
-	"gitlab.faza.io/order-project/order-service/domain/models"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
@@ -199,7 +198,7 @@ type Server struct {
 	operatorFilterStates map[FilterValue][]FilterState
 	queryPathStates      map[FilterValue]FilterQueryState
 	actionStates         map[UserType][]actions.IAction
-	reasonsMap           reasonsMap
+	reasonConfigs        utils.ReasonConfigs
 }
 
 func NewServer(address string, port uint16, flowManager domain.IFlowManager) Server {
@@ -505,7 +504,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 	//	ReturnDeliveryFailedFilter,
 	//	ReturnRejectedFilter,
 	//}
-	rp := createReasonsMap()
+	rp := utils.InitialReasonConfig()
 	return Server{
 		flowManager:          flowManager,
 		address:              address,
@@ -519,7 +518,7 @@ func NewServer(address string, port uint16, flowManager domain.IFlowManager) Ser
 		operatorFilterStates: operatorFilterStatesMap,
 		queryPathStates:      queryPathStatesMap,
 		actionStates:         actionStateMap,
-		reasonsMap:           rp,
+		reasonConfigs:        rp,
 	}
 }
 
@@ -907,23 +906,16 @@ func (server *Server) requestActionHandler(ctx context.Context, req *pb.MessageR
 				Quantity:    item.Quantity,
 			}
 			if item.Reasons != nil {
-				actionItem.Reasons = make([]models.Reason, 0, len(item.Reasons))
+				actionItem.Reasons = make([]entities.Reason, 0, len(item.Reasons))
 				for _, reason := range item.Reasons {
-					rscnf, ok := server.reasonsMap[reason.Key]
-					if !ok {
-						return nil, status.Error(codes.Code(future.BadRequest), "reason not allowed")
+					// convert to models.reason
+					reas, err := app.Globals.Converter.Map(ctx, reason, entities.Reason{})
+					if err != nil {
+						return nil, err
 					}
-					rs := models.Reason{
-						Key:         rscnf.Key,
-						Translation: rscnf.Translation,
-						Cancel:      rscnf.Cancel,
-						Return:      rscnf.Return,
-						Responsible: rscnf.Responsible,
-					}
-					if rscnf.HasDescription {
-						rs.Description = reason.Description
-					}
-					actionItem.Reasons = append(actionItem.Reasons, rs)
+					rs := reas.(*entities.Reason)
+
+					actionItem.Reasons = append(actionItem.Reasons, *rs)
 				}
 			}
 			subpackage.Items = append(subpackage.Items, actionItem)
@@ -1061,7 +1053,28 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 }
 
 func (server Server) ReasonsList(ctx context.Context, in *pb.ReasonsListRequest) (list *pb.ReasonsListResponse, err error) {
-	ls := server.reasonsMap.toGRPC()
+	ls := make([]*pb.ReasonDetail, 0)
+	for _, reason := range server.reasonConfigs {
+		i := &pb.ReasonDetail{
+			Key:            reason.Key,
+			Translation:    reason.Translation,
+			HasDescription: reason.HasDescription,
+			Cancel:         reason.Cancel,
+			Return:         reason.Return,
+			IsActive:       reason.IsActive,
+		}
+		switch reason.Responsible {
+		case utils.ReasonResponsibleBuyer:
+			i.Responsible = pb.ReasonDetail_BUYER
+		case utils.ReasonResponsibleSeller:
+			i.Responsible = pb.ReasonDetail_SELLER
+		case utils.ReasonResponsibleNone:
+			i.Responsible = pb.ReasonDetail_NONE
+		default:
+			i.Responsible = pb.ReasonDetail_NONE
+		}
+		ls = append(ls, i)
+	}
 	list = &pb.ReasonsListResponse{
 		Reasons: ls,
 	}
