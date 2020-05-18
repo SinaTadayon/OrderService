@@ -4,9 +4,12 @@ import (
 	"context"
 	"github.com/pkg/errors"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	ordersrv "gitlab.faza.io/protos/order"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"strconv"
 	"time"
 )
@@ -21,25 +24,57 @@ func NewConverter() IConverter {
 // Get *ordersrv.RequestNewOrder then map to *entities.Order
 func (iconv iConverterImpl) Map(ctx context.Context, in interface{}, out interface{}) (interface{}, error) {
 
-	var ok bool
-	var newOrderDto *ordersrv.RequestNewOrder
-	newOrderDto, ok = in.(*ordersrv.RequestNewOrder)
-	if ok == false {
-		applog.GLog.Logger.FromContext(ctx).Error("mapping from input type not supported",
-			"fn", "Map",
-			"in", in)
-		return nil, errors.New("mapping from input type not supported")
+	switch in.(type) {
+	case *ordersrv.RequestNewOrder:
+		newOrderDto, _ := in.(*ordersrv.RequestNewOrder)
+
+		_, ok := out.(entities.Order)
+		if !ok {
+			applog.GLog.Logger.FromContext(ctx).Error("mapping to output type not supported",
+				"fn", "Map",
+				"in", in)
+			return nil, errors.New("mapping to output type not supported")
+		}
+
+		return convert(ctx, newOrderDto)
+	case *ordersrv.Reason:
+		reasonDto, _ := in.(*ordersrv.Reason)
+
+		_, ok := out.(entities.Reason)
+		if !ok {
+			applog.GLog.Logger.FromContext(ctx).Error("mapping to output type not supported",
+				"fn", "Map",
+				"in", in)
+			return nil, errors.New("mapping to output type not supported")
+		}
+
+		return convertReason(ctx, reasonDto)
 	}
 
-	_, ok = out.(entities.Order)
-	if ok == false {
-		applog.GLog.Logger.FromContext(ctx).Error("mapping to output type not supported",
-			"fn", "Map",
-			"in", in)
-		return nil, errors.New("mapping to output type not supported")
+	applog.GLog.Logger.FromContext(ctx).Error("mapping from input type not supported",
+		"fn", "Map",
+		"in", in)
+	return nil, errors.New("mapping from input type not supported")
+}
+
+func convertReason(ctx context.Context, reason *ordersrv.Reason) (*entities.Reason, error) {
+	reasonConfs := utils.InitialReasonConfig()
+	rscnf, ok := reasonConfs[reason.Key]
+	if !ok {
+		return nil, status.Error(codes.Code(future.BadRequest), "reason not allowed")
+	}
+	rs := entities.Reason{
+		Key:         rscnf.Key,
+		Translation: rscnf.Translation,
+		Cancel:      rscnf.Cancel,
+		Return:      rscnf.Return,
+		Responsible: rscnf.Responsible,
+	}
+	if rscnf.HasDescription {
+		rs.Description = reason.Description
 	}
 
-	return convert(ctx, newOrderDto)
+	return &rs, nil
 }
 
 func convert(ctx context.Context, newOrderDto *ordersrv.RequestNewOrder) (*entities.Order, error) {
