@@ -793,7 +793,7 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, oid uin
 						if pkgItem.Subpackages[i].Tracking.History != nil && len(pkgItem.Subpackages[i].Tracking.History) > 0 {
 							tracking := pkgItem.Subpackages[i].Tracking
 
-							cancellationReasons := reason.ExtractActionReason(tracking, reason.ActionName(reason.CancelAction), reason.Cancel, statusName)
+							cancellationReasons := reason.ExtractActionReason(tracking, reason.ActionName(reason.CancelAction), reason.Cancel, "")
 							reasonConfig := utils.InitialReasonConfig()
 							if cancellationReasons != nil {
 								rs := &pb.ReasonDetail{
@@ -815,7 +815,7 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, oid uin
 								itemDetail.CancellationReason = rs
 							}
 
-							returnReason := reason.ExtractActionReason(tracking, reason.ActionName(reason.ReturnAction), reason.Return, statusName)
+							returnReason := reason.ExtractActionReason(tracking, reason.ActionName(reason.ReturnAction), reason.Return, "")
 							if returnReason != nil {
 								rs := &pb.ReasonDetail{
 									Key:         returnReason.Key,
