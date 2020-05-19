@@ -1,41 +1,37 @@
-package grpc_server
+//
+// this package contains reasons of actions like
+// cancellation action or return action which will
+// show corresponding reason of buyer for seller
+//
+package utils
 
 import (
-	"gitlab.faza.io/order-project/order-service/domain/models"
-	pb "gitlab.faza.io/protos/order"
+	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 )
 
-type reasonsMap map[string]models.ReasonConfig
+const (
+	ReasonResponsibleBuyer  = "BUYER"
+	ReasonResponsibleSeller = "SELLER"
+	ReasonResponsibleNone   = "NONE"
+)
 
-func (rm reasonsMap) toGRPC() (p []*pb.ReasonDetail) {
-	p = make([]*pb.ReasonDetail, 0)
-	for _, r := range rm {
-		i := &pb.ReasonDetail{
-			Key:            r.Key,
-			Translation:    r.Translation,
-			HasDescription: r.HasDescription,
-			Cancel:         r.Cancel,
-			Return:         r.Return,
-			IsActive:       r.IsActive,
-		}
-		switch r.Responsible {
-		case models.ReasonResponsibleBuyer:
-			i.Responsible = pb.ReasonDetail_BUYER
-		case models.ReasonResponsibleSeller:
-			i.Responsible = pb.ReasonDetail_SELLER
-		case models.ReasonResponsibleNone:
-			i.Responsible = pb.ReasonDetail_NONE
-		default:
-			i.Responsible = pb.ReasonDetail_NONE
-		}
-		p = append(p, i)
-
+func Responsible(responsible string) int32 {
+	switch responsible {
+	case ReasonResponsibleNone:
+		return 0;
+	case ReasonResponsibleBuyer:
+		return 1;
+	case ReasonResponsibleSeller:
+		return 2;
+	default:
+		return 0;
 	}
-	return
 }
 
-func createReasonsMap() (mp reasonsMap) {
-	list := []models.ReasonConfig{
+type ReasonConfigs map[string]entities.ReasonConfig
+
+func InitialReasonConfig() (mp ReasonConfigs) {
+	list := []entities.ReasonConfig{
 		{
 			Key:            "change_of_mind",
 			Translation:    "نظرم درباره خرید این کالا تغییر کرد",
@@ -43,7 +39,7 @@ func createReasonsMap() (mp reasonsMap) {
 			Cancel:         true,
 			Return:         true,
 			IsActive:       true,
-			Responsible:    models.ReasonResponsibleBuyer,
+			Responsible:    ReasonResponsibleBuyer,
 		},
 		{
 			Key:            "forgot_voucher",
@@ -52,7 +48,7 @@ func createReasonsMap() (mp reasonsMap) {
 			Cancel:         true,
 			Return:         false,
 			IsActive:       true,
-			Responsible:    models.ReasonResponsibleBuyer,
+			Responsible:    ReasonResponsibleBuyer,
 		},
 		{
 			Key:            "delivery_too_long",
@@ -61,7 +57,7 @@ func createReasonsMap() (mp reasonsMap) {
 			Cancel:         true,
 			Return:         false,
 			IsActive:       true,
-			Responsible:    models.ReasonResponsibleNone,
+			Responsible:    ReasonResponsibleNone,
 		},
 		{
 			Key:            "found_better_price",
@@ -70,7 +66,7 @@ func createReasonsMap() (mp reasonsMap) {
 			Cancel:         true,
 			Return:         true,
 			IsActive:       true,
-			Responsible:    models.ReasonResponsibleBuyer,
+			Responsible:    ReasonResponsibleBuyer,
 		},
 		{
 			Key:            "defective_or_damaged",
@@ -79,7 +75,7 @@ func createReasonsMap() (mp reasonsMap) {
 			Cancel:         false,
 			Return:         true,
 			IsActive:       true,
-			Responsible:    models.ReasonResponsibleSeller,
+			Responsible:    ReasonResponsibleSeller,
 		},
 		{
 			Key:            "differs_from_content",
@@ -88,7 +84,7 @@ func createReasonsMap() (mp reasonsMap) {
 			Cancel:         false,
 			Return:         true,
 			IsActive:       true,
-			Responsible:    models.ReasonResponsibleSeller,
+			Responsible:    ReasonResponsibleSeller,
 		},
 		{
 			Key:            "fake_or_counterfeit",
@@ -97,7 +93,7 @@ func createReasonsMap() (mp reasonsMap) {
 			Cancel:         false,
 			Return:         true,
 			IsActive:       true,
-			Responsible:    models.ReasonResponsibleSeller,
+			Responsible:    ReasonResponsibleSeller,
 		},
 		{
 			Key:            "low_quality",
@@ -106,7 +102,7 @@ func createReasonsMap() (mp reasonsMap) {
 			Cancel:         false,
 			Return:         true,
 			IsActive:       true,
-			Responsible:    models.ReasonResponsibleBuyer,
+			Responsible:    ReasonResponsibleBuyer,
 		},
 		{
 			Key:            "missing_parts",
@@ -115,7 +111,7 @@ func createReasonsMap() (mp reasonsMap) {
 			Cancel:         false,
 			Return:         true,
 			IsActive:       true,
-			Responsible:    models.ReasonResponsibleSeller,
+			Responsible:    ReasonResponsibleSeller,
 		},
 		{
 			Key:            "does_not_fit",
@@ -124,7 +120,7 @@ func createReasonsMap() (mp reasonsMap) {
 			Cancel:         false,
 			Return:         true,
 			IsActive:       true,
-			Responsible:    models.ReasonResponsibleBuyer,
+			Responsible:    ReasonResponsibleBuyer,
 		},
 		{
 			Key:            "other",
@@ -133,10 +129,10 @@ func createReasonsMap() (mp reasonsMap) {
 			Cancel:         true,
 			Return:         true,
 			IsActive:       true,
-			Responsible:    models.ReasonResponsibleNone,
+			Responsible:    ReasonResponsibleNone,
 		},
 	}
-	mp = make(reasonsMap, 0)
+	mp = make(ReasonConfigs, 0)
 	for _, r := range list {
 		mp[r.Key] = r
 	}

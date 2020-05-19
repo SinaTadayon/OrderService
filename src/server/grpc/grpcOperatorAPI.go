@@ -412,7 +412,10 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 						if action.Name == buyer_action.Cancel.String() ||
 							action.Name == operator_action.Cancel.String() ||
 							action.Name == buyer_action.SubmitReturnRequest.String() {
-							state.Reason = action.Reasons[0].ToRPC()
+							state.Reason = &pb.Reason{
+								Key:                  action.Reasons[0].Key,
+								Description:          action.Reasons[0].Description,
+							}
 						}
 					}
 				}

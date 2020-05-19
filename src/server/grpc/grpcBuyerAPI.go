@@ -1365,7 +1365,10 @@ func (server *Server) buyerAllReturnOrderItemsHandler(ctx context.Context, userI
 						returnOrderItemDetail.Item.Invoice.Discount = uint64(discount.IntPart())
 
 						if orderList[i].Packages[j].Subpackages[z].Items[t].Reasons != nil {
-							returnOrderItemDetail.Item.Reason = orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0].ToRPC()
+							returnOrderItemDetail.Item.Reason = &pb.Reason{
+								Key:                  orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0].Key,
+								Description:          orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0].Description,
+							}
 						}
 
 						if orderList[i].Packages[j].Subpackages[z].Shipments != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt != nil {
@@ -1957,7 +1960,10 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 					returnItemPackageDetail.Invoice.Discount = uint64(discount.IntPart())
 
 					if orderList[i].Packages[j].Subpackages[z].Items[t].Reasons != nil {
-						returnItemPackageDetail.Reason = orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0].ToRPC()
+						returnItemPackageDetail.Reason = &pb.Reason{
+							Key:                  orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0].Key,
+							Description:          orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0].Description,
+						}
 					}
 
 					if orderList[i].Packages[j].Subpackages[z].Shipments != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail != nil && orderList[i].Packages[j].Subpackages[z].Shipments.ReturnShipmentDetail.RequestedAt != nil {
