@@ -195,7 +195,7 @@ services:
     command: /usr/bin/mongod --bind_ip_all --replSet=rs0 --port 52302
     ports:
       - 52302:52302
-  ​
+
   mongo3:
     image: docker.faza.io/mongo:4.2.2
     restart: unless-stopped
