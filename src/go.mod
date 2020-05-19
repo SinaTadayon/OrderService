@@ -18,7 +18,7 @@ require (
 	github.com/stretchr/testify v1.4.0
 	gitlab.faza.io/go-framework/acl v0.0.3
 	gitlab.faza.io/go-framework/logger v0.0.12
-	gitlab.faza.io/go-framework/mongoadapter v0.0.10
+	gitlab.faza.io/go-framework/mongoadapter v0.1.3
 	gitlab.faza.io/protos/cart v0.0.29
 	gitlab.faza.io/protos/notification v0.0.4
 	gitlab.faza.io/protos/order v0.0.80
