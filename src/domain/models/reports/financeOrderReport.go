@@ -1,7 +1,6 @@
 package reports
 
 import (
-	"gitlab.faza.io/order-project/order-service/domain/models"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"time"
 )
@@ -30,7 +29,7 @@ type Item struct {
 	Image       string                 `bson:"image"`
 	Returnable  bool                   `bson:"returnable"`
 	Quantity    int32                  `bson:"quantity"`
-	Reasons     []models.Reason        `bson:"reasons"`
+	Reasons     []entities.Reason      `bson:"reasons"`
 	Attributes  map[string]*Attribute  `bson:"attributes"`
 	Invoice     ItemInvoice            `bson:"invoice"`
 	Extended    map[string]interface{} `bson:"ext"`
