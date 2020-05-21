@@ -819,10 +819,10 @@ func (server *Server) FinanceOrderItems(ctx context.Context, req *pb.MessageRequ
 			Items:          nil,
 			CreatedAt:      finance.CreatedAt.Format(ISO8601),
 			UpdatedAt:      finance.UpdatedAt.Format(ISO8601),
-			OrderCreatedAt: finance.CreatedAt.Format(ISO8601),
+			OrderCreatedAt: finance.OrderCreatedAt.Format(ISO8601),
 		}
 
-		financeItemList := make([]*pb.FinanceOrderItemDetailList_OrderItemDetail_Item, 0, len(finance.Items))
+		financeOrderItem.Items = make([]*pb.FinanceOrderItemDetailList_OrderItemDetail_Item, 0, len(finance.Items))
 		for _, item := range finance.Items {
 			financeItem := &pb.FinanceOrderItemDetailList_OrderItemDetail_Item{
 				SId:         finance.SId,
@@ -838,24 +838,13 @@ func (server *Server) FinanceOrderItems(ctx context.Context, req *pb.MessageRequ
 				Attributes:  nil,
 				Invoice: &pb.FinanceOrderItemDetailList_OrderItemDetail_Item_ItemInvoice{
 					Commission: &pb.FinanceOrderItemDetailList_OrderItemDetail_Item_ItemInvoice_ItemCommission{
-						ItemCommission: item.Invoice.Commission.ItemCommission,
-						RawUnitPrice: &pb.Money{
-							Amount:   item.Invoice.Commission.RawUnitPrice.Amount,
-							Currency: item.Invoice.Commission.RawUnitPrice.Currency,
-						},
-						RoundupUnitPrice: &pb.Money{
-							Amount:   item.Invoice.Commission.RoundupUnitPrice.Amount,
-							Currency: item.Invoice.Commission.RoundupUnitPrice.Currency,
-						},
-						RawTotalPrice: &pb.Money{
-							Amount:   item.Invoice.Commission.RawTotalPrice.Amount,
-							Currency: item.Invoice.Commission.RawTotalPrice.Currency,
-						},
-						RoundupTotalPrice: &pb.Money{
-							Amount:   item.Invoice.Commission.RoundupUnitPrice.Amount,
-							Currency: item.Invoice.Commission.RoundupUnitPrice.Currency,
-						},
+						ItemCommission:    item.Invoice.Commission.ItemCommission,
+						RawUnitPrice:      nil,
+						RoundupUnitPrice:  nil,
+						RawTotalPrice:     nil,
+						RoundupTotalPrice: nil,
 					},
+
 					Share: &pb.FinanceOrderItemDetailList_OrderItemDetail_Item_ItemInvoice_ItemShare{
 						RawItemNet: &pb.Money{
 							Amount:   item.Invoice.Share.RawItemNet.Amount,
@@ -891,46 +880,106 @@ func (server *Server) FinanceOrderItems(ctx context.Context, req *pb.MessageRequ
 						},
 					},
 					SSO: &pb.FinanceOrderItemDetailList_OrderItemDetail_Item_ItemInvoice_ItemSSO{
-						Rate:      item.Invoice.SSO.Rate,
-						IsObliged: item.Invoice.SSO.IsObliged,
-						RawUnitPrice: &pb.Money{
-							Amount:   item.Invoice.SSO.RawUnitPrice.Amount,
-							Currency: item.Invoice.SSO.RawUnitPrice.Currency,
-						},
-						RoundupUnitPrice: &pb.Money{
-							Amount:   item.Invoice.SSO.RoundupUnitPrice.Amount,
-							Currency: item.Invoice.SSO.RoundupUnitPrice.Currency,
-						},
-						RawTotalPrice: &pb.Money{
-							Amount:   item.Invoice.SSO.RawTotalPrice.Amount,
-							Currency: item.Invoice.SSO.RawTotalPrice.Currency,
-						},
-						RoundupTotalPrice: &pb.Money{
-							Amount:   item.Invoice.SSO.RoundupTotalPrice.Amount,
-							Currency: item.Invoice.SSO.RoundupTotalPrice.Currency,
-						},
+						Rate:              item.Invoice.SSO.Rate,
+						IsObliged:         item.Invoice.SSO.IsObliged,
+						RawUnitPrice:      nil,
+						RoundupUnitPrice:  nil,
+						RawTotalPrice:     nil,
+						RoundupTotalPrice: nil,
 					},
 					VAT: &pb.FinanceOrderItemDetailList_OrderItemDetail_Item_ItemInvoice_ItemVAT{
-						Rate:      item.Invoice.VAT.SellerVat.Rate,
-						IsObliged: item.Invoice.VAT.SellerVat.IsObliged,
-						RawUnitPrice: &pb.Money{
-							Amount:   item.Invoice.VAT.SellerVat.RawUnitPrice.Amount,
-							Currency: item.Invoice.VAT.SellerVat.RawUnitPrice.Currency,
-						},
-						RoundupUnitPrice: &pb.Money{
-							Amount:   item.Invoice.VAT.SellerVat.RoundupUnitPrice.Amount,
-							Currency: item.Invoice.VAT.SellerVat.RoundupUnitPrice.Currency,
-						},
-						RawTotalPrice: &pb.Money{
-							Amount:   item.Invoice.VAT.SellerVat.RawTotalPrice.Amount,
-							Currency: item.Invoice.VAT.SellerVat.RawTotalPrice.Currency,
-						},
-						RoundupTotalPrice: &pb.Money{
-							Amount:   item.Invoice.VAT.SellerVat.RoundupTotalPrice.Amount,
-							Currency: item.Invoice.VAT.SellerVat.RoundupTotalPrice.Currency,
-						},
+						Rate:              item.Invoice.VAT.SellerVat.Rate,
+						IsObliged:         item.Invoice.VAT.SellerVat.IsObliged,
+						RawUnitPrice:      nil,
+						RoundupUnitPrice:  nil,
+						RawTotalPrice:     nil,
+						RoundupTotalPrice: nil,
 					},
 				},
+			}
+
+			if item.Invoice.Commission.RawUnitPrice != nil {
+				financeItem.Invoice.Commission.RawUnitPrice = &pb.Money{
+					Amount:   item.Invoice.Commission.RawUnitPrice.Amount,
+					Currency: item.Invoice.Commission.RawUnitPrice.Currency,
+				}
+			}
+
+			if item.Invoice.Commission.RoundupUnitPrice != nil {
+				financeItem.Invoice.Commission.RoundupUnitPrice = &pb.Money{
+					Amount:   item.Invoice.Commission.RoundupUnitPrice.Amount,
+					Currency: item.Invoice.Commission.RoundupUnitPrice.Currency,
+				}
+			}
+
+			if item.Invoice.Commission.RawTotalPrice != nil {
+				financeItem.Invoice.Commission.RawTotalPrice = &pb.Money{
+					Amount:   item.Invoice.Commission.RawTotalPrice.Amount,
+					Currency: item.Invoice.Commission.RawTotalPrice.Currency,
+				}
+			}
+
+			if item.Invoice.Commission.RoundupTotalPrice != nil {
+				financeItem.Invoice.Commission.RoundupTotalPrice = &pb.Money{
+					Amount:   item.Invoice.Commission.RoundupUnitPrice.Amount,
+					Currency: item.Invoice.Commission.RoundupUnitPrice.Currency,
+				}
+			}
+
+			if item.Invoice.SSO.RawUnitPrice != nil {
+				financeItem.Invoice.SSO.RawUnitPrice = &pb.Money{
+					Amount:   item.Invoice.SSO.RawUnitPrice.Amount,
+					Currency: item.Invoice.SSO.RawUnitPrice.Currency,
+				}
+			}
+
+			if item.Invoice.SSO.RoundupUnitPrice != nil {
+				financeItem.Invoice.SSO.RoundupUnitPrice = &pb.Money{
+					Amount:   item.Invoice.SSO.RoundupUnitPrice.Amount,
+					Currency: item.Invoice.SSO.RoundupUnitPrice.Currency,
+				}
+			}
+
+			if item.Invoice.SSO.RawTotalPrice != nil {
+				financeItem.Invoice.SSO.RawTotalPrice = &pb.Money{
+					Amount:   item.Invoice.SSO.RawTotalPrice.Amount,
+					Currency: item.Invoice.SSO.RawTotalPrice.Currency,
+				}
+			}
+
+			if item.Invoice.SSO.RoundupTotalPrice != nil {
+				financeItem.Invoice.SSO.RoundupTotalPrice = &pb.Money{
+					Amount:   item.Invoice.SSO.RoundupTotalPrice.Amount,
+					Currency: item.Invoice.SSO.RoundupTotalPrice.Currency,
+				}
+			}
+
+			if item.Invoice.VAT.SellerVat.RawUnitPrice != nil {
+				financeItem.Invoice.VAT.RawUnitPrice = &pb.Money{
+					Amount:   item.Invoice.VAT.SellerVat.RawUnitPrice.Amount,
+					Currency: item.Invoice.VAT.SellerVat.RawUnitPrice.Currency,
+				}
+			}
+
+			if item.Invoice.VAT.SellerVat.RoundupUnitPrice != nil {
+				financeItem.Invoice.VAT.RoundupUnitPrice = &pb.Money{
+					Amount:   item.Invoice.VAT.SellerVat.RoundupUnitPrice.Amount,
+					Currency: item.Invoice.VAT.SellerVat.RoundupUnitPrice.Currency,
+				}
+			}
+
+			if item.Invoice.VAT.SellerVat.RawTotalPrice != nil {
+				financeItem.Invoice.VAT.RawTotalPrice = &pb.Money{
+					Amount:   item.Invoice.VAT.SellerVat.RawTotalPrice.Amount,
+					Currency: item.Invoice.VAT.SellerVat.RawTotalPrice.Currency,
+				}
+			}
+
+			if item.Invoice.VAT.SellerVat.RoundupTotalPrice != nil {
+				financeItem.Invoice.VAT.RoundupTotalPrice = &pb.Money{
+					Amount:   item.Invoice.VAT.SellerVat.RoundupTotalPrice.Amount,
+					Currency: item.Invoice.VAT.SellerVat.RoundupTotalPrice.Currency,
+				}
 			}
 
 			if item.Attributes != nil {
@@ -953,7 +1002,7 @@ func (server *Server) FinanceOrderItems(ctx context.Context, req *pb.MessageRequ
 				}
 			}
 
-			financeItemList = append(financeItemList, financeItem)
+			financeOrderItem.Items = append(financeOrderItem.Items, financeItem)
 		}
 
 		financeReportList = append(financeReportList, financeOrderItem)
@@ -1378,24 +1427,24 @@ func (server Server) ReasonsList(ctx context.Context, in *pb.ReasonsListRequest)
 
 func (server Server) ReportOrderItems(req *pb.RequestReportOrderItems, srv pb.OrderService_ReportOrderItemsServer) error {
 
-	//userAcl, err := app.Globals.UserService.AuthenticateContextToken(srv.Context())
-	//if err != nil {
-	//	app.Globals.Logger.Error("UserService.AuthenticateContextToken failed",
-	//		"fn", "ReportOrderItems",
-	//		"error", err)
-	//	return status.Error(codes.Code(future.Forbidden), "User Not Authorized")
-	//}
+	userAcl, err := app.Globals.UserService.AuthenticateContextToken(srv.Context())
+	if err != nil {
+		app.Globals.Logger.Error("UserService.AuthenticateContextToken failed",
+			"fn", "ReportOrderItems",
+			"error", err)
+		return status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+	}
 
-	//if userAcl.User().UserID <= 0 {
-	//	app.Globals.Logger.Error("Token userId not authorized",
-	//		"fn", "ReportOrderItems",
-	//		"userId", userAcl.User().UserID)
-	//	return status.Error(codes.Code(future.Forbidden), "User token not authorized")
-	//}
-	//
-	//if !userAcl.UserPerm().Has("order.state.all.view") || !userAcl.UserPerm().Has("order.state.all.action") {
-	//	return status.Error(codes.Code(future.Forbidden), "User Not Permitted")
-	//}
+	if userAcl.User().UserID <= 0 {
+		app.Globals.Logger.Error("Token userId not authorized",
+			"fn", "ReportOrderItems",
+			"userId", userAcl.User().UserID)
+		return status.Error(codes.Code(future.Forbidden), "User token not authorized")
+	}
+
+	if !userAcl.UserPerm().Has("order.state.all.view") || !userAcl.UserPerm().Has("order.state.all.action") {
+		return status.Error(codes.Code(future.Forbidden), "User Not Permitted")
+	}
 
 	iFuture := server.flowManager.ReportOrderItems(srv.Context(), req, srv).Get()
 
