@@ -19,6 +19,24 @@ func TestOrderConverter(t *testing.T) {
 	require.NotEmpty(t, order.Invoice.GrandTotal)
 }
 
+func TestResonConvert(t *testing.T) {
+	ctx := context.Background()
+	converter := NewConverter()
+	reason := createNewReason()
+	out, err := converter.Map(ctx, reason, entities.Reason{})
+	require.NoError(t, err, "mapping reason request ot model reason failed")
+	rs, ok := out.(*entities.Reason)
+	require.True(t, ok, "error on conversion")
+	require.Empty(t, rs.Description)
+}
+
+func createNewReason() *pb.Reason {
+	return &pb.Reason{
+		Key:         "change_of_mind",
+		Description: "i change my mind",
+	}
+}
+
 func createRequestNewOrder() *pb.RequestNewOrder {
 	order := &pb.RequestNewOrder{
 		Platform: "PWA",
@@ -83,7 +101,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 			Products:         nil,
 			Users:            nil,
 			Sellers:          nil,
-			IsFirstPurchase:  false,
+			IsFirstPurchase: false,
 		},
 	}
 

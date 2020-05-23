@@ -1,6 +1,8 @@
 package events
 
-import "gitlab.faza.io/order-project/order-service/domain/models"
+import (
+	"gitlab.faza.io/order-project/order-service/domain/models/entities"
+)
 
 type ActionData struct {
 	SubPackages    []ActionSubpackage
@@ -16,7 +18,7 @@ type ActionSubpackage struct {
 type ActionItem struct {
 	InventoryId string
 	Quantity    int32
-	Reasons     []models.Reason
+	Reasons     []entities.Reason
 }
 
 type ActionResponse struct {
