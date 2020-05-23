@@ -1261,10 +1261,11 @@ func (server *Server) sellerReturnOrderDetailHandler(ctx context.Context, pid, o
 
 				for j := 0; j < len(pkgItem.Subpackages[i].Items); j++ {
 					item := &pb.SellerReturnOrderDetail_Item{
-						SID:    pkgItem.Subpackages[i].SId,
-						Sku:    pkgItem.Subpackages[i].Items[j].SKU,
-						Status: statusName,
-						SIdx:   int32(states.FromString(pkgItem.Subpackages[i].Status).StateIndex()),
+						SID:          pkgItem.Subpackages[i].SId,
+						Sku:          pkgItem.Subpackages[i].Items[j].SKU,
+						Status:       statusName,
+						SIdx:         int32(states.FromString(pkgItem.Subpackages[i].Status).StateIndex()),
+						ReturnReason: nil,
 						Detail: &pb.SellerReturnOrderDetail_Item_Detail{
 							InventoryId: pkgItem.Subpackages[i].Items[j].InventoryId,
 							Title:       pkgItem.Subpackages[i].Items[j].Title,
@@ -1286,6 +1287,32 @@ func (server *Server) sellerReturnOrderDetailHandler(ctx context.Context, pid, o
 							},
 							ReturnShipmentDetail: nil,
 						},
+					}
+
+					if pkgItem.Subpackages[i].Tracking.History != nil && len(pkgItem.Subpackages[i].Tracking.History) > 0 {
+						tracking := pkgItem.Subpackages[i].Tracking
+						reasonConfig := utils.InitialReasonConfig()
+
+						returnReason := reason.ExtractActionReason(tracking, reason.ActionName(reason.ReturnAction), reason.Return, "")
+						if returnReason != nil {
+							rs := &pb.ReasonDetail{
+								Key:         returnReason.Key,
+								Cancel:      returnReason.Cancel,
+								Return:      returnReason.Return,
+								IsActive:    reasonConfig[returnReason.Key].IsActive,
+								Responsible: pb.ReasonDetail_Responsible(utils.Responsible(string(returnReason.Responsible))),
+							}
+
+							if returnReason.Description != "" {
+								rs.Translation = returnReason.Description
+								rs.HasDescription = true
+							} else {
+								rs.Translation = returnReason.Translation
+								rs.HasDescription = false
+							}
+
+							item.ReturnReason = rs;
+						}
 					}
 
 					if pkgItem.Subpackages[i].Shipments != nil && pkgItem.Subpackages[i].Shipments.ReturnShipmentDetail != nil {
