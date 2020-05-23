@@ -114,6 +114,7 @@ type Config struct {
 		Replica       string `env:"ORDER_SERVICE_KAFKA_REPLICA"`
 	}
 	Mongo struct {
+		Uri               string `env:"ORDER_SERVICE_MONGO_URI"`
 		User              string `env:"ORDER_SERVICE_MONGO_USER"`
 		Pass              string `env:"ORDER_SERVICE_MONGO_PASS"`
 		Host              string `env:"ORDER_SERVICE_MONGO_HOST"`
@@ -129,6 +130,8 @@ type Config struct {
 		WriteConcernW     string `env:"ORDER_SERVICE_MONGO_WRITE_CONCERN_W"`
 		WriteConcernJ     string `env:"ORDER_SERVICE_MONGO_WRITE_CONCERN_J"`
 		RetryWrite        bool   `env:"ORDER_SERVICE_MONGO_RETRY_WRITE"`
+		ReadConcern       string `env:"ORDER_SERVICE_MONGO_READ_CONCERN"`
+		ReadPreferred     string `env:"ORDER_SERVICE_MONGO_READ_PREFERRED"`
 	}
 }
 

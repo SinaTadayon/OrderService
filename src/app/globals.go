@@ -72,8 +72,9 @@ var Globals struct {
 func SetupMongoDriver(config configs.Config) (*mongoadapter.Mongo, error) {
 	// store in mongo
 	mongoConf := &mongoadapter.MongoConfig{
-		Host:     config.Mongo.Host,
-		Port:     config.Mongo.Port,
+		ConnectUri: config.Mongo.Uri,
+		// Host:     config.Mongo.Host,
+		// Port:     config.Mongo.Port,
 		Username: config.Mongo.User,
 		//Password:     MainApp.Config.Mongo.Pass,
 		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout) * time.Second,
@@ -85,6 +86,8 @@ func SetupMongoDriver(config configs.Config) (*mongoadapter.Mongo, error) {
 		WriteConcernW:   config.Mongo.WriteConcernW,
 		WriteConcernJ:   config.Mongo.WriteConcernJ,
 		RetryWrites:     config.Mongo.RetryWrite,
+		ReadConcern:     config.Mongo.ReadConcern,
+		ReadPreference:  config.Mongo.ReadPreferred,
 	}
 
 	mongoDriver, err := mongoadapter.NewMongo(mongoConf)

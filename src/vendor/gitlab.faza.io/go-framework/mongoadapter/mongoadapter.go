@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/readconcern"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.mongodb.org/mongo-driver/x/bsonx"
 
@@ -32,7 +34,10 @@ type MongoConfig struct {
 	MinPoolSize     uint64
 	WriteConcernW   string
 	WriteConcernJ   string
-	RetryWrites		bool
+	RetryWrites     bool
+	ReadConcern     string
+	ReadPreference  string
+	ConnectUri      string
 }
 
 type Mongo struct {
@@ -58,15 +63,20 @@ var mongoInstanceCollection map[string]*Mongo
 // If there is already a Mongo instance created for the given host+":"+port combination,
 // it returns it. It does NOT create a new connection+instance for host and port combination
 // if it has already done so.
+// If you want to connect using a URL or if you want to connect to replicaSet, then use Config.ConnectUri
+// and ignore Host, Port, Username and Password values
 func NewMongo(Config *MongoConfig) (*Mongo, error) {
 	var auth = string("")
-	if Config.Port == 0 {
+	var uri = Config.Host + ":" + strconv.Itoa(Config.Port)
+	if Config.ConnectUri == "" && Config.Port == 0 {
 		return nil, errors.New("invalid port, port must be a non-zero integer")
 	}
-	if Config.Username != "" && Config.Password != "" {
+	if Config.ConnectUri == "" && (Config.Username != "" && Config.Password != "") {
 		auth = fmt.Sprintf("%v:%v@", Config.Username, Config.Password)
 	}
-	var uri = Config.Host + ":" + strconv.Itoa(Config.Port)
+	if Config.ConnectUri != "" {
+		uri = Config.ConnectUri
+	}
 	if mongoOnceCollection == nil {
 		mongoOnceCollection = make(map[string]*resync.Once)
 	}
@@ -91,6 +101,9 @@ func NewMongo(Config *MongoConfig) (*Mongo, error) {
 		defer cancel()
 		var uid = xid.New()
 		var mongoUri = fmt.Sprintf("mongodb://%v%v:%v", auth, Config.Host, Config.Port)
+		if Config.ConnectUri != "" {
+			mongoUri = Config.ConnectUri
+		}
 		clientOptions := options.Client().ApplyURI(mongoUri)
 
 		if Config.MaxConnIdleTime != 0 {
@@ -136,6 +149,42 @@ func NewMongo(Config *MongoConfig) (*Mongo, error) {
 				writeConcernOptions = append(writeConcernOptions, writeconcern.WTimeout(Config.WriteTimeout))
 				clientOptions.SetWriteConcern(writeconcern.New(writeConcernOptions...))
 			}
+		}
+
+		if Config.ReadConcern != "" {
+			rc := &readconcern.ReadConcern{}
+			switch Config.ReadConcern {
+			case "majority":
+				rc = readconcern.Majority()
+			case "available":
+				rc = readconcern.Available()
+			case "linearizable":
+				rc = readconcern.Linearizable()
+			case "snapshot":
+				rc = readconcern.Snapshot()
+			default:
+				rc = readconcern.Local()
+			}
+
+			clientOptions.SetReadConcern(rc)
+		}
+
+		if Config.ReadPreference != "" {
+			rp := &readpref.ReadPref{}
+			switch Config.ReadPreference {
+			case "primaryPreferred":
+				rp = readpref.PrimaryPreferred()
+			case "secondary":
+				rp = readpref.Secondary()
+			case "secondaryPreferred":
+				rp = readpref.SecondaryPreferred()
+			case "nearest":
+				rp = readpref.Nearest()
+			default:
+				rp = readpref.Primary()
+			}
+
+			clientOptions.SetReadPreference(rp)
 		}
 
 		client, err := mongo.Connect(ctx, clientOptions)
@@ -465,4 +514,29 @@ func (m *Mongo) IsDupError(err error) bool {
 		}
 	}
 	return false
+}
+
+// runs a function and stores migrationUniqueKey in the migrationColl collection
+// it inserts migration records only if fn returns nil, so be careful on how you
+// handle fn() internally
+func (m *Mongo) Migrate(db, migrationColl string, migrationUniqueKey string, fn func(conn *mongo.Client) error) error {
+	sin, err := m.Count(db, migrationColl, &bson.M{"key": migrationUniqueKey})
+	if err != nil {
+		return err
+	}
+	if sin == 0 {
+		err := fn(m.conn)
+		if err == nil {
+			_, err := m.InsertOne(db, migrationColl, &bson.M{
+				"key":       migrationUniqueKey,
+				"createdAt": time.Now().UTC(),
+			})
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+		return err
+	}
+	return nil
 }

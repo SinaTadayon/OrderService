@@ -64,9 +64,10 @@ func TestMain(m *testing.M) {
 
 	// store in mongo
 	mongoConf := &mongoadapter.MongoConfig{
-		Host:     app.Globals.Config.Mongo.Host,
-		Port:     app.Globals.Config.Mongo.Port,
-		Username: app.Globals.Config.Mongo.User,
+		// Host:     app.Globals.Config.Mongo.Host,
+		// Port:     app.Globals.Config.Mongo.Port,
+		ConnectUri: app.Globals.Config.Mongo.Uri,
+		Username:   app.Globals.Config.Mongo.User,
 		//Password:     App.app.Globals.Config.Mongo.Pass,
 		ConnTimeout:     time.Duration(app.Globals.Config.Mongo.ConnectionTimeout) * time.Second,
 		ReadTimeout:     time.Duration(app.Globals.Config.Mongo.ReadTimeout) * time.Second,
