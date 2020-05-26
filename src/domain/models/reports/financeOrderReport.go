@@ -30,14 +30,9 @@ type Item struct {
 	Returnable  bool                   `bson:"returnable"`
 	Quantity    int32                  `bson:"quantity"`
 	Reasons     []entities.Reason      `bson:"reasons"`
-	Attributes  map[string]*Attribute  `bson:"attributes"`
+	Attributes  map[string]*entities.Attribute  `bson:"attributes"`
 	Invoice     ItemInvoice            `bson:"invoice"`
 	Extended    map[string]interface{} `bson:"ext"`
-}
-
-type Attribute struct {
-	KeyTranslate   map[string]string `bson:"keyTranslate"`
-	ValueTranslate map[string]string `bson:"valueTranslate"`
 }
 
 type ItemInvoice struct {

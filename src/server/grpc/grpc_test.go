@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"gitlab.faza.io/order-project/order-service/domain/models/repository/financeReport"
+
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"net"
 	"os"
@@ -939,7 +940,6 @@ func UpdateSubPackage(ctx context.Context, subPkgState states.IEnumState, subpac
 }
 
 func TestFinanceReport(t *testing.T) {
-
 	startTimestamp := time.Now().UTC().Format(utils.ISO8601)
 	endTimestamp := time.Now().UTC().Add(time.Duration(time.Minute)).Format(utils.ISO8601)
 	ctx, _ := context.WithCancel(context.Background())
