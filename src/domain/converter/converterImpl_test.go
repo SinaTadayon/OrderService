@@ -97,11 +97,13 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 			UseLimit:         0,
 			Count:            0,
 			Length:           0,
-			Categories:       nil,
-			Products:         nil,
-			Users:            nil,
-			Sellers:          nil,
-			IsFirstPurchase: false,
+			IsFirstPurchase:  false,
+			Info: &pb.VoucherDetails_Info{
+				Categories: nil,
+				Products:   nil,
+				Users:      nil,
+				Sellers:    nil,
+			},
 		},
 	}
 

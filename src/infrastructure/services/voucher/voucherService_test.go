@@ -91,15 +91,18 @@ func TestVoucherSettlement(t *testing.T) {
 		Length:          5,
 		StartDate:       time.Date(2019, 07, 24, 0, 0, 0, 0, time.UTC).Format(time.RFC3339),
 		EndDate:         time.Date(2019, 07, 25, 0, 0, 0, 0, time.UTC).Format(time.RFC3339),
-		Categories:      nil,
-		Products:        nil,
-		Sellers:         nil,
 		IsFirstPurchase: true,
 		CouponDiscount: &voucherProto.CouponDiscount{
 			Type:             "fixed",
 			Amount:           100000,
 			MaxDiscountValue: 0,
 			MinBasketValue:   1500000,
+		},
+		Info: &voucherProto.CouponTemplate_CouponInfo{
+			Categories: nil,
+			Products:   nil,
+			Users:      nil,
+			Sellers:    nil,
 		},
 	}
 
