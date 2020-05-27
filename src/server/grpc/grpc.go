@@ -280,12 +280,12 @@ func (server *Server) FinanceOrderItems(ctx context.Context, req *pb.MessageRequ
 		return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
 	}
 
-	if req.Meta.StartTimestamp != "" {
-		temp, err := time.Parse(utils.ISO8601, req.Meta.StartTimestamp)
+	if req.Meta.StartAt != "" {
+		temp, err := time.Parse(utils.ISO8601, req.Meta.StartAt)
 		if err != nil {
 			app.Globals.Logger.Error("StartTimestamp invalid",
 				"fn", "FinanceOrderItems",
-				"StartTimestamp", req.Meta.StartTimestamp,
+				"StartTimestamp", req.Meta.StartAt,
 				"request", req)
 			return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
 		}
@@ -298,12 +298,12 @@ func (server *Server) FinanceOrderItems(ctx context.Context, req *pb.MessageRequ
 		return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
 	}
 
-	if req.Meta.EndTimestamp != "" {
-		temp, err := time.Parse(utils.ISO8601, req.Meta.EndTimestamp)
+	if req.Meta.EndAt != "" {
+		temp, err := time.Parse(utils.ISO8601, req.Meta.EndAt)
 		if err != nil {
 			app.Globals.Logger.Error("EndTimestamp invalid",
 				"fn", "FinanceOrderItems",
-				"endTimestamp", req.Meta.EndTimestamp,
+				"endTimestamp", req.Meta.EndAt,
 				"request", req)
 			return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
 		}

@@ -57,8 +57,8 @@ message RequestMetadata {
     uint32 page = 6;
     uint32 perPage = 7;
     string ipAddress = 8;
-    string startTimestamp = 9;
-    string endTimestamp = 10;
+    string startAt = 9;
+    string endAt = 10;
     MetaAction action = 11;
     repeated MetaSorts sorts = 12;
     repeated MetaFilter filters = 13;
