@@ -2,7 +2,6 @@ package calculate
 
 import (
 	"context"
-	"fmt"
 	"github.com/stretchr/testify/require"
 	"gitlab.faza.io/go-framework/logger"
 	"gitlab.faza.io/order-project/order-service/app"
@@ -1553,27 +1552,27 @@ func createOrder() *entities.Order {
 	return &newOrder
 }
 
-func TestFinanceCalcEnum(t *testing.T) {
-	for i, flag := range []FinanceCalcType{
-		VOUCHER_CALC,
-		SELLER_VAT_CALC,
-		NET_COMMISSION_CALC,
-		BUSINESS_VAT_CALC,
-		SELLER_SSO_CALC,
-		SHARE_CALC} {
-		fmt.Printf("index: %d, flag: %v\n", i, flag)
-	}
-
-	fmt.Printf("value: %v\n", Set(SELLER_VAT_CALC, VOUCHER_CALC))
-
-}
+//func TestFinanceCalcEnum(t *testing.T) {
+//	for i, flag := range []FinanceCalcType{
+//		VOUCHER_CALC,
+//		SELLER_VAT_CALC,
+//		NET_COMMISSION_CALC,
+//		BUSINESS_VAT_CALC,
+//		SELLER_SSO_CALC,
+//		SHARE_CALC} {
+//		fmt.Printf("index: %d, flag: %v\n", i, flag)
+//	}
+//
+//	fmt.Printf("value: %v\n", Set(SELLER_VAT_CALC, VOUCHER_CALC))
+//
+//}
 
 func TestFinanceCalcDecorator(t *testing.T) {
 	newOrder := createOrder()
 	ctx := context.Background()
 	savedOrder, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
 	require.Nil(t, err)
-	_, e := New().FinanceCalc(ctx, *savedOrder, SELLER_VAT_CALC, SELLER_FINANCE)
+	e := New().FinanceCalc(ctx, savedOrder, SELLER_VAT_CALC, SELLER_FINANCE)
 	require.Nil(t, e)
 }
 
@@ -1608,11 +1607,10 @@ func TestFinanceOrderCalc(t *testing.T) {
 	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
 	require.Nil(t, err)
 
-	calcOrder, e := New().FinanceCalc(ctx, *order, Set(SHARE_CALC, VOUCHER_CALC), ORDER_FINANCE)
+	e := New().FinanceCalc(ctx, order, Set(SHARE_CALC, VOUCHER_CALC), ORDER_FINANCE)
 	require.Nil(t, e)
-	require.NotNil(t, calcOrder)
 
-	_, err = app.Globals.OrderRepository.Save(ctx, *calcOrder)
+	_, err = app.Globals.OrderRepository.Save(ctx, *order)
 	require.Nil(t, err)
 }
 
@@ -1633,11 +1631,10 @@ func TestFinanceOrderCalcWithCommissionZero(t *testing.T) {
 			}
 		}
 	}
-	calcOrder, e := New().FinanceCalc(ctx, *order, Set(SHARE_CALC, VOUCHER_CALC), ORDER_FINANCE)
+	e := New().FinanceCalc(ctx, order, Set(SHARE_CALC, VOUCHER_CALC), ORDER_FINANCE)
 	require.Nil(t, e)
-	require.NotNil(t, calcOrder)
 
-	_, err = app.Globals.OrderRepository.Save(ctx, *calcOrder)
+	_, err = app.Globals.OrderRepository.Save(ctx, *order)
 	require.Nil(t, err)
 }
 

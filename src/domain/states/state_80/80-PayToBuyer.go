@@ -207,7 +207,14 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			}
 		}
 
-		state.releasedStock(ctx, sids, pkgItem)
+		stockAction := state.releasedStock(ctx, sids, pkgItem)
+		for i := 0; i < len(sids); i++ {
+			for j := 0; j < len(pkgItem.Subpackages); j++ {
+				if pkgItem.Subpackages[j].SId == sids[i] {
+					state.UpdateSubPackage(ctx, pkgItem.Subpackages[j], stockAction)
+				}
+			}
+		}
 
 		order, e := app.Globals.OrderRepository.FindById(ctx, pkgItem.OrderId)
 		if e != nil {
@@ -249,34 +256,6 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			}
 		}
 
-		updatePkgItem, e := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
-		if e != nil {
-			app.Globals.Logger.FromContext(ctx).Error("PkgItemRepository.Update failed",
-				"fn", "Process",
-				"state", state.Name(),
-				"oid", pkgItem.OrderId,
-				"pid", pkgItem.PId,
-				"sids", sids,
-				"error", e)
-			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				SetError(future.ErrorCode(e.Code()), e.Message(), e.Reason()).
-				Send()
-			return
-		}
-
-		response := events.ActionResponse{
-			OrderId: pkgItem.OrderId,
-			SIds:    sids,
-		}
-
-		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).SetData(response).Send()
-		app.Globals.Logger.FromContext(ctx).Debug("set status of subpackages success",
-			"fn", "Process",
-			"state", state.Name(),
-			"oid", updatePkgItem.OrderId,
-			"pid", updatePkgItem.PId,
-			"sids", sids)
-
 		findFlag = true
 		for i := 0; i < len(order.Packages); i++ {
 			if order.Packages[i].Status != string(states.PackageClosedStatus) {
@@ -287,20 +266,63 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 
 		if findFlag {
 			state.SetOrderStatus(ctx, order, states.OrderClosedStatus)
-			err := app.Globals.OrderRepository.UpdateStatus(ctx, order)
+		}
+
+		if states.OrderStatus(order.Status) == states.OrderClosedStatus {
+			_, err := app.Globals.OrderRepository.Save(ctx, *order)
 			if err != nil {
-				app.Globals.Logger.FromContext(ctx).Error("update order status to closed failed",
+				state.rollbackStock(ctx, sids, pkgItem)
+				app.Globals.Logger.FromContext(ctx).Error("update order after seller finance recalculation failed",
 					"fn", "Process",
 					"state", state.Name(),
 					"oid", order.OrderId,
 					"error", err)
-			} else {
-				app.Globals.Logger.FromContext(ctx).Debug("update order status to closed success",
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetError(future.ErrorCode(err.Code()), err.Message(), err.Reason()).
+					Send()
+				return
+			}
+
+			app.Globals.Logger.FromContext(ctx).Debug("update order after seller finance recalculation success",
+				"fn", "Process",
+				"state", state.Name(),
+				"oid", order.OrderId)
+		} else {
+			_, e := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
+			if e != nil {
+				state.rollbackStock(ctx, sids, pkgItem)
+				app.Globals.Logger.FromContext(ctx).Error("update package after seller finance recalculation success",
 					"fn", "Process",
 					"state", state.Name(),
-					"oid", order.OrderId)
+					"oid", pkgItem.OrderId,
+					"pid", pkgItem.PId,
+					"sids", sids,
+					"error", e)
+				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+					SetError(future.ErrorCode(e.Code()), e.Message(), e.Reason()).
+					Send()
+				return
 			}
+
+			app.Globals.Logger.FromContext(ctx).Debug("update order after finance recalculation success",
+				"fn", "Process",
+				"state", state.Name(),
+				"oid", order.OrderId)
 		}
+
+		response := events.ActionResponse{
+			OrderId: pkgItem.OrderId,
+			SIds:    sids,
+		}
+
+		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).SetData(response).Send()
+		app.Globals.Logger.FromContext(ctx).Debug("action success",
+			"fn", "Process",
+			"state", state.Name(),
+			"oid", pkgItem.OrderId,
+			"pid", pkgItem.PId,
+			"sids", sids,
+			"event", event.Action())
 	} else {
 		app.Globals.Logger.FromContext(ctx).Error("Frame Header/Body Invalid",
 			"fn", "Process",
@@ -309,8 +331,9 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 	}
 }
 
-func (state payToBuyerState) releasedStock(ctx context.Context, sids []uint64, pkgItem *entities.PackageItem) {
+func (state payToBuyerState) releasedStock(ctx context.Context, sids []uint64, pkgItem *entities.PackageItem) *entities.Action {
 
+	var stockAction *entities.Action
 	for _, sid := range sids {
 		for i := 0; i < len(pkgItem.Subpackages); i++ {
 			if sid != pkgItem.Subpackages[i].SId {
@@ -382,7 +405,7 @@ func (state payToBuyerState) releasedStock(ctx context.Context, sids []uint64, p
 						"stockAction", actionData)
 				}
 			}
-			var stockAction *entities.Action
+
 			if !result {
 				stockAction = &entities.Action{
 					Name:      system_action.StockRelease.ActionName(),
@@ -414,8 +437,85 @@ func (state payToBuyerState) releasedStock(ctx context.Context, sids []uint64, p
 					Extended:  nil,
 				}
 			}
+		}
+	}
 
-			state.UpdateSubPackage(ctx, pkgItem.Subpackages[i], stockAction)
+	return stockAction
+}
+
+func (state payToBuyerState) rollbackStock(ctx context.Context, sids []uint64, pkgItem *entities.PackageItem) {
+
+	for _, sid := range sids {
+		for i := 0; i < len(pkgItem.Subpackages); i++ {
+			if sid != pkgItem.Subpackages[i].SId {
+				continue
+			}
+
+			//result := true
+			stockActionDataList := make([]entities.StockActionData, 0, 32)
+			for z := 0; z < len(pkgItem.Subpackages[i].Items); z++ {
+				item := pkgItem.Subpackages[i].Items[z]
+				requestStock := stock_service.RequestStock{
+					InventoryId: item.InventoryId,
+					Count:       int(item.Quantity),
+				}
+
+				iFuture := app.Globals.StockService.SingleStockAction(ctx, requestStock, pkgItem.Subpackages[i].OrderId,
+					system_action.New(system_action.StockReserve))
+
+				futureData := iFuture.Get()
+				if futureData.Error() != nil {
+					//result = false
+					if futureData.Data() != nil {
+						response := futureData.Data().(stock_service.ResponseStock)
+						actionData := entities.StockActionData{
+							InventoryId: response.InventoryId,
+							Quantity:    response.Count,
+							Result:      response.Result,
+						}
+						stockActionDataList = append(stockActionDataList, actionData)
+						app.Globals.Logger.FromContext(ctx).Error("rollback released to reserved stock from stockService failed",
+							"fn", "rollbackStock",
+							"state", state.Name(),
+							"oid", pkgItem.OrderId,
+							"pid", pkgItem.PId,
+							"sid", sid,
+							"actionData", actionData,
+							"error", futureData.Error())
+
+					} else {
+						actionData := entities.StockActionData{
+							InventoryId: requestStock.InventoryId,
+							Quantity:    requestStock.Count,
+							Result:      false,
+						}
+						stockActionDataList = append(stockActionDataList, actionData)
+						app.Globals.Logger.FromContext(ctx).Error("rollback released to reserved stock from stockService failed",
+							"fn", "rollbackStock",
+							"state", state.Name(),
+							"oid", pkgItem.OrderId,
+							"pid", pkgItem.PId,
+							"sid", sid,
+							"stockAction", actionData,
+							"error", futureData.Error())
+					}
+				} else {
+					response := futureData.Data().(stock_service.ResponseStock)
+					actionData := entities.StockActionData{
+						InventoryId: response.InventoryId,
+						Quantity:    response.Count,
+						Result:      response.Result,
+					}
+					stockActionDataList = append(stockActionDataList, actionData)
+					app.Globals.Logger.FromContext(ctx).Info("rollback released to reserved stock success",
+						"fn", "rollbackStock",
+						"state", state.Name(),
+						"oid", pkgItem.OrderId,
+						"pid", pkgItem.PId,
+						"sid", sid,
+						"stockAction", actionData)
+				}
+			}
 		}
 	}
 }
