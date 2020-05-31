@@ -346,8 +346,8 @@ func (finance financeCalculatorImpl) sellerVatCalc(decorator financeCalcFunc) fi
 					}
 
 					// calculate item gross
-					if itemFinance.Invoice.Share.RawItemGross == nil {
-						rawItemGross := *itemFinance.Invoice.Unit
+					if itemFinance.Invoice.Voucher != nil && itemFinance.Invoice.Voucher.RawUnitPrice != nil {
+						rawItemGross := (*itemFinance.Invoice.Unit).Add(*itemFinance.Invoice.Voucher.RawUnitPrice)
 						itemFinance.Invoice.Share.RawItemGross = &rawItemGross
 
 						rawTotalGross := rawItemGross.Mul(decimal.NewFromInt32(itemFinance.Quantity))
@@ -359,8 +359,21 @@ func (finance financeCalculatorImpl) sellerVatCalc(decorator financeCalcFunc) fi
 						roundupTotalGross := rawTotalGross.Ceil()
 						itemFinance.Invoice.Share.RoundupTotalGross = &roundupTotalGross
 
-						itemFinance.Invoice.Share.UpdatedAt = finance.timestamp
+					} else {
+						rawItemGross := *itemFinance.Invoice.Unit
+						itemFinance.Invoice.Share.RawItemGross = &rawItemGross
+
+						rawTotalGross := rawItemGross.Mul(decimal.NewFromInt32(itemFinance.Quantity))
+						itemFinance.Invoice.Share.RawTotalGross = &rawTotalGross
+
+						roundupItemGross := rawItemGross.Ceil()
+						itemFinance.Invoice.Share.RoundupItemGross = &roundupItemGross
+
+						roundupTotalGross := rawTotalGross.Ceil()
+						itemFinance.Invoice.Share.RoundupTotalGross = &roundupTotalGross
 					}
+
+					itemFinance.Invoice.Share.UpdatedAt = finance.timestamp
 
 					// calculation seller vat and item net
 					if itemFinance.Invoice.VAT != nil &&
