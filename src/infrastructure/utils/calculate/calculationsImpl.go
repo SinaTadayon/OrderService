@@ -346,32 +346,32 @@ func (finance financeCalculatorImpl) sellerVatCalc(decorator financeCalcFunc) fi
 					}
 
 					// calculate item gross
-					if itemFinance.Invoice.Voucher != nil && itemFinance.Invoice.Voucher.RawUnitPrice != nil {
-						rawItemGross := (*itemFinance.Invoice.Unit).Add(*itemFinance.Invoice.Voucher.RawUnitPrice)
-						itemFinance.Invoice.Share.RawItemGross = &rawItemGross
+					//if itemFinance.Invoice.Voucher != nil && itemFinance.Invoice.Voucher.RawUnitPrice != nil {
+					//	rawItemGross := (*itemFinance.Invoice.Unit).Add(*itemFinance.Invoice.Voucher.RawUnitPrice)
+					//	itemFinance.Invoice.Share.RawItemGross = &rawItemGross
+					//
+					//	rawTotalGross := rawItemGross.Mul(decimal.NewFromInt32(itemFinance.Quantity))
+					//	itemFinance.Invoice.Share.RawTotalGross = &rawTotalGross
+					//
+					//	roundupItemGross := rawItemGross.Ceil()
+					//	itemFinance.Invoice.Share.RoundupItemGross = &roundupItemGross
+					//
+					//	roundupTotalGross := rawTotalGross.Ceil()
+					//	itemFinance.Invoice.Share.RoundupTotalGross = &roundupTotalGross
+					//
+					//} else {
+					rawItemGross := *itemFinance.Invoice.Unit
+					itemFinance.Invoice.Share.RawItemGross = &rawItemGross
 
-						rawTotalGross := rawItemGross.Mul(decimal.NewFromInt32(itemFinance.Quantity))
-						itemFinance.Invoice.Share.RawTotalGross = &rawTotalGross
+					rawTotalGross := rawItemGross.Mul(decimal.NewFromInt32(itemFinance.Quantity))
+					itemFinance.Invoice.Share.RawTotalGross = &rawTotalGross
 
-						roundupItemGross := rawItemGross.Ceil()
-						itemFinance.Invoice.Share.RoundupItemGross = &roundupItemGross
+					roundupItemGross := rawItemGross.Ceil()
+					itemFinance.Invoice.Share.RoundupItemGross = &roundupItemGross
 
-						roundupTotalGross := rawTotalGross.Ceil()
-						itemFinance.Invoice.Share.RoundupTotalGross = &roundupTotalGross
-
-					} else {
-						rawItemGross := *itemFinance.Invoice.Unit
-						itemFinance.Invoice.Share.RawItemGross = &rawItemGross
-
-						rawTotalGross := rawItemGross.Mul(decimal.NewFromInt32(itemFinance.Quantity))
-						itemFinance.Invoice.Share.RawTotalGross = &rawTotalGross
-
-						roundupItemGross := rawItemGross.Ceil()
-						itemFinance.Invoice.Share.RoundupItemGross = &roundupItemGross
-
-						roundupTotalGross := rawTotalGross.Ceil()
-						itemFinance.Invoice.Share.RoundupTotalGross = &roundupTotalGross
-					}
+					roundupTotalGross := rawTotalGross.Ceil()
+					itemFinance.Invoice.Share.RoundupTotalGross = &roundupTotalGross
+					//}
 
 					itemFinance.Invoice.Share.UpdatedAt = finance.timestamp
 
