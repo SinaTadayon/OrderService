@@ -14,36 +14,34 @@ services:
     env_file:
       - src/.docker-env
     depends_on:
-      - mongo1
-      - mongo2
-      - mongo3
+      - mongo
       - stockservice
-#      - paymentservice
+      #      - paymentservice
       - userservice
       - voucherservice
       - notificationservice
 
-#  paymentservice:
-#    image: registry.faza.io/payment-gateway-service/payment-gateway-service:staging
-#    ports:
-#      - 3010:3010
-#    security_opt:
-#      - seccomp:unconfined
-#    environment:
-#      - MONGO_DB_NAME=test
-#      - MONGO_HOST=mongo
-#      - MONGO_USER=
-#      - MONGO_PASS=
-#      - MONGO_PORT=27017
-#      - RPC_HOST_PORT=3010
-#      - HTTP_HOST_PORT=3011
-#      - REDIRECT_URL_ADDRESS=https://bamanshop.com/payment/redirect
-#      - ASAN_PARDAKHT_URL=https://rest.asanpardakht.net
-#      - ASAN_PARDAKHT_CONF_ID=0
-#      - ASAN_PARDAKHT_USER_NAME=
-#      - ASAN_PARDAKHT_PASS=
-#    depends_on:
-#      - mongo
+  #  paymentservice:
+  #    image: registry.faza.io/payment-gateway-service/payment-gateway-service:staging
+  #    ports:
+  #      - 3010:3010
+  #    security_opt:
+  #      - seccomp:unconfined
+  #    environment:
+  #      - MONGO_DB_NAME=test
+  #      - MONGO_HOST=mongo
+  #      - MONGO_USER=
+  #      - MONGO_PASS=
+  #      - MONGO_PORT=27017
+  #      - RPC_HOST_PORT=3010
+  #      - HTTP_HOST_PORT=3011
+  #      - REDIRECT_URL_ADDRESS=https://bamanshop.com/payment/redirect
+  #      - ASAN_PARDAKHT_URL=https://rest.asanpardakht.net
+  #      - ASAN_PARDAKHT_CONF_ID=0
+  #      - ASAN_PARDAKHT_USER_NAME=
+  #      - ASAN_PARDAKHT_PASS=
+  #    depends_on:
+  #      - mongo
 
   stockservice:
     image: registry.faza.io/stock/stock:staging
@@ -128,8 +126,8 @@ services:
       - CART_REDIS_PORT=6379
       - CART_MONGO_HOST=mongo
       - CART_MONGO_PORT=27017
-        #CART_MONGO_USER=root
-        #CART_MONGO_PASS=toor
+      #CART_MONGO_USER=root
+      #CART_MONGO_PASS=toor
       - CART_MONGO_CONN_TIMEOUT=5
       - CART_MONGO_READ_TIMEOUT=5
       - CART_MONGO_WRITE_TIMEOUT=5
@@ -179,30 +177,6 @@ services:
     image: registry.faza.io/mongo:4.2.2
     ports:
       - 27017:27017
-
-  mongo1:
-    image: registry.faza.io/mongo:4.2.2
-    restart: unless-stopped
-    container_name: mongo1
-    command: /usr/bin/mongod --bind_ip_all --replSet=rs0 --port 52301
-    ports:
-      - 52301:52301
-
-  mongo2:
-    image: docker.faza.io/mongo:4.2.2
-    restart: unless-stopped
-    container_name: mongo2
-    command: /usr/bin/mongod --bind_ip_all --replSet=rs0 --port 52302
-    ports:
-      - 52302:52302
-
-  mongo3:
-    image: docker.faza.io/mongo:4.2.2
-    restart: unless-stopped
-    container_name: mongo3
-    command: /usr/bin/mongod --bind_ip_all --replSet=rs0 --port 52303
-    ports:
-      - 52303:52303
 
   mongo-express:
     image: registry.faza.io/mongo-express:0.49
