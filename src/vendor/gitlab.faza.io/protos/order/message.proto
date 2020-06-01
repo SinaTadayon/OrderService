@@ -417,6 +417,7 @@ message SellerReturnOrderDetail {
         }
 
         Detail detail = 5;
+        ReasonDetail returnReason = 6;
     }
 
     repeated Item items = 7;
