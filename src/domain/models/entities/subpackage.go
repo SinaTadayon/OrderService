@@ -2,8 +2,6 @@ package entities
 
 import (
 	"time"
-
-	"gitlab.faza.io/order-project/order-service/domain/models"
 )
 
 // subpackage id same as sid
@@ -62,7 +60,7 @@ type Item struct {
 	Image       string                 `bson:"image"`
 	Returnable  bool                   `bson:"returnable"`
 	Quantity    int32                  `bson:"quantity"`
-	Reasons     []models.Reason        `bson:"reasons"`
+	Reasons     []Reason               `bson:"reasons"`
 	Attributes  map[string]*Attribute  `bson:"attributes"`
 	Invoice     ItemInvoice            `bson:"invoice"`
 	Extended    map[string]interface{} `bson:"ext"`
@@ -231,7 +229,7 @@ type Action struct {
 	Priv      string                 `bson:"priv"`
 	Policy    string                 `bson:"policy"`
 	Result    string                 `bson:"result"`
-	Reasons   []models.Reason        `bson:"reasons"`
+	Reasons   []Reason               `bson:"reasons"`
 	Note      string                 `bson:"note"`
 	Data      map[string]interface{} `bson:"data"`
 	CreatedAt time.Time              `bson:"createdAt"`
@@ -242,6 +240,28 @@ type StockActionData struct {
 	InventoryId string `bson:"inventoryId"`
 	Quantity    int    `bson:"quantity"`
 	Result      bool   `bson:"result"`
+}
+
+// all values for ReasonResponsible
+type ReasonResponsible string
+
+type Reason struct {
+	Key         string
+	Translation string
+	Description string
+	Cancel      bool
+	Return      bool
+	Responsible ReasonResponsible
+}
+
+type ReasonConfig struct {
+	Key            string
+	Translation    string
+	HasDescription bool
+	Cancel         bool
+	Return         bool
+	IsActive       bool
+	Responsible    ReasonResponsible
 }
 
 func (item Item) DeepCopy() *Item {
@@ -644,7 +664,7 @@ func (item Item) DeepCopy() *Item {
 	}
 
 	if item.Reasons != nil {
-		newItem.Reasons = make([]models.Reason, 0, len(item.Reasons))
+		newItem.Reasons = make([]Reason, 0, len(item.Reasons))
 		for _, reason := range item.Reasons {
 			newItem.Reasons = append(newItem.Reasons, reason)
 		}
@@ -774,7 +794,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 			Extended:  subpackage.Tracking.Action.Extended,
 		}
 		if subpackage.Tracking.Action.Reasons != nil {
-			subPkg.Tracking.Action.Reasons = make([]models.Reason, 0, len(subpackage.Tracking.Action.Reasons))
+			subPkg.Tracking.Action.Reasons = make([]Reason, 0, len(subpackage.Tracking.Action.Reasons))
 			for _, reason := range subpackage.Tracking.Action.Reasons {
 				subPkg.Tracking.Action.Reasons = append(subPkg.Tracking.Action.Reasons, reason)
 			}
@@ -799,7 +819,7 @@ func (subpackage Subpackage) DeepCopy() *Subpackage {
 				Extended:  action.Extended,
 			}
 			if action.Reasons != nil {
-				newAction.Reasons = make([]models.Reason, 0, len(action.Reasons))
+				newAction.Reasons = make([]Reason, 0, len(action.Reasons))
 				for _, reason := range action.Reasons {
 					newAction.Reasons = append(action.Reasons, reason)
 				}

@@ -8,6 +8,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/future"
+	"gitlab.faza.io/order-project/order-service/infrastructure/reason"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	pb "gitlab.faza.io/protos/order"
 	"go.mongodb.org/mongo-driver/bson"
@@ -567,19 +568,21 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, oid uin
 					}
 				}
 				itemDetail := &pb.SellerOrderDetail_ItemDetail{
-					SID:         pkgItem.Subpackages[i].SId,
-					Sku:         pkgItem.Subpackages[i].Items[j].SKU,
-					Status:      statusName,
-					SIdx:        int32(states.FromString(pkgItem.Subpackages[i].Status).StateIndex()),
-					InventoryId: pkgItem.Subpackages[i].Items[j].InventoryId,
-					Title:       pkgItem.Subpackages[i].Items[j].Title,
-					Brand:       pkgItem.Subpackages[i].Items[j].Brand,
-					Category:    pkgItem.Subpackages[i].Items[j].Category,
-					Guaranty:    pkgItem.Subpackages[i].Items[j].Guaranty,
-					Image:       pkgItem.Subpackages[i].Items[j].Image,
-					Returnable:  pkgItem.Subpackages[i].Items[j].Returnable,
-					Quantity:    pkgItem.Subpackages[i].Items[j].Quantity,
-					Attributes:  nil,
+					SID:                pkgItem.Subpackages[i].SId,
+					Sku:                pkgItem.Subpackages[i].Items[j].SKU,
+					Status:             statusName,
+					SIdx:               int32(states.FromString(pkgItem.Subpackages[i].Status).StateIndex()),
+					InventoryId:        pkgItem.Subpackages[i].Items[j].InventoryId,
+					Title:              pkgItem.Subpackages[i].Items[j].Title,
+					Brand:              pkgItem.Subpackages[i].Items[j].Brand,
+					Category:           pkgItem.Subpackages[i].Items[j].Category,
+					Guaranty:           pkgItem.Subpackages[i].Items[j].Guaranty,
+					Image:              pkgItem.Subpackages[i].Items[j].Image,
+					Returnable:         pkgItem.Subpackages[i].Items[j].Returnable,
+					Quantity:           pkgItem.Subpackages[i].Items[j].Quantity,
+					CancellationReason: nil,
+					ReturnReason:       nil,
+					Attributes:         nil,
 					Invoice: &pb.SellerOrderDetail_ItemDetail_Invoice{
 						Unit:             0,
 						Total:            0,
@@ -589,6 +592,52 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, oid uin
 						SellerCommission: pkgItem.Subpackages[i].Items[j].Invoice.SellerCommission,
 					},
 					ShipmentDetail: nil,
+				}
+
+				if pkgItem.Subpackages[i].Tracking.History != nil && len(pkgItem.Subpackages[i].Tracking.History) > 0 {
+					tracking := pkgItem.Subpackages[i].Tracking
+					cancellationReasons := reason.ExtractActionReason(tracking, reason.ActionName(reason.CancelAction), reason.Cancel, "")
+					reasonConfig := utils.InitialReasonConfig()
+					if cancellationReasons != nil {
+						rs := &pb.ReasonDetail{
+							Key:         cancellationReasons.Key,
+							Cancel:      cancellationReasons.Cancel,
+							Return:      cancellationReasons.Return,
+							IsActive:    reasonConfig[cancellationReasons.Key].IsActive,
+							Responsible: pb.ReasonDetail_Responsible(utils.Responsible(string(cancellationReasons.Responsible))),
+						}
+
+						if cancellationReasons.Description != "" {
+							rs.Translation = cancellationReasons.Description
+							rs.HasDescription = true
+						} else {
+							rs.Translation = cancellationReasons.Translation
+							rs.HasDescription = false
+						}
+
+						itemDetail.CancellationReason = rs
+					}
+
+					returnReason := reason.ExtractActionReason(tracking, reason.ActionName(reason.ReturnAction), reason.Return, "")
+					if returnReason != nil {
+						rs := &pb.ReasonDetail{
+							Key:         returnReason.Key,
+							Cancel:      returnReason.Cancel,
+							Return:      returnReason.Return,
+							IsActive:    reasonConfig[returnReason.Key].IsActive,
+							Responsible: pb.ReasonDetail_Responsible(utils.Responsible(string(returnReason.Responsible))),
+						}
+
+						if returnReason.Description != "" {
+							rs.Translation = returnReason.Description
+							rs.HasDescription = true
+						} else {
+							rs.Translation = returnReason.Translation
+							rs.HasDescription = false
+						}
+
+						itemDetail.ReturnReason = rs;
+					}
 				}
 
 				if pkgItem.Subpackages[i].Shipments != nil && pkgItem.Subpackages[i].Shipments.ShipmentDetail != nil {
@@ -715,19 +764,21 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, oid uin
 
 					for j := 0; j < len(pkgItem.Subpackages[i].Items); j++ {
 						itemDetail := &pb.SellerOrderDetail_ItemDetail{
-							SID:         pkgItem.Subpackages[i].SId,
-							Sku:         pkgItem.Subpackages[i].Items[j].SKU,
-							Status:      statusName,
-							SIdx:        int32(states.FromString(pkgItem.Subpackages[i].Status).StateIndex()),
-							InventoryId: pkgItem.Subpackages[i].Items[j].InventoryId,
-							Title:       pkgItem.Subpackages[i].Items[j].Title,
-							Brand:       pkgItem.Subpackages[i].Items[j].Brand,
-							Category:    pkgItem.Subpackages[i].Items[j].Category,
-							Guaranty:    pkgItem.Subpackages[i].Items[j].Guaranty,
-							Image:       pkgItem.Subpackages[i].Items[j].Image,
-							Returnable:  pkgItem.Subpackages[i].Items[j].Returnable,
-							Quantity:    pkgItem.Subpackages[i].Items[j].Quantity,
-							Attributes:  nil,
+							SID:                pkgItem.Subpackages[i].SId,
+							Sku:                pkgItem.Subpackages[i].Items[j].SKU,
+							Status:             statusName,
+							SIdx:               int32(states.FromString(pkgItem.Subpackages[i].Status).StateIndex()),
+							InventoryId:        pkgItem.Subpackages[i].Items[j].InventoryId,
+							Title:              pkgItem.Subpackages[i].Items[j].Title,
+							Brand:              pkgItem.Subpackages[i].Items[j].Brand,
+							Category:           pkgItem.Subpackages[i].Items[j].Category,
+							Guaranty:           pkgItem.Subpackages[i].Items[j].Guaranty,
+							Image:              pkgItem.Subpackages[i].Items[j].Image,
+							Returnable:         pkgItem.Subpackages[i].Items[j].Returnable,
+							Quantity:           pkgItem.Subpackages[i].Items[j].Quantity,
+							CancellationReason: nil,
+							ReturnReason:       nil,
+							Attributes:         nil,
 							Invoice: &pb.SellerOrderDetail_ItemDetail_Invoice{
 								Unit:             0,
 								Total:            0,
@@ -737,6 +788,53 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, oid uin
 								SellerCommission: pkgItem.Subpackages[i].Items[j].Invoice.SellerCommission,
 							},
 							ShipmentDetail: nil,
+						}
+
+						if pkgItem.Subpackages[i].Tracking.History != nil && len(pkgItem.Subpackages[i].Tracking.History) > 0 {
+							tracking := pkgItem.Subpackages[i].Tracking
+
+							cancellationReasons := reason.ExtractActionReason(tracking, reason.ActionName(reason.CancelAction), reason.Cancel, "")
+							reasonConfig := utils.InitialReasonConfig()
+							if cancellationReasons != nil {
+								rs := &pb.ReasonDetail{
+									Key:         cancellationReasons.Key,
+									Cancel:      cancellationReasons.Cancel,
+									Return:      cancellationReasons.Return,
+									IsActive:    reasonConfig[cancellationReasons.Key].IsActive,
+									Responsible: pb.ReasonDetail_Responsible(utils.Responsible(string(cancellationReasons.Responsible))),
+								}
+
+								if cancellationReasons.Description != "" {
+									rs.Translation = cancellationReasons.Description
+									rs.HasDescription = true
+								} else {
+									rs.Translation = cancellationReasons.Translation
+									rs.HasDescription = false
+								}
+
+								itemDetail.CancellationReason = rs
+							}
+
+							returnReason := reason.ExtractActionReason(tracking, reason.ActionName(reason.ReturnAction), reason.Return, "")
+							if returnReason != nil {
+								rs := &pb.ReasonDetail{
+									Key:         returnReason.Key,
+									Cancel:      returnReason.Cancel,
+									Return:      returnReason.Return,
+									IsActive:    reasonConfig[returnReason.Key].IsActive,
+									Responsible: pb.ReasonDetail_Responsible(utils.Responsible(string(returnReason.Responsible))),
+								}
+
+								if returnReason.Description != "" {
+									rs.Translation = returnReason.Description
+									rs.HasDescription = true
+								} else {
+									rs.Translation = returnReason.Translation
+									rs.HasDescription = false
+								}
+
+								itemDetail.ReturnReason = rs;
+							}
 						}
 
 						if pkgItem.Subpackages[i].Shipments != nil && pkgItem.Subpackages[i].Shipments.ShipmentDetail != nil {

@@ -229,6 +229,8 @@ message SellerOrderDetail {
             string UpdatedAt = 8;
         }
         ShipmentInfo shipmentDetail = 15;
+        ReasonDetail cancellationReason = 16;
+        ReasonDetail returnReason = 17;
     }
 
     repeated ItemDetail items = 6;
