@@ -63,6 +63,7 @@ func main() {
 	if err != nil {
 		app.Globals.Logger.Error("main SetupMongoDriver failed", "fn", "main",
 			"configs", app.Globals.Config.Mongo, "error", err)
+		os.Exit(1)
 	}
 
 	app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)

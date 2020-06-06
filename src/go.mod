@@ -18,7 +18,7 @@ require (
 	github.com/stretchr/testify v1.4.0
 	gitlab.faza.io/go-framework/acl v0.0.3
 	gitlab.faza.io/go-framework/logger v0.0.12
-	gitlab.faza.io/go-framework/mongoadapter v0.1.3
+	gitlab.faza.io/go-framework/mongoadapter v0.1.4
 	gitlab.faza.io/protos/cart v0.0.29
 	gitlab.faza.io/protos/notification v0.0.4
 	gitlab.faza.io/protos/order v0.0.83-rs4
@@ -26,7 +26,7 @@ require (
 	gitlab.faza.io/protos/stock-proto.git v0.0.8
 	gitlab.faza.io/protos/user v0.0.48
 	gitlab.faza.io/services/user-app-client v0.0.25
-	go.mongodb.org/mongo-driver v1.3.1
+	go.mongodb.org/mongo-driver v1.3.4
 	go.uber.org/multierr v1.5.0 // indirect
 	go.uber.org/zap v1.14.0
 	golang.org/x/crypto v0.0.0-20200311171314-f7b00557c8c4 // indirect

@@ -114,24 +114,27 @@ type Config struct {
 		Replica       string `env:"ORDER_SERVICE_KAFKA_REPLICA"`
 	}
 	Mongo struct {
-		Uri               string `env:"ORDER_SERVICE_MONGO_URI"`
-		User              string `env:"ORDER_SERVICE_MONGO_USER"`
-		Pass              string `env:"ORDER_SERVICE_MONGO_PASS"`
-		Host              string `env:"ORDER_SERVICE_MONGO_HOST"`
-		Port              int    `env:"ORDER_SERVICE_MONGO_PORT"`
-		Database          string `env:"ORDER_SERVICE_MONGO_DB_NAME"`
-		Collection        string `env:"ORDER_SERVICE_MONGO_COLLECTION_NAME"`
-		ConnectionTimeout int    `env:"ORDER_SERVICE_MONGO_CONN_TIMEOUT"`
-		ReadTimeout       int    `env:"ORDER_SERVICE_MONGO_READ_TIMEOUT"`
-		WriteTimeout      int    `env:"ORDER_SERVICE_MONGO_WRITE_TIMEOUT"`
-		MaxConnIdleTime   int    `env:"ORDER_SERVICE_MONGO_MAX_CONN_IDLE_TIME"`
-		MaxPoolSize       int    `env:"ORDER_SERVICE_MONGO_MAX_POOL_SIZE"`
-		MinPoolSize       int    `env:"ORDER_SERVICE_MONGO_MIN_POOL_SIZE"`
-		WriteConcernW     string `env:"ORDER_SERVICE_MONGO_WRITE_CONCERN_W"`
-		WriteConcernJ     string `env:"ORDER_SERVICE_MONGO_WRITE_CONCERN_J"`
-		RetryWrite        bool   `env:"ORDER_SERVICE_MONGO_RETRY_WRITE"`
-		ReadConcern       string `env:"ORDER_SERVICE_MONGO_READ_CONCERN"`
-		ReadPreferred     string `env:"ORDER_SERVICE_MONGO_READ_PREFERRED"`
+		Uri                    string `env:"ORDER_SERVICE_MONGO_URI"`
+		User                   string `env:"ORDER_SERVICE_MONGO_USER"`
+		Pass                   string `env:"ORDER_SERVICE_MONGO_PASS"`
+		Host                   string `env:"ORDER_SERVICE_MONGO_HOST"`
+		Port                   int    `env:"ORDER_SERVICE_MONGO_PORT"`
+		Database               string `env:"ORDER_SERVICE_MONGO_DB_NAME"`
+		Collection             string `env:"ORDER_SERVICE_MONGO_COLLECTION_NAME"`
+		ConnectionTimeout      int    `env:"ORDER_SERVICE_MONGO_CONN_TIMEOUT"`
+		ReadTimeout            int    `env:"ORDER_SERVICE_MONGO_READ_TIMEOUT"`
+		WriteTimeout           int    `env:"ORDER_SERVICE_MONGO_WRITE_TIMEOUT"`
+		MaxConnIdleTime        int    `env:"ORDER_SERVICE_MONGO_MAX_CONN_IDLE_TIME"`
+		MaxPoolSize            int    `env:"ORDER_SERVICE_MONGO_MAX_POOL_SIZE"`
+		MinPoolSize            int    `env:"ORDER_SERVICE_MONGO_MIN_POOL_SIZE"`
+		WriteConcernW          string `env:"ORDER_SERVICE_MONGO_WRITE_CONCERN_W"`
+		WriteConcernJ          string `env:"ORDER_SERVICE_MONGO_WRITE_CONCERN_J"`
+		RetryWrite             bool   `env:"ORDER_SERVICE_MONGO_RETRY_WRITE"`
+		ReadConcern            string `env:"ORDER_SERVICE_MONGO_READ_CONCERN"`
+		ReadPreferred          string `env:"ORDER_SERVICE_MONGO_READ_PREFERRED"`
+		HeartBeatInterval      int    `env:"ORDER_SERVICE_MONGO_HEARTBEAT_INTERVAL"`
+		ServerSelectionTimeout int    `env:"ORDER_SERVICE_MONGO_SERVER_SELECTION_TIMEOUT"`
+		RetryConnect           int    `env:"ORDER_SERVICE_MONGO_RETRY_CONNECT"`
 	}
 }
 

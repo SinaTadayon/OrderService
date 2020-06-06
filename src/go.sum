@@ -177,8 +177,8 @@ gitlab.faza.io/go-framework/logger v0.0.12 h1:gTz1M4jJtqMcz3XyYTHraEO5imHfEGSJkj
 gitlab.faza.io/go-framework/logger v0.0.12/go.mod h1:nB18r4xYKyF6DWB18wzqv0rAnyGevbNmKfwkMdBJviI=
 gitlab.faza.io/go-framework/mongoadapter v0.0.6/go.mod h1:QVQUMgtEeUTTkCNp0S4/wNiH6cwsv8BM4E+wyFuarWQ=
 gitlab.faza.io/go-framework/mongoadapter v0.0.10/go.mod h1:cd15CIUT4zvQxlMuG4Mp6d9RyEcyiK5f9HqRy20X/FI=
-gitlab.faza.io/go-framework/mongoadapter v0.1.3 h1:OJ9vat4NwH9rgtGDnRltn8EniNkgqihECs6T1VrEM3A=
-gitlab.faza.io/go-framework/mongoadapter v0.1.3/go.mod h1:I2P53ob+HawPnnNP0qeyijNgaOqhw9cnXOqHCDNdJYA=
+gitlab.faza.io/go-framework/mongoadapter v0.1.4 h1:MkThp34o3/W2V9jUvYk62fmy3eZUNWpSpScVGlFupb0=
+gitlab.faza.io/go-framework/mongoadapter v0.1.4/go.mod h1:sLO8rOyOMPVfqitp2HUTPIMNSTE2ablZwzSr/bVGVSw=
 gitlab.faza.io/protos/cart v0.0.29 h1:idR6GfsXwSJOr4JxtfwMFFOCkrB4SqnRFflB1f2DKFA=
 gitlab.faza.io/protos/cart v0.0.29/go.mod h1:pemvjJkxFsjd629ESQjWKO7ZJZS6ARDU4sCLGprH7NE=
 gitlab.faza.io/protos/notification v0.0.4 h1:7d/ledaetgrPq0jwlg7D5apTEzPP5myKaLVz7YawnhE=
@@ -196,8 +196,8 @@ gitlab.faza.io/services/user-app-client v0.0.25 h1:NaxY9PsRwYUx32AQ+ykHkPGVu8Bz9
 gitlab.faza.io/services/user-app-client v0.0.25/go.mod h1:ZVZDaPGna4e3Jr6hmMpXOQb7UPe8sjZUREo1D/beYXI=
 go.mongodb.org/mongo-driver v1.1.2/go.mod h1:u7ryQJ+DOzQmeO7zB6MHyr8jkEQvC8vH7qLUO4lqsUM=
 go.mongodb.org/mongo-driver v1.3.0/go.mod h1:MSWZXKOynuguX+JSvwP8i+58jYCXxbia8HS3gZBapIE=
-go.mongodb.org/mongo-driver v1.3.1 h1:op56IfTQiaY2679w922KVWa3qcHdml2K/Io8ayAOUEQ=
-go.mongodb.org/mongo-driver v1.3.1/go.mod h1:MSWZXKOynuguX+JSvwP8i+58jYCXxbia8HS3gZBapIE=
+go.mongodb.org/mongo-driver v1.3.4 h1:zs/dKNwX0gYUtzwrN9lLiR15hCO0nDwQj5xXx+vjCdE=
+go.mongodb.org/mongo-driver v1.3.4/go.mod h1:MSWZXKOynuguX+JSvwP8i+58jYCXxbia8HS3gZBapIE=
 go.uber.org/atomic v1.4.0/go.mod h1:gD2HeocX3+yG+ygLZcrzQJaqmWj9AIm7n08wl/qW/PE=
 go.uber.org/atomic v1.5.0/go.mod h1:sABNBOSYdrvTF6hTgEIbc7YasKWGhgEQZyfxyTvoXHQ=
 go.uber.org/atomic v1.6.0 h1:Ezj3JGmsOnG1MoRWQkPBsKLe9DwWD9QeXzTRzzldNVk=
