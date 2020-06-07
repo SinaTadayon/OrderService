@@ -227,7 +227,7 @@ func (flowManager *iFlowManagerImpl) setupFlowManager() error {
 	}
 	childStates = []states.IState{
 		flowManager.statesMap[states.ReturnCanceled],
-		flowManager.statesMap[states.PayToSeller],
+		flowManager.statesMap[states.ReturnRequestRejected],
 		flowManager.statesMap[states.ReturnShipmentPending],
 	}
 	state = state_40.New(childStates, emptyState, actionStateMap)
