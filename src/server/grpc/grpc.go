@@ -386,6 +386,7 @@ func (server *Server) FinanceOrderItems(ctx context.Context, req *pb.MessageRequ
 		}
 
 		financeOrderItem.Items = make([]*pb.FinanceOrderItemDetailList_OrderItemDetail_Item, 0, len(finance.Items))
+
 		for _, item := range finance.Items {
 			financeItem := &pb.FinanceOrderItemDetailList_OrderItemDetail_Item{
 				SId:         finance.SId,
@@ -1004,14 +1005,15 @@ func (server Server) ReasonsList(ctx context.Context, in *pb.ReasonsListRequest)
 
 func (server Server) ReportOrderItems(req *pb.RequestReportOrderItems, srv pb.OrderService_ReportOrderItemsServer) error {
 
-	userAcl, err := app.Globals.UserService.AuthenticateContextToken(srv.Context())
-	if err != nil {
-		app.Globals.Logger.Error("UserService.AuthenticateContextToken failed",
-			"fn", "ReportOrderItems",
-			"error", err)
+	iFuture := app.Globals.UserService.AuthenticateContextToken(srv.Context()).Get()
+	//userAcl, err := app.Globals.UserService.AuthenticateContextToken(ctx)
+	if iFuture.Error() != nil {
+		app.Globals.Logger.FromContext(srv.Context()).Error("UserService.AuthenticateContextToken failed",
+			"fn", "ReportOrderItems", "error", iFuture.Error().Reason())
 		return status.Error(codes.Code(future.Forbidden), "User Not Authorized")
 	}
 
+	userAcl := iFuture.Data().(*acl.Acl)
 	if userAcl.User().UserID <= 0 {
 		app.Globals.Logger.Error("Token userId not authorized",
 			"fn", "ReportOrderItems",
@@ -1023,7 +1025,7 @@ func (server Server) ReportOrderItems(req *pb.RequestReportOrderItems, srv pb.Or
 		return status.Error(codes.Code(future.Forbidden), "User Not Permitted")
 	}
 
-	iFuture := server.flowManager.ReportOrderItems(srv.Context(), req, srv).Get()
+	iFuture = server.flowManager.ReportOrderItems(srv.Context(), req, srv).Get()
 
 	if iFuture.Error() != nil {
 		return status.Error(codes.Code(iFuture.Error().Code()), iFuture.Error().Message())

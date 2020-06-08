@@ -29,5 +29,5 @@ func Toggle(b, flag FinanceCalcType) FinanceCalcType { return b ^ flag }
 func Has(b, flag FinanceCalcType) bool               { return b&flag != 0 }
 
 type FinanceCalculator interface {
-	FinanceCalc(ctx context.Context, order entities.Order, fct FinanceCalcType, mode FinanceMode) (*entities.Order, error)
+	FinanceCalc(ctx context.Context, order *entities.Order, fct FinanceCalcType, mode FinanceMode) error
 }

@@ -305,7 +305,7 @@ func (scheduler *SchedulerService) doProcess(ctx context.Context, state states.I
 		}
 
 		if len(orderList) == 0 {
-			app.Globals.Logger.Error("scheduler findAllWithPage, order not found",
+			app.Globals.Logger.Debug("scheduler findAllWithPage, order not found",
 				"fn", "doProcess",
 				"state", state.StateName())
 			return

@@ -41,19 +41,23 @@ func TestMain(m *testing.M) {
 
 	// store in mongo
 	mongoConf := &mongoadapter.MongoConfig{
-		Host:     config.Mongo.Host,
-		Port:     config.Mongo.Port,
-		Username: config.Mongo.User,
+		//Host:     config.Mongo.Host,
+		//Port:     config.Mongo.Port,
+		ConnectUri: config.Mongo.Uri,
+		Username:   config.Mongo.User,
 		//Password:     App.Config.Mongo.Pass,
-		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout) * time.Second,
-		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout) * time.Second,
-		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout) * time.Second,
-		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime) * time.Second,
-		MaxPoolSize:     uint64(config.Mongo.MaxPoolSize),
-		MinPoolSize:     uint64(config.Mongo.MinPoolSize),
-		WriteConcernW:   config.Mongo.WriteConcernW,
-		WriteConcernJ:   config.Mongo.WriteConcernJ,
-		RetryWrites:     config.Mongo.RetryWrite,
+		ConnTimeout:            time.Duration(config.Mongo.ConnectionTimeout) * time.Second,
+		ReadTimeout:            time.Duration(config.Mongo.ReadTimeout) * time.Second,
+		WriteTimeout:           time.Duration(config.Mongo.WriteTimeout) * time.Second,
+		MaxConnIdleTime:        time.Duration(config.Mongo.MaxConnIdleTime) * time.Second,
+		HeartbeatInterval:      time.Duration(config.Mongo.HeartBeatInterval) * time.Second,
+		ServerSelectionTimeout: time.Duration(config.Mongo.ServerSelectionTimeout) * time.Second,
+		RetryConnect:           uint64(config.Mongo.RetryConnect),
+		MaxPoolSize:            uint64(config.Mongo.MaxPoolSize),
+		MinPoolSize:            uint64(config.Mongo.MinPoolSize),
+		WriteConcernW:          config.Mongo.WriteConcernW,
+		WriteConcernJ:          config.Mongo.WriteConcernJ,
+		RetryWrites:            config.Mongo.RetryWrite,
 	}
 
 	mongoAdapter, err = mongoadapter.NewMongo(mongoConf)

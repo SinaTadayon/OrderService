@@ -72,22 +72,25 @@ var Globals struct {
 func SetupMongoDriver(config configs.Config) (*mongoadapter.Mongo, error) {
 	// store in mongo
 	mongoConf := &mongoadapter.MongoConfig{
-		ConnectUri: config.Mongo.Uri,
 		// Host:     config.Mongo.Host,
 		// Port:     config.Mongo.Port,
 		Username: config.Mongo.User,
 		//Password:     MainApp.Config.Mongo.Pass,
-		ConnTimeout:     time.Duration(config.Mongo.ConnectionTimeout) * time.Second,
-		ReadTimeout:     time.Duration(config.Mongo.ReadTimeout) * time.Second,
-		WriteTimeout:    time.Duration(config.Mongo.WriteTimeout) * time.Second,
-		MaxConnIdleTime: time.Duration(config.Mongo.MaxConnIdleTime) * time.Second,
-		MaxPoolSize:     uint64(config.Mongo.MaxPoolSize),
-		MinPoolSize:     uint64(config.Mongo.MinPoolSize),
-		WriteConcernW:   config.Mongo.WriteConcernW,
-		WriteConcernJ:   config.Mongo.WriteConcernJ,
-		RetryWrites:     config.Mongo.RetryWrite,
-		ReadConcern:     config.Mongo.ReadConcern,
-		ReadPreference:  config.Mongo.ReadPreferred,
+		ConnTimeout:            time.Duration(config.Mongo.ConnectionTimeout) * time.Second,
+		ReadTimeout:            time.Duration(config.Mongo.ReadTimeout) * time.Second,
+		WriteTimeout:           time.Duration(config.Mongo.WriteTimeout) * time.Second,
+		MaxConnIdleTime:        time.Duration(config.Mongo.MaxConnIdleTime) * time.Second,
+		HeartbeatInterval:      time.Duration(config.Mongo.HeartBeatInterval) * time.Second,
+		ServerSelectionTimeout: time.Duration(config.Mongo.ServerSelectionTimeout) * time.Second,
+		RetryConnect:           uint64(config.Mongo.RetryConnect),
+		MaxPoolSize:            uint64(config.Mongo.MaxPoolSize),
+		MinPoolSize:            uint64(config.Mongo.MinPoolSize),
+		WriteConcernW:          config.Mongo.WriteConcernW,
+		WriteConcernJ:          config.Mongo.WriteConcernJ,
+		RetryWrites:            config.Mongo.RetryWrite,
+		ReadConcern:            config.Mongo.ReadConcern,
+		ReadPreference:         config.Mongo.ReadPreferred,
+		ConnectUri:             config.Mongo.Uri,
 	}
 
 	mongoDriver, err := mongoadapter.NewMongo(mongoConf)

@@ -1,7 +1,6 @@
 package reports
 
 import (
-	"gitlab.faza.io/order-project/order-service/domain/models"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"time"
 )
@@ -21,19 +20,19 @@ type FinanceOrderItem struct {
 }
 
 type Item struct {
-	SKU         string                         `bson:"sku"`
-	InventoryId string                         `bson:"inventoryId"`
-	Title       string                         `bson:"title"`
-	Brand       string                         `bson:"brand"`
-	Guaranty    string                         `bson:"guaranty"`
-	Category    string                         `bson:"category"`
-	Image       string                         `bson:"image"`
-	Returnable  bool                           `bson:"returnable"`
-	Quantity    int32                          `bson:"quantity"`
-	Reasons     []models.Reason                `bson:"reasons"`
-	Attributes  map[string]*entities.Attribute `bson:"attributes"`
-	Invoice     ItemInvoice                    `bson:"invoice"`
-	Extended    map[string]interface{}         `bson:"ext"`
+	SKU         string                 `bson:"sku"`
+	InventoryId string                 `bson:"inventoryId"`
+	Title       string                 `bson:"title"`
+	Brand       string                 `bson:"brand"`
+	Guaranty    string                 `bson:"guaranty"`
+	Category    string                 `bson:"category"`
+	Image       string                 `bson:"image"`
+	Returnable  bool                   `bson:"returnable"`
+	Quantity    int32                  `bson:"quantity"`
+	Reasons     []entities.Reason      `bson:"reasons"`
+	Attributes  map[string]*entities.Attribute  `bson:"attributes"`
+	Invoice     ItemInvoice            `bson:"invoice"`
+	Extended    map[string]interface{} `bson:"ext"`
 }
 
 type ItemInvoice struct {

@@ -78,8 +78,8 @@ func (state newOrderState) Process(ctx context.Context, iFrame frame.IFrame) {
 			"fn", "Process",
 			"state", state.Name(),
 			"newOrder", order)
-		
-		calcOrder, err := calculate.New().FinanceCalc(ctx, *newOrder,
+
+		err := calculate.New().FinanceCalc(ctx, newOrder,
 			calculate.Set(calculate.SHARE_CALC, calculate.VOUCHER_CALC),
 			calculate.ORDER_FINANCE)
 
@@ -98,7 +98,7 @@ func (state newOrderState) Process(ctx context.Context, iFrame frame.IFrame) {
 
 		newFrame := frame.Factory().
 			SetFuture(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-			SetOrderId(newOrder.OrderId).SetBody(calcOrder).Build()
+			SetOrderId(newOrder.OrderId).SetBody(newOrder).Build()
 
 		state.StatesMap()[state.Actions()[0]].Process(ctx, newFrame)
 	}
