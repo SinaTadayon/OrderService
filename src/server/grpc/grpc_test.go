@@ -3,6 +3,7 @@ package grpc_server
 import (
 	"context"
 	"fmt"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository/financeReport"
 	"net"
 	"os"
 	"strconv"
@@ -67,6 +68,7 @@ func TestMain(m *testing.M) {
 	app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
 	app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
 	app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
+	app.Globals.FinanceReportRepository = finance_repository.NewFinanceReportRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
 
 	// TODO create item repository
 	flowManager, err := domain.NewFlowManager()
@@ -933,6 +935,92 @@ func UpdateSubPackage(ctx context.Context, subPkgState states.IEnumState, subpac
 			subpackage.Tracking.History[len(subpackage.Tracking.History)-1] = *subpackage.Tracking.State
 		}
 	}
+}
+
+func TestFinanceReport(t *testing.T) {
+
+	startTimestamp := time.Now().UTC().Format(ISO8601)
+	endTimestamp := time.Now().UTC().Add(time.Duration(time.Minute)).Format(ISO8601)
+	ctx, _ := context.WithCancel(context.Background())
+	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
+		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+	require.Nil(t, err)
+	defer grpcConn.Close()
+
+	requestNewOrder := createRequestNewOrder()
+	err = addStock(ctx, requestNewOrder)
+	require.Nil(t, err)
+
+	defer releaseStock(ctx, requestNewOrder)
+
+	err = reservedStock(ctx, requestNewOrder)
+	require.Nil(t, err)
+
+	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
+	require.Nil(t, err, "Converter failed")
+	newOrder := value.(*entities.Order)
+
+	ctx, _ = context.WithCancel(context.Background())
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
+	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PayToSeller)
+	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	require.Nil(t, err, "save failed")
+
+	defer removeCollection()
+
+	ctx, err = createAuthenticatedContext()
+	assert.Nil(t, err)
+
+	request := &pb.MessageRequest{
+		Name:   "",
+		Type:   "",
+		ADT:    "",
+		Method: "",
+		Time:   ptypes.TimestampNow(),
+		Meta: &pb.RequestMetadata{
+			UID:            0,
+			UTP:            string(SchedulerUser),
+			OID:            0,
+			PID:            0,
+			SIDs:           nil,
+			Page:           1,
+			PerPage:        10,
+			IpAddress:      "",
+			StartTimestamp: startTimestamp,
+			EndTimestamp:   endTimestamp,
+			Action:         nil,
+			Sorts:          nil,
+			Filters: []*pb.MetaFilter{
+				{
+					Type:  string(OrderStateFilterType),
+					Opt:   "eq",
+					Value: string(PayToSellerFilter),
+				},
+			},
+		},
+		Data: nil,
+	}
+
+	OrderService := pb.NewOrderServiceClient(grpcConn)
+	response, err := OrderService.FinanceOrderItems(ctx, request)
+	require.Nil(t, err)
+
+	var financeOrderItems pb.FinanceOrderItemDetailList
+	err = ptypes.UnmarshalAny(response.Data, &financeOrderItems)
+	require.Nil(t, err)
+
+	require.NotNil(t, financeOrderItems)
+	//require.Equal(t, 2, len(financeOrderItems.OrderItems))
+
 }
 
 func TestSellerOrderDetail(t *testing.T) {

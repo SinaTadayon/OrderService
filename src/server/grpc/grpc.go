@@ -242,6 +242,364 @@ func (server *Server) SchedulerMessageHandler(ctx context.Context, req *pb.Messa
 	return response, nil
 }
 
+func (server *Server) FinanceOrderItems(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
+	app.Globals.Logger.FromContext(ctx).Debug("Received financeOrderItem request",
+		"fn", "FinanceOrderItems",
+		"request", req)
+
+	if ctx.Value(string(utils.CtxUserID)) == nil {
+		ctx = context.WithValue(ctx, string(utils.CtxUserID), uint64(0))
+	}
+
+	var state string
+	var filterValue FilterValue
+	var sortName string
+	var sortDirection int
+	var startTimestamp time.Time
+	var endTimestamp time.Time
+
+	if req.Meta.Filters != nil {
+		filterValue = FilterValue(req.Meta.Filters[0].Value)
+		if filterValue != PayToSellerFilter && filterValue != PayToBuyerFilter {
+			app.Globals.Logger.Error("filterValue invalid",
+				"fn", "FinanceOrderItems",
+				"filterValue", filterValue,
+				"request", req)
+			return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
+		}
+
+		if filterValue == PayToSellerFilter {
+			state = states.PayToSeller.StateName()
+		} else if filterValue == PayToBuyerFilter {
+			state = states.PayToBuyer.StateName()
+		}
+	} else {
+		app.Globals.Logger.Error("filters is empty",
+			"fn", "FinanceOrderItems",
+			"request", req)
+		return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
+	}
+
+	if req.Meta.StartAt != "" {
+		temp, err := time.Parse(utils.ISO8601, req.Meta.StartAt)
+		if err != nil {
+			app.Globals.Logger.Error("StartAt invalid",
+				"fn", "FinanceOrderItems",
+				"StartAt", req.Meta.StartAt,
+				"request", req)
+			return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
+		}
+
+		startTimestamp = temp
+	} else {
+		app.Globals.Logger.Error("StartAt is empty",
+			"fn", "FinanceOrderItems",
+			"request", req)
+		return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
+	}
+
+	if req.Meta.EndAt != "" {
+		temp, err := time.Parse(utils.ISO8601, req.Meta.EndAt)
+		if err != nil {
+			app.Globals.Logger.Error("EndAt invalid",
+				"fn", "FinanceOrderItems",
+				"endAt", req.Meta.EndAt,
+				"request", req)
+			return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
+		}
+
+		endTimestamp = temp
+	} else {
+		app.Globals.Logger.Error("EndAt is empty",
+			"fn", "FinanceOrderItems",
+			"request", req)
+		return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
+	}
+
+	if req.Meta.Sorts != nil {
+		sortName = req.Meta.Sorts[0].Name
+		if SortDirection(req.Meta.Sorts[0].Direction) == ASC {
+			sortDirection = 1
+		} else {
+			sortDirection = -1
+		}
+	}
+
+	if req.Meta.Page <= 0 {
+		app.Globals.Logger.Error("Page invalid",
+			"fn", "FinanceOrderItems",
+			"page", req.Meta.Page,
+			"request", req)
+		return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
+	}
+
+	if req.Meta.PerPage <= 0 {
+		app.Globals.Logger.Error("PerPage invalid",
+			"fn", "FinanceOrderItems",
+			"perPage", req.Meta.Page,
+			"request", req)
+		return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
+	}
+
+	finances, total, err := app.Globals.FinanceReportRepository.FindAllWithPageAndSort(ctx, state, startTimestamp,
+		endTimestamp, int64(req.Meta.Page), int64(req.Meta.PerPage), sortName, sortDirection)
+
+	if err != nil {
+		app.Globals.Logger.Error("PerPage invalid",
+			"fn", "FinanceOrderItems",
+			"perPage", req.Meta.PerPage,
+			"request", req,
+			"error", err.Reason())
+		return nil, status.Error(codes.Code(err.Code()), err.Message())
+	}
+
+	financeReportList := make([]*pb.FinanceOrderItemDetailList_OrderItemDetail, 0, len(finances))
+	for _, finance := range finances {
+		if finance.RawSellerShippingNet == nil || finance.RoundupSellerShippingNet == nil {
+			app.Globals.Logger.Info("OrderItem doesn't support finance",
+				"fn", "FinanceOrderItems",
+				"oid", finance.OrderId,
+				"pid", finance.PId,
+				"sid", finance.SId)
+			continue
+		}
+
+		financeOrderItem := &pb.FinanceOrderItemDetailList_OrderItemDetail{
+			OId:      finance.OrderId,
+			SellerId: finance.PId,
+			ShipmentAmount: &pb.Money{
+				Amount:   finance.ShipmentAmount.Amount,
+				Currency: finance.ShipmentAmount.Currency,
+			},
+			RawShippingNet: &pb.Money{
+				Amount:   finance.RawSellerShippingNet.Amount,
+				Currency: finance.RawSellerShippingNet.Currency,
+			},
+			RoundupShippingNet: &pb.Money{
+				Amount:   finance.RoundupSellerShippingNet.Amount,
+				Currency: finance.RoundupSellerShippingNet.Currency,
+			},
+			Items:          nil,
+			CreatedAt:      finance.CreatedAt.Format(utils.ISO8601),
+			UpdatedAt:      finance.UpdatedAt.Format(utils.ISO8601),
+			OrderCreatedAt: finance.OrderCreatedAt.Format(utils.ISO8601),
+		}
+
+		financeOrderItem.Items = make([]*pb.FinanceOrderItemDetailList_OrderItemDetail_Item, 0, len(finance.Items))
+		for _, item := range finance.Items {
+			financeItem := &pb.FinanceOrderItemDetailList_OrderItemDetail_Item{
+				SId:         finance.SId,
+				Sku:         item.SKU,
+				InventoryId: item.InventoryId,
+				Title:       item.Title,
+				Brand:       item.Brand,
+				Category:    item.Category,
+				Guaranty:    item.Guaranty,
+				Image:       item.Image,
+				Returnable:  item.Returnable,
+				Quantity:    item.Quantity,
+				Attributes:  nil,
+				Invoice: &pb.FinanceOrderItemDetailList_OrderItemDetail_Item_ItemInvoice{
+					Commission: &pb.FinanceOrderItemDetailList_OrderItemDetail_Item_ItemInvoice_ItemCommission{
+						ItemCommission:    item.Invoice.Commission.ItemCommission,
+						RawUnitPrice:      nil,
+						RoundupUnitPrice:  nil,
+						RawTotalPrice:     nil,
+						RoundupTotalPrice: nil,
+					},
+
+					Share: &pb.FinanceOrderItemDetailList_OrderItemDetail_Item_ItemInvoice_ItemShare{
+						RawItemNet: &pb.Money{
+							Amount:   item.Invoice.Share.RawItemNet.Amount,
+							Currency: item.Invoice.Share.RawItemNet.Currency,
+						},
+						RoundupItemNet: &pb.Money{
+							Amount:   item.Invoice.Share.RoundupItemNet.Amount,
+							Currency: item.Invoice.Share.RoundupItemNet.Currency,
+						},
+						RawTotalNet: &pb.Money{
+							Amount:   item.Invoice.Share.RawTotalNet.Amount,
+							Currency: item.Invoice.Share.RawTotalNet.Currency,
+						},
+						RoundupTotalNet: &pb.Money{
+							Amount:   item.Invoice.Share.RoundupTotalNet.Amount,
+							Currency: item.Invoice.Share.RoundupTotalNet.Currency,
+						},
+						RawUnitSellerShare: &pb.Money{
+							Amount:   item.Invoice.Share.RawUnitSellerShare.Amount,
+							Currency: item.Invoice.Share.RawUnitSellerShare.Currency,
+						},
+						RoundupUnitSellerShare: &pb.Money{
+							Amount:   item.Invoice.Share.RoundupUnitSellerShare.Amount,
+							Currency: item.Invoice.Share.RoundupUnitSellerShare.Currency,
+						},
+						RawTotalSellerShare: &pb.Money{
+							Amount:   item.Invoice.Share.RawTotalSellerShare.Amount,
+							Currency: item.Invoice.Share.RawTotalSellerShare.Currency,
+						},
+						RoundupTotalSellerShare: &pb.Money{
+							Amount:   item.Invoice.Share.RoundupTotalSellerShare.Amount,
+							Currency: item.Invoice.Share.RoundupTotalSellerShare.Currency,
+						},
+					},
+					SSO: &pb.FinanceOrderItemDetailList_OrderItemDetail_Item_ItemInvoice_ItemSSO{
+						Rate:              item.Invoice.SSO.Rate,
+						IsObliged:         item.Invoice.SSO.IsObliged,
+						RawUnitPrice:      nil,
+						RoundupUnitPrice:  nil,
+						RawTotalPrice:     nil,
+						RoundupTotalPrice: nil,
+					},
+					VAT: &pb.FinanceOrderItemDetailList_OrderItemDetail_Item_ItemInvoice_ItemVAT{
+						Rate:              item.Invoice.VAT.SellerVat.Rate,
+						IsObliged:         item.Invoice.VAT.SellerVat.IsObliged,
+						RawUnitPrice:      nil,
+						RoundupUnitPrice:  nil,
+						RawTotalPrice:     nil,
+						RoundupTotalPrice: nil,
+					},
+				},
+			}
+
+			if item.Invoice.Commission.RawUnitPrice != nil {
+				financeItem.Invoice.Commission.RawUnitPrice = &pb.Money{
+					Amount:   item.Invoice.Commission.RawUnitPrice.Amount,
+					Currency: item.Invoice.Commission.RawUnitPrice.Currency,
+				}
+			}
+
+			if item.Invoice.Commission.RoundupUnitPrice != nil {
+				financeItem.Invoice.Commission.RoundupUnitPrice = &pb.Money{
+					Amount:   item.Invoice.Commission.RoundupUnitPrice.Amount,
+					Currency: item.Invoice.Commission.RoundupUnitPrice.Currency,
+				}
+			}
+
+			if item.Invoice.Commission.RawTotalPrice != nil {
+				financeItem.Invoice.Commission.RawTotalPrice = &pb.Money{
+					Amount:   item.Invoice.Commission.RawTotalPrice.Amount,
+					Currency: item.Invoice.Commission.RawTotalPrice.Currency,
+				}
+			}
+
+			if item.Invoice.Commission.RoundupTotalPrice != nil {
+				financeItem.Invoice.Commission.RoundupTotalPrice = &pb.Money{
+					Amount:   item.Invoice.Commission.RoundupUnitPrice.Amount,
+					Currency: item.Invoice.Commission.RoundupUnitPrice.Currency,
+				}
+			}
+
+			if item.Invoice.SSO.RawUnitPrice != nil {
+				financeItem.Invoice.SSO.RawUnitPrice = &pb.Money{
+					Amount:   item.Invoice.SSO.RawUnitPrice.Amount,
+					Currency: item.Invoice.SSO.RawUnitPrice.Currency,
+				}
+			}
+
+			if item.Invoice.SSO.RoundupUnitPrice != nil {
+				financeItem.Invoice.SSO.RoundupUnitPrice = &pb.Money{
+					Amount:   item.Invoice.SSO.RoundupUnitPrice.Amount,
+					Currency: item.Invoice.SSO.RoundupUnitPrice.Currency,
+				}
+			}
+
+			if item.Invoice.SSO.RawTotalPrice != nil {
+				financeItem.Invoice.SSO.RawTotalPrice = &pb.Money{
+					Amount:   item.Invoice.SSO.RawTotalPrice.Amount,
+					Currency: item.Invoice.SSO.RawTotalPrice.Currency,
+				}
+			}
+
+			if item.Invoice.SSO.RoundupTotalPrice != nil {
+				financeItem.Invoice.SSO.RoundupTotalPrice = &pb.Money{
+					Amount:   item.Invoice.SSO.RoundupTotalPrice.Amount,
+					Currency: item.Invoice.SSO.RoundupTotalPrice.Currency,
+				}
+			}
+
+			if item.Invoice.VAT.SellerVat.RawUnitPrice != nil {
+				financeItem.Invoice.VAT.RawUnitPrice = &pb.Money{
+					Amount:   item.Invoice.VAT.SellerVat.RawUnitPrice.Amount,
+					Currency: item.Invoice.VAT.SellerVat.RawUnitPrice.Currency,
+				}
+			}
+
+			if item.Invoice.VAT.SellerVat.RoundupUnitPrice != nil {
+				financeItem.Invoice.VAT.RoundupUnitPrice = &pb.Money{
+					Amount:   item.Invoice.VAT.SellerVat.RoundupUnitPrice.Amount,
+					Currency: item.Invoice.VAT.SellerVat.RoundupUnitPrice.Currency,
+				}
+			}
+
+			if item.Invoice.VAT.SellerVat.RawTotalPrice != nil {
+				financeItem.Invoice.VAT.RawTotalPrice = &pb.Money{
+					Amount:   item.Invoice.VAT.SellerVat.RawTotalPrice.Amount,
+					Currency: item.Invoice.VAT.SellerVat.RawTotalPrice.Currency,
+				}
+			}
+
+			if item.Invoice.VAT.SellerVat.RoundupTotalPrice != nil {
+				financeItem.Invoice.VAT.RoundupTotalPrice = &pb.Money{
+					Amount:   item.Invoice.VAT.SellerVat.RoundupTotalPrice.Amount,
+					Currency: item.Invoice.VAT.SellerVat.RoundupTotalPrice.Currency,
+				}
+			}
+
+			if item.Attributes != nil {
+				financeItem.Attributes = make(map[string]*pb.Attribute, len(item.Attributes))
+				for attrKey, attribute := range item.Attributes {
+					keyTranslates := make(map[string]string, len(attribute.KeyTranslate))
+					for keyTran, value := range attribute.KeyTranslate {
+						keyTranslates[keyTran] = value
+					}
+
+					valTranslates := make(map[string]string, len(attribute.ValueTranslate))
+					for valTran, value := range attribute.ValueTranslate {
+						valTranslates[valTran] = value
+					}
+
+					financeItem.Attributes[attrKey] = &pb.Attribute{
+						KeyTrans:   keyTranslates,
+						ValueTrans: valTranslates,
+					}
+				}
+			}
+
+			financeOrderItem.Items = append(financeOrderItem.Items, financeItem)
+		}
+
+		financeReportList = append(financeReportList, financeOrderItem)
+	}
+
+	financeOrderItemDetailList := &pb.FinanceOrderItemDetailList{
+		OrderItems: financeReportList,
+	}
+
+	serializedData, e := proto.Marshal(financeOrderItemDetailList)
+	if e != nil {
+		app.Globals.Logger.FromContext(ctx).Error("could not marshal financeOrderItemDetailList",
+			"fn", "FinanceOrderItems",
+			"request", req,
+			"error", e)
+		return nil, status.Error(codes.Code(future.InternalError), "Unknown Error")
+	}
+
+	response := &pb.MessageResponse{
+		Entity: "financeOrderItemDetailList",
+		Meta: &pb.ResponseMetadata{
+			Total:   uint32(total),
+			Page:    req.Meta.Page,
+			PerPage: req.Meta.PerPage,
+		},
+		Data: &any.Any{
+			TypeUrl: "baman.io/" + proto.MessageName(financeOrderItemDetailList),
+			Value:   serializedData,
+		},
+	}
+
+	return response, nil
+}
+
 func (server *Server) requestDataHandler(ctx context.Context, req *pb.MessageRequest) (*pb.MessageResponse, error) {
 	reqName := RequestName(req.Name)
 	userType := UserType(req.Meta.UTP)
@@ -646,24 +1004,24 @@ func (server Server) ReasonsList(ctx context.Context, in *pb.ReasonsListRequest)
 
 func (server Server) ReportOrderItems(req *pb.RequestReportOrderItems, srv pb.OrderService_ReportOrderItemsServer) error {
 
-	//userAcl, err := app.Globals.UserService.AuthenticateContextToken(srv.Context())
-	//if err != nil {
-	//	app.Globals.Logger.Error("UserService.AuthenticateContextToken failed",
-	//		"fn", "ReportOrderItems",
-	//		"error", err)
-	//	return status.Error(codes.Code(future.Forbidden), "User Not Authorized")
-	//}
+	userAcl, err := app.Globals.UserService.AuthenticateContextToken(srv.Context())
+	if err != nil {
+		app.Globals.Logger.Error("UserService.AuthenticateContextToken failed",
+			"fn", "ReportOrderItems",
+			"error", err)
+		return status.Error(codes.Code(future.Forbidden), "User Not Authorized")
+	}
 
-	//if userAcl.User().UserID <= 0 {
-	//	app.Globals.Logger.Error("Token userId not authorized",
-	//		"fn", "ReportOrderItems",
-	//		"userId", userAcl.User().UserID)
-	//	return status.Error(codes.Code(future.Forbidden), "User token not authorized")
-	//}
-	//
-	//if !userAcl.UserPerm().Has("order.state.all.view") || !userAcl.UserPerm().Has("order.state.all.action") {
-	//	return status.Error(codes.Code(future.Forbidden), "User Not Permitted")
-	//}
+	if userAcl.User().UserID <= 0 {
+		app.Globals.Logger.Error("Token userId not authorized",
+			"fn", "ReportOrderItems",
+			"userId", userAcl.User().UserID)
+		return status.Error(codes.Code(future.Forbidden), "User token not authorized")
+	}
+
+	if !userAcl.UserPerm().Has("order.state.all.view") || !userAcl.UserPerm().Has("order.state.all.action") {
+		return status.Error(codes.Code(future.Forbidden), "User Not Permitted")
+	}
 
 	iFuture := server.flowManager.ReportOrderItems(srv.Context(), req, srv).Get()
 
