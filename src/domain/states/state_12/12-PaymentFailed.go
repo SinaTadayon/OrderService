@@ -133,7 +133,8 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 
 		state.releasedStock(ctx, order)
 		state.UpdateOrderAllStatus(ctx, order, states.OrderClosedStatus, states.PackageClosedStatus)
-		_, err = app.Globals.OrderRepository.Save(ctx, *order)
+		state.UpdateOrderUpdateAt(ctx, order)
+		_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Update(ctx, *order)
 		if err != nil {
 			app.Globals.Logger.FromContext(ctx).Error("OrderRepository.Save failed",
 				"fn", "Process",

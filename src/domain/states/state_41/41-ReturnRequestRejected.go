@@ -198,7 +198,7 @@ func (state returnRequestRejectedState) Process(ctx context.Context, iFrame fram
 			}
 		}
 
-		pkgItemUpdated, e := app.Globals.PkgItemRepository.UpdateWithUpsert(ctx, *pkgItem)
+		pkgItemUpdated, e := app.Globals.CQRSRepository.CmdR().PkgCR().Update(ctx, *pkgItem, true)
 		if e != nil {
 			app.Globals.Logger.FromContext(ctx).Error("PkgItemRepository.Update failed",
 				"fn", "Process",
@@ -451,7 +451,7 @@ func (state returnRequestRejectedState) Process(ctx context.Context, iFrame fram
 				var sids = make([]uint64, 0, 32)
 				for i := 0; i < len(newSubPackages); i++ {
 					if newSubPackages[i].SId == 0 {
-						newSid, err := app.Globals.SubPkgRepository.GenerateUniqSid(ctx, pkgItem.OrderId)
+						newSid, err := app.Globals.CQRSRepository.CmdR().SubPkgCR().GenerateUniqSid(ctx, pkgItem.OrderId)
 						if err != nil {
 							app.Globals.Logger.FromContext(ctx).Error("SubPkgRepository.GenerateUniqSid failed",
 								"fn", "Process",

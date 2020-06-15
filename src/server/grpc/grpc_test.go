@@ -3,9 +3,10 @@ package grpc_server
 import (
 	"context"
 	"fmt"
-	"gitlab.faza.io/order-project/order-service/domain/models/repository/financeReport"
-
+	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository/cqrs"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
+	worker_pool "gitlab.faza.io/order-project/order-service/infrastructure/workerPool"
 	"net"
 	"os"
 	"strconv"
@@ -22,12 +23,8 @@ import (
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain"
-	scheduler_action "gitlab.faza.io/order-project/order-service/domain/actions/scheduler"
 	"gitlab.faza.io/order-project/order-service/domain/converter"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
-	order_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/order"
-	pkg_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/pkg"
-	subpkg_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/subpackage"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
@@ -45,6 +42,7 @@ import (
 
 func TestMain(m *testing.M) {
 	var err error
+	ctx := context.Background()
 	if os.Getenv("APP_MODE") == "dev" {
 		app.Globals.Config, app.Globals.SMSTemplate, err = configs.LoadConfigs("../../testdata/.env", "../../testdata/notification/sms/smsTemplate.txt")
 	} else {
@@ -62,15 +60,38 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	mongoDriver, err := app.SetupMongoDriver(*app.Globals.Config)
+	app.Globals.WorkerPool, err = worker_pool.Factory()
 	if err != nil {
+		app.Globals.Logger.Error("factory of worker pool failed", "fn", "main", "error", err)
 		os.Exit(1)
 	}
 
-	app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
-	app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
-	app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
-	app.Globals.FinanceReportRepository = finance_repository.NewFinanceReportRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
+	cmdMongoDriver, err := app.SetupCmdMongoDriver(*app.Globals.Config)
+	if err != nil {
+		app.Globals.Logger.Error("main SetupCmdMongoDriver failed", "fn", "main",
+			"cmdConfigs", app.Globals.Config.CmdMongo, "error", err)
+		os.Exit(1)
+	}
+
+	queryMongoDriver, err := app.SetupQueryMongoDriver(*app.Globals.Config)
+	if err != nil {
+		app.Globals.Logger.Error("main SetupQueryMongoDriver failed", "fn", "main",
+			"queryConfigs", app.Globals.Config.QueryMongo, "error", err)
+		os.Exit(1)
+	}
+
+	app.Globals.CQRSRepository, err = cqrs.CQRSFactory(ctx, cmdMongoDriver, queryMongoDriver,
+		app.Globals.Config.CmdMongo.Database, app.Globals.Config.CmdMongo.Collection,
+		app.Globals.Config.QueryMongo.Database, app.Globals.Config.QueryMongo.Collection,
+		app.Globals.Config.QueryMongo.MinPoolSize, app.Globals.WorkerPool)
+	if err != nil {
+		app.Globals.Logger.Error("main cqrs repository failed",
+			"fn", "main",
+			"queryConfigs", app.Globals.Config.QueryMongo,
+			"cmdConfigs", app.Globals.Config.CmdMongo,
+			"error", err)
+		os.Exit(1)
+	}
 
 	// TODO create item repository
 	flowManager, err := domain.NewFlowManager()
@@ -468,7 +489,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 		Returnable:  true,
 		Quantity:    5,
 		Attributes: map[string]*pb.Attribute{
-			"Quantity": &pb.Attribute{
+			"Quantity": {
 				KeyTrans: map[string]string{
 					"en": "Quantity",
 				},
@@ -476,7 +497,7 @@ func createRequestNewOrder() *pb.RequestNewOrder {
 					"en": "10",
 				},
 			},
-			"Width": &pb.Attribute{
+			"Width": {
 				KeyTrans: map[string]string{
 					"en": "Width",
 				},
@@ -695,7 +716,7 @@ func addStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) error {
 	}
 
 	request = stockProto.StockRequest{
-		Quantity:    requestNewOrder.Packages[0].Items[1].Quantity + 500,
+		Quantity:    requestNewOrder.Packages[0].Items[1].Quantity + 1000,
 		InventoryId: requestNewOrder.Packages[0].Items[1].InventoryId,
 	}
 
@@ -708,7 +729,7 @@ func addStock(ctx context.Context, requestNewOrder *pb.RequestNewOrder) error {
 	}
 
 	request = stockProto.StockRequest{
-		Quantity:    requestNewOrder.Packages[1].Items[0].Quantity + 500,
+		Quantity:    requestNewOrder.Packages[1].Items[0].Quantity + 1000,
 		InventoryId: requestNewOrder.Packages[1].Items[0].InventoryId,
 	}
 
@@ -944,15 +965,19 @@ func TestFinanceReport(t *testing.T) {
 	endTimestamp := time.Now().UTC().Add(time.Duration(time.Minute)).Format(utils.ISO8601)
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -973,8 +998,9 @@ func TestFinanceReport(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PayToSeller)
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -1027,9 +1053,11 @@ func TestFinanceReport(t *testing.T) {
 func TestSellerOrderDetail(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -1041,8 +1069,9 @@ func TestSellerOrderDetail(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -1094,9 +1123,11 @@ func TestSellerOrderDetail(t *testing.T) {
 func TestSellerOrderDetailWithAllOrderFilter(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -1118,8 +1149,9 @@ func TestSellerOrderDetailWithAllOrderFilter(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnCanceled)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PayToSeller)
 
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -1170,9 +1202,11 @@ func TestSellerOrderDetailWithAllOrderFilter(t *testing.T) {
 func TestSellerOrderList(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -1184,8 +1218,9 @@ func TestSellerOrderList(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -1241,9 +1276,11 @@ func TestSellerOrderList(t *testing.T) {
 func TestSellerOrderListWithAllCancelFilter(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -1257,8 +1294,9 @@ func TestSellerOrderListWithAllCancelFilter(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.CanceledByBuyer)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PayToBuyer)
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -1314,9 +1352,11 @@ func TestSellerOrderListWithAllCancelFilter(t *testing.T) {
 func TestSellerAllOrderList(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -1328,8 +1368,9 @@ func TestSellerAllOrderList(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -1385,9 +1426,11 @@ func TestSellerAllOrderList(t *testing.T) {
 func TestOperatorOrderDetail(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -1399,8 +1442,9 @@ func TestOperatorOrderDetail(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -1445,9 +1489,11 @@ func TestOperatorOrderDetail(t *testing.T) {
 func TestOperatorOrderList(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -1459,8 +1505,9 @@ func TestOperatorOrderList(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -1516,9 +1563,11 @@ func TestOperatorOrderList(t *testing.T) {
 func TestOperatorGetOrderById(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -1530,8 +1579,9 @@ func TestOperatorGetOrderById(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
-	savedOrder, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	savedOrder, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -1583,9 +1633,11 @@ func TestOperatorGetOrderById(t *testing.T) {
 func TestSellerGetOrderById(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -1597,8 +1649,9 @@ func TestSellerGetOrderById(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
-	savedOrder, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	savedOrder, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -1649,9 +1702,11 @@ func TestSellerGetOrderById(t *testing.T) {
 func TestSellerOrderList_ShipmentDelayedFilter(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -1665,8 +1720,9 @@ func TestSellerOrderList_ShipmentDelayedFilter(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -1722,9 +1778,11 @@ func TestSellerOrderList_ShipmentDelayedFilter(t *testing.T) {
 func TestSellerReturnOrderDetailList(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -1743,8 +1801,9 @@ func TestSellerReturnOrderDetailList(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestPending)
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -1801,9 +1860,11 @@ func TestOperatorAction_SippedToDelivered(t *testing.T) {
 	// 1 - create connection into order service
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	// 2 - create the new order
 	requestNewOrder := createRequestNewOrder()
@@ -1821,8 +1882,9 @@ func TestOperatorAction_SippedToDelivered(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
 
 	// 4- save order
-	savedOrder, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	savedOrder, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 	defer removeCollection()
 
 	// 5 - create authorized context
@@ -1907,9 +1969,11 @@ func TestOperatorAction_DeliveryPendingToDelivered(t *testing.T) {
 	// 1 - create connection into order service
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	// 2 - create the new order
 	requestNewOrder := createRequestNewOrder()
@@ -1928,8 +1992,9 @@ func TestOperatorAction_DeliveryPendingToDelivered(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
 
 	// 4- save order
-	savedOrder, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	savedOrder, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 	defer removeCollection()
 
 	// 5 - create authorized context
@@ -2013,9 +2078,11 @@ func TestOperatorAction_DeliveryPendingToDelivered(t *testing.T) {
 func TestSellerReturnOrderDetail(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -2034,8 +2101,9 @@ func TestSellerReturnOrderDetail(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestPending)
-	savedOrder, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	savedOrder, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -2091,9 +2159,11 @@ func TestSellerReturnOrderDetail(t *testing.T) {
 func TestSellerOrderReturnReports(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -2116,8 +2186,9 @@ func TestSellerOrderReturnReports(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDelivered)
 
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -2162,9 +2233,11 @@ func TestSellerOrderReturnReports(t *testing.T) {
 func TestSellerOrderDashboardReports(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -2179,8 +2252,9 @@ func TestSellerOrderDashboardReports(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
 
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -2225,9 +2299,11 @@ func TestSellerOrderDashboardReports(t *testing.T) {
 func TestSellerOrderShipmentReports(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -2242,8 +2318,9 @@ func TestSellerOrderShipmentReports(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
 
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -2288,9 +2365,11 @@ func TestSellerOrderShipmentReports(t *testing.T) {
 func TestSellerOrderDeliveredReports(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -2308,8 +2387,9 @@ func TestSellerOrderDeliveredReports(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
 
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -2354,9 +2434,11 @@ func TestSellerOrderDeliveredReports(t *testing.T) {
 func TestSellerOrderApprovalPendingReports(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -2369,8 +2451,9 @@ func TestSellerOrderApprovalPendingReports(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
 
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -2415,9 +2498,11 @@ func TestSellerOrderApprovalPendingReports(t *testing.T) {
 func TestSellerAllOrderReports(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -2433,8 +2518,9 @@ func TestSellerAllOrderReports(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.CanceledBySeller)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PayToBuyer)
 
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -2479,9 +2565,11 @@ func TestSellerAllOrderReports(t *testing.T) {
 func TestSellerOrderCancelReports(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -2497,8 +2585,9 @@ func TestSellerOrderCancelReports(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.CanceledBySeller)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PayToBuyer)
 
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -2543,9 +2632,11 @@ func TestSellerOrderCancelReports(t *testing.T) {
 func TestBuyerOrderDetailList(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -2557,8 +2648,9 @@ func TestBuyerOrderDetailList(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -2614,9 +2706,11 @@ func TestBuyerOrderDetailList(t *testing.T) {
 func TestBuyerGetOrderByIdDetailList(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -2627,7 +2721,7 @@ func TestBuyerGetOrderByIdDetailList(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentFailed)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
 
 	defer removeCollection()
@@ -2678,9 +2772,11 @@ func TestBuyerGetOrderByIdDetailList(t *testing.T) {
 func TestBuyerReturnOrderDetailList(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -2703,7 +2799,7 @@ func TestBuyerReturnOrderDetailList(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDelivered)
 
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
 
 	defer removeCollection()
@@ -2760,9 +2856,11 @@ func TestBuyerReturnOrderDetailList(t *testing.T) {
 func TestBuyerReturnAllOrderDetailList(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -2785,7 +2883,7 @@ func TestBuyerReturnAllOrderDetailList(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDelivered)
 
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
 
 	defer removeCollection()
@@ -2842,9 +2940,11 @@ func TestBuyerReturnAllOrderDetailList(t *testing.T) {
 func TestBuyerReturnOrderReports(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -2867,7 +2967,7 @@ func TestBuyerReturnOrderReports(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDelivered)
 
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
 
 	defer removeCollection()
@@ -2913,9 +3013,11 @@ func TestBuyerReturnOrderReports(t *testing.T) {
 func TestBuyerAllOrderReports(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
@@ -2938,7 +3040,7 @@ func TestBuyerAllOrderReports(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDelivered)
 
-	_, err = app.Globals.OrderRepository.Save(ctx, *newOrder)
+	_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
 
 	defer removeCollection()
@@ -2985,9 +3087,11 @@ func TestNewOrderRequest(t *testing.T) {
 	//ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 	defer removeCollection()
 
 	ctx, err = createAuthenticatedContext()
@@ -2997,7 +3101,9 @@ func TestNewOrderRequest(t *testing.T) {
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 	//ctx, err = createAuthenticatedContext()
 	//assert.Nil(t, err)
 
@@ -3012,9 +3118,11 @@ func TestNewOrderRequestWithZeroAmountAndVoucher(t *testing.T) {
 	//ctx, _ := context.WithTimeout(context.Background(), 30*time.Second)
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 	defer removeCollection()
 
 	ctx, err = createAuthenticatedContext()
@@ -3032,7 +3140,9 @@ func TestNewOrderRequestWithZeroAmountAndVoucher(t *testing.T) {
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	OrderService := pb.NewOrderServiceClient(grpcConn)
 	response, err := OrderService.NewOrder(ctx, requestNewOrder)
@@ -3044,9 +3154,11 @@ func TestNewOrderRequestWithZeroAmountAndVoucher(t *testing.T) {
 func TestPaymentPending_PaymentGatewayNotRespond(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err, "DialContext failed")
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
@@ -3055,7 +3167,9 @@ func TestPaymentPending_PaymentGatewayNotRespond(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
@@ -3106,7 +3220,7 @@ func TestPaymentPending_PaymentGatewayNotRespond(t *testing.T) {
 		}
 	}
 
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
 
 	defer removeCollection()
@@ -3161,9 +3275,11 @@ func TestPaymentPending_PaymentGatewayNotRespond(t *testing.T) {
 func TestPaymentGateway_Success(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err, "DialContext failed")
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
@@ -3172,7 +3288,9 @@ func TestPaymentGateway_Success(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
@@ -3191,8 +3309,9 @@ func TestPaymentGateway_Success(t *testing.T) {
 
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -3219,9 +3338,11 @@ func TestPaymentGateway_Success(t *testing.T) {
 func TestPaymentGateway_Fail(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err, "DialContext failed")
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
@@ -3230,7 +3351,9 @@ func TestPaymentGateway_Fail(t *testing.T) {
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	value, err := app.Globals.Converter.Map(ctx, requestNewOrder, entities.Order{})
 	require.Nil(t, err, "Converter failed")
@@ -3249,8 +3372,9 @@ func TestPaymentGateway_Fail(t *testing.T) {
 
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.NewOrder)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -3277,15 +3401,19 @@ func TestPaymentGateway_Fail(t *testing.T) {
 func TestApprovalPending_SellerApproved_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -3299,8 +3427,9 @@ func TestApprovalPending_SellerApproved_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -3378,7 +3507,8 @@ func TestApprovalPending_SellerApproved_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.ShipmentPending.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -3397,15 +3527,19 @@ func TestApprovalPending_SellerApproved_All(t *testing.T) {
 func TestApprovalPending_SellerCancel_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -3423,8 +3557,9 @@ func TestApprovalPending_SellerCancel_All(t *testing.T) {
 	newOrder.Packages[1] = nil
 	newOrder.Packages = newOrder.Packages[:len(newOrder.Packages)-1] // Truncate slice.
 
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -3502,7 +3637,8 @@ func TestApprovalPending_SellerCancel_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.PayToBuyer.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -3521,15 +3657,19 @@ func TestApprovalPending_SellerCancel_All(t *testing.T) {
 func TestApprovalPending_SellerApproved_Diff(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -3543,8 +3683,9 @@ func TestApprovalPending_SellerApproved_Diff(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -3622,7 +3763,8 @@ func TestApprovalPending_SellerApproved_Diff(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.ApprovalPending.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -3647,15 +3789,19 @@ func TestApprovalPending_SellerApproved_Diff(t *testing.T) {
 func TestApprovalPending_SellerApproved_DiffAndFullItem(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -3669,8 +3815,9 @@ func TestApprovalPending_SellerApproved_DiffAndFullItem(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -3743,7 +3890,8 @@ func TestApprovalPending_SellerApproved_DiffAndFullItem(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.ApprovalPending.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -3775,15 +3923,19 @@ func TestApprovalPending_SellerApproved_DiffAndFullItem(t *testing.T) {
 func TestApprovalPending_SellerReject_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -3797,8 +3949,9 @@ func TestApprovalPending_SellerReject_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -3876,7 +4029,8 @@ func TestApprovalPending_SellerReject_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.PayToBuyer.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -3895,15 +4049,19 @@ func TestApprovalPending_SellerReject_All(t *testing.T) {
 func TestApprovalPending_BuyerCancel_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -3917,8 +4075,9 @@ func TestApprovalPending_BuyerCancel_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -3932,7 +4091,7 @@ func TestApprovalPending_BuyerCancel_All(t *testing.T) {
 		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
 		Quantity:    order.Packages[0].Subpackages[0].Items[0].Quantity,
 		Reasons: []*pb.Reason{
-			&pb.Reason{
+			{
 				Key:         "change_of_mind",
 				Description: "",
 			},
@@ -4001,7 +4160,8 @@ func TestApprovalPending_BuyerCancel_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.PayToBuyer.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -4020,15 +4180,19 @@ func TestApprovalPending_BuyerCancel_All(t *testing.T) {
 func TestApprovalPending_BuyerCancel_All_InvalidReason(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -4042,7 +4206,7 @@ func TestApprovalPending_BuyerCancel_All_InvalidReason(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
 
 	defer removeCollection()
@@ -4057,7 +4221,7 @@ func TestApprovalPending_BuyerCancel_All_InvalidReason(t *testing.T) {
 		InventoryId: order.Packages[0].Subpackages[0].Items[0].InventoryId,
 		Quantity:    order.Packages[0].Subpackages[0].Items[0].Quantity,
 		Reasons: []*pb.Reason{
-			&pb.Reason{
+			{
 				Key:         "change_of_mindsdgsdf",
 				Description: "",
 			},
@@ -4126,7 +4290,7 @@ func TestApprovalPending_BuyerCancel_All_InvalidReason(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.NotNil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 	// lastOrder.Packages[0].Subpackages[0]
 
@@ -4147,15 +4311,19 @@ func TestApprovalPending_BuyerCancel_All_InvalidReason(t *testing.T) {
 func TestShipmentPending_SellerShipmentDetail_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -4170,8 +4338,9 @@ func TestShipmentPending_SellerShipmentDetail_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -4249,7 +4418,8 @@ func TestShipmentPending_SellerShipmentDetail_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.Shipped.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -4268,15 +4438,19 @@ func TestShipmentPending_SellerShipmentDetail_All(t *testing.T) {
 func TestShipmentPending_SellerCancel_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -4291,8 +4465,9 @@ func TestShipmentPending_SellerCancel_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -4370,7 +4545,8 @@ func TestShipmentPending_SellerCancel_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.PayToBuyer.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -4389,15 +4565,19 @@ func TestShipmentPending_SellerCancel_All(t *testing.T) {
 func TestShipmentPending_SchedulerCancel_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -4412,8 +4592,9 @@ func TestShipmentPending_SchedulerCancel_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -4491,7 +4672,8 @@ func TestShipmentPending_SchedulerCancel_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.ShipmentDelayed.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -4510,15 +4692,19 @@ func TestShipmentPending_SchedulerCancel_All(t *testing.T) {
 func TestShipmentDelayed_SellerShipmentDetail_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -4534,8 +4720,9 @@ func TestShipmentDelayed_SellerShipmentDetail_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -4613,7 +4800,8 @@ func TestShipmentDelayed_SellerShipmentDetail_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.Shipped.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -4632,15 +4820,19 @@ func TestShipmentDelayed_SellerShipmentDetail_All(t *testing.T) {
 func TestShipmentDelayed_SellerCancel_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -4656,8 +4848,9 @@ func TestShipmentDelayed_SellerCancel_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -4735,7 +4928,8 @@ func TestShipmentDelayed_SellerCancel_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.PayToBuyer.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -4754,15 +4948,19 @@ func TestShipmentDelayed_SellerCancel_All(t *testing.T) {
 func TestShipmentDelayed_BuyerCancel_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -4778,8 +4976,9 @@ func TestShipmentDelayed_BuyerCancel_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -4857,7 +5056,8 @@ func TestShipmentDelayed_BuyerCancel_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.PayToBuyer.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -4876,15 +5076,19 @@ func TestShipmentDelayed_BuyerCancel_All(t *testing.T) {
 func TestShipped_SchedulerDeliveryPending_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -4901,8 +5105,9 @@ func TestShipped_SchedulerDeliveryPending_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -4980,7 +5185,8 @@ func TestShipped_SchedulerDeliveryPending_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.DeliveryPending.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -4999,15 +5205,19 @@ func TestShipped_SchedulerDeliveryPending_All(t *testing.T) {
 func TestShipped_SellerShipmentDetail_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -5024,7 +5234,7 @@ func TestShipped_SellerShipmentDetail_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
 
 	defer removeCollection()
@@ -5103,7 +5313,7 @@ func TestShipped_SellerShipmentDetail_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.Shipped.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -5122,15 +5332,19 @@ func TestShipped_SellerShipmentDetail_All(t *testing.T) {
 func TestShipped_OperatorDeliveryDelayed_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -5147,8 +5361,9 @@ func TestShipped_OperatorDeliveryDelayed_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -5226,7 +5441,8 @@ func TestShipped_OperatorDeliveryDelayed_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.DeliveryDelayed.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -5245,15 +5461,19 @@ func TestShipped_OperatorDeliveryDelayed_All(t *testing.T) {
 func TestDeliveryPending_SchedulerDelivered_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -5271,8 +5491,9 @@ func TestDeliveryPending_SchedulerDelivered_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -5350,7 +5571,8 @@ func TestDeliveryPending_SchedulerDelivered_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.Delivered.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -5369,15 +5591,19 @@ func TestDeliveryPending_SchedulerDelivered_All(t *testing.T) {
 func TestDeliveryPending_SchedulerNotification_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -5445,7 +5671,7 @@ func TestDeliveryPending_SchedulerNotification_All(t *testing.T) {
 			nil,
 		},
 	}
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
 
 	defer removeCollection()
@@ -5524,7 +5750,7 @@ func TestDeliveryPending_SchedulerNotification_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.DeliveryPending.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -5543,15 +5769,19 @@ func TestDeliveryPending_SchedulerNotification_All(t *testing.T) {
 func TestDeliveryPending_SellerEnterShipmentDetail_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -5569,7 +5799,7 @@ func TestDeliveryPending_SellerEnterShipmentDetail_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
 
 	defer removeCollection()
@@ -5648,7 +5878,7 @@ func TestDeliveryPending_SellerEnterShipmentDetail_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.DeliveryPending.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -5667,15 +5897,19 @@ func TestDeliveryPending_SellerEnterShipmentDetail_All(t *testing.T) {
 func TestDeliveryPending_OperatorDeliveryDelayed_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -5693,8 +5927,9 @@ func TestDeliveryPending_OperatorDeliveryDelayed_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -5772,7 +6007,8 @@ func TestDeliveryPending_OperatorDeliveryDelayed_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.DeliveryDelayed.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -5791,15 +6027,19 @@ func TestDeliveryPending_OperatorDeliveryDelayed_All(t *testing.T) {
 func TestDeliveryDelayed_OperatorDelivery_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -5818,8 +6058,9 @@ func TestDeliveryDelayed_OperatorDelivery_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -5897,7 +6138,8 @@ func TestDeliveryDelayed_OperatorDelivery_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.Delivered.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -5916,15 +6158,19 @@ func TestDeliveryDelayed_OperatorDelivery_All(t *testing.T) {
 func TestDeliveryDelayed_OperatorDeliveryFailed_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -5943,8 +6189,9 @@ func TestDeliveryDelayed_OperatorDeliveryFailed_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -6022,7 +6269,8 @@ func TestDeliveryDelayed_OperatorDeliveryFailed_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.PayToBuyer.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -6041,15 +6289,19 @@ func TestDeliveryDelayed_OperatorDeliveryFailed_All(t *testing.T) {
 func TestDelivered_BuyerSubmitReturnRequest_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -6069,8 +6321,9 @@ func TestDelivered_BuyerSubmitReturnRequest_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -6148,7 +6401,8 @@ func TestDelivered_BuyerSubmitReturnRequest_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.ReturnRequestPending.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -6167,15 +6421,19 @@ func TestDelivered_BuyerSubmitReturnRequest_All(t *testing.T) {
 func TestDelivered_OperatorDeliveryDelayed_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -6195,8 +6453,9 @@ func TestDelivered_OperatorDeliveryDelayed_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -6274,7 +6533,8 @@ func TestDelivered_OperatorDeliveryDelayed_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.DeliveryDelayed.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -6293,15 +6553,19 @@ func TestDelivered_OperatorDeliveryDelayed_All(t *testing.T) {
 func TestDelivered_SchedulerClose_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -6321,8 +6585,9 @@ func TestDelivered_SchedulerClose_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -6400,7 +6665,8 @@ func TestDelivered_SchedulerClose_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.PayToSeller.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -6419,15 +6685,19 @@ func TestDelivered_SchedulerClose_All(t *testing.T) {
 func TestReturnRequestPending_SellerReject_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -6448,8 +6718,9 @@ func TestReturnRequestPending_SellerReject_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -6527,7 +6798,8 @@ func TestReturnRequestPending_SellerReject_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.ReturnRequestRejected.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -6546,15 +6818,19 @@ func TestReturnRequestPending_SellerReject_All(t *testing.T) {
 func TestReturnRequestPending_BuyerCancel_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -6575,8 +6851,9 @@ func TestReturnRequestPending_BuyerCancel_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -6654,7 +6931,8 @@ func TestReturnRequestPending_BuyerCancel_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.PayToSeller.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -6673,15 +6951,19 @@ func TestReturnRequestPending_BuyerCancel_All(t *testing.T) {
 func TestReturnRequestPending_SchedulerAccept_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -6702,8 +6984,9 @@ func TestReturnRequestPending_SchedulerAccept_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -6781,7 +7064,8 @@ func TestReturnRequestPending_SchedulerAccept_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.ReturnShipmentPending.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -6800,15 +7084,19 @@ func TestReturnRequestPending_SchedulerAccept_All(t *testing.T) {
 func TestReturnRequestPending_SellerAccept_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -6829,8 +7117,9 @@ func TestReturnRequestPending_SellerAccept_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.DeliveryDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -6908,7 +7197,8 @@ func TestReturnRequestPending_SellerAccept_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.ReturnShipmentPending.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -6927,15 +7217,19 @@ func TestReturnRequestPending_SellerAccept_All(t *testing.T) {
 func TestReturnShipmentPending_BuyerEnterShipment_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -6957,8 +7251,9 @@ func TestReturnShipmentPending_BuyerEnterShipment_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipmentPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -7036,7 +7331,8 @@ func TestReturnShipmentPending_BuyerEnterShipment_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.ReturnShipped.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -7055,15 +7351,19 @@ func TestReturnShipmentPending_BuyerEnterShipment_All(t *testing.T) {
 func TestReturnShipmentPending_SchedulerClose_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -7085,8 +7385,9 @@ func TestReturnShipmentPending_SchedulerClose_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipmentPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -7164,7 +7465,8 @@ func TestReturnShipmentPending_SchedulerClose_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.PayToSeller.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -7183,15 +7485,19 @@ func TestReturnShipmentPending_SchedulerClose_All(t *testing.T) {
 func TestReturnRequestReject_OperatorAccept_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -7213,8 +7519,9 @@ func TestReturnRequestReject_OperatorAccept_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestRejected)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -7292,7 +7599,8 @@ func TestReturnRequestReject_OperatorAccept_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.ReturnShipmentPending.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -7311,15 +7619,19 @@ func TestReturnRequestReject_OperatorAccept_All(t *testing.T) {
 func TestReturnRequestReject_OperatorReject_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -7341,8 +7653,9 @@ func TestReturnRequestReject_OperatorReject_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Delivered)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestRejected)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -7420,7 +7733,8 @@ func TestReturnRequestReject_OperatorReject_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.PayToSeller.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -7439,15 +7753,19 @@ func TestReturnRequestReject_OperatorReject_All(t *testing.T) {
 func TestReturnShipped_SellerDeliver_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -7471,8 +7789,9 @@ func TestReturnShipped_SellerDeliver_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestRejected)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipmentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipped)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -7550,7 +7869,8 @@ func TestReturnShipped_SellerDeliver_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.ReturnDelivered.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -7569,15 +7889,19 @@ func TestReturnShipped_SellerDeliver_All(t *testing.T) {
 func TestReturnShipped_SchedulerDeliveryPending_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -7601,8 +7925,9 @@ func TestReturnShipped_SchedulerDeliveryPending_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRequestRejected)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipmentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipped)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -7680,7 +8005,8 @@ func TestReturnShipped_SchedulerDeliveryPending_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.ReturnDeliveryPending.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -7699,15 +8025,19 @@ func TestReturnShipped_SchedulerDeliveryPending_All(t *testing.T) {
 func TestReturnDelivered_SchedulerClose_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -7732,8 +8062,9 @@ func TestReturnDelivered_SchedulerClose_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipmentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDelivered)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -7811,7 +8142,8 @@ func TestReturnDelivered_SchedulerClose_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.PayToBuyer.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -7830,15 +8162,19 @@ func TestReturnDelivered_SchedulerClose_All(t *testing.T) {
 func TestReturnDelivered_SellerReject_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -7863,8 +8199,9 @@ func TestReturnDelivered_SellerReject_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipmentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDelivered)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -7942,7 +8279,8 @@ func TestReturnDelivered_SellerReject_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.ReturnRejected.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -7961,15 +8299,19 @@ func TestReturnDelivered_SellerReject_All(t *testing.T) {
 func TestReturnDeliveryPending_SellerDeliver_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -7994,8 +8336,9 @@ func TestReturnDeliveryPending_SellerDeliver_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipmentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDeliveryPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -8073,7 +8416,8 @@ func TestReturnDeliveryPending_SellerDeliver_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.ReturnDelivered.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -8092,15 +8436,19 @@ func TestReturnDeliveryPending_SellerDeliver_All(t *testing.T) {
 func TestReturnDeliveryPending_SellerDeliveryFailed_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -8125,8 +8473,9 @@ func TestReturnDeliveryPending_SellerDeliveryFailed_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipmentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDeliveryPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -8204,7 +8553,8 @@ func TestReturnDeliveryPending_SellerDeliveryFailed_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.ReturnDeliveryDelayed.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -8223,15 +8573,19 @@ func TestReturnDeliveryPending_SellerDeliveryFailed_All(t *testing.T) {
 func TestReturnDeliveryDelayed_OperatorDeliver_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -8257,8 +8611,9 @@ func TestReturnDeliveryDelayed_OperatorDeliver_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDeliveryPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDeliveryDelayed)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -8336,9 +8691,11 @@ func TestReturnDeliveryDelayed_OperatorDeliver_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
+	time.Sleep(100 * time.Millisecond)
 	require.Equal(t, states.ReturnDelivered.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
 	require.Equal(t, 1, len(lastOrder.Packages[0].Subpackages))
 	require.Equal(t, validation[order.Packages[0].Subpackages[0].Items[0].InventoryId], lastOrder.Packages[0].Subpackages[0].Items[0].Quantity)
@@ -8355,15 +8712,19 @@ func TestReturnDeliveryDelayed_OperatorDeliver_All(t *testing.T) {
 func TestReturnDeliveryDelayed_OperatorDeliveryFailed_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -8389,8 +8750,9 @@ func TestReturnDeliveryDelayed_OperatorDeliveryFailed_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnShipped)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDeliveryPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDeliveryDelayed)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -8468,7 +8830,8 @@ func TestReturnDeliveryDelayed_OperatorDeliveryFailed_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.PayToSeller.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -8487,15 +8850,19 @@ func TestReturnDeliveryDelayed_OperatorDeliveryFailed_All(t *testing.T) {
 func TestReturnRejected_OperatorAccept_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -8523,8 +8890,9 @@ func TestReturnRejected_OperatorAccept_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDeliveryDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDelivered)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRejected)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -8602,7 +8970,8 @@ func TestReturnRejected_OperatorAccept_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.PayToBuyer.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -8621,15 +8990,19 @@ func TestReturnRejected_OperatorAccept_All(t *testing.T) {
 func TestReturnRejected_OperatorReject_All(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	grpcConn, err := grpc.DialContext(ctx, app.Globals.Config.GRPCServer.Address+":"+
-		strconv.Itoa(int(app.Globals.Config.GRPCServer.Port)), grpc.WithInsecure(), grpc.WithBlock())
+		strconv.Itoa(app.Globals.Config.GRPCServer.Port), grpc.WithInsecure(), grpc.WithBlock())
 	require.Nil(t, err)
-	defer grpcConn.Close()
+	defer func() {
+		_ = grpcConn.Close()
+	}()
 
 	requestNewOrder := createRequestNewOrder()
 	err = addStock(ctx, requestNewOrder)
 	require.Nil(t, err)
 
-	defer releaseStock(ctx, requestNewOrder)
+	defer func() {
+		_ = releaseStock(ctx, requestNewOrder)
+	}()
 
 	err = reservedStock(ctx, requestNewOrder)
 	require.Nil(t, err)
@@ -8657,8 +9030,9 @@ func TestReturnRejected_OperatorReject_All(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDeliveryDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnDelivered)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ReturnRejected)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(100 * time.Millisecond)
 
 	defer removeCollection()
 
@@ -8736,7 +9110,8 @@ func TestReturnRejected_OperatorReject_All(t *testing.T) {
 	response, err := OrderService.RequestHandler(ctx, request)
 	require.Nil(t, err)
 
-	lastOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	time.Sleep(100 * time.Millisecond)
+	lastOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err, "failed")
 
 	require.Equal(t, states.PayToSeller.StateName(), lastOrder.Packages[0].Subpackages[0].Status)
@@ -8753,6 +9128,7 @@ func TestReturnRejected_OperatorReject_All(t *testing.T) {
 }
 
 func removeCollection() {
-	if err := app.Globals.OrderRepository.RemoveAll(context.Background()); err != nil {
+
+	if err := app.Globals.CQRSRepository.CmdR().OrderCR().RemoveAll(context.Background()); err != nil {
 	}
 }

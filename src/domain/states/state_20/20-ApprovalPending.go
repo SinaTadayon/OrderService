@@ -209,7 +209,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 			"timeUnit", timeUnit,
 			"expireTime", expireTime.UTC().String())
 
-		order.UpdatedAt = time.Now().UTC()
+		//order.UpdatedAt = time.Now().UTC()
 		for i := 0; i < len(order.Packages); i++ {
 			order.Packages[i].UpdatedAt = time.Now().UTC()
 			for j := 0; j < len(order.Packages[i].Subpackages); j++ {
@@ -243,7 +243,8 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 			}
 		}
 
-		_, err := app.Globals.OrderRepository.Save(ctx, *order)
+		state.UpdateOrderUpdateAt(ctx, order)
+		_, err := app.Globals.CQRSRepository.CmdR().OrderCR().Update(ctx, *order)
 		if err != nil {
 			app.Globals.Logger.FromContext(ctx).Error("OrderRepository.Save failed",
 				"fn", "Process",
@@ -480,7 +481,7 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 				var sids = make([]uint64, 0, 32)
 				for i := 0; i < len(newSubPackages); i++ {
 					if newSubPackages[i].SId == 0 {
-						newSid, err := app.Globals.SubPkgRepository.GenerateUniqSid(ctx, pkgItem.OrderId)
+						newSid, err := app.Globals.CQRSRepository.CmdR().SubPkgCR().GenerateUniqSid(ctx, pkgItem.OrderId)
 						if err != nil {
 							app.Globals.Logger.FromContext(ctx).Error("SubPkgRepository.GenerateUniqSid failed",
 								"fn", "Process",
@@ -500,102 +501,6 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 					state.UpdateSubPackage(ctx, newSubPackages[i], requestAction)
 				}
 
-				//if event.Action().ActionEnum() != seller_action.Approve {
-				//	var rejectedSubtotal int64 = 0
-				//	var rejectedDiscount int64 = 0
-				//
-				//	for i := 0; i < len(newSubPackages); i++ {
-				//		for j := 0; j < len(newSubPackages[i].Items); j++ {
-				//			amount, err := decimal.NewFromString(newSubPackages[i].Items[j].Invoice.Total.Amount)
-				//			if err != nil {
-				//				app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, Total.Amount invalid",
-				//					"fn", "Process",
-				//					"state", state.Name(),
-				//					"oid", newSubPackages[i].OrderId,
-				//					"pid", newSubPackages[i].PId,
-				//					"sid", newSubPackages[i].SId,
-				//					"total", newSubPackages[i].Items[j].Invoice.Total.Amount,
-				//					"event", event)
-				//				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				//					SetError(future.InternalError, "Unknown Error", errors.New("Subpackage Total Invalid")).Send()
-				//				return
-				//			}
-				//
-				//			discount, err := decimal.NewFromString(newSubPackages[i].Items[j].Invoice.Discount.Amount)
-				//			if err != nil {
-				//				app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, Invoice.Discount invalid",
-				//					"fn", "Process",
-				//					"state", state.Name(),
-				//					"oid", newSubPackages[i].OrderId,
-				//					"pid", newSubPackages[i].PId,
-				//					"sid", newSubPackages[i].SId,
-				//					"discount", newSubPackages[i].Items[j].Invoice.Discount,
-				//					"event", event)
-				//				future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				//					SetError(future.InternalError, "Unknown Error", errors.New("Subpackage Discount Invalid")).Send()
-				//				return
-				//			}
-				//
-				//			rejectedSubtotal += amount.IntPart()
-				//			rejectedDiscount += discount.IntPart()
-				//		}
-				//	}
-				//
-				//	subtotal, err := decimal.NewFromString(pkgItem.Invoice.Subtotal.Amount)
-				//	if err != nil {
-				//		app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, Subtotal.Amount invalid",
-				//			"fn", "Process",
-				//			"state", state.Name(),
-				//			"oid", pkgItem.OrderId,
-				//			"pid", pkgItem.PId,
-				//			"subtotal", pkgItem.Invoice.Subtotal.Amount,
-				//			"event", event)
-				//		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				//			SetError(future.InternalError, "Unknown Error", errors.New("Package Invoice Invalid")).Send()
-				//		return
-				//	}
-				//
-				//	pkgDiscount, err := decimal.NewFromString(pkgItem.Invoice.Discount.Amount)
-				//	if err != nil {
-				//		app.Globals.Logger.FromContext(ctx).Error("decimal.NewFromString failed, Pkg Discount.Amount invalid",
-				//			"fn", "Process",
-				//			"state", state.Name(),
-				//			"oid", pkgItem.OrderId,
-				//			"pid", pkgItem.PId,
-				//			"pkg discount", pkgItem.Invoice.Discount.Amount,
-				//			"event", event)
-				//		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				//			SetError(future.InternalError, "Unknown Error", errors.New("Package Invoice Invalid")).Send()
-				//		return
-				//	}
-				//
-				//	if rejectedSubtotal < subtotal.IntPart() && rejectedDiscount < pkgDiscount.IntPart() {
-				//		pkgItem.Invoice.Subtotal.Amount = strconv.Itoa(int(subtotal.IntPart() - rejectedSubtotal))
-				//		pkgItem.Invoice.Discount.Amount = strconv.Itoa(int(pkgDiscount.IntPart() - rejectedDiscount))
-				//		app.Globals.Logger.FromContext(ctx).Info("calculate package invoice success",
-				//			"fn", "Process",
-				//			"state", state.Name(),
-				//			"oid", pkgItem.OrderId,
-				//			"pid", pkgItem.PId,
-				//			"action", event.Action().ActionEnum().ActionName(),
-				//			"subtotal", pkgItem.Invoice.Subtotal.Amount,
-				//			"discount", pkgItem.Invoice.Discount.Amount)
-				//
-				//	} else if rejectedSubtotal > subtotal.IntPart() || rejectedDiscount > pkgDiscount.IntPart() {
-				//		app.Globals.Logger.FromContext(ctx).Error("calculate package invoice failed",
-				//			"fn", "Process",
-				//			"state", state.Name(),
-				//			"oid", pkgItem.OrderId,
-				//			"pid", pkgItem.PId,
-				//			"action", event.Action().ActionEnum().ActionName(),
-				//			"subtotal", pkgItem.Invoice.Subtotal.Amount,
-				//			"discount", pkgItem.Invoice.Discount.Amount)
-				//		future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				//			SetError(future.InternalError, "Unknown Error", errors.New("Package Invoice Invalid")).Send()
-				//		return
-				//	}
-				//}
-
 				app.Globals.Logger.FromContext(ctx).Debug("set status of subpackages success",
 					"fn", "Process",
 					"state", state.Name(),
@@ -604,7 +509,6 @@ func (state approvalPendingState) Process(ctx context.Context, iFrame frame.IFra
 					"sids", sids,
 					"action", event.Action().ActionEnum().ActionName())
 
-				//future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).SetData(response).Send()
 				nextActionState.Process(ctx, frame.FactoryOf(iFrame).SetSIds(sids).SetBody(pkgItem).Build())
 			} else {
 				app.Globals.Logger.FromContext(ctx).Error("event action data invalid",

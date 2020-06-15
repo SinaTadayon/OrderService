@@ -263,7 +263,8 @@ func (state paymentPendingState) paymentHandler(ctx context.Context, iFrame fram
 				}
 			}
 
-			_, err := app.Globals.OrderRepository.Save(ctx, *order)
+			state.UpdateOrderUpdateAt(ctx, order)
+			_, err := app.Globals.CQRSRepository.CmdR().OrderCR().Update(ctx, *order)
 			if err != nil {
 				app.Globals.Logger.FromContext(ctx).Error("OrderRepository.Save failed",
 					"fn", "paymentHandler",
@@ -428,7 +429,7 @@ func (state paymentPendingState) actionFailOfPaymentHandler(ctx context.Context,
 }
 
 func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFrame frame.IFrame) {
-	order, err := app.Globals.OrderRepository.FindById(ctx, iFrame.Header().Value(string(frame.HeaderOrderId)).(uint64))
+	order, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, iFrame.Header().Value(string(frame.HeaderOrderId)).(uint64))
 	if err != nil {
 		if err.Code() == repository.InternalErr {
 			app.Globals.Logger.FromContext(ctx).Error("app.Globals.OrderRepository.FindById of payment result failed",
@@ -527,7 +528,7 @@ func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFram
 				}
 			} else {
 
-				app.Globals.Logger.FromContext(ctx).Info("voucher applied in invoice of order success",
+				app.Globals.Logger.FromContext(ctx).Info("VoucherSettlement success",
 					"fn", "paymentResultHandler",
 					"state", state.Name(),
 					"oid", order.OrderId,
@@ -553,13 +554,6 @@ func (state paymentPendingState) paymentResultHandler(ctx context.Context, iFram
 					Extended:  nil,
 				}
 			}
-
-			app.Globals.Logger.FromContext(ctx).Info("VoucherSettlement success",
-				"fn", "paymentResultHandler",
-				"state", state.Name(),
-				"oid", order.OrderId,
-				"voucher Amount", order.Invoice.Voucher.RoundupAppliedPrice.Amount,
-				"voucher Code", order.Invoice.Voucher.Code)
 		} else {
 			app.Globals.Logger.FromContext(ctx).Info("Order Invoice hasn't voucher",
 				"fn", "paymentResultHandler",
@@ -697,7 +691,9 @@ func (state paymentPendingState) eventHandler(ctx context.Context, iFrame frame.
 					"state", state.Name(),
 					"oid", order.OrderId,
 					"event", event)
-				_, err := app.Globals.OrderRepository.Save(ctx, *order)
+
+				state.UpdateOrderUpdateAt(ctx, order)
+				_, err := app.Globals.CQRSRepository.CmdR().OrderCR().Update(ctx, *order)
 				if err != nil {
 					app.Globals.Logger.FromContext(ctx).Error("OrderRepository.Save of update scheduler data failed",
 						"fn", "eventHandler",
@@ -864,7 +860,9 @@ func (state paymentPendingState) eventHandler(ctx context.Context, iFrame frame.
 					"state", state.Name(),
 					"oid", order.OrderId,
 					"result", paymentResult)
-				_, err := app.Globals.OrderRepository.Save(ctx, *order)
+
+				state.UpdateOrderUpdateAt(ctx, order)
+				_, err := app.Globals.CQRSRepository.CmdR().OrderCR().Update(ctx, *order)
 				if err != nil {
 					app.Globals.Logger.FromContext(ctx).Error("OrderRepository.Save of update scheduler data failed",
 						"fn", "eventHandler",

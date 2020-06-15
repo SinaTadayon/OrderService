@@ -1,4 +1,4 @@
-FROM registry.faza.io/ubuntu:bionic
+FROM ubuntu:bionic
 
 # add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
 RUN groupadd -r mongodb && useradd -r -g mongodb mongodb
@@ -16,9 +16,9 @@ RUN set -eux; \
 	rm -rf /var/lib/apt/lists/*
 
 # grab gosu for easy step-down from root (https://github.com/tianon/gosu/releases)
-ENV GOSU_VERSION 1.11
+ENV GOSU_VERSION 1.12
 # grab "js-yaml" for parsing mongod's YAML config files (https://github.com/nodeca/js-yaml/releases)
-ENV JSYAML_VERSION 3.13.0
+ENV JSYAML_VERSION 3.13.1
 
 RUN set -ex; \
 	\
@@ -37,6 +37,8 @@ RUN set -ex; \
 	rm -rf /var/lib/apt/lists/*; \
 	\
 	dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')"; \
+#	wget -O /usr/local/bin/gosu http://195.248.241.154/gosu; \
+#	wget -O /usr/local/bin/gosu.asc http://195.248.241.154/gosu.asc; \
 	wget -O /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch"; \
 	wget -O /usr/local/bin/gosu.asc "https://github.com/tianon/gosu/releases/download/$GOSU_VERSION/gosu-$dpkgArch.asc"; \
 	export GNUPGHOME="$(mktemp -d)"; \
@@ -44,16 +46,18 @@ RUN set -ex; \
 	gpg --batch --verify /usr/local/bin/gosu.asc /usr/local/bin/gosu; \
 	command -v gpgconf && gpgconf --kill all || :; \
 	rm -r "$GNUPGHOME" /usr/local/bin/gosu.asc; \
-	chmod +x /usr/local/bin/gosu; \
-	gosu --version; \
-	gosu nobody true; \
 	\
 	wget -O /js-yaml.js "https://github.com/nodeca/js-yaml/raw/${JSYAML_VERSION}/dist/js-yaml.js"; \
 # TODO some sort of download verification here
 	\
 	apt-mark auto '.*' > /dev/null; \
 	apt-mark manual $savedAptMark > /dev/null; \
-	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false
+	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
+	\
+# smoke test
+	chmod +x /usr/local/bin/gosu; \
+	gosu --version; \
+	gosu nobody true
 
 RUN mkdir /docker-entrypoint-initdb.d
 
@@ -61,7 +65,10 @@ ENV GPG_KEYS E162F504A20CDF15827F718D4B7C549A058F8B6B
 RUN set -ex; \
 	export GNUPGHOME="$(mktemp -d)"; \
 	for key in $GPG_KEYS; do \
-		gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
+	     (gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys "$key" \
+      || gpg --batch --keyserver pgp.mit.edu --recv-keys "$key" \
+      || gpg --batch --keyserver keyserver.pgp.com --recv-keys "$key") \
+#		gpg --batch --keyserver ha.pool.sks-keyservers.net --recv-keys "$key"; \
 	done; \
 	gpg --batch --export $GPG_KEYS > /etc/apt/trusted.gpg.d/mongodb.gpg; \
 	command -v gpgconf && gpgconf --kill all || :; \
@@ -77,8 +84,8 @@ ARG MONGO_REPO=repo.mongodb.org
 ENV MONGO_PACKAGE=${MONGO_PACKAGE} MONGO_REPO=${MONGO_REPO}
 
 ENV MONGO_MAJOR 4.2
-ENV MONGO_VERSION 4.2.2
-# bashbrew-architectures:amd64 s390x
+ENV MONGO_VERSION 4.2.7
+# bashbrew-architectures:amd64 arm64v8 s390x
 RUN echo "deb http://$MONGO_REPO/apt/ubuntu bionic/${MONGO_PACKAGE%-unstable}/$MONGO_MAJOR multiverse" | tee "/etc/apt/sources.list.d/${MONGO_PACKAGE%-unstable}.list"
 
 RUN set -x \

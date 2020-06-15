@@ -29,12 +29,8 @@ func (repo iOrderRepositoryImpl) generateAndSetId(ctx context.Context, order ent
 	order.OrderId = entities.GenerateOrderId()
 	mapItemIds := make(map[int]uint64, 64)
 
-	//order.CreatedAt = time.Now().UTC()
-	//order.UpdatedAt = time.Now().UTC()
 	for i := 0; i < len(order.Packages); i++ {
 		order.Packages[i].OrderId = order.OrderId
-		//order.Packages[i].CreatedAt = time.Now().UTC()
-		//order.Packages[i].UpdatedAt = time.Now().UTC()
 		for j := 0; j < len(order.Packages[i].Subpackages); j++ {
 			for {
 				random := int(entities.GenerateRandomNumber())
@@ -46,8 +42,6 @@ func (repo iOrderRepositoryImpl) generateAndSetId(ctx context.Context, order ent
 				order.Packages[i].Subpackages[j].SId = uint64(sid)
 				order.Packages[i].Subpackages[j].PId = order.Packages[i].PId
 				order.Packages[i].Subpackages[j].OrderId = order.OrderId
-				//order.Packages[i].Subpackages[j].CreatedAt = time.Now().UTC()
-				//order.Packages[i].Subpackages[j].UpdatedAt = time.Now().UTC()
 				break
 			}
 		}
@@ -74,70 +68,90 @@ func (repo iOrderRepositoryImpl) Save(ctx context.Context, order entities.Order)
 			break
 		}
 		return newOrder, nil
-	} else {
-		order.UpdatedAt = time.Now().UTC()
-		currentVersion := order.Version
-		order.Version += 1
-		updateOptions := &options.UpdateOptions{}
-		updateOptions.SetUpsert(true)
-		updateResult, e := repo.mongoAdapter.UpdateOne(repo.database, repo.collection, bson.D{{"orderId", order.OrderId}, {"deletedAt", nil}, {"version", currentVersion}},
-			bson.D{{"$set", order}}, updateOptions)
-		if e != nil {
-			return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(e, "UpdateOne Failed"))
-		}
-
-		if updateResult.MatchedCount != 1 || updateResult.ModifiedCount != 1 {
-			return nil, repository.ErrorFactory(repository.NotFoundErr, "Order Not Found", errors.New("Order Not Found"))
-		}
 	}
 
-	return &order, nil
+	return nil, repository.ErrorFactory(repository.BadRequestErr, "Request Operation Failed", errors.New("OrderId is not zero"))
+
+	//} else {
+	//	order.UpdatedAt = time.Now().UTC()
+	//	currentVersion := order.Version
+	//	order.Version += 1
+	//	updateOptions := &options.UpdateOptions{}
+	//	updateOptions.SetUpsert(true)
+	//	updateResult, e := repo.mongoAdapter.UpdateOne(repo.database, repo.collection, bson.D{{"orderId", order.OrderId}, {"deletedAt", nil}, {"version", currentVersion}},
+	//		bson.D{{"$set", order}}, updateOptions)
+	//	if e != nil {
+	//		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(e, "UpdateOne Failed"))
+	//	}
+	//
+	//	if updateResult.MatchedCount != 1 || updateResult.ModifiedCount != 1 {
+	//		return nil, repository.ErrorFactory(repository.NotFoundErr, "Order Not Found", errors.New("Order Not Found"))
+	//	}
+	//}
+	//return &order, nil
 }
 
 func (repo iOrderRepositoryImpl) SaveAll(ctx context.Context, orders []entities.Order) ([]*entities.Order, repository.IRepoError) {
 	panic("implementation required")
 }
 
-func (repo iOrderRepositoryImpl) UpdateStatus(ctx context.Context, order *entities.Order) repository.IRepoError {
-	order.UpdatedAt = time.Now().UTC()
-	currentVersion := order.Version
-	order.Version += 1
-	opt := options.FindOneAndUpdate()
-	opt.SetUpsert(false)
-	singleResult := repo.mongoAdapter.GetConn().Database(repo.database).Collection(repo.collection).FindOneAndUpdate(ctx,
-		bson.D{
-			{"orderId", order.OrderId},
-			{"version", currentVersion},
-		},
-		bson.D{{"$set", bson.D{{"version", order.Version}, {"status", order.Status}, {"updatedAt", order.UpdatedAt}}}}, opt)
-	if singleResult.Err() != nil {
-		if repo.mongoAdapter.NoDocument(singleResult.Err()) {
-			return repository.ErrorFactory(repository.NotFoundErr, "Package Not Found", repository.ErrorUpdateFailed)
-		}
-		return repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(singleResult.Err(), ""))
+func (repo iOrderRepositoryImpl) Update(ctx context.Context, order entities.Order) (*entities.Order, repository.IRepoError) {
+
+	if order.OrderId == 0 {
+		return nil, repository.ErrorFactory(repository.BadRequestErr, "Request Operation Failed", errors.New("OrderId is zero"))
 	}
 
-	return nil
+	//order.UpdatedAt = time.Now().UTC()
+	currentVersion := order.Version
+	order.Version += 1
+	updateOptions := &options.UpdateOptions{}
+	updateOptions.SetUpsert(true)
+	updateResult, e := repo.mongoAdapter.UpdateOne(repo.database, repo.collection,
+		bson.D{{"orderId", order.OrderId},
+			{"deletedAt", nil},
+			{"version", currentVersion}},
+		bson.D{{"$set", order}}, updateOptions)
+	if e != nil {
+		return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(e, "UpdateOne Failed"))
+	}
+
+	if updateResult.MatchedCount != 1 || updateResult.ModifiedCount != 1 {
+		return nil, repository.ErrorFactory(repository.NotFoundErr, "Order Not Found", errors.New("Order Not Found"))
+	}
+
+	return &order, nil
 }
+
+func (repo iOrderRepositoryImpl) UpdateAll(ctx context.Context, orders []entities.Order) ([]*entities.Order, repository.IRepoError) {
+	panic("implementation required")
+}
+
+//func (repo iOrderRepositoryImpl) UpdateStatus(ctx context.Context, order *entities.Order) repository.IRepoError {
+//	order.UpdatedAt = time.Now().UTC()
+//	currentVersion := order.Version
+//	order.Version += 1
+//	opt := options.FindOneAndUpdate()
+//	opt.SetUpsert(false)
+//	singleResult := repo.mongoAdapter.GetConn().Database(repo.database).Collection(repo.collection).FindOneAndUpdate(ctx,
+//		bson.D{
+//			{"orderId", order.OrderId},
+//			{"version", currentVersion},
+//		},
+//		bson.D{{"$set", bson.D{{"version", order.Version}, {"status", order.Status}, {"updatedAt", order.UpdatedAt}}}}, opt)
+//	if singleResult.Err() != nil {
+//		if repo.mongoAdapter.NoDocument(singleResult.Err()) {
+//			return repository.ErrorFactory(repository.NotFoundErr, "Package Not Found", repository.ErrorUpdateFailed)
+//		}
+//		return repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(singleResult.Err(), ""))
+//	}
+//
+//	return nil
+//}
 
 func (repo iOrderRepositoryImpl) Insert(ctx context.Context, order entities.Order) (*entities.Order, repository.IRepoError) {
 
 	if order.OrderId == 0 {
-		var newOrder *entities.Order
-		for {
-			newOrder = repo.generateAndSetId(ctx, order)
-			var insertOneResult, err = repo.mongoAdapter.InsertOne(repo.database, repo.collection, newOrder)
-			if err != nil {
-				if repo.mongoAdapter.IsDupError(err) {
-					continue
-				} else {
-					return nil, repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(err, "Insert Order Failed"))
-				}
-			}
-			newOrder.ID = insertOneResult.InsertedID.(primitive.ObjectID)
-			break
-		}
-		return newOrder, nil
+		return repo.Save(ctx, order)
 	} else {
 		var insertOneResult, err = repo.mongoAdapter.InsertOne(repo.database, repo.collection, &order)
 		if err != nil {
@@ -635,7 +649,7 @@ func (repo iOrderRepositoryImpl) Delete(ctx context.Context, order entities.Orde
 	return repo.DeleteById(ctx, order.OrderId)
 }
 
-func (repo iOrderRepositoryImpl) DeleteAllWithOrders(ctx context.Context, orders []entities.Order) repository.IRepoError {
+func (repo iOrderRepositoryImpl) DeleteAllWithOrders(ctx context.Context, orders []*entities.Order) repository.IRepoError {
 	panic("implementation required")
 }
 
@@ -662,11 +676,11 @@ func (repo iOrderRepositoryImpl) RemoveById(ctx context.Context, orderId uint64)
 	return nil
 }
 
-func (repo iOrderRepositoryImpl) Remove(ctx context.Context, order entities.Order) repository.IRepoError {
+func (repo iOrderRepositoryImpl) Remove(ctx context.Context, order *entities.Order) repository.IRepoError {
 	return repo.RemoveById(ctx, order.OrderId)
 }
 
-func (repo iOrderRepositoryImpl) RemoveAllWithOrders(ctx context.Context, orders []entities.Order) repository.IRepoError {
+func (repo iOrderRepositoryImpl) RemoveAllWithOrders(ctx context.Context, orders []*entities.Order) repository.IRepoError {
 	panic("implementation required")
 }
 

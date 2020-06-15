@@ -55,7 +55,7 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 					return bson.D{{"deletedAt", nil}, {filters[0].(string), filters[1]}},
 						sortName, sortDirect
 				}
-				orderList, totalCount, err = app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+				orderList, totalCount, err = app.Globals.CQRSRepository.QueryR().OrderQR().FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
 				if err != nil {
 					app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "operatorOrderListHandler", "oid", oid, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
 					return nil, status.Error(codes.Code(err.Code()), err.Message())
@@ -64,7 +64,7 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 				orderFilter := func() interface{} {
 					return bson.D{{"deletedAt", nil}, {filters[0].(string), filters[1]}}
 				}
-				orderList, totalCount, err = app.Globals.OrderRepository.FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
+				orderList, totalCount, err = app.Globals.CQRSRepository.QueryR().OrderQR().FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
 				if err != nil {
 					app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPage failed", "fn", "operatorOrderListHandler", "oid", oid, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
 					return nil, status.Error(codes.Code(err.Code()), err.Message())
@@ -75,7 +75,7 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 				orderFilter := func() (interface{}, string, int) {
 					return bson.D{{"deletedAt", nil}}, sortName, sortDirect
 				}
-				orderList, totalCount, err = app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+				orderList, totalCount, err = app.Globals.CQRSRepository.QueryR().OrderQR().FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
 				if err != nil {
 					app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "operatorOrderListHandler", "oid", oid, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
 					return nil, status.Error(codes.Code(err.Code()), err.Message())
@@ -84,7 +84,7 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 				orderFilter := func() interface{} {
 					return bson.D{{"deletedAt", nil}}
 				}
-				orderList, totalCount, err = app.Globals.OrderRepository.FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
+				orderList, totalCount, err = app.Globals.CQRSRepository.QueryR().OrderQR().FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
 				if err != nil {
 					app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPage failed", "fn", "operatorOrderListHandler", "oid", oid, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
 					return nil, status.Error(codes.Code(err.Code()), err.Message())
@@ -256,7 +256,7 @@ func (server *Server) operatorOrderListHandler(ctx context.Context, oid uint64, 
 
 func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64) (*pb.MessageResponse, error) {
 
-	order, err := app.Globals.OrderRepository.FindById(ctx, oid)
+	order, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, oid)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("FindById failed",
 			"fn", "operatorOrderDetailHandler",
@@ -413,8 +413,8 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 							action.Name == operator_action.Cancel.String() ||
 							action.Name == buyer_action.SubmitReturnRequest.String() {
 							state.Reason = &pb.Reason{
-								Key:                  action.Reasons[0].Key,
-								Description:          action.Reasons[0].Description,
+								Key:         action.Reasons[0].Key,
+								Description: action.Reasons[0].Description,
 							}
 						}
 					}
@@ -595,7 +595,7 @@ func (server *Server) operatorOrderDetailHandler(ctx context.Context, oid uint64
 
 func (server *Server) operatorOrderInvoiceDetailHandler(ctx context.Context, oid uint64) (*pb.MessageResponse, error) {
 
-	order, err := app.Globals.OrderRepository.FindById(ctx, oid)
+	order, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, oid)
 
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("FindById failed",
@@ -1045,7 +1045,7 @@ func (server *Server) operatorOrderInvoiceDetailHandler(ctx context.Context, oid
 
 func (server *Server) operatorGetOrderByIdHandler(ctx context.Context, oid uint64, filter FilterValue) (*pb.MessageResponse, error) {
 
-	findOrder, err := app.Globals.OrderRepository.FindById(ctx, oid)
+	findOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, oid)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("OrderRepository.FindById",
 			"fn", "operatorGetOrderByIdHandler",
@@ -1222,7 +1222,7 @@ func (server *Server) operatorGetOrdersByMobileHandler(ctx context.Context, buye
 				return bson.D{{"deletedAt", nil}, {"buyerInfo.mobile", bson.D{{"$regex", buyerMobile}}}, {filters[0].(string), filters[1]}},
 					sortName, sortDirect
 			}
-			orderList, totalCount, err = app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+			orderList, totalCount, err = app.Globals.CQRSRepository.QueryR().OrderQR().FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
 			if err != nil {
 				app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "operatorGetOrdersByMobileHandler", "buyerMobile", buyerMobile, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
 				return nil, status.Error(codes.Code(err.Code()), err.Message())
@@ -1231,7 +1231,7 @@ func (server *Server) operatorGetOrdersByMobileHandler(ctx context.Context, buye
 			orderFilter := func() interface{} {
 				return bson.D{{"deletedAt", nil}, {"buyerInfo.mobile", bson.D{{"$regex", buyerMobile}}}, {filters[0].(string), filters[1]}}
 			}
-			orderList, totalCount, err = app.Globals.OrderRepository.FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
+			orderList, totalCount, err = app.Globals.CQRSRepository.QueryR().OrderQR().FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
 			if err != nil {
 				app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPage failed", "fn", "operatorGetOrdersByMobileHandler", "buyerMobile", buyerMobile, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
 				return nil, status.Error(codes.Code(err.Code()), err.Message())
@@ -1242,7 +1242,7 @@ func (server *Server) operatorGetOrdersByMobileHandler(ctx context.Context, buye
 			orderFilter := func() (interface{}, string, int) {
 				return bson.D{{"deletedAt", nil}, {"buyerInfo.mobile", bson.D{{"$regex", buyerMobile}}}}, sortName, sortDirect
 			}
-			orderList, totalCount, err = app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+			orderList, totalCount, err = app.Globals.CQRSRepository.QueryR().OrderQR().FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
 			if err != nil {
 				app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "operatorGetOrdersByMobileHandler", "buyerMobile", buyerMobile, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
 				return nil, status.Error(codes.Code(err.Code()), err.Message())
@@ -1251,7 +1251,7 @@ func (server *Server) operatorGetOrdersByMobileHandler(ctx context.Context, buye
 			orderFilter := func() interface{} {
 				return bson.D{{"deletedAt", nil}, {"buyerInfo.mobile", bson.D{{"$regex", buyerMobile}}}}
 			}
-			orderList, totalCount, err = app.Globals.OrderRepository.FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
+			orderList, totalCount, err = app.Globals.CQRSRepository.QueryR().OrderQR().FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
 			if err != nil {
 				app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPage failed", "fn", "operatorGetOrdersByMobileHandler", "buyerMobile", buyerMobile, "filterValue", filter, "page", page, "perPage", perPage, "error", err)
 				return nil, status.Error(codes.Code(err.Code()), err.Message())

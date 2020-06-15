@@ -162,7 +162,7 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 		orderFilter := func() (interface{}, string, int) {
 			return buyerFilter, sortName, sortDirect
 		}
-		orderList, total, err = app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+		orderList, total, err = app.Globals.CQRSRepository.QueryR().OrderQR().FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
 		if err != nil {
 			app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "buyerOrderDetailListHandler", "oid", oid, "uid", userId, "page", page, "perPage", perPage, "error", err)
 			return nil, status.Error(codes.Code(err.Code()), err.Message())
@@ -171,7 +171,7 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 		orderFilter := func() interface{} {
 			return buyerFilter
 		}
-		orderList, total, err = app.Globals.OrderRepository.FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
+		orderList, total, err = app.Globals.CQRSRepository.QueryR().OrderQR().FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
 		if err != nil {
 			app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPage failed", "fn", "buyerOrderDetailListHandler", "oid", oid, "uid", userId, "page", page, "perPage", perPage, "error", err)
 			return nil, status.Error(codes.Code(err.Code()), err.Message())
@@ -665,7 +665,7 @@ func (server *Server) buyerOrderDetailListHandler(ctx context.Context, oid, user
 
 func (server *Server) buyerGetOrderDetailByIdHandler(ctx context.Context, oid uint64) (*pb.MessageResponse, error) {
 
-	order, err := app.Globals.OrderRepository.FindById(ctx, oid)
+	order, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, oid)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("FindById failed", "fn", "buyerGetOrderDetailByIdHandler", "oid", oid, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
@@ -960,13 +960,13 @@ func (server *Server) buyerAllOrderReportsHandler(ctx context.Context, userId ui
 		return bson.M{"buyerInfo.buyerId": userId, "deletedAt": nil, "$or": server.buyerGeneratePipelineFilter(ctx, DefaultBuyerOrderDetailListFilter)[1]}
 	}
 
-	returnOrdersCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnFilter)
+	returnOrdersCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnFilter failed", "fn", "buyerAllOrderReportsHandler", "uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	OrdersCount, err := app.Globals.OrderRepository.CountWithFilter(ctx, orderFilter)
+	OrdersCount, err := app.Globals.CQRSRepository.QueryR().OrderQR().CountWithFilter(ctx, orderFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for orderFilter failed", "fn", "buyerAllOrderReportsHandler", "uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
@@ -1069,31 +1069,31 @@ func (server *Server) buyerReturnOrderReportsHandler(ctx context.Context, userId
 		}
 	}
 
-	returnRequestPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnRequestPendingFilter)
+	returnRequestPendingCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnRequestPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnRequestPendingFilter failed", "fn", "buyerReturnOrderReportsHandler", "uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnShipmentPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnShipmentPendingFilter)
+	returnShipmentPendingCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnShipmentPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnShipmentPendingFilter failed", "fn", "buyerReturnOrderReportsHandler", "uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnShippedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnShippedFilter)
+	returnShippedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnShippedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnShippedFilter failed", "fn", "buyerReturnOrderReportsHandler", "uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnDeliveredCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveredFilter)
+	returnDeliveredCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnDeliveredFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnDeliveredFilter failed", "fn", "buyerReturnOrderReportsHandler", "uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnDeliveryFailedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveryFailedFilter)
+	returnDeliveryFailedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnDeliveryFailedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnDeliveryFailedFilter failed", "fn", "buyerReturnOrderReportsHandler", "uid", userId, "error", err)
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
@@ -1157,7 +1157,7 @@ func (server *Server) buyerAllReturnOrderItemsHandler(ctx context.Context, userI
 			return returnFilter, sortName, sortDirect
 		}
 
-		orderList, total, err = app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+		orderList, total, err = app.Globals.CQRSRepository.QueryR().OrderQR().FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
 		if err != nil {
 			app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "buyerAllReturnOrderItemsHandler", "uid", userId, "page", page, "perPage", perPage, "error", err)
 			return nil, status.Error(codes.Code(err.Code()), err.Message())
@@ -1167,7 +1167,7 @@ func (server *Server) buyerAllReturnOrderItemsHandler(ctx context.Context, userI
 			return returnFilter
 		}
 
-		orderList, total, err = app.Globals.OrderRepository.FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
+		orderList, total, err = app.Globals.CQRSRepository.QueryR().OrderQR().FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
 		if err != nil {
 			app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPage failed", "fn", "buyerAllReturnOrderItemsHandler", "uid", userId, "page", page, "perPage", perPage, "error", err)
 			return nil, status.Error(codes.Code(err.Code()), err.Message())
@@ -1366,8 +1366,8 @@ func (server *Server) buyerAllReturnOrderItemsHandler(ctx context.Context, userI
 
 						if orderList[i].Packages[j].Subpackages[z].Items[t].Reasons != nil {
 							returnOrderItemDetail.Item.Reason = &pb.Reason{
-								Key:                  orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0].Key,
-								Description:          orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0].Description,
+								Key:         orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0].Key,
+								Description: orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0].Description,
 							}
 						}
 
@@ -1796,7 +1796,7 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 			return returnFilter, sortName, sortDirect
 		}
 
-		orderList, total, err = app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
+		orderList, total, err = app.Globals.CQRSRepository.QueryR().OrderQR().FindByFilterWithPageAndSort(ctx, orderFilter, int64(page), int64(perPage))
 		if err != nil {
 			app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPageAndSort failed", "fn", "buyerReturnOrderDetailListHandler", "uid", userId, "filter", filter, "page", page, "perPage", perPage, "error", err)
 			return nil, status.Error(codes.Code(err.Code()), err.Message())
@@ -1806,7 +1806,7 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 			return returnFilter
 		}
 
-		orderList, total, err = app.Globals.OrderRepository.FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
+		orderList, total, err = app.Globals.CQRSRepository.QueryR().OrderQR().FindByFilterWithPage(ctx, orderFilter, int64(page), int64(perPage))
 		if err != nil {
 			app.Globals.Logger.FromContext(ctx).Error("FindByFilterWithPage failed", "fn", "buyerReturnOrderDetailListHandler", "uid", userId, "filter", filter, "page", page, "perPage", perPage, "error", err)
 			return nil, status.Error(codes.Code(err.Code()), err.Message())
@@ -1961,8 +1961,8 @@ func (server *Server) buyerReturnOrderDetailListHandler(ctx context.Context, use
 
 					if orderList[i].Packages[j].Subpackages[z].Items[t].Reasons != nil {
 						returnItemPackageDetail.Reason = &pb.Reason{
-							Key:                  orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0].Key,
-							Description:          orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0].Description,
+							Key:         orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0].Key,
+							Description: orderList[i].Packages[j].Subpackages[z].Items[t].Reasons[0].Description,
 						}
 					}
 

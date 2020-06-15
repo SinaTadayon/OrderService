@@ -47,7 +47,7 @@ func (repo iSubPkgRepositoryImpl) findAndUpdate(ctx context.Context, subPkg *ent
 
 	if singleResult.Err() != nil {
 		if repo.mongoAdapter.NoDocument(singleResult.Err()) {
-			return repository.ErrorFactory(repository.NotFoundErr, "Package Not Found", repository.ErrorUpdateFailed)
+			return repository.ErrorFactory(repository.NotFoundErr, "SubPackage Not Found", repository.ErrorUpdateFailed)
 		}
 		return repository.ErrorFactory(repository.InternalErr, "Request Operation Failed", errors.Wrap(singleResult.Err(), ""))
 	}

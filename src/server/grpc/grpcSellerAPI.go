@@ -55,7 +55,7 @@ func (server *Server) sellerGeneratePipelineFilter(ctx context.Context, filter F
 func (server *Server) sellerGetOrderByIdHandler(ctx context.Context, oid uint64, pid uint64, filter FilterValue) (*pb.MessageResponse, error) {
 	genFilter := server.sellerGeneratePipelineFilter(ctx, filter)
 	filters := make(bson.M, 4)
-	filters["packages.orderId"] = oid
+	filters["orderId"] = oid
 	filters["packages.pid"] = pid
 	filters["packages.deletedAt"] = nil
 	filters[genFilter[0].(string)] = genFilter[1]
@@ -69,7 +69,7 @@ func (server *Server) sellerGetOrderByIdHandler(ctx context.Context, oid uint64,
 		}
 	}
 
-	pkgList, err := app.Globals.PkgItemRepository.FindByFilter(ctx, findFilter)
+	pkgList, err := app.Globals.CQRSRepository.QueryR().PkgQR().FindByFilter(ctx, findFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("FindByFilter failed",
 			"fn", "sellerGetOrderByIdHandler",
@@ -172,7 +172,7 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, oid, pid uint6
 		}
 	}
 
-	var totalCount, err = app.Globals.PkgItemRepository.CountWithFilter(ctx, countFilter)
+	var totalCount, err = app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, countFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter failed",
 			"fn", "sellerOrderListHandler",
@@ -271,7 +271,7 @@ func (server *Server) sellerOrderListHandler(ctx context.Context, oid, pid uint6
 
 	}
 
-	pkgList, err := app.Globals.PkgItemRepository.FindByFilter(ctx, pkgFilter)
+	pkgList, err := app.Globals.CQRSRepository.QueryR().PkgQR().FindByFilter(ctx, pkgFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("FindByFilter failed",
 			"oid", oid,
@@ -381,7 +381,7 @@ func (server *Server) sellerAllOrdersHandler(ctx context.Context, pid uint64, pa
 		}
 	}
 
-	var totalCount, err = app.Globals.PkgItemRepository.CountWithFilter(ctx, countFilter)
+	var totalCount, err = app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, countFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter failed",
 			"fn", "sellerAllOrdersHandler",
@@ -470,7 +470,7 @@ func (server *Server) sellerAllOrdersHandler(ctx context.Context, pid uint64, pa
 		}
 	}
 
-	pkgList, err := app.Globals.PkgItemRepository.FindByFilter(ctx, pkgFilter)
+	pkgList, err := app.Globals.CQRSRepository.QueryR().PkgQR().FindByFilter(ctx, pkgFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("FindByFilter failed",
 			"fn", "sellerAllOrdersHandler",
@@ -538,7 +538,7 @@ func (server *Server) sellerAllOrdersHandler(ctx context.Context, pid uint64, pa
 
 func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, oid uint64, filter FilterValue) (*pb.MessageResponse, error) {
 
-	pkgItem, buyerId, err := app.Globals.PkgItemRepository.FindPkgItmBuyinfById(ctx, oid, pid)
+	pkgItem, buyerId, err := app.Globals.CQRSRepository.QueryR().PkgQR().FindPkgItmBuyinfById(ctx, oid, pid)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("PkgItemRepository.FindById failed",
 			"fn", "sellerOrderDetailHandler",
@@ -636,7 +636,7 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, oid uin
 							rs.HasDescription = false
 						}
 
-						itemDetail.ReturnReason = rs;
+						itemDetail.ReturnReason = rs
 					}
 				}
 
@@ -833,7 +833,7 @@ func (server *Server) sellerOrderDetailHandler(ctx context.Context, pid, oid uin
 									rs.HasDescription = false
 								}
 
-								itemDetail.ReturnReason = rs;
+								itemDetail.ReturnReason = rs
 							}
 						}
 
@@ -1039,7 +1039,7 @@ func (server *Server) sellerReturnOrderListHandler(ctx context.Context, pid uint
 		}
 	}
 
-	var totalCount, err = app.Globals.PkgItemRepository.CountWithFilter(ctx, countFilter)
+	var totalCount, err = app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, countFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter failed",
 			"fn", "sellerReturnOrderListHandler",
@@ -1128,7 +1128,7 @@ func (server *Server) sellerReturnOrderListHandler(ctx context.Context, pid uint
 		}
 	}
 
-	pkgList, err := app.Globals.PkgItemRepository.FindByFilter(ctx, pkgFilter)
+	pkgList, err := app.Globals.CQRSRepository.QueryR().PkgQR().FindByFilter(ctx, pkgFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("FindByFilter failed",
 			"fn", "sellerReturnOrderListHandler",
@@ -1231,7 +1231,7 @@ func (server *Server) sellerReturnOrderListHandler(ctx context.Context, pid uint
 }
 
 func (server *Server) sellerReturnOrderDetailHandler(ctx context.Context, pid, oid uint64, filter FilterValue) (*pb.MessageResponse, error) {
-	pkgItem, buyerId, err := app.Globals.PkgItemRepository.FindPkgItmBuyinfById(ctx, oid, pid)
+	pkgItem, buyerId, err := app.Globals.CQRSRepository.QueryR().PkgQR().FindPkgItmBuyinfById(ctx, oid, pid)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("PkgItemRepository.FindById failed",
 			"fn", "sellerReturnOrderDetailHandler",
@@ -1311,7 +1311,7 @@ func (server *Server) sellerReturnOrderDetailHandler(ctx context.Context, pid, o
 								rs.HasDescription = false
 							}
 
-							item.ReturnReason = rs;
+							item.ReturnReason = rs
 						}
 					}
 
@@ -1541,7 +1541,7 @@ func (server *Server) sellerOrderDashboardReportsHandler(ctx context.Context, us
 		}
 	}
 
-	approvalPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, approvalPendingFilter)
+	approvalPendingCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, approvalPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for approvalPendingFilter failed",
 			"fn", "sellerOrderDashboardReportsHandler",
@@ -1549,7 +1549,7 @@ func (server *Server) sellerOrderDashboardReportsHandler(ctx context.Context, us
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	shipmentPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shipmentPendingFilter)
+	shipmentPendingCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, shipmentPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for shipmentPendingFilter failed",
 			"fn", "sellerOrderDashboardReportsHandler",
@@ -1557,7 +1557,7 @@ func (server *Server) sellerOrderDashboardReportsHandler(ctx context.Context, us
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	shipmentDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shipmentDelayedFilter)
+	shipmentDelayedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, shipmentDelayedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for shipmentDelayedFilter failed",
 			"fn", "sellerOrderDashboardReportsHandler",
@@ -1565,7 +1565,7 @@ func (server *Server) sellerOrderDashboardReportsHandler(ctx context.Context, us
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnRequestPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnRequestPendingFilter)
+	returnRequestPendingCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnRequestPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnRequestPendingFilter failed",
 			"fn", "sellerOrderDashboardReportsHandler",
@@ -1634,7 +1634,7 @@ func (server *Server) sellerOrderShipmentReportsHandler(ctx context.Context, use
 		}
 	}
 
-	shipmentPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shipmentPendingFilter)
+	shipmentPendingCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, shipmentPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for shipmentPendingFilter failed",
 			"fn", "sellerOrderShipmentReportsHandler",
@@ -1642,7 +1642,7 @@ func (server *Server) sellerOrderShipmentReportsHandler(ctx context.Context, use
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	shipmentDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shipmentDelayedFilter)
+	shipmentDelayedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, shipmentDelayedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for shipmentDelayedFilter failed",
 			"fn", "sellerOrderShipmentReportsHandler",
@@ -1650,7 +1650,7 @@ func (server *Server) sellerOrderShipmentReportsHandler(ctx context.Context, use
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	shippedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shippedFilter)
+	shippedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, shippedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for shippedFilter failed",
 			"fn", "sellerOrderShipmentReportsHandler",
@@ -1775,7 +1775,7 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 		}
 	}
 
-	returnRequestPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnRequestPendingFilter)
+	returnRequestPendingCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnRequestPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnRequestPendingFilter failed",
 			"fn", "sellerOrderReturnReportsHandler",
@@ -1783,7 +1783,7 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnShipmentPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnShipmentPendingFilter)
+	returnShipmentPendingCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnShipmentPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnShipmentPendingFilter failed",
 			"fn", "sellerOrderReturnReportsHandler",
@@ -1791,7 +1791,7 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnShippedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnShippedFilter)
+	returnShippedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnShippedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnShippedFilter failed",
 			"fn", "sellerOrderReturnReportsHandler",
@@ -1799,7 +1799,7 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnDeliveredCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveredFilter)
+	returnDeliveredCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnDeliveredFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnDeliveredFilter failed",
 			"fn", "sellerOrderReturnReportsHandler",
@@ -1807,7 +1807,7 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnDeliveryFailedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveryFailedFilter)
+	returnDeliveryFailedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnDeliveryFailedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnDeliveryFailedFilter failed",
 			"fn", "sellerOrderReturnReportsHandler",
@@ -1815,7 +1815,7 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnRequestRejectedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnRequestRejectedFilter)
+	returnRequestRejectedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnRequestRejectedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnRequestRejectedFilter failed",
 			"fn", "sellerOrderReturnReportsHandler",
@@ -1823,7 +1823,7 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnDeliveryPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveryPendingFilter)
+	returnDeliveryPendingCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnDeliveryPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnDeliveryPendingFilter failed",
 			"fn", "sellerOrderReturnReportsHandler",
@@ -1831,7 +1831,7 @@ func (server *Server) sellerOrderReturnReportsHandler(ctx context.Context, userI
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnDeliveryDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveryDelayedFilter)
+	returnDeliveryDelayedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnDeliveryDelayedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnDeliveryDelayedFilter failed",
 			"fn", "sellerOrderReturnReportsHandler",
@@ -1917,7 +1917,7 @@ func (server *Server) sellerOrderDeliveredReportsHandler(ctx context.Context, us
 		}
 	}
 
-	deliveryPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveryPendingFilter)
+	deliveryPendingCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, deliveryPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for deliveryPendingFilter failed",
 			"fn", "sellerOrderDeliveredReportsHandler",
@@ -1925,7 +1925,7 @@ func (server *Server) sellerOrderDeliveredReportsHandler(ctx context.Context, us
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	deliveryDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveryDelayedFilter)
+	deliveryDelayedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, deliveryDelayedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for deliveryDelayedFilter failed",
 			"fn", "sellerOrderDeliveredReportsHandler",
@@ -1933,7 +1933,7 @@ func (server *Server) sellerOrderDeliveredReportsHandler(ctx context.Context, us
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	deliveredCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveredFilter)
+	deliveredCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, deliveredFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for deliveredFilter failed",
 			"fn", "sellerOrderDeliveredReportsHandler",
@@ -1941,7 +1941,7 @@ func (server *Server) sellerOrderDeliveredReportsHandler(ctx context.Context, us
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	deliveryFailedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveryFailedFilter)
+	deliveryFailedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, deliveryFailedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for deliveryFailedFilter failed",
 			"fn", "sellerOrderDeliveredReportsHandler",
@@ -2001,7 +2001,7 @@ func (server *Server) sellerOrderCancelReportsHandler(ctx context.Context, userI
 		}
 	}
 
-	cancelByBuyerCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, cancelByBuyerFilter)
+	cancelByBuyerCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, cancelByBuyerFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for cancelByBuyerFilter failed",
 			"fn", "sellerOrderCancelReportsHandler",
@@ -2009,7 +2009,7 @@ func (server *Server) sellerOrderCancelReportsHandler(ctx context.Context, userI
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	cancelBySellerCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, cancelBySellerFilter)
+	cancelBySellerCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, cancelBySellerFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for cancelBySellerFilter failed",
 			"fn", "sellerOrderCancelReportsHandler",
@@ -2244,7 +2244,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		}
 	}
 
-	approvalPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, approvalPendingFilter)
+	approvalPendingCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, approvalPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for cancelByBuyerFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2252,7 +2252,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	shipmentPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shipmentPendingFilter)
+	shipmentPendingCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, shipmentPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for shipmentPendingFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2260,7 +2260,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	shipmentDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shipmentDelayedFilter)
+	shipmentDelayedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, shipmentDelayedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for shipmentDelayedFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2268,7 +2268,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	shippedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, shippedFilter)
+	shippedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, shippedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for shippedFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2276,7 +2276,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnRequestPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnRequestPendingFilter)
+	returnRequestPendingCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnRequestPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnRequestPendingFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2284,7 +2284,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnShipmentPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnShipmentPendingFilter)
+	returnShipmentPendingCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnShipmentPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnShipmentPendingFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2292,7 +2292,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnShippedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnShippedFilter)
+	returnShippedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnShippedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnShippedFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2300,7 +2300,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnDeliveredCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveredFilter)
+	returnDeliveredCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnDeliveredFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnDeliveredFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2308,7 +2308,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnDeliveryFailedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveryFailedFilter)
+	returnDeliveryFailedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnDeliveryFailedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnDeliveryFailedFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2316,7 +2316,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnRequestRejectedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnRequestRejectedFilter)
+	returnRequestRejectedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnRequestRejectedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnRequestRejectedFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2324,7 +2324,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnDeliveryPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveryPendingFilter)
+	returnDeliveryPendingCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnDeliveryPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnDeliveryPendingFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2332,7 +2332,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	returnDeliveryDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, returnDeliveryDelayedFilter)
+	returnDeliveryDelayedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, returnDeliveryDelayedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for returnDeliveryDelayedFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2340,7 +2340,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	deliveryPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveryPendingFilter)
+	deliveryPendingCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, deliveryPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for deliveryPendingFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2348,7 +2348,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	deliveryDelayedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveryDelayedFilter)
+	deliveryDelayedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, deliveryDelayedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for deliveryDelayedFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2356,7 +2356,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	deliveredCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveredFilter)
+	deliveredCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, deliveredFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for deliveredFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2364,7 +2364,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	deliveryFailedCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, deliveryFailedFilter)
+	deliveryFailedCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, deliveryFailedFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for deliveryFailedFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2372,7 +2372,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	canceledByBuyerCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, cancelByBuyerFilter)
+	canceledByBuyerCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, cancelByBuyerFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for cancelByBuyerFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2380,7 +2380,7 @@ func (server *Server) sellerAllOrderReportsHandler(ctx context.Context, userId u
 		return nil, status.Error(codes.Code(err.Code()), err.Message())
 	}
 
-	canceledBySellerCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, cancelBySellerFilter)
+	canceledBySellerCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, cancelBySellerFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for cancelBySellerFilter failed",
 			"fn", "sellerAllOrderReportsHandler",
@@ -2452,7 +2452,7 @@ func (server *Server) sellerApprovalPendingOrderReportsHandler(ctx context.Conte
 		}
 	}
 
-	approvalPendingCount, err := app.Globals.PkgItemRepository.CountWithFilter(ctx, approvalPendingFilter)
+	approvalPendingCount, err := app.Globals.CQRSRepository.QueryR().PkgQR().CountWithFilter(ctx, approvalPendingFilter)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("CountWithFilter for cancelByBuyerFilter failed",
 			"fn", "sellerApprovalPendingOrderReportsHandler",

@@ -10,20 +10,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gitlab.faza.io/go-framework/logger"
-	"gitlab.faza.io/go-framework/mongoadapter"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/configs"
 	"gitlab.faza.io/order-project/order-service/domain"
 	"gitlab.faza.io/order-project/order-service/domain/converter"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
-	order_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/order"
-	pkg_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/pkg"
-	subpkg_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/subpackage"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository/cqrs"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	user_service "gitlab.faza.io/order-project/order-service/infrastructure/services/user"
+	worker_pool "gitlab.faza.io/order-project/order-service/infrastructure/workerPool"
 	grpc_server "gitlab.faza.io/order-project/order-service/server/grpc"
 	pb "gitlab.faza.io/protos/order"
 	stockProto "gitlab.faza.io/protos/stock-proto.git"
@@ -43,6 +41,7 @@ var schedulerService *SchedulerService
 func TestMain(m *testing.M) {
 	var err error
 	var path string
+	ctx := context.Background()
 	if os.Getenv("APP_MODE") == "dev" {
 		path = "../../../testdata/.env"
 	} else {
@@ -62,31 +61,36 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	// store in mongo
-	mongoConf := &mongoadapter.MongoConfig{
-		// Host:     app.Globals.Config.Mongo.Host,
-		// Port:     app.Globals.Config.Mongo.Port,
-		ConnectUri: app.Globals.Config.Mongo.Uri,
-		Username:   app.Globals.Config.Mongo.User,
-		//Password:     App.app.Globals.Config.Mongo.Pass,
-		ConnTimeout:            time.Duration(app.Globals.Config.Mongo.ConnectionTimeout) * time.Second,
-		ReadTimeout:            time.Duration(app.Globals.Config.Mongo.ReadTimeout) * time.Second,
-		WriteTimeout:           time.Duration(app.Globals.Config.Mongo.WriteTimeout) * time.Second,
-		MaxConnIdleTime:        time.Duration(app.Globals.Config.Mongo.MaxConnIdleTime) * time.Second,
-		HeartbeatInterval:      time.Duration(app.Globals.Config.Mongo.HeartBeatInterval) * time.Second,
-		ServerSelectionTimeout: time.Duration(app.Globals.Config.Mongo.ServerSelectionTimeout) * time.Second,
-		RetryConnect:           uint64(app.Globals.Config.Mongo.RetryConnect),
-		MaxPoolSize:            uint64(app.Globals.Config.Mongo.MaxPoolSize),
-		MinPoolSize:            uint64(app.Globals.Config.Mongo.MinPoolSize),
-		WriteConcernW:          app.Globals.Config.Mongo.WriteConcernW,
-		WriteConcernJ:          app.Globals.Config.Mongo.WriteConcernJ,
-		RetryWrites:            app.Globals.Config.Mongo.RetryWrite,
+	app.Globals.WorkerPool, err = worker_pool.Factory()
+	if err != nil {
+		app.Globals.Logger.Error("factory of worker pool failed", "fn", "main", "error", err)
+		os.Exit(1)
 	}
 
-	mongoDriver, err := mongoadapter.NewMongo(mongoConf)
+	cmdMongoDriver, err := app.SetupCmdMongoDriver(*app.Globals.Config)
 	if err != nil {
-		applog.GLog.Logger.Error("mongoadapter.NewMongo Mongo failed",
-			"error", err.Error())
+		app.Globals.Logger.Error("main SetupCmdMongoDriver failed", "fn", "main",
+			"cmdConfigs", app.Globals.Config.CmdMongo, "error", err)
+		os.Exit(1)
+	}
+
+	queryMongoDriver, err := app.SetupQueryMongoDriver(*app.Globals.Config)
+	if err != nil {
+		app.Globals.Logger.Error("main SetupQueryMongoDriver failed", "fn", "main",
+			"queryConfigs", app.Globals.Config.QueryMongo, "error", err)
+		os.Exit(1)
+	}
+
+	app.Globals.CQRSRepository, err = cqrs.CQRSFactory(ctx, cmdMongoDriver, queryMongoDriver,
+		app.Globals.Config.CmdMongo.Database, app.Globals.Config.CmdMongo.Collection,
+		app.Globals.Config.QueryMongo.Database, app.Globals.Config.QueryMongo.Collection,
+		app.Globals.Config.QueryMongo.MinPoolSize, app.Globals.WorkerPool)
+	if err != nil {
+		app.Globals.Logger.Error("main cqrs repository failed",
+			"fn", "main",
+			"queryConfigs", app.Globals.Config.QueryMongo,
+			"cmdConfigs", app.Globals.Config.CmdMongo,
+			"error", err)
 		os.Exit(1)
 	}
 
@@ -98,9 +102,9 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
-	app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
-	app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
+	//app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
+	//app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
+	//app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
 	app.Globals.StockService = stock_service.NewStockService(app.Globals.Config.StockService.Address, app.Globals.Config.StockService.Port, app.Globals.Config.StockService.Timeout)
 	app.Globals.UserService = user_service.NewUserService(app.Globals.Config.UserService.Address, app.Globals.Config.UserService.Port, app.Globals.Config.UserService.Timeout)
 	app.Globals.NotifyService = notify_service.NewNotificationService(app.Globals.Config.NotifyService.Address, app.Globals.Config.NotifyService.Port, app.Globals.Config.NotifyService.NotifySeller, app.Globals.Config.NotifyService.NotifyBuyer, app.Globals.Config.NotifyService.Timeout)
@@ -179,9 +183,9 @@ func TestMain(m *testing.M) {
 	app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnShipmentPendingStateConfig] = 2 * time.Second
 	app.Globals.FlowManagerConfig[app.FlowManagerSchedulerReturnDeliveredStateConfig] = 2 * time.Second
 
-	schedulerService = NewScheduler(mongoDriver,
-		app.Globals.Config.Mongo.Database,
-		app.Globals.Config.Mongo.Collection,
+	schedulerService = NewScheduler(queryMongoDriver,
+		app.Globals.Config.QueryMongo.Database,
+		app.Globals.Config.QueryMongo.Collection,
 		app.Globals.Config.GRPCServer.Address,
 		app.Globals.Config.GRPCServer.Port,
 		10*time.Second,
@@ -884,8 +888,9 @@ func TestSchedulerSellerShipmentPending(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderNewStatus, states.PackageNewStatus, states.PaymentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.PaymentSuccess)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ApprovalPending)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(1 * time.Second)
 
 	defer removeCollection()
 
@@ -962,7 +967,7 @@ func TestSchedulerSellerShipmentPending(t *testing.T) {
 	schedulerService.doProcess(ctx, states.ShipmentPending)
 
 	time.Sleep(3 * time.Second)
-	changedOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	changedOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err)
 	require.Equal(t, states.ShipmentDelayed.StateName(), changedOrder.Packages[0].Subpackages[0].Status)
 	require.Equal(t, string(states.OrderInProgressStatus), changedOrder.Status)
@@ -997,8 +1002,9 @@ func TestSchedulerDeliveryPending_Notification(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(1 * time.Second)
 
 	defer removeCollection()
 
@@ -1075,7 +1081,7 @@ func TestSchedulerDeliveryPending_Notification(t *testing.T) {
 	schedulerService.doProcess(ctx, states.DeliveryPending)
 
 	time.Sleep(3 * time.Second)
-	changedOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	changedOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err)
 	require.Equal(t, states.DeliveryPending.StateName(), changedOrder.Packages[0].Subpackages[0].Status)
 	require.Equal(t, string(states.OrderInProgressStatus), changedOrder.Status)
@@ -1110,8 +1116,9 @@ func TestSchedulerDeliveryPending_Delivered(t *testing.T) {
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentPending)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.ShipmentDelayed)
 	UpdateOrderAllStatus(ctx, newOrder, states.OrderInProgressStatus, states.PackageInProgressStatus, states.Shipped)
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *newOrder)
 	require.Nil(t, err, "save failed")
+	time.Sleep(1 * time.Second)
 
 	defer removeCollection()
 
@@ -1188,13 +1195,13 @@ func TestSchedulerDeliveryPending_Delivered(t *testing.T) {
 	schedulerService.doProcess(ctx, states.DeliveryPending)
 
 	time.Sleep(3 * time.Second)
-	changedOrder, err := app.Globals.OrderRepository.FindById(ctx, order.OrderId)
+	changedOrder, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, order.OrderId)
 	require.Nil(t, err)
 	require.Equal(t, states.Delivered.StateName(), changedOrder.Packages[0].Subpackages[0].Status)
 	require.Equal(t, string(states.OrderInProgressStatus), changedOrder.Status)
 }
 
 func removeCollection() {
-	if err := app.Globals.OrderRepository.RemoveAll(context.Background()); err != nil {
+	if err := app.Globals.CQRSRepository.CmdR().OrderCR().RemoveAll(context.Background()); err != nil {
 	}
 }

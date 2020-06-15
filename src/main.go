@@ -11,10 +11,7 @@ import (
 	"gitlab.faza.io/order-project/order-service/domain"
 	"gitlab.faza.io/order-project/order-service/domain/converter"
 	"gitlab.faza.io/order-project/order-service/domain/converter/documents/v100To102"
-	"gitlab.faza.io/order-project/order-service/domain/models/repository/financeReport"
-	order_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/order"
-	pkg_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/pkg"
-	subpkg_repository "gitlab.faza.io/order-project/order-service/domain/models/repository/subpackage"
+	"gitlab.faza.io/order-project/order-service/domain/models/repository/cqrs"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	applog "gitlab.faza.io/order-project/order-service/infrastructure/logger"
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
@@ -23,6 +20,7 @@ import (
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	user_service "gitlab.faza.io/order-project/order-service/infrastructure/services/user"
 	voucher_service "gitlab.faza.io/order-project/order-service/infrastructure/services/voucher"
+	worker_pool "gitlab.faza.io/order-project/order-service/infrastructure/workerPool"
 	grpc_server "gitlab.faza.io/order-project/order-service/server/grpc"
 	"net/http"
 	"os"
@@ -39,6 +37,7 @@ var MainApp struct {
 
 func main() {
 	var err error
+	ctx, _ := context.WithCancel(context.Background())
 	if os.Getenv("APP_MODE") == "dev" {
 		app.Globals.Config, app.Globals.SMSTemplate, err = configs.LoadConfig("./testdata/.env")
 	} else if os.Getenv("APP_MODE") == "docker" {
@@ -59,17 +58,62 @@ func main() {
 		os.Exit(1)
 	}
 
-	mongoDriver, err := app.SetupMongoDriver(*app.Globals.Config)
+	app.Globals.WorkerPool, err = worker_pool.Factory()
 	if err != nil {
-		app.Globals.Logger.Error("main SetupMongoDriver failed", "fn", "main",
-			"configs", app.Globals.Config.Mongo, "error", err)
+		app.Globals.Logger.Error("factory of worker pool failed", "fn", "main", "error", err)
 		os.Exit(1)
 	}
 
-	app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
-	app.Globals.PkgItemRepository = pkg_repository.NewPkgItemRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
-	app.Globals.SubPkgRepository = subpkg_repository.NewSubPkgRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
-	app.Globals.FinanceReportRepository = finance_repository.NewFinanceReportRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
+	cmdMongoDriver, err := app.SetupCmdMongoDriver(*app.Globals.Config)
+	if err != nil {
+		app.Globals.Logger.Error("main SetupCmdMongoDriver failed", "fn", "main",
+			"cmdConfigs", app.Globals.Config.CmdMongo, "error", err)
+		os.Exit(1)
+	}
+
+	queryMongoDriver, err := app.SetupQueryMongoDriver(*app.Globals.Config)
+	if err != nil {
+		app.Globals.Logger.Error("main SetupQueryMongoDriver failed", "fn", "main",
+			"queryConfigs", app.Globals.Config.QueryMongo, "error", err)
+		os.Exit(1)
+	}
+
+	app.Globals.CQRSRepository, err = cqrs.CQRSFactory(ctx, cmdMongoDriver, queryMongoDriver,
+		app.Globals.Config.CmdMongo.Database, app.Globals.Config.CmdMongo.Collection,
+		app.Globals.Config.QueryMongo.Database, app.Globals.Config.QueryMongo.Collection,
+		app.Globals.Config.QueryMongo.MinPoolSize, app.Globals.WorkerPool)
+	if err != nil {
+		app.Globals.Logger.Error("main cqrs repository failed",
+			"fn", "main",
+			"queryConfigs", app.Globals.Config.QueryMongo,
+			"cmdConfigs", app.Globals.Config.CmdMongo,
+			"error", err)
+		os.Exit(1)
+	}
+
+	queryTotal, err := app.Globals.CQRSRepository.QueryR().OrderQR().Count(ctx)
+	if err != nil {
+		app.Globals.Logger.Error("CQRSRepository.QueryR().OrderQR().Count() failed",
+			"fn", "main",
+			"error", err)
+		os.Exit(1)
+	}
+
+	cmdTotal, err := app.Globals.CQRSRepository.CmdR().OrderCR().Count(ctx)
+	if err != nil {
+		app.Globals.Logger.Error("CQRSRepository.CmdR().OrderCR().Count() failed",
+			"fn", "main",
+			"error", err)
+		os.Exit(1)
+	}
+
+	if queryTotal != cmdTotal {
+		app.Globals.Logger.Error("Query Mongo db inconsistent with Cmd Mongo db",
+			"fn", "main",
+			"queryTotal", queryTotal,
+			"cmdTotal", cmdTotal)
+		os.Exit(1)
+	}
 
 	if app.Globals.Config.App.ServiceMode == "server" {
 		app.Globals.Logger.Info("Order Service Run in Server Mode . . . ", "fn", "main")
@@ -460,9 +504,9 @@ func main() {
 
 		app.Globals.Logger.Info("Order Service Run in Schedulers Mode . . . ", "fn", "main")
 
-		schedulerService := scheduler_service.NewScheduler(mongoDriver,
-			app.Globals.Config.Mongo.Database,
-			app.Globals.Config.Mongo.Collection,
+		schedulerService := scheduler_service.NewScheduler(queryMongoDriver,
+			app.Globals.Config.QueryMongo.Database,
+			app.Globals.Config.QueryMongo.Collection,
 			app.Globals.Config.GRPCServer.Address,
 			app.Globals.Config.GRPCServer.Port,
 			schedulerInterval,
@@ -477,7 +521,7 @@ func main() {
 
 	} else if app.Globals.Config.App.ServiceMode == "voucherSettlement" {
 		app.Globals.VoucherService = voucher_service.NewVoucherService(app.Globals.Config.VoucherService.Address, app.Globals.Config.VoucherService.Port, app.Globals.Config.VoucherService.Timeout)
-		orders, err := app.Globals.OrderRepository.FindAll(context.Background())
+		orders, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindAll(context.Background())
 		if err != nil {
 			app.Globals.Logger.Error("app.Globals.OrderRepository.FindAll failed", "fn", "main", "error", err)
 			os.Exit(1)

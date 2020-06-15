@@ -40,21 +40,21 @@ func TestMain(m *testing.M) {
 	mongoConf := &mongoadapter.MongoConfig{
 		// Host:     config.Mongo.Host,
 		// Port:     config.Mongo.Port,
-		ConnectUri: config.Mongo.Uri,
-		Username:   config.Mongo.User,
-		//Password:     App.Cfg.Mongo.Pass,
-		ConnTimeout:            time.Duration(config.Mongo.ConnectionTimeout) * time.Second,
-		ReadTimeout:            time.Duration(config.Mongo.ReadTimeout) * time.Second,
-		WriteTimeout:           time.Duration(config.Mongo.WriteTimeout) * time.Second,
-		MaxConnIdleTime:        time.Duration(config.Mongo.MaxConnIdleTime) * time.Second,
-		HeartbeatInterval:      time.Duration(config.Mongo.HeartBeatInterval) * time.Second,
-		ServerSelectionTimeout: time.Duration(config.Mongo.ServerSelectionTimeout) * time.Second,
-		RetryConnect:           uint64(config.Mongo.RetryConnect),
-		MaxPoolSize:            uint64(config.Mongo.MaxPoolSize),
-		MinPoolSize:            uint64(config.Mongo.MinPoolSize),
-		WriteConcernW:          config.Mongo.WriteConcernW,
-		WriteConcernJ:          config.Mongo.WriteConcernJ,
-		RetryWrites:            config.Mongo.RetryWrite,
+		ConnectUri: config.CmdMongo.Uri,
+		Username:   config.CmdMongo.User,
+		//Password:     App.Cfg.CmdMongo.Pass,
+		ConnTimeout:            time.Duration(config.CmdMongo.ConnectionTimeout) * time.Second,
+		ReadTimeout:            time.Duration(config.CmdMongo.ReadTimeout) * time.Second,
+		WriteTimeout:           time.Duration(config.CmdMongo.WriteTimeout) * time.Second,
+		MaxConnIdleTime:        time.Duration(config.CmdMongo.MaxConnIdleTime) * time.Second,
+		HeartbeatInterval:      time.Duration(config.CmdMongo.HeartBeatInterval) * time.Second,
+		ServerSelectionTimeout: time.Duration(config.CmdMongo.ServerSelectionTimeout) * time.Second,
+		RetryConnect:           uint64(config.CmdMongo.RetryConnect),
+		MaxPoolSize:            uint64(config.CmdMongo.MaxPoolSize),
+		MinPoolSize:            uint64(config.CmdMongo.MinPoolSize),
+		WriteConcernW:          config.CmdMongo.WriteConcernW,
+		WriteConcernJ:          config.CmdMongo.WriteConcernJ,
+		RetryWrites:            config.CmdMongo.RetryWrite,
 	}
 
 	mongoAdapter, err := mongoadapter.NewMongo(mongoConf)
@@ -63,20 +63,18 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	orderRepository = NewOrderRepository(mongoAdapter, config.Mongo.Database, config.Mongo.Collection)
+	orderRepository = NewOrderRepository(mongoAdapter, config.CmdMongo.Database, config.CmdMongo.Collection)
 
 	// Running Tests
 	code := m.Run()
-	//removeCollection()
+	removeCollection()
 	os.Exit(code)
 }
 
 func TestSaveOrderRepository(t *testing.T) {
 
-	//defer removeCollection()
+	defer removeCollection()
 	order := createOrder()
-	//res, _ := json.Marshal(order)
-	//logger.Audit("order model: %s",res)
 	ctx, _ := context.WithCancel(context.Background())
 	order1, err := orderRepository.Save(ctx, *order)
 	require.Nil(t, err, "orderRepository.Save failed")
@@ -95,7 +93,7 @@ func TestUpdateOrderRepository(t *testing.T) {
 	order1.BuyerInfo.FirstName = "Siamak"
 	order1.BuyerInfo.LastName = "Marjoeee"
 
-	order2, err := orderRepository.Save(ctx, *order1)
+	order2, err := orderRepository.Update(ctx, *order1)
 	require.Nil(t, err, "orderRepository.Save failed")
 	require.Equal(t, order2.BuyerInfo.FirstName, "Siamak")
 	require.Equal(t, order2.BuyerInfo.LastName, "Marjoeee")
@@ -113,7 +111,7 @@ func TestUpdateOrderRepository_Failed(t *testing.T) {
 	require.NotEmpty(t, order1.OrderId, "orderRepository.Save failed, order id not generated")
 
 	order1.BuyerInfo.FirstName = "Siamak"
-	_, err = orderRepository.Save(ctx, *order1)
+	_, err = orderRepository.Update(ctx, *order1)
 	require.Error(t, err)
 	//require.Equal(t, repository.ErrorUpdateFailed, err.Reason())
 }
@@ -303,7 +301,7 @@ func TestRemoveOrderRepository(t *testing.T) {
 	ctx, _ := context.WithCancel(context.Background())
 	order, err := orderRepository.Insert(ctx, *order)
 	require.Nil(t, err)
-	err = orderRepository.Remove(ctx, *order)
+	err = orderRepository.Remove(ctx, order)
 	require.Nil(t, err)
 }
 

@@ -11,7 +11,11 @@ type IOrderRepository interface {
 
 	SaveAll(ctx context.Context, orders []entities.Order) ([]*entities.Order, repository.IRepoError)
 
-	UpdateStatus(ctx context.Context, order *entities.Order) repository.IRepoError
+	Update(ctx context.Context, order entities.Order) (*entities.Order, repository.IRepoError)
+
+	UpdateAll(ctx context.Context, orders []entities.Order) ([]*entities.Order, repository.IRepoError)
+
+	//UpdateStatus(ctx context.Context, order *entities.Order) repository.IRepoError
 
 	Insert(ctx context.Context, order entities.Order) (*entities.Order, repository.IRepoError)
 
@@ -48,16 +52,16 @@ type IOrderRepository interface {
 
 	Delete(ctx context.Context, order entities.Order) (*entities.Order, repository.IRepoError)
 
-	DeleteAllWithOrders(ctx context.Context, orders []entities.Order) repository.IRepoError
+	DeleteAllWithOrders(ctx context.Context, orders []*entities.Order) repository.IRepoError
 
 	DeleteAll(ctx context.Context) repository.IRepoError
 
 	// remove order from db
 	RemoveById(ctx context.Context, orderId uint64) repository.IRepoError
 
-	Remove(ctx context.Context, order entities.Order) repository.IRepoError
+	Remove(ctx context.Context, order *entities.Order) repository.IRepoError
 
-	RemoveAllWithOrders(ctx context.Context, orders []entities.Order) repository.IRepoError
+	RemoveAllWithOrders(ctx context.Context, orders []*entities.Order) repository.IRepoError
 
 	RemoveAll(ctx context.Context) repository.IRepoError
 }
