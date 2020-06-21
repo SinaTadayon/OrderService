@@ -737,21 +737,18 @@ func (finance financeCalculatorImpl) shareCalc(decorator financeCalcFunc) financ
 					itemFinance := order.Packages[i].Subpackages[j].Items[k]
 
 					// seller share raw
-					var rawUnitSellerShare = decimal.Zero
+					var rawUnitSellerShare = *itemFinance.Invoice.Share.RawItemNet
+
+					if itemFinance.Invoice.SSO != nil && itemFinance.Invoice.SSO.RawUnitPrice != nil {
+						rawUnitSellerShare = rawUnitSellerShare.Add(*itemFinance.Invoice.SSO.RawUnitPrice)
+					}
+
+					if itemFinance.Invoice.VAT.SellerVat != nil && itemFinance.Invoice.VAT.SellerVat.RawUnitPrice != nil {
+						rawUnitSellerShare = rawUnitSellerShare.Add(*itemFinance.Invoice.VAT.SellerVat.RawUnitPrice)
+					}
+
 					if itemFinance.Invoice.Commission != nil && itemFinance.Invoice.Commission.ItemCommission > 0 {
-
-						if itemFinance.Invoice.SSO != nil && itemFinance.Invoice.SSO.RawUnitPrice != nil {
-							rawUnitSellerShare = *itemFinance.Invoice.SSO.RawUnitPrice
-						}
-
-						if itemFinance.Invoice.VAT.SellerVat != nil && itemFinance.Invoice.VAT.SellerVat.RawUnitPrice != nil {
-							rawUnitSellerShare = rawUnitSellerShare.Add(*itemFinance.Invoice.VAT.SellerVat.RawUnitPrice)
-						}
-
-						rawUnitSellerShare = rawUnitSellerShare.Add(*itemFinance.Invoice.Share.RawItemNet).
-							Sub(*itemFinance.Invoice.Commission.RawUnitPrice)
-					} else {
-						rawUnitSellerShare = *itemFinance.Invoice.Share.RawItemNet
+						rawUnitSellerShare = rawUnitSellerShare.Sub(*itemFinance.Invoice.Commission.RawUnitPrice)
 					}
 
 					itemFinance.Invoice.Share.RawUnitSellerShare = &rawUnitSellerShare
