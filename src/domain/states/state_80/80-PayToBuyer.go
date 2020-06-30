@@ -3,6 +3,7 @@ package state_80
 import (
 	"bytes"
 	"context"
+	"github.com/pkg/errors"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
@@ -272,7 +273,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			_, err := app.Globals.OrderRepository.Save(ctx, *order)
 			if err != nil {
 				state.rollbackStock(ctx, sids, pkgItem)
-				app.Globals.Logger.FromContext(ctx).Error("update order after seller finance recalculation failed",
+				app.Globals.Logger.FromContext(ctx).Error("update with OrderRepository.Save order failed",
 					"fn", "Process",
 					"state", state.Name(),
 					"oid", order.OrderId,
@@ -283,7 +284,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 				return
 			}
 
-			app.Globals.Logger.FromContext(ctx).Debug("update order after seller finance recalculation success",
+			app.Globals.Logger.FromContext(ctx).Debug("update order success",
 				"fn", "Process",
 				"state", state.Name(),
 				"oid", order.OrderId)
@@ -291,7 +292,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			_, e := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
 			if e != nil {
 				state.rollbackStock(ctx, sids, pkgItem)
-				app.Globals.Logger.FromContext(ctx).Error("update package after seller finance recalculation success",
+				app.Globals.Logger.FromContext(ctx).Error("update package order failed",
 					"fn", "Process",
 					"state", state.Name(),
 					"oid", pkgItem.OrderId,
@@ -304,7 +305,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 				return
 			}
 
-			app.Globals.Logger.FromContext(ctx).Debug("update order after finance recalculation success",
+			app.Globals.Logger.FromContext(ctx).Debug("update package order success",
 				"fn", "Process",
 				"state", state.Name(),
 				"oid", order.OrderId)
@@ -328,6 +329,11 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			"fn", "Process",
 			"state", state.Name(),
 			"iframe", iFrame)
+
+		if iFrame.Header().KeyExists(string(frame.HeaderFuture)) {
+			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+				SetError(future.BadRequest, "Request Invalid", errors.New("Request Invalid")).Send()
+		}
 	}
 }
 

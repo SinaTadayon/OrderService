@@ -1693,14 +1693,13 @@ func TestFinanceOrderCalcWithCommissionZero(t *testing.T) {
 //
 //func TestFinanceSellerShareCalc(t *testing.T) {
 //	ctx := context.Background()
-//	order, err := app.Globals.OrderRepository.FindById(ctx, 199277900)
+//	order, err := app.Globals.OrderRepository.FindById(ctx, 1620871067)
 //	require.Nil(t, err)
 //
-//	calcOrder, e := New().FinanceCalc(ctx, *order, SHARE_CALC, SELLER_FINANCE)
+//	e := New().FinanceCalc(ctx, order, SHARE_CALC, SELLER_FINANCE)
 //	require.Nil(t, e)
-//	require.NotNil(t, calcOrder)
 //
-//	_, err = app.Globals.OrderRepository.Save(ctx, *calcOrder)
+//	_, err = app.Globals.OrderRepository.Save(ctx, *order)
 //	require.Nil(t, err)
 //}
 

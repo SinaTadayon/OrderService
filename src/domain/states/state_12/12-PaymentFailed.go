@@ -3,12 +3,14 @@ package state_12
 import (
 	"bytes"
 	"context"
+	"github.com/pkg/errors"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	stock_service "gitlab.faza.io/order-project/order-service/infrastructure/services/stock"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
@@ -151,6 +153,11 @@ func (state paymentFailedState) Process(ctx context.Context, iFrame frame.IFrame
 			"fn", "Process",
 			"state", state.Name(),
 			"iframe", iFrame)
+
+		if iFrame.Header().KeyExists(string(frame.HeaderFuture)) {
+			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+				SetError(future.BadRequest, "Request Invalid", errors.New("Request Invalid")).Send()
+		}
 	}
 }
 

@@ -840,9 +840,9 @@ func ConvertToSubPkg(ctx context.Context, finance *SubpackageFinance, subpackage
 						}
 					}
 
-					if finance.Items[i].Invoice.Commission.RoundupTotalPrice != nil {
+					if finance.Items[i].Invoice.Commission.RoundupUnitPrice != nil {
 						subpackage.Items[j].Invoice.Commission.RoundupUnitPrice = &entities.Money{
-							Amount:   finance.Items[i].Invoice.Commission.RoundupTotalPrice.String(),
+							Amount:   finance.Items[i].Invoice.Commission.RoundupUnitPrice.String(),
 							Currency: "IRR",
 						}
 					}

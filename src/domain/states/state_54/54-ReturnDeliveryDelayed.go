@@ -386,5 +386,10 @@ func (state returnDeliveryDelayedState) Process(ctx context.Context, iFrame fram
 			"fn", "Process",
 			"state", state.Name(),
 			"iframe", iFrame)
+
+		if iFrame.Header().KeyExists(string(frame.HeaderFuture)) {
+			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+				SetError(future.BadRequest, "Request Invalid", errors.New("Request Invalid")).Send()
+		}
 	}
 }

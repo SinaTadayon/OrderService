@@ -3,12 +3,14 @@ package state_42
 import (
 	"bytes"
 	"context"
+	"github.com/pkg/errors"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	notify_service "gitlab.faza.io/order-project/order-service/infrastructure/services/notification"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"text/template"
@@ -204,5 +206,10 @@ func (state returnCanceledState) Process(ctx context.Context, iFrame frame.IFram
 			"fn", "Process",
 			"state", state.Name(),
 			"iframe", iFrame)
+
+		if iFrame.Header().KeyExists(string(frame.HeaderFuture)) {
+			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+				SetError(future.BadRequest, "Request Invalid", errors.New("Request Invalid")).Send()
+		}
 	}
 }

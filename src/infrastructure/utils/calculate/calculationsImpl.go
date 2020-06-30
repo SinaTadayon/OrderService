@@ -471,8 +471,7 @@ func (finance financeCalculatorImpl) netCommissionCalc(decorator financeCalcFunc
 						continue
 					}
 
-					rawUnitPrice := *itemFinance.Invoice.Share.RawItemNet
-					rawUnitPrice = rawUnitPrice.
+					rawUnitPrice := (*itemFinance.Invoice.Share.RawItemNet).
 						Mul(decimal.NewFromFloat32(itemFinance.Invoice.Commission.ItemCommission)).
 						Div(decimal.NewFromInt(100))
 					itemFinance.Invoice.Commission.RawUnitPrice = &rawUnitPrice

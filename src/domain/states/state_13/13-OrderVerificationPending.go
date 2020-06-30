@@ -2,12 +2,14 @@ package state_13
 
 import (
 	"context"
+	"github.com/pkg/errors"
 	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	system_action "gitlab.faza.io/order-project/order-service/domain/actions/system"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"gitlab.faza.io/order-project/order-service/domain/states"
 	"gitlab.faza.io/order-project/order-service/infrastructure/frame"
+	"gitlab.faza.io/order-project/order-service/infrastructure/future"
 	"gitlab.faza.io/order-project/order-service/infrastructure/utils"
 	"time"
 )
@@ -77,5 +79,10 @@ func (state orderPaymentVerificationState) Process(ctx context.Context, iFrame f
 			"fn", "Process",
 			"state", state.Name(),
 			"iframe", iFrame)
+
+		if iFrame.Header().KeyExists(string(frame.HeaderFuture)) {
+			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
+				SetError(future.BadRequest, "Request Invalid", errors.New("Request Invalid")).Send()
+		}
 	}
 }
