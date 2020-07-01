@@ -56,7 +56,7 @@ func (state paymentPendingState) Process(ctx context.Context, iFrame frame.IFram
 				"oid", iFrame.Header().Value(string(frame.HeaderOrderId)),
 				"content", iFrame.Body().Content())
 			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				SetData(app.Globals.Config.App.OrderPaymentCallbackUrlFail).
+				SetError(future.InternalError, "Unknown Err", errors.New("Unknown Err")).
 				Send()
 			return
 		}
@@ -214,17 +214,10 @@ func (state paymentPendingState) paymentHandler(ctx context.Context, iFrame fram
 				expireTime = time.Now().UTC().Add(value)
 			} else {
 				value := app.Globals.FlowManagerConfig[app.FlowManagerSchedulerPaymentPendingStateConfig].(int)
-				//if timeUnit == string(app.HourTimeUnit) {
-				//	expireTime = time.Now().UTC().Add(
-				//		time.Hour*time.Duration(value) +
-				//			time.Minute*time.Duration(0) +
-				//			time.Second*time.Duration(0))
-				//} else {
 				expireTime = time.Now().UTC().Add(
 					time.Hour*time.Duration(0) +
 						time.Minute*time.Duration(value) +
 						time.Second*time.Duration(0))
-				//}
 			}
 
 			app.Globals.Logger.FromContext(ctx).Debug("scheduler expireTime",
@@ -285,7 +278,7 @@ func (state paymentPendingState) paymentHandler(ctx context.Context, iFrame fram
 				"state", state.Name(),
 				"oid", order.OrderId)
 			future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-				SetData(order.OrderPayment[0].PaymentResponse.Response).
+				SetData(order).
 				Send()
 			return
 		}
@@ -393,7 +386,7 @@ func (state paymentPendingState) voucherWithZeroGrandTotalHandler(ctx context.Co
 		"state", state.Name(),
 		"oid", order.OrderId)
 	future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-		SetData(order.OrderPayment[0].PaymentResponse.Response).
+		SetData(order).
 		Send()
 	successAction := state.GetAction(system_action.PaymentSuccess.ActionName())
 	state.StatesMap()[successAction].Process(ctx, frame.FactoryOf(iFrame).SetBody(order).Build())
@@ -423,8 +416,10 @@ func (state paymentPendingState) actionFailOfPaymentHandler(ctx context.Context,
 		Extended:    nil,
 	}
 
+	order.OrderPayment[0].PaymentResponse.Response = response
+
 	future.FactoryOf(iFrame.Header().Value(string(frame.HeaderFuture)).(future.IFuture)).
-		SetData(response).
+		SetData(order).
 		Send()
 
 	state.UpdateOrderAllSubPkg(ctx, order, paymentAction)

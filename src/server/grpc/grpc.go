@@ -945,25 +945,29 @@ func (server Server) NewOrder(ctx context.Context, req *pb.RequestNewOrder) (*pb
 
 	var responseNewOrder pb.ResponseNewOrder
 
-	if ipgResponse, ok := futureData.Data().(entities.PaymentIPGResponse); ok {
-		responseNewOrder = pb.ResponseNewOrder{
-			Action: pb.ResponseNewOrder_Redirect,
-			Response: &pb.ResponseNewOrder_Ipg{
-				Ipg: &pb.IPGResponse{
-					CallbackUrl: ipgResponse.CallBackUrl,
+	if order, ok := futureData.Data().(*entities.Order); ok {
+		if ipgResponse, ok := order.OrderPayment[0].PaymentResponse.Response.(entities.PaymentIPGResponse); ok {
+			responseNewOrder = pb.ResponseNewOrder{
+				Action: pb.ResponseNewOrder_Redirect,
+				Response: &pb.ResponseNewOrder_Ipg{
+					Ipg: &pb.IPGResponse{
+						CallbackUrl: ipgResponse.CallBackUrl,
+					},
 				},
-			},
-		}
+				OrderId: order.OrderId,
+			}
 
-	} else if mpgResponse, ok := futureData.Data().(entities.PaymentMPGResponse); ok {
-		responseNewOrder = pb.ResponseNewOrder{
-			Action: pb.ResponseNewOrder_MPG,
-			Response: &pb.ResponseNewOrder_Mpg{
-				Mpg: &pb.MPGResponse{
-					HostRequest:     mpgResponse.HostRequest,
-					HostRequestSign: mpgResponse.HostRequestSign,
+		} else if mpgResponse, ok := order.OrderPayment[0].PaymentResponse.Response.(entities.PaymentMPGResponse); ok {
+			responseNewOrder = pb.ResponseNewOrder{
+				Action: pb.ResponseNewOrder_MPG,
+				Response: &pb.ResponseNewOrder_Mpg{
+					Mpg: &pb.MPGResponse{
+						HostRequest:     mpgResponse.HostRequest,
+						HostRequestSign: mpgResponse.HostRequestSign,
+					},
 				},
-			},
+				OrderId: order.OrderId,
+			}
 		}
 	} else {
 		app.Globals.Logger.FromContext(ctx).Error("NewOrder received data of futureData invalid", "fn", "NewOrder", "data", futureData.Data())
