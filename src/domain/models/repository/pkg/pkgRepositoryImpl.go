@@ -54,56 +54,10 @@ func (repo iPkgItemRepositoryImpl) findAndUpdate(ctx context.Context, pkgItem *e
 	return pkgItem, nil
 }
 
-func (repo iPkgItemRepositoryImpl) Update(ctx context.Context, pkgItem entities.PackageItem) (*entities.PackageItem, repository.IRepoError) {
+func (repo iPkgItemRepositoryImpl) Update(ctx context.Context, pkgItem entities.PackageItem, upsert bool) (*entities.PackageItem, repository.IRepoError) {
 
 	pkgItem.UpdatedAt = time.Now().UTC()
-	updatedPkgItem, err := repo.findAndUpdate(ctx, &pkgItem, false)
-	if err != nil {
-		return nil, err
-	}
-
-	return updatedPkgItem, nil
-}
-
-func (repo iPkgItemRepositoryImpl) UpdateWithUpsert(ctx context.Context, pkgItem entities.PackageItem) (*entities.PackageItem, repository.IRepoError) {
-
-	pkgItem.UpdatedAt = time.Now().UTC()
-	var updatedPkgItem *entities.PackageItem
-	var err repository.IRepoError
-	//subPkgIdMap := make(map[uint64]*entities.Subpackage, len(pkgItem.Subpackages))
-	//newSubPkgIds := make([]uint64, 0, len(pkgItem.Subpackages))
-	//var isFindNewSubPkg = false
-
-	//for i := 0; i < len(pkgItem.Subpackages); i++ {
-	//	if pkgItem.Subpackages[i].SId != 0 {
-	//		subPkgIdMap[pkgItem.Subpackages[i].SId] = pkgItem.Subpackages[i]
-	//	} else {
-	//		isFindNewSubPkg = true
-	//	}
-	//}
-
-	//if isFindNewSubPkg {
-	//	for i := 0; i < len(pkgItem.Subpackages); i++ {
-	//		if pkgItem.Subpackages[i].SId == 0 {
-	//			pkgItem.Subpackages[i].CreatedAt = time.Now().UTC()
-	//			pkgItem.Subpackages[i].UpdatedAt = time.Now().UTC()
-	//
-	//			//for {
-	//			//	random := strconv.Itoa(int(entities.GenerateRandomNumber()))
-	//			//	sid, _ := strconv.Atoi(strconv.Itoa(int(pkgItem.Subpackages[i].OrderId)) + random)
-	//			//	if _, ok := subPkgIdMap[uint64(sid)]; ok {
-	//			//		continue
-	//			//	}
-	//			//
-	//			//	pkgItem.Subpackages[i].SId = uint64(sid)
-	//			//	newSubPkgIds = append(newSubPkgIds, pkgItem.Subpackages[i].SId)
-	//			//	break
-	//			//}
-	//		}
-	//	}
-	//}
-
-	updatedPkgItem, err = repo.findAndUpdate(ctx, &pkgItem, true)
+	updatedPkgItem, err := repo.findAndUpdate(ctx, &pkgItem, upsert)
 	if err != nil {
 		return nil, err
 	}

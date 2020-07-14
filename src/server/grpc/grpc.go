@@ -340,7 +340,7 @@ func (server *Server) FinanceOrderItems(ctx context.Context, req *pb.MessageRequ
 		return nil, status.Error(codes.Code(future.BadRequest), "Request Invalid")
 	}
 
-	finances, total, err := app.Globals.FinanceReportRepository.FindAllWithPageAndSort(ctx, state, startTimestamp,
+	finances, total, err := app.Globals.CQRSRepository.QueryR().FinanceQR().FindAllWithPageAndSort(ctx, state, startTimestamp,
 		endTimestamp, int64(req.Meta.Page), int64(req.Meta.PerPage), sortName, sortDirection)
 
 	if err != nil {

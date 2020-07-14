@@ -61,7 +61,7 @@ func (state newOrderState) Process(ctx context.Context, iFrame frame.IFrame) {
 	}
 
 	state.UpdateOrderAllStatus(ctx, order, states.OrderNewStatus, states.PackageNewStatus, action)
-	newOrder, err := app.Globals.OrderRepository.Save(ctx, *order)
+	newOrder, err := app.Globals.CQRSRepository.CmdR().OrderCR().Save(ctx, *order)
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("OrderRepository.Save failed",
 			"fn", "Process",

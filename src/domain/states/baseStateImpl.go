@@ -2,7 +2,6 @@ package states
 
 import (
 	"context"
-	"gitlab.faza.io/order-project/order-service/app"
 	"gitlab.faza.io/order-project/order-service/domain/actions"
 	"gitlab.faza.io/order-project/order-service/domain/models/entities"
 	"strconv"
@@ -360,8 +359,13 @@ func (base BaseStateImpl) UpdateSubPackageWithData(ctx context.Context, subpacka
 	}
 }
 
-func (base BaseStateImpl) SaveOrUpdateOrder(ctx context.Context, order *entities.Order) error {
-	var err error
-	order, err = app.Globals.OrderRepository.Save(ctx, *order)
-	return err
+func (base BaseStateImpl) UpdateOrderUpdateAt(ctx context.Context, order *entities.Order) {
+	timestamp := time.Now().UTC()
+	for _, pkg := range order.Packages {
+		for _, subpkg := range pkg.Subpackages {
+			subpkg.UpdatedAt = timestamp
+		}
+		pkg.UpdatedAt = timestamp
+	}
+	order.UpdatedAt = timestamp
 }

@@ -600,7 +600,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 	event := iFrame.Header().Value(string(frame.HeaderEvent)).(events.IEvent)
 	if event.EventType() == events.Action {
 		if event.Action().ActionEnum() == scheduler_action.PaymentFail {
-			order, err := app.Globals.OrderRepository.FindById(ctx, event.OrderId())
+			order, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, event.OrderId())
 			if err != nil {
 				app.Globals.Logger.FromContext(ctx).Error("OrderRepository.FindById failed",
 					"fn", "EventHandler",
@@ -633,7 +633,7 @@ func (flowManager iFlowManagerImpl) EventHandler(ctx context.Context, iFrame fra
 					SetError(future.InternalError, "Unknown Err", err).Send()
 			}
 		} else {
-			pkgItem, err := app.Globals.PkgItemRepository.FindById(ctx, event.OrderId(), event.PackageId())
+			pkgItem, err := app.Globals.CQRSRepository.QueryR().PkgQR().FindById(ctx, event.OrderId(), event.PackageId())
 			if err != nil {
 				app.Globals.Logger.Error("PkgItemRepository.FindById failed",
 					"fn", "EventHandler",
@@ -735,7 +735,7 @@ func (flowManager iFlowManagerImpl) ReportOrderItems(ctx context.Context, req *p
 		}
 	}
 
-	orders, _, e := app.Globals.OrderRepository.FindByFilterWithPageAndSort(ctx, filter, int64(1), int64(2000))
+	orders, _, e := app.Globals.CQRSRepository.QueryR().OrderQR().FindByFilterWithPageAndSort(ctx, filter, int64(1), int64(2000))
 
 	if e != nil {
 		app.Globals.Logger.FromContext(ctx).Error("OrderRepository.FindByFilter failed",
@@ -958,7 +958,7 @@ func (flowManager iFlowManagerImpl) VerifyUserSuccessOrder(ctx context.Context, 
 			{"orderPayment.paymentResult.result", true}}
 	}
 
-	count, err := app.Globals.OrderRepository.CountWithFilter(ctx, filter)
+	count, err := app.Globals.CQRSRepository.QueryR().OrderQR().CountWithFilter(ctx, filter)
 	var iFuture future.IFuture
 	if err != nil {
 		app.Globals.Logger.FromContext(ctx).Error("OrderRepository.CountWithFilter failed",

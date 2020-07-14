@@ -42,21 +42,21 @@ func TestMain(m *testing.M) {
 	mongoConf := &mongoadapter.MongoConfig{
 		//Host:     config.Mongo.Host,
 		//Port:     config.Mongo.Port,
-		ConnectUri: config.Mongo.Uri,
-		Username:   config.Mongo.User,
-		//Password:     App.Cfg.Mongo.Pass,
-		ConnTimeout:            time.Duration(config.Mongo.ConnectionTimeout) * time.Second,
-		ReadTimeout:            time.Duration(config.Mongo.ReadTimeout) * time.Second,
-		WriteTimeout:           time.Duration(config.Mongo.WriteTimeout) * time.Second,
-		MaxConnIdleTime:        time.Duration(config.Mongo.MaxConnIdleTime) * time.Second,
-		HeartbeatInterval:      time.Duration(config.Mongo.HeartBeatInterval) * time.Second,
-		ServerSelectionTimeout: time.Duration(config.Mongo.ServerSelectionTimeout) * time.Second,
-		RetryConnect:           uint64(config.Mongo.RetryConnect),
-		MaxPoolSize:            uint64(config.Mongo.MaxPoolSize),
-		MinPoolSize:            uint64(config.Mongo.MinPoolSize),
-		WriteConcernW:          config.Mongo.WriteConcernW,
-		WriteConcernJ:          config.Mongo.WriteConcernJ,
-		RetryWrites:            config.Mongo.RetryWrite,
+		ConnectUri: config.CmdMongo.Uri,
+		Username:   config.CmdMongo.User,
+		//Password:     App.Cfg.CmdMongo.Pass,
+		ConnTimeout:            time.Duration(config.CmdMongo.ConnectionTimeout) * time.Second,
+		ReadTimeout:            time.Duration(config.CmdMongo.ReadTimeout) * time.Second,
+		WriteTimeout:           time.Duration(config.CmdMongo.WriteTimeout) * time.Second,
+		MaxConnIdleTime:        time.Duration(config.CmdMongo.MaxConnIdleTime) * time.Second,
+		HeartbeatInterval:      time.Duration(config.CmdMongo.HeartBeatInterval) * time.Second,
+		ServerSelectionTimeout: time.Duration(config.CmdMongo.ServerSelectionTimeout) * time.Second,
+		RetryConnect:           uint64(config.CmdMongo.RetryConnect),
+		MaxPoolSize:            uint64(config.CmdMongo.MaxPoolSize),
+		MinPoolSize:            uint64(config.CmdMongo.MinPoolSize),
+		WriteConcernW:          config.CmdMongo.WriteConcernW,
+		WriteConcernJ:          config.CmdMongo.WriteConcernJ,
+		RetryWrites:            config.CmdMongo.RetryWrite,
 	}
 
 	mongoAdapter, err = mongoadapter.NewMongo(mongoConf)
@@ -65,16 +65,16 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	pkgItemRepo = pkg_repository.NewPkgItemRepository(mongoAdapter, config.Mongo.Database, config.Mongo.Collection)
+	pkgItemRepo = pkg_repository.NewPkgItemRepository(mongoAdapter, config.CmdMongo.Database, config.CmdMongo.Collection)
 
 	// Running Tests
 	code := m.Run()
-	// removeCollection()
+	removeCollection()
 	os.Exit(code)
 }
 
 func removeCollection() {
-	if _, err := mongoAdapter.DeleteMany(config.Mongo.Database, config.Mongo.Collection, bson.M{}); err != nil {
+	if _, err := mongoAdapter.DeleteMany(config.CmdMongo.Database, config.CmdMongo.Collection, bson.M{}); err != nil {
 	}
 }
 

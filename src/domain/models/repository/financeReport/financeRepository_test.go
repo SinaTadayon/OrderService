@@ -43,21 +43,21 @@ func TestMain(m *testing.M) {
 	mongoConf := &mongoadapter.MongoConfig{
 		//Host:     config.Mongo.Host,
 		//Port:     config.Mongo.Port,
-		ConnectUri: config.Mongo.Uri,
-		Username:   config.Mongo.User,
+		ConnectUri: config.CmdMongo.Uri,
+		Username:   config.CmdMongo.User,
 		//Password:     App.Config.Mongo.Pass,
-		ConnTimeout:            time.Duration(config.Mongo.ConnectionTimeout) * time.Second,
-		ReadTimeout:            time.Duration(config.Mongo.ReadTimeout) * time.Second,
-		WriteTimeout:           time.Duration(config.Mongo.WriteTimeout) * time.Second,
-		MaxConnIdleTime:        time.Duration(config.Mongo.MaxConnIdleTime) * time.Second,
-		HeartbeatInterval:      time.Duration(config.Mongo.HeartBeatInterval) * time.Second,
-		ServerSelectionTimeout: time.Duration(config.Mongo.ServerSelectionTimeout) * time.Second,
-		RetryConnect:           uint64(config.Mongo.RetryConnect),
-		MaxPoolSize:            uint64(config.Mongo.MaxPoolSize),
-		MinPoolSize:            uint64(config.Mongo.MinPoolSize),
-		WriteConcernW:          config.Mongo.WriteConcernW,
-		WriteConcernJ:          config.Mongo.WriteConcernJ,
-		RetryWrites:            config.Mongo.RetryWrite,
+		ConnTimeout:            time.Duration(config.CmdMongo.ConnectionTimeout) * time.Second,
+		ReadTimeout:            time.Duration(config.CmdMongo.ReadTimeout) * time.Second,
+		WriteTimeout:           time.Duration(config.CmdMongo.WriteTimeout) * time.Second,
+		MaxConnIdleTime:        time.Duration(config.CmdMongo.MaxConnIdleTime) * time.Second,
+		HeartbeatInterval:      time.Duration(config.CmdMongo.HeartBeatInterval) * time.Second,
+		ServerSelectionTimeout: time.Duration(config.CmdMongo.ServerSelectionTimeout) * time.Second,
+		RetryConnect:           uint64(config.CmdMongo.RetryConnect),
+		MaxPoolSize:            uint64(config.CmdMongo.MaxPoolSize),
+		MinPoolSize:            uint64(config.CmdMongo.MinPoolSize),
+		WriteConcernW:          config.CmdMongo.WriteConcernW,
+		WriteConcernJ:          config.CmdMongo.WriteConcernJ,
+		RetryWrites:            config.CmdMongo.RetryWrite,
 	}
 
 	mongoAdapter, err = mongoadapter.NewMongo(mongoConf)
@@ -66,7 +66,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	financeRepository = NewFinanceReportRepository(mongoAdapter, config.Mongo.Database, config.Mongo.Collection)
+	financeRepository = NewFinanceReportRepository(mongoAdapter, config.CmdMongo.Database, config.CmdMongo.Collection)
 
 	// Running Tests
 	code := m.Run()
@@ -108,7 +108,7 @@ func TestFindAllWithPageAndSort(t *testing.T) {
 }
 
 func removeCollection() {
-	if _, err := mongoAdapter.DeleteMany(config.Mongo.Database, config.Mongo.Collection, bson.M{}); err != nil {
+	if _, err := mongoAdapter.DeleteMany(config.CmdMongo.Database, config.CmdMongo.Collection, bson.M{}); err != nil {
 	}
 }
 
@@ -139,11 +139,11 @@ func insert(order *entities.Order) (*entities.Order, error) {
 		}
 
 		order.CreatedAt = time.Now().UTC()
-		var insertOneResult, err = mongoAdapter.InsertOne(config.Mongo.Database, config.Mongo.Collection, &order)
+		var insertOneResult, err = mongoAdapter.InsertOne(config.CmdMongo.Database, config.CmdMongo.Collection, &order)
 		if err != nil {
 			if mongoAdapter.IsDupError(err) {
 				for mongoAdapter.IsDupError(err) {
-					insertOneResult, err = mongoAdapter.InsertOne(config.Mongo.Database, config.Mongo.Collection, &order)
+					insertOneResult, err = mongoAdapter.InsertOne(config.CmdMongo.Database, config.CmdMongo.Collection, &order)
 				}
 			} else {
 				return nil, err
@@ -152,7 +152,7 @@ func insert(order *entities.Order) (*entities.Order, error) {
 		order.ID = insertOneResult.InsertedID.(primitive.ObjectID)
 	} else {
 		order.CreatedAt = time.Now().UTC()
-		var insertOneResult, err = mongoAdapter.InsertOne(config.Mongo.Database, config.Mongo.Collection, &order)
+		var insertOneResult, err = mongoAdapter.InsertOne(config.CmdMongo.Database, config.CmdMongo.Collection, &order)
 		if err != nil {
 			return nil, err
 		}
@@ -186,11 +186,11 @@ func insertWithoutChangeTime(order *entities.Order) (*entities.Order, error) {
 		}
 
 		order.CreatedAt = time.Now().UTC()
-		var insertOneResult, err = mongoAdapter.InsertOne(config.Mongo.Database, config.Mongo.Collection, &order)
+		var insertOneResult, err = mongoAdapter.InsertOne(config.CmdMongo.Database, config.CmdMongo.Collection, &order)
 		if err != nil {
 			if mongoAdapter.IsDupError(err) {
 				for mongoAdapter.IsDupError(err) {
-					insertOneResult, err = mongoAdapter.InsertOne(config.Mongo.Database, config.Mongo.Collection, &order)
+					insertOneResult, err = mongoAdapter.InsertOne(config.CmdMongo.Database, config.CmdMongo.Collection, &order)
 				}
 			} else {
 				return nil, err
@@ -199,7 +199,7 @@ func insertWithoutChangeTime(order *entities.Order) (*entities.Order, error) {
 		order.ID = insertOneResult.InsertedID.(primitive.ObjectID)
 	} else {
 		order.CreatedAt = time.Now().UTC()
-		var insertOneResult, err = mongoAdapter.InsertOne(config.Mongo.Database, config.Mongo.Collection, &order)
+		var insertOneResult, err = mongoAdapter.InsertOne(config.CmdMongo.Database, config.CmdMongo.Collection, &order)
 		if err != nil {
 			return nil, err
 		}
@@ -1348,7 +1348,7 @@ func createOrder() *entities.Order {
 
 func getOrder(orderId uint64) (*entities.Order, error) {
 	var order entities.Order
-	singleResult := mongoAdapter.FindOne(config.Mongo.Database, config.Mongo.Collection, bson.D{{"orderId", orderId}, {"deletedAt", nil}})
+	singleResult := mongoAdapter.FindOne(config.CmdMongo.Database, config.CmdMongo.Collection, bson.D{{"orderId", orderId}, {"deletedAt", nil}})
 	if err := singleResult.Err(); err != nil {
 		return nil, err
 	}

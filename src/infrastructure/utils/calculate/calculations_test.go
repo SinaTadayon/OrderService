@@ -14,6 +14,8 @@ import (
 	"time"
 )
 
+var orderRepository order_repository.IOrderRepository
+
 func TestMain(m *testing.M) {
 	var err error
 	if os.Getenv("APP_MODE") == "dev" {
@@ -33,12 +35,12 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	mongoDriver, err := app.SetupMongoDriver(*app.Globals.Config)
+	mongoDriver, err := app.SetupCmdMongoDriver(*app.Globals.Config)
 	if err != nil {
 		os.Exit(1)
 	}
 
-	app.Globals.OrderRepository = order_repository.NewOrderRepository(mongoDriver, app.Globals.Config.Mongo.Database, app.Globals.Config.Mongo.Collection)
+	orderRepository = order_repository.NewOrderRepository(mongoDriver, app.Globals.Config.CmdMongo.Database, app.Globals.Config.CmdMongo.Collection)
 
 	// Running Tests
 	code := m.Run()
@@ -1570,7 +1572,7 @@ func createOrder() *entities.Order {
 func TestFinanceCalcDecorator(t *testing.T) {
 	newOrder := createOrder()
 	ctx := context.Background()
-	savedOrder, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	savedOrder, err := orderRepository.Save(ctx, *newOrder)
 	require.Nil(t, err)
 	e := New().FinanceCalc(ctx, savedOrder, SELLER_VAT_CALC, SELLER_FINANCE)
 	require.Nil(t, e)
@@ -1604,13 +1606,13 @@ func TestFinanceOrderCalc(t *testing.T) {
 
 	newOrder.Status = "NEW"
 
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := orderRepository.Save(ctx, *newOrder)
 	require.Nil(t, err)
 
 	e := New().FinanceCalc(ctx, order, Set(SHARE_CALC, VOUCHER_CALC), ORDER_FINANCE)
 	require.Nil(t, e)
 
-	_, err = app.Globals.OrderRepository.Save(ctx, *order)
+	_, err = orderRepository.Save(ctx, *order)
 	require.Nil(t, err)
 }
 
@@ -1621,7 +1623,7 @@ func TestFinanceOrderCalcWithCommissionZero(t *testing.T) {
 
 	newOrder.Status = "NEW"
 
-	order, err := app.Globals.OrderRepository.Save(ctx, *newOrder)
+	order, err := orderRepository.Save(ctx, *newOrder)
 	require.Nil(t, err)
 
 	for i := 0; i < len(order.Packages); i++ {
@@ -1634,7 +1636,7 @@ func TestFinanceOrderCalcWithCommissionZero(t *testing.T) {
 	e := New().FinanceCalc(ctx, order, Set(SHARE_CALC, VOUCHER_CALC), ORDER_FINANCE)
 	require.Nil(t, e)
 
-	_, err = app.Globals.OrderRepository.Save(ctx, *order)
+	_, err = orderRepository.Save(ctx, *order)
 	require.Nil(t, err)
 }
 
@@ -1705,6 +1707,6 @@ func TestFinanceOrderCalcWithCommissionZero(t *testing.T) {
 
 func removeCollection() {
 	ctx, _ := context.WithCancel(context.Background())
-	if err := app.Globals.OrderRepository.RemoveAll(ctx); err != nil {
+	if err := orderRepository.RemoveAll(ctx); err != nil {
 	}
 }

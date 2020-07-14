@@ -217,7 +217,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 			}
 		}
 
-		order, e := app.Globals.OrderRepository.FindById(ctx, pkgItem.OrderId)
+		order, e := app.Globals.CQRSRepository.QueryR().OrderQR().FindById(ctx, pkgItem.OrderId)
 		if e != nil {
 			app.Globals.Logger.FromContext(ctx).Error("OrderRepository.FindById failed",
 				"fn", "Process",
@@ -270,7 +270,8 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 		}
 
 		if states.OrderStatus(order.Status) == states.OrderClosedStatus {
-			_, err := app.Globals.OrderRepository.Save(ctx, *order)
+			order.UpdatedAt = time.Now().UTC()
+			_, err := app.Globals.CQRSRepository.CmdR().OrderCR().Update(ctx, *order)
 			if err != nil {
 				state.rollbackStock(ctx, sids, pkgItem)
 				app.Globals.Logger.FromContext(ctx).Error("update with OrderRepository.Save order failed",
@@ -289,7 +290,7 @@ func (state payToBuyerState) Process(ctx context.Context, iFrame frame.IFrame) {
 				"state", state.Name(),
 				"oid", order.OrderId)
 		} else {
-			_, e := app.Globals.PkgItemRepository.Update(ctx, *pkgItem)
+			_, e := app.Globals.CQRSRepository.CmdR().PkgCR().Update(ctx, *pkgItem, false)
 			if e != nil {
 				state.rollbackStock(ctx, sids, pkgItem)
 				app.Globals.Logger.FromContext(ctx).Error("update package order failed",

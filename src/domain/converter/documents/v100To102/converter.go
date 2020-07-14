@@ -10,7 +10,7 @@ import (
 )
 
 func SchedulerConvert() error {
-	orders, err := app.Globals.OrderRepository.FindAll(context.Background())
+	orders, err := app.Globals.CQRSRepository.QueryR().OrderQR().FindAll(context.Background())
 	if err != nil {
 		applog.GLog.Logger.Error("convert() => app.Globals.OrderRepository.FindAll failed", "error", err)
 		return err
@@ -197,14 +197,14 @@ func SchedulerConvert() error {
 		convertedOrders = append(convertedOrders, newOrder)
 	}
 
-	err = app.Globals.OrderRepository.RemoveAll(context.Background())
+	err = app.Globals.CQRSRepository.CmdR().OrderCR().RemoveAll(context.Background())
 	if err != nil {
 		applog.GLog.Logger.Error("app.Globals.OrderRepository.RemoveAll failed", "error", err)
 		return err
 	}
 
 	for _, newOrder := range convertedOrders {
-		_, err = app.Globals.OrderRepository.Insert(context.Background(), newOrder)
+		_, err = app.Globals.CQRSRepository.CmdR().OrderCR().Insert(context.Background(), newOrder)
 		if err != nil {
 			applog.GLog.Logger.Error("app.Globals.OrderRepository.RemoveAll failed", "error", err)
 			return err
