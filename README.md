@@ -7,5 +7,6 @@ The significant features include:
 - Using the CQRS pattern with MongoDB clusters for scale-up (Designed and developed from scratch, using the FanIn/FanOut pattern)
 - Using gRPC to communicate with other services
 - Designing and developing a simple scheduler from scratch (using the ward/steward pattern)
+- Support Docker
   
 Note: Please refrain from launching the service standalone due to microservice considerations in the design.
