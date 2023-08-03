@@ -1,5 +1,4 @@
-# OrderService
-Marketplace Order Service
+# Marketplace Order Service
 This service manages orders based on many predefined states, starting from the creation of orders by the customers until their delivery. Of course, the delivery process is fulfilled by the sellers. It is designed for a microservice architecture.
 
 The significant features includ:
